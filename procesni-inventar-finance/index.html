@@ -1,0 +1,220 @@
+<!DOCTYPE html><script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Procesni Inventar Finance",
+  "schemaVersion": 1,
+  "description": "Interaktivní přehled 26 finančních procesů RB EDU ve 8 clusterech. Filtrování podle statusu (funguje / neformálně / chybí / probíhá) a clusteru. Detail s ownerem, nástroji a poznámkami na klik. Data jsou statická — aktualizuje se ručně při změnách procesního inventáře."
+}
+</script>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Procesní inventář — Finance</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f6f3;color:#1a1a18;font-size:14px;padding:18px 20px 40px}
+.header-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.title{font-size:12px;font-weight:500;color:#999;letter-spacing:.06em;text-transform:uppercase}
+.updated{font-size:11px;color:#bbb}
+.pi-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.pi-stat{background:#fff;border:.5px solid #e0ddd5;border-radius:8px;padding:10px 12px;text-align:center;cursor:pointer}
+.pi-stat.active{border-color:#aaa;background:#f1efe8}
+.pi-stat-n{font-size:22px;font-weight:500;line-height:1}
+.pi-stat-l{font-size:11px;color:#aaa;margin-top:3px}
+.pi-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.pf{font-size:11px;font-weight:500;padding:4px 10px;border-radius:99px;border:.5px solid #d0cdc6;background:#fff;color:#666;cursor:pointer}
+.pf.active{background:#f1efe8;border-color:#aaa;color:#1a1a18}
+.pi-sep{width:.5px;background:#e0ddd5;margin:0 4px;height:20px;flex-shrink:0}
+.pi-cluster{margin-bottom:8px}
+.pi-cluster-head{display:flex;align-items:center;gap:8px;padding:6px 0 5px}
+.pi-cl{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.pi-cluster-name{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:#888}
+.pi-cluster-count{font-size:10px;color:#bbb}
+.pi-rows{background:#fff;border:.5px solid #e0ddd5;border-radius:12px;overflow:hidden}
+.pi-row{border-bottom:.5px solid #f0ede6;cursor:pointer;user-select:none}
+.pi-row:last-child{border-bottom:none}
+.pi-row-head{display:flex;align-items:center;gap:10px;padding:9px 14px}
+.pi-row-head:hover{background:#f7f6f3}
+.pi-id{font-size:10px;font-family:"SF Mono",monospace;color:#bbb;min-width:30px;flex-shrink:0;pointer-events:none}
+.pi-name{font-size:13px;color:#1a1a18;flex:1;line-height:1.35;pointer-events:none}
+.pi-owner-short{font-size:11px;color:#aaa;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.pi-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0;pointer-events:none}
+.pi-chevron{font-size:12px;color:#ccc;flex-shrink:0;transition:transform .15s;width:14px;text-align:center;pointer-events:none}
+.pi-detail{display:none;padding:10px 14px 12px 54px;border-top:.5px solid #f0ede6;background:#fafaf8}
+.pi-detail.open{display:block}
+.pi-dl{display:grid;grid-template-columns:76px 1fr;gap:4px 12px;font-size:12px;margin-bottom:8px}
+.pi-dk{color:#aaa;padding-top:1px}
+.pi-dv{color:#555;line-height:1.5}
+.pi-note{font-size:12px;color:#555;line-height:1.55;padding-top:8px;border-top:.5px solid #ece9e1}
+.s-ok{background:#E1F5EE;color:#0F6E56}
+.s-warn{background:#FAEEDA;color:#854F0B}
+.s-miss{background:#FCEBEB;color:#A32D2D}
+.s-wip{background:#E6F1FB;color:#185FA5}
+.empty{font-size:13px;color:#aaa;padding:1.5rem 0;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="header-top">
+  <span class="title">Procesní inventář — Finance RB EDU</span>
+  <span class="updated">5. 5. 2026 · v1.0</span>
+</div>
+
+<div class="pi-stats" id="stats"></div>
+<div class="pi-filters" id="filters"></div>
+<div id="clusters"></div>
+
+<script>
+var P=[
+  {id:"01",name:"Vystavování výstupních faktur klientům",cl:"A",owner:"Dominik + PM",tools:"Allfred",st:"ok",note:"Funguje."},
+  {id:"02",name:"Přefakturace nákladů jednatelů (přes jiné subjekty)",cl:"A",owner:"Každý jednatel individuálně; Dominik + Martina (přehled)",tools:"Allfred",st:"warn",note:"Luboš → Rainfellows, Jan → Neurazitelny/Cocuma, Lukáš → Odyssey/Alviso/Pixley. Otevřený problém: konsolidace soukromých nákladů v Alfrédu — jeden doklad per jednatel místo rozpadání na 10+ projektů."},
+  {id:"03",name:"Sledování splatností a upomínky",cl:"A",owner:"Dominik",tools:"Allfred",st:"warn",note:"Automatické upomínky v Alfrédu neověřeny, bez aktivní pozornosti."},
+  {id:"04",name:"Příjem a účtování dokladů",cl:"B",owner:"Dominik + Martina",tools:"Allfred",st:"ok",note:"Hlavní proces clusteru. Běží. Čeká na forecast funkce Alfrédu. Procesy 05–10 jsou speciální případy uvnitř."},
+  {id:"05",name:"Firemní karty — přiřazení a pravidla použití",cl:"B",owner:"Lukáš + Dominik",tools:"—",st:"warn",note:"Pravidlo daňové/nedaňové popsáno (dok. 5. 5. 2026). Chybí: seznam držitelů karet, pravidla ad-hoc výpůjčky, evidence soukromých nákupů."},
+  {id:"06A",name:"Soukromé náklady hrazené firmou → odečtení z odměn",cl:"B",owner:"Dominik (Jan, Luboš) / individuálně (Lukáš, Michal)",tools:"Google Sheets (per osoba)",st:"warn",note:"Scope: jednatelé RB Associates + Happiness at Work. Evidence per osoba přes GSheets. Odečet u Lukáše/Michala nepravidelný. Cíl: Allfred/RB Universe."},
+  {id:"06B",name:"Firemní náklady hrazené soukromě → přefakturace +15 %",cl:"B",owner:"Parťáci + Dominik (kontrola)",tools:"Allfred",st:"ok",note:"Platí plošně pro všechny parťáky. Položka \"Organizační a technické zabezpečení\". Popsáno v interním dokumentu 5. 5. 2026."},
+  {id:"07",name:"Km náhrady za použití soukromého vozidla",cl:"B",owner:"Lukáš (nastavení pravidel)",tools:"—",st:"warn",note:"Sazba 7 CZK/km. Aktuálně jen pár lidí ad hoc. Záměr: plošně pro všechny. Chybí: use-case list, výjimky, seznam dotčených osob."},
+  {id:"08",name:"Mzdy zaměstnanců (Honza, Luboš)",cl:"C",owner:"Lenka Turečková",tools:"—",st:"warn",note:"Funguje neformálně, není sepsáno. Souvisí s procesy 02 a 06A."},
+  {id:"09",name:"Odměny kontraktorů (DPP / faktury)",cl:"C",owner:"Dominik",tools:"Allfred + RB Universe",st:"ok",note:"Faktury v Alfrédu. Přehledy v RB Universe pro P&C tým a parťáky."},
+  {id:"10",name:"Zálohy kontraktorům (šuplíčky) + evidence smíšených nákladů",cl:"C",owner:"Dominik + individuálně",tools:"Google Sheets",st:"warn",note:"Ad hoc, není systematicky popsáno. Cíl: Allfred/RB Universe."},
+  {id:"11",name:"Měsíční P&L",cl:"D",owner:"Martina (sestavení) + Dominik (RB Universe)",tools:"RB Universe",st:"ok",note:"Funguje."},
+  {id:"12",name:"Cashflow sledování a forecast",cl:"D",owner:"Lukáš",tools:"RB Universe",st:"miss",note:"Evidujeme: zůstatky, plánované/vystavené faktury, přijaté/nezaplacené. Chybí forecast expenses (blocker: Allfred). Runway sledování není možné."},
+  {id:"13",name:"Alokace nákladů na projekty (utilizace → marže)",cl:"D",owner:"Dominik",tools:"Allfred",st:"wip",note:"Přijaté náklady OK, vystavené faktury OK, plánované faktury 60–80 % aktuálnost, forecast nákladů chybí."},
+  {id:"14",name:"Uzavírání projektů (project closing)",cl:"D",owner:"—",tools:"—",st:"miss",note:"Žádné podmínky, timing, zodpovědnost ani šablona. Chybí úplně."},
+  {id:"15",name:"Rozhodování sporných daňových/účetních případů",cl:"E",owner:"Martina + Lenka Turečková",tools:"—",st:"ok",note:"Nastaveno, funguje. Případně přizvou Lukáše."},
+  {id:"16",name:"Roční daňové přiznání",cl:"E",owner:"Martina + Lenka Turečková",tools:"—",st:"ok",note:"FY2025 podáno pro Network + RBJD."},
+  {id:"17",name:"Optimalizace nákladů (daňové vs. nedaňové)",cl:"E",owner:"Martina + Lenka Turečková",tools:"—",st:"warn",note:"Dříve ad hoc. Nově systematičtěji s Lenkou."},
+  {id:"18",name:"Odchozí platby",cl:"F",owner:"Martina",tools:"S4",st:"warn",note:"Platební příkazy přímo z S4. Žádná kontrola ani schvalování — potenciální riziko."},
+  {id:"19",name:"Sledování bankovních zůstatků",cl:"F",owner:"Lukáš",tools:"RB Universe",st:"warn",note:"Finance + Strategy dashboard. Runway sledování vyžaduje forecast nákladů (viz 12)."},
+  {id:"20",name:"Správa úvěrového rámce a bankovních produktů",cl:"F",owner:"Lukáš",tools:"—",st:"miss",note:"Zatím neřešeno. Plán: požádat o kontokorent co nejdříve. Účty a karty řeší Lukáš průběžně."},
+  {id:"21",name:"Smlouvy s kontraktory (švárc systém)",cl:"G",owner:"P&C tým → léto 2026",tools:"—",st:"wip",note:"Velké téma přes léto 2026. Lenka (P&C) + Lenka (účto/daně) + Honza Lokajíček (právník)."},
+  {id:"22",name:"Klientské smlouvy — revize a podpisy",cl:"G",owner:"Lukáš",tools:"Gemini Gem Právník + šablony",st:"warn",note:"Provizorní stav. Potřeba komplexní revize OP: obecné + EDUtéka + Delivery + Eventy + Summit."},
+  {id:"23",name:"M&A a akvizice",cl:"G",owner:"Honza Lokajíček (primárně)",tools:"—",st:"wip",note:"Aktuálně Odyssey. Příklady smluv z H@W akvizice. Viz AGENDA ma-odyssey.md."},
+  {id:"24",name:"Správa a rozvoj Alfrédu",cl:"H",owner:"Lukáš + Dominik",tools:"Allfred",st:"wip",note:"Probíhá: bugy + forecast expenses + rozšíření API + možnost zápisů."},
+  {id:"25",name:"Migrace GSheets → Allfred",cl:"H",owner:"Lukáš + Dominik (+ Jarda)",tools:"Allfred",st:"wip",note:"Zbývá: tabulky Středisek, Reporty EDU, Utilizační tabulka."},
+  {id:"26",name:"RB Universe — datové integrace",cl:"H",owner:"Lukáš",tools:"RB Universe",st:"ok",note:"Běží. Blocker: Allfred API (nenačítání projektů, nemožnost zápisu, chyby na straně Alfrédu)."},
+];
+
+var CLUSTERS={
+  A:{name:"Fakturace a příjmy",color:"#378ADD"},
+  B:{name:"Evidence nákladů a výdajů",color:"#1D9E75"},
+  C:{name:"Odměny a mzdy",color:"#7F77DD"},
+  D:{name:"Reporting a kontroling",color:"#D85A30"},
+  E:{name:"Daně a účetnictví",color:"#BA7517"},
+  F:{name:"Bankovní operace",color:"#5F5E5A"},
+  G:{name:"Smlouvy a právní rámec",color:"#D4537E"},
+  H:{name:"Systémy a data",color:"#639922"}
+};
+
+var ST={
+  ok:{label:"funguje",cls:"s-ok",color:"#0F6E56"},
+  warn:{label:"neformálně",cls:"s-warn",color:"#854F0B"},
+  miss:{label:"chybí",cls:"s-miss",color:"#A32D2D"},
+  wip:{label:"probíhá",cls:"s-wip",color:"#185FA5"}
+};
+
+var activeStatus="all";
+var activeCluster="all";
+
+function counts(){
+  var c={ok:0,warn:0,miss:0,wip:0};
+  P.forEach(function(p){c[p.st]++;});
+  return c;
+}
+
+function renderStats(){
+  var c=counts();
+  var el=document.getElementById("stats");
+  var h="";
+  Object.keys(ST).forEach(function(k){
+    var s=ST[k];
+    var isActive=(activeStatus===k);
+    h+='<div class="pi-stat'+(isActive?" active":"")+'" data-status="'+k+'"><div class="pi-stat-n" style="color:'+s.color+'">'+c[k]+'</div><div class="pi-stat-l">'+s.label+'</div></div>';
+  });
+  el.innerHTML=h;
+}
+
+function renderFilters(){
+  var el=document.getElementById("filters");
+  var h='<button class="pf'+(activeStatus==="all"?" active":"")+'" data-status="all">Vše ('+P.length+')</button>';
+  Object.keys(ST).forEach(function(k){
+    h+='<button class="pf'+(activeStatus===k?" active":"")+'" data-status="'+k+'">'+ST[k].label+'</button>';
+  });
+  h+='<span class="pi-sep"></span>';
+  h+='<button class="pf'+(activeCluster==="all"?" active":"")+'" data-cluster="all">Všechny</button>';
+  Object.keys(CLUSTERS).forEach(function(k){
+    h+='<button class="pf'+(activeCluster===k?" active":"")+'" data-cluster="'+k+'">'+k+'</button>';
+  });
+  el.innerHTML=h;
+}
+
+function renderClusters(){
+  var vis=P.filter(function(p){
+    return (activeStatus==="all"||p.st===activeStatus)&&(activeCluster==="all"||p.cl===activeCluster);
+  });
+  var by={};
+  vis.forEach(function(p){if(!by[p.cl])by[p.cl]=[];by[p.cl].push(p);});
+  var h="";
+  Object.keys(CLUSTERS).forEach(function(cl){
+    var ps=by[cl];
+    if(!ps||!ps.length)return;
+    var c=CLUSTERS[cl];
+    h+='<div class="pi-cluster">';
+    h+='<div class="pi-cluster-head"><div class="pi-cl" style="background:'+c.color+'"></div><span class="pi-cluster-name">'+cl+' — '+c.name+'</span><span class="pi-cluster-count"> ('+ps.length+')</span></div>';
+    h+='<div class="pi-rows">';
+    ps.forEach(function(p){
+      var s=ST[p.st];
+      var ownerShort=p.owner.split(" (")[0].split(" +")[0].split(",")[0];
+      h+='<div class="pi-row" data-pid="'+p.id+'">';
+      h+='<div class="pi-row-head"><span class="pi-id">'+p.id+'</span><span class="pi-name">'+p.name+'</span><span class="pi-owner-short">'+ownerShort+'</span><span class="pi-badge '+s.cls+'">'+s.label+'</span><span class="pi-chevron" id="chev-'+p.id+'">›</span></div>';
+      h+='<div class="pi-detail" id="det-'+p.id+'"><div class="pi-dl"><span class="pi-dk">Owner</span><span class="pi-dv">'+p.owner+'</span><span class="pi-dk">Nástroje</span><span class="pi-dv">'+p.tools+'</span></div><div class="pi-note">'+p.note+'</div></div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  });
+  if(!h)h='<div class="empty">Žádné procesy neodpovídají filtru.</div>';
+  document.getElementById("clusters").innerHTML=h;
+}
+
+function render(){
+  renderStats();
+  renderFilters();
+  renderClusters();
+}
+
+document.getElementById("stats").addEventListener("click",function(e){
+  var el=e.target.closest("[data-status]");
+  if(!el)return;
+  var v=el.getAttribute("data-status");
+  activeStatus=(activeStatus===v?"all":v);
+  render();
+});
+
+document.getElementById("filters").addEventListener("click",function(e){
+  var el=e.target.closest("button");
+  if(!el)return;
+  if(el.hasAttribute("data-status")){
+    activeStatus=el.getAttribute("data-status");
+  } else if(el.hasAttribute("data-cluster")){
+    activeCluster=el.getAttribute("data-cluster");
+  }
+  render();
+});
+
+document.getElementById("clusters").addEventListener("click",function(e){
+  var row=e.target.closest(".pi-row");
+  if(!row)return;
+  var pid=row.getAttribute("data-pid");
+  var det=document.getElementById("det-"+pid);
+  var chev=document.getElementById("chev-"+pid);
+  if(!det)return;
+  var open=det.classList.contains("open");
+  det.classList.toggle("open",!open);
+  chev.style.transform=open?"":"rotate(90deg)";
+});
+
+render();
+</script>
+</body>
+</html>

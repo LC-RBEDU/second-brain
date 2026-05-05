@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Agenda Canvas",
+  "schemaVersion": 1,
+  "description": "Lightweight canvas přehledu projektů. Klik na projekt otevře živý detail přes Claude (vždy čerstvá data z AGENDA souborů). Aktualizuje se jen při přidání/odebrání projektu nebo změně počtů."
+}
+</script>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agenda canvas</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f6f3;color:#1a1a18;font-size:14px;padding:18px 20px 32px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
+.topbar-title{font-size:12px;font-weight:500;color:#999;letter-spacing:.06em;text-transform:uppercase}
+.stats{display:flex;gap:18px}
+.stat-n{font-size:20px;font-weight:500;color:#1a1a18;line-height:1}
+.stat-l{font-size:10px;color:#bbb;margin-top:2px;text-align:center}
+.section-label{font-size:11px;font-weight:500;color:#bbb;letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;margin-bottom:18px}
+.card{background:#fff;border-radius:12px;border:.5px solid #e0ddd5;padding:13px 15px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.card:hover{border-color:#c8c4bc;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.card-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.a-red{background:#E24B4A}.a-amber{background:#BA7517}.a-teal{background:#1D9E75}.a-gray{background:#b4b2a9}
+.card-name{font-size:14px;font-weight:500;color:#1a1a18;margin-top:7px;margin-bottom:3px}
+.card-slug{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;margin-bottom:8px}
+.badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-size:10px;font-weight:500;padding:2px 6px;border-radius:99px;white-space:nowrap}
+.bq1{background:#FCEBEB;color:#A32D2D}.bq2{background:#FAEEDA;color:#854F0B}.bgray{background:#F1EFE8;color:#5F5E5A}.bteal{background:#E1F5EE;color:#0F6E56}
+.card-task{font-size:12px;color:#666;line-height:1.45;border-left:2px solid #e8e5de;padding-left:8px;margin-bottom:9px}
+.card-footer{display:flex;align-items:center;justify-content:space-between}
+.counts{font-size:11px;color:#bbb}
+.counts b{color:#666;font-weight:500}
+.card-arrow{font-size:12px;color:#ccc}
+.divider{height:.5px;background:#e0ddd5;margin:14px 0}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.pcard{background:#f1efe8;border-radius:9px;border:.5px solid #e0ddd5;padding:10px 12px;cursor:pointer;transition:border-color .12s}
+.pcard:hover{border-color:#c8c4bc}
+.pcard-name{font-size:13px;font-weight:500;color:#1a1a18;margin-bottom:2px}
+.pcard-slug{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;margin-bottom:5px}
+.pcard-item{font-size:11px;color:#888;line-height:1.4}
+.canvas-note{font-size:11px;color:#bbb;text-align:center;margin-top:16px}
+</style>
+</head>
+<body>
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Přehled 9 agendových projektů — klikni pro detail</h2>
+
+<div class="topbar">
+  <span class="topbar-title">Agenda canvas</span>
+  <div class="stats">
+    <div class="stat"><div class="stat-n">6</div><div class="stat-l">aktivních</div></div>
+    <div class="stat"><div class="stat-n">3</div><div class="stat-l">sledovaných</div></div>
+    <div class="stat"><div class="stat-n">12</div><div class="stat-l">úkolů</div></div>
+  </div>
+</div>
+
+<div class="section-label">Aktivní projekty</div>
+<div class="grid" id="ag"></div>
+<div class="divider"></div>
+<div class="section-label">Sledovaná témata (jen backlog)</div>
+<div class="pgrid" id="pg"></div>
+<div class="canvas-note">Klikni na projekt pro aktuální detail úkolů a materiálů</div>
+
+<script>
+const A=[
+  {id:"strategy",name:"Strategy",accent:"a-red",
+   badges:[{t:"2× Q1",c:"bq1"},{t:"2 backlog",c:"bgray"}],
+   top:"Konference 2026 — rozhodnutí event vs. konference 🔥",aC:2,bC:2},
+  {id:"firemni-procesy",name:"Firemní procesy",accent:"a-red",
+   badges:[{t:"3× Q1",c:"bq1"},{t:"6 backlog",c:"bgray"}],
+   top:"Sales/Delivery handover rollout",aC:3,bC:6},
+  {id:"rb-universe-development",name:"RB Universe dev",accent:"a-red",
+   badges:[{t:"1× Q1",c:"bq1"},{t:"3× Q2",c:"bq2"},{t:"2 backlog",c:"bgray"}],
+   top:"Dovolené tracking — přislíbeno Kátě 🔥",aC:4,bC:2},
+  {id:"financni-tym",name:"Finanční tým",accent:"a-red",
+   badges:[{t:"1× Q1",c:"bq1"},{t:"4 backlog",c:"bgray"}],
+   top:"Daňové přiznání FY2025 — deadline 1. 7.",aC:1,bC:4},
+  {id:"ma-odyssey",name:"M&A Odyssey",accent:"a-red",
+   badges:[{t:"1× Q1",c:"bq1"}],
+   top:"Smluvní rámec akvizice — Lokajíček",aC:1,bC:0},
+  {id:"obchodni-podminky-rb-edu",name:"Obchodní podmínky",accent:"a-amber",
+   badges:[{t:"1× Q2",c:"bq2"}],
+   top:"OB pro akademie + Edu revize",aC:1,bC:0}
+];
+const P=[
+  {id:"rb-network",name:"RB Network",top:"Katalog koučů/mentorů — domluvit s Adélou"},
+  {id:"vibe-coding",name:"Vibe coding",top:"Karpathy Cursor guidelines ke studiu"},
+  {id:"obecna-inspirace",name:"Obecná inspirace",top:"Petr Pouchlý / Video Lukáš Dzuroška"}
+];
+
+function bh(b){return b.map(x=>`<span class="badge ${x.c}">${x.t}</span>`).join("");}
+
+document.getElementById("ag").innerHTML=A.map(p=>`
+  <div class="card" onclick="sendPrompt('Ukáž mi aktuální detail projektu ${p.name}')">
+    <div class="card-accent ${p.accent}"></div>
+    <div class="card-name">${p.name}</div>
+    <div class="card-slug">${p.id}</div>
+    <div class="badges">${bh(p.badges)}</div>
+    <div class="card-task">${p.top}</div>
+    <div class="card-footer">
+      <div class="counts"><b>${p.aC}</b> aktivní · <b>${p.bC}</b> backlog</div>
+      <span class="card-arrow">→</span>
+    </div>
+  </div>`).join("");
+
+document.getElementById("pg").innerHTML=P.map(p=>`
+  <div class="pcard" onclick="sendPrompt('Ukáž mi aktuální detail projektu ${p.name}')">
+    <div class="pcard-name">${p.name}</div>
+    <div class="pcard-slug">${p.id}</div>
+    <div class="pcard-item">${p.top}</div>
+  </div>`).join("");
+</script>
+</body>
+</html>
