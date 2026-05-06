@@ -1,0 +1,6 @@
+# macOS Finder (custom folder icon metadata — breaks git if it lands in .git/)
+Icon?
+.DS_Store
+
+# Cursor IDE local state (not project source)
+.cursor/
