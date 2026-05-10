@@ -48,39 +48,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .ds{font-size:11px;color:#bbb;font-family:"SF Mono",monospace;margin-top:3px}
 .blk{background:#fff;border-radius:12px;border:.5px solid #e0ddd5;padding:14px 16px;margin-bottom:10px}
 .blt{font-size:11px;font-weight:500;color:#bbb;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
-
-/* Task rows — Q1Q2 style */
-.tk{padding:8px 0;border-bottom:.5px solid #f0ede6}
+.tk{padding:7px 0;border-bottom:.5px solid #f0ede6;display:flex;gap:10px;align-items:flex-start}
 .tk:last-child{border-bottom:none;padding-bottom:0}
-.tk-top{display:flex;gap:10px;align-items:flex-start}
 .tl2{flex:1;min-width:0}
-.tnm{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:5px}
-.tm-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.tid{font-size:13px;font-weight:700;color:#1a1a18;font-family:"SF Mono",monospace;letter-spacing:.02em}
-.msep{font-size:11px;color:#ddd}
-.status{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;white-space:nowrap}
-.st-ns{background:#F1EFE8;color:#9B9992}
-.st-ip{background:#E8F0FE;color:#1A56C0}
-.st-wt{background:#FEF3C7;color:#92570B}
-.st-dn{background:#E1F5EE;color:#0F6E56}
-.ice-s{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;display:flex;align-items:center;gap:4px}
-.ice-sc{color:#aaa;font-weight:600}
-.ice-pts{display:flex;gap:5px}
-.ice-p{display:flex;gap:1px}
-.ice-p span:first-child{color:#ccc}
-.ice-p span:last-child{color:#999}
-.dl-future{font-size:11px;font-weight:500;color:#1A68B0;white-space:nowrap}
-.dl-past{font-size:11px;font-weight:600;color:#C0392B;white-space:nowrap}
-.tb{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;white-space:nowrap;align-self:flex-start;margin-top:1px}
-
-/* Checklist */
-.tch{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding-top:6px;border-top:.5px solid #f5f3ec}
+.tid{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;margin-bottom:1px}
+.tnm{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:4px}
+.tch{display:flex;flex-direction:column;gap:3px;margin-top:2px}
 .ch{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#555;line-height:1.4}
 .cb{width:13px;height:13px;border:.5px solid #c8c4bc;border-radius:3px;flex-shrink:0;margin-top:1px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:9px}
 .cb.d{background:#1D9E75;border-color:#1D9E75;color:#fff}
 .cd{color:#bbb;text-decoration:line-through}
-
-/* Backlog + misc */
+.tb{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;white-space:nowrap;align-self:flex-start;margin-top:1px}
 .bi{padding:6px 0;border-bottom:.5px solid #f0ede6;font-size:12px;color:#666}
 .bi:last-child{border-bottom:none;padding-bottom:0}
 .bi b{font-weight:500;color:#444}
@@ -103,7 +81,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     <div class="stats">
       <div><div class="sn">8</div><div class="sl">aktivních</div></div>
       <div><div class="sn">2</div><div class="sl">sledovaných</div></div>
-      <div><div class="sn">30</div><div class="sl">úkolů</div></div>
+      <div><div class="sn">20</div><div class="sl">úkolů</div></div>
     </div>
   </div>
   <div class="lbl">Aktivní projekty</div>
@@ -111,7 +89,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   <div class="div"></div>
   <div class="lbl">Sledovaná témata</div>
   <div class="pgrid" id="pg"></div>
-  <div class="note">Klikni na projekt pro detail · 7. 5. 2026</div>
+  <div class="note">Klikni na projekt pro detail · 6. 5. 2026</div>
 </div>
 <div id="vd" class="view">
   <button class="back" onclick="sc()">← zpět</button>
@@ -119,105 +97,65 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 <script>
 function openArtifact(name){ sendPrompt('Otevři artefakt ' + name); }
+
 const ARTIFACT_BTN = '<button class="art-btn" onclick=\'openArtifact("Procesní inventář finance")\'>📋 Procesní inventář finance</button>';
 
-const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-const ST_LABEL = {ns:"Not started", ip:"In progress", wt:"Waiting", dn:"Done"};
-const ST_CLASS  = {ns:"st-ns", ip:"st-ip", wt:"st-wt", dn:"st-dn"};
-
-function fmtDl(dl){
-  if(!dl) return '';
-  const d = new Date(dl); d.setHours(0,0,0,0);
-  const s = d.getDate()+'. '+d.toLocaleString('cs',{month:'short'})+'.';
-  return `<span class="${d<TODAY?'dl-past':'dl-future'}">${d<TODAY?'⚠ ':''}${s}</span>`;
-}
-function iceHtml(ice){
-  if(!ice) return '';
-  const sc = ice.i*ice.c*ice.e;
-  return `<div class="ice-s"><span class="ice-sc">ice ${sc}</span><div class="ice-pts">
-    <div class="ice-p"><span>i</span><span>${ice.i}</span></div>
-    <div class="ice-p"><span>c</span><span>${ice.c}</span></div>
-    <div class="ice-p"><span>e</span><span>${ice.e}</span></div>
-  </div></div>`;
-}
-
 const D={
-  strategy:{name:"Strategy",acc:"r",badges:[{t:"5× ASAP",c:"asap"},{t:"3 backlog",c:"bl"}],
-    top:"S6 — Strategy reflexe 🔥 deadline neděle 10. 5.",aC:5,bC:3,
+  strategy:{name:"Strategy",acc:"r",badges:[{t:"2× ASAP",c:"asap"},{t:"3 backlog",c:"bl"}],
+    top:"Konference 2026 — rozhodnutí event vs. konference 🔥",aC:2,bC:3,
     active:[
-      {id:"S6",q:"ASAP",name:"Připravit reflexi a odpovědi na Strategy otázky",st:"ns",dl:"2026-05-10",ice:{i:8,c:8,e:8},
-       ch:[{t:"Otevřít dokument s otázkami (Google Doc)",d:false},{t:"Projít všechny otázky a připravit vlastní reflexi / odpovědi",d:false},{t:"Finalizovat výstup před nedělí 10. 5.",d:false}]},
-      {id:"S8",q:"ASAP",name:"Balíček pro externí spolupráci (NDA + Rámcovka)",st:"ns",dl:"2026-05-11",ice:{i:7,c:8,e:6},
-       ch:[{t:"Domluvit se s Lenkou Vaškovou a Martinem Rumanem na obsahu balíčku",d:false},{t:"Připravit NDA šablonu pro externího spolupracovníka",d:false},{t:"Připravit Rámcovou smlouvu pro externího spolupracovníka",d:false},{t:"Otestovat na Pavlu Polovi a Jirkovi Vávrovi",d:false}]},
-      {id:"S1",q:"ASAP",name:"Konference 2026: rozhodnutí event vs. konference",st:"wt",dl:"2026-05-15",ice:{i:8,c:7,e:6},
+      {id:"S1",q:"ASAP",name:"Konference 2026: rozhodnutí event vs. konference",
        ch:[{t:"Rozhodnutí na Strategy týmu (začátek května)",d:false},{t:"Příprava komunikačního plánu",d:false}]},
-      {id:"S2",q:"ASAP",name:"Hierarchie cílů: obrat vs. ziskovost vs. dopad",st:"wt",dl:"2026-05-31",ice:{i:9,c:6,e:4},
-       ch:[{t:"Zařadit na management schůzku (do konce května)",d:false},{t:"Připravit vstup: kde jsme na každém ze tří cílů",d:false}]},
-      {id:"S7",q:"ASAP",name:"1:1 s Strategy týmem + KPIs do dashboardu",st:"ip",dl:null,ice:{i:6,c:7,e:7},
-       ch:[{t:"Zaplánovat 1:1 s Martinem Rumanem",d:false},{t:"Zaplánovat 1:1 s Lukášem Dzuroškou",d:false},{t:"Zaplánovat 1:1 s Lenkou Vaškovou",d:false},{t:"Zaplánovat 1:1 s Lubošem Malým",d:false},{t:"Zaplánovat 1:1 s Janem Maškem",d:false},{t:"Ověřit, že každý připraví KPIs + cíl do dashboardu",d:false}]}
+      {id:"S2",q:"ASAP",name:"Hierarchie cílů: obrat vs. ziskovost vs. dopad",
+       ch:[{t:"Zařadit na management schůzku (do konce května)",d:false},{t:"Připravit vstup: kde jsme na každém ze tří cílů",d:false}]}
     ],
-    bl:[{id:"S4",q:"Next",name:"Cenová strategie akademií",st:"ns",ice:{i:8,c:6,e:4}},{id:"S3",q:"Backlog",name:"Growth partnerships: quarterly update",st:"ns",ice:{i:5,c:6,e:7}},{id:"S5",q:"Next",name:"Exponential Summit: aktualizovat plán (posun → únor 2027)",st:"ns",ice:{i:6,c:8,e:7}}],
-    w:["Ekonomické riziko — L&D budgety, watch-item"],
-    m:["<a href='https://docs.google.com/document/d/166MBSwKDcY2My2yqcn6aXyGN1b4D9LxyLD8TW69qB3Y/edit?usp=drivesdk' target='_blank'>S6 — Dokument s otázkami (Google Doc)</a>",
-       "<a href='https://docs.google.com/document/d/1ww0bP_K1FvgJ_eTfqYt3aBVTo7uvKo3L7HLB3HWg-2k/edit' target='_blank'>Agenda — Strategická schůzka (Google Doc)</a>"]},
+    bl:[{id:"S4",q:"Next",name:"Cenová strategie akademií"},{id:"S3",q:"Backlog",name:"Growth partnerships: quarterly update"},{id:"S5",q:"Next",name:"Exponential Summit: aktualizovat plán (posun → únor 2027)"}],
+    w:["Ekonomické riziko — L&D budgety, watch-item"],m:[]},
 
-  "firemni-procesy":{name:"Firemní procesy",acc:"r",badges:[{t:"4× ASAP",c:"asap"},{t:"2× Next",c:"next"},{t:"7 backlog",c:"bl"}],
-    top:"Sales/Delivery handover rollout",aC:6,bC:7,
+  "firemni-procesy":{name:"Firemní procesy",acc:"r",badges:[{t:"4× ASAP",c:"asap"},{t:"1× Next",c:"next"},{t:"7 backlog",c:"bl"}],
+    top:"Sales/Delivery handover rollout",aC:5,bC:7,
     active:[
-      {id:"P2",q:"ASAP",name:"Sales/Delivery handover zakotven a spuštěn",st:"wt",dl:null,ice:{i:8,c:7,e:6},
+      {id:"P2",q:"ASAP",name:"Sales/Delivery handover zakotven a spuštěn",
        ch:[{t:"Ověřit výstupy ze středečního meetingu (Martin R.)",d:false},{t:"Rozeslat mapu procesu do týmu",d:false},{t:"Domluvit kde mapa bydlí",d:false}]},
-      {id:"F1",q:"ASAP",name:"Alokace nákladů na projekty (utilizace)",st:"ip",dl:"2026-05-03",ice:{i:7,c:8,e:7},
+      {id:"F1",q:"ASAP",name:"Alokace nákladů na projekty (utilizace)",
        ch:[{t:"Rozeslat pokyn k utilizaci — vykazovat na projekty (3. 5.)",d:true},{t:"Ověřit, že Dominik nastaví technicky v Alfrédu",d:false}]},
-      {id:"F3",q:"ASAP",name:"Šuplíčky: zálohy pro kontraktory",st:"ip",dl:"2026-05-31",ice:{i:5,c:7,e:7},
+      {id:"F3",q:"ASAP",name:"Šuplíčky: zálohy pro kontraktory",
        ch:[{t:"Nastavit šuplíčky pro relevantní kontraktory",d:false},{t:"Sepsat pravidla",d:false}]},
-      {id:"P8",q:"ASAP",name:"Neurazitelný: stav podpisu smlouvy + náklady Káťa Gaillard",st:"wt",dl:null,ice:{i:6,c:8,e:8},
+      {id:"P8",q:"ASAP",name:"Neurazitelný: stav podpisu smlouvy + náklady Káťa Gaillard",
        ch:[{t:"Zjistit aktuální stav podpisu smlouvy",d:false},{t:"Ověřit: jsou náklady na Káťu Gaillard součástí 8% režie, nebo nad rámec?",d:false},{t:"Výsledek zapsat zpět do projektu",d:false}]},
-      {id:"F8",q:"Next",name:"Pravidla pro náhrady za cestovné (use-case list)",st:"ns",dl:"2026-05-11",ice:{i:4,c:8,e:7},
-       ch:[{t:"Definovat use-cases, na které se 7 CZK/km vztahuje",d:false},{t:"Definovat výjimky — co náhradu nezakládá",d:false},{t:"Ověřit kdo pravidla schválí",d:false},{t:"Uložit na kanonické místo",d:false}]},
-      {id:"P9",q:"Next",name:"Request for Invoicing: PM vs. finance práva v Alfrédu",st:"ns",dl:null,ice:null,
-       ch:[{t:"Reprodukovat Martinův případ: Arval invoice — editovat jako PM, zkusit uložit",d:false},{t:"Zmapovat co PM může vs. nemůže (edit / uložit / schválit)",d:false},{t:"Sepsat pravidla kdo co zadává",d:false},{t:"Komunikovat týmu (PM + finance)",d:false}]}
+      {id:"F8",q:"Next",name:"Pravidla pro náhrady za cestovné (use-case list)",
+       ch:[{t:"Definovat use-cases, na které se 7 CZK/km vztahuje",d:false},{t:"Definovat výjimky — co náhradu nezakládá",d:false},{t:"Ověřit kdo pravidla schválí",d:false},{t:"Uložit na kanonické místo",d:false}]}
     ],
-    bl:[{id:"P7",q:"Next",name:"Napsat aktualizovaný medailonek pro web",st:"ns",ice:{i:3,c:9,e:8}},{id:"P1",q:"Next",name:"Project closing process v Alfrédu",st:"ns",ice:{i:6,c:7,e:6}},{id:"P4",q:"Next",name:"Reporting PM aktivit (time tracking)",st:"ns",ice:{i:5,c:6,e:5}},{id:"F6",q:"Next",name:"Firemní karty: pravidla",st:"ns",ice:{i:4,c:8,e:8}},{id:"P5",q:"Next",name:"Pravidla evidence dovolené a volna",st:"ns",ice:{i:5,c:7,e:7}},{id:"P3",q:"Next",name:"Smlouvy s kontraktory / švarc",st:"ns",ice:{i:7,c:5,e:3}},{id:"P6",q:"Backlog",name:"AI-based procesní řízení: inspirace",st:"ns",ice:null}],
+    bl:[{id:"P7",q:"Next",name:"Napsat aktualizovaný medailonek pro web"},{id:"P1",q:"Next",name:"Project closing process v Alfrédu"},{id:"P4",q:"Next",name:"Reporting PM aktivit (time tracking)"},{id:"F6",q:"Next",name:"Firemní karty: pravidla"},{id:"P5",q:"Next",name:"Pravidla evidence dovolené a volna"},{id:"P3",q:"Next",name:"Smlouvy s kontraktory / švarc"},{id:"P6",q:"Backlog",name:"AI-based procesní řízení: inspirace"}],
     w:["Martin Ruman / QED Group — potenciální OB reference, sledovat"],
-    m:[ARTIFACT_BTN,"<a href='https://redbuttonedu.allfred.io/invoices/outgoing-invoices/edit/?id=310' target='_blank'>P9 — Arval invoice v Alfrédu (Martin Ruman)</a>"]},
+    m:[ARTIFACT_BTN]},
 
-  "rb-universe-development":{name:"RB Universe dev",acc:"r",badges:[{t:"4× ASAP",c:"asap"},{t:"5× Next",c:"next"},{t:"5 backlog",c:"bl"}],
-    top:"T15 filtrace pohledů (ASAP) + T13 onboarding Pavla (ASAP)",aC:10,bC:5,
+  "rb-universe-development":{name:"RB Universe dev",acc:"r",badges:[{t:"1× ASAP",c:"asap"},{t:"4× Next",c:"next"},{t:"3 backlog",c:"bl"}],
+    top:"Dovolené tracking — přislíbeno Kátě 🔥",aC:5,bC:3,
     active:[
-      {id:"T15",q:"ASAP",name:"Filtrace pohledů v RB Universe",st:"ip",dl:null,ice:null,
-       ch:[{t:"Modal okno s tvorbou filtrů (nested filters, a la HubSpot)",d:false},{t:"Výběr polí pro filtrování v každém zdroji dat",d:false},{t:"Uložené filtry",d:false},{t:"Sdílení filtrů",d:false}]},
-      {id:"T4",q:"ASAP",name:"Dovolené/volno tracking v Univerzu",st:"ns",dl:"2026-05-16",ice:{i:6,c:7,e:5},
-       ch:[{t:"Navrhnout datový model (nárok, čerpání, kategorie volna)",d:false},{t:"Formulář žádosti o volno v Univerzu",d:false},{t:"Propojení Univerz → infokalendář (event jako info@ se jménem zaměstnance)",d:false},{t:"Domluvit s Káťou mechanismus importu dat od 1. 3. 2026",d:false},{t:"Profil: nárok / plánováno / zrealizováno + editace/zrušení",d:false},{t:"Notifikace (email nebo push) při podání žádosti",d:false}]},
-      {id:"T11",q:"ASAP",name:"Fix: duplicitní e-mail drafty při přesunu kandidáta do inboxu",st:"ns",dl:null,ice:null,
-       ch:[{t:"Reprodukovat (přesunout kandidáta do inboxu, ověřit počet draftů)",d:false},{t:"Najít příčinu (vícenásobný event trigger?)",d:false},{t:"Opravit a otestovat",d:false}]},
-      {id:"T13",q:"ASAP",name:"Přidat onboarding checklist pro Pavlu do RB Universe",st:"ns",dl:null,ice:null,
-       ch:[{t:"Otevřít profil Pavly v RB Universe",d:false},{t:"Přidat checklist ručně (leader: Mišo)",d:false}]},
-      {id:"T5",q:"Next",name:"Self-service profil: co vidí a co může měnit každý uživatel",st:"ns",dl:null,ice:null,
-       ch:[{t:"Historie plateb z Alfrédu — po opravě T8 (done)",d:true},{t:"Dokumenty / smlouvy — po T6 Signi integraci",d:false},{t:"Adresa s review → propíše se do Alfréda",d:false},{t:"Číslo účtu s review → dopad na platby",d:false},{t:"Dovolená / volno → T4",d:false}]},
-      {id:"T1",q:"Next",name:"MCP: data integrity & rozšíření",st:"wt",dl:null,ice:{i:7,c:6,e:5},
+      {id:"T4",q:"ASAP",name:"Dovolené/volno tracking v Univerzu",
+       ch:[{t:"Navrhnout datový model",d:false},{t:"Propojení Univerz → infokalendář",d:false},{t:"Zpětný import od 1.1.2026",d:false},{t:"Domluvit pravidla s Káťou",d:false}]},
+      {id:"T1",q:"Next",name:"MCP: data integrity & rozšíření",
        ch:[{t:"Sledovat opravy Alfréd API",d:false},{t:"Po opravě ověřit kvalitu dat",d:false},{t:"Řešit přístupová práva ChatGPT",d:false}]},
-      {id:"T6",q:"Next",name:"Signi integrace",st:"wt",dl:null,ice:{i:5,c:6,e:5},ch:[{t:"Čeká na: Káťa dá do pořádku šablony smluv (2–3 měsíce)",d:false}]},
-      {id:"T10",q:"Next",name:"Cashflow dashboard pro produkty",st:"wt",dl:null,ice:{i:8,c:6,e:4},
-       ch:[{t:"Datový model (příjmy / náklady per produkt) vč. Sales open projektů",d:false},{t:"Napojit na finanční data (Alfréd / Fakturoid)",d:false},{t:"Připravit wireframe / mockup cashflow grafu v Univerzu",d:false}]},
-      {id:"T17",q:"Next",name:"Scoring pro time-sensitive projekty",st:"ns",dl:null,ice:null,
-       ch:[{t:"Upřesnit definici 'time-sensitive projekt' (kritéria, prahy)",d:false},{t:"Navrhnout scoring model",d:false},{t:"Implementovat v RB Universe",d:false}]},
-      {id:"T18",q:"Next",name:"Načítání mobilních čísel, pozic a dalších info z e-mailů do PD",st:"ns",dl:null,ice:null,
-       ch:[{t:"Zmapovat zdroje dat (e-mailové signatury, konverzace)",d:false},{t:"Navrhnout mechanismus extrakce → zápis do Pipedrive",d:false},{t:"Otestovat a nasadit",d:false}]}
+      {id:"T6",q:"Next",name:"Signi integrace",ch:[]},
+      {id:"T8",q:"Next",name:"Bug: uživatel nevidí historii plateb",
+       ch:[{t:"Reprodukovat bug (screenshot od Káti)",d:false},{t:"Dohledat kde se history plateb fetchuje z Alfrédu",d:false},{t:"Opravit + otestovat",d:false}]},
+      {id:"T10",q:"Next",name:"Cashflow dashboard pro produkty",
+       ch:[{t:"Upřesnit scope: které produkty, jaká granularita",d:false},{t:"Navrhnout datový model (příjmy / náklady per produkt)",d:false},{t:"Napojit na finanční data (Alfréd / Fakturoid)",d:false},{t:"Připravit wireframe / mockup pohledu v Univerzu",d:false}]}
     ],
-    bl:[{id:"T9",q:"Next",name:"Projekt architekt: najít první testovací proces",st:"ns",ice:{i:4,c:5,e:6}},{id:"T7",q:"Next",name:"Projektové řízení — zahrnout do Universe? (MVP by Pavel Kroupa)",st:"ns",ice:{i:5,c:4,e:4}},{id:"T16",q:"Backlog",name:"Tabulka alokací PM dle mentální zátěže (Pavel)",st:"ns",ice:null},{id:"T19",q:"Backlog",name:"Vytváření osob v PD / Universe z e-mail konverzací",st:"ns",ice:null},{id:"T3",q:"Backlog",name:"Sales summary e-mail přes husku",st:"ns",ice:null}],
-    w:["Onboarding sync Pavla Kurník-Šopa"],
-    done:["T12 — Fix: buddy task nelze editovat ✅","T14 — Alfréd přístup pro Kateřinu ✅","T8 — Bug: uživatel nevidí historii plateb ✅","T2 — ATS v RB Universe ✅"],
-    m:[]},
+    bl:[{id:"T9",q:"Next",name:"Projekt architekt: najít první testovací proces"},{id:"T7",q:"Next",name:"Projektové řízení — zahrnout do Universe? (MVP by Pavel Kroupa)"},{id:"T3",q:"Backlog",name:"Sales summary e-mail přes husku"}],
+    w:["Onboarding sync Pavla Vaňková"],
+    done:["T2 — ATS v RB Universe ✅","T5 — Self-service profil ✅"],m:[]},
 
   "financni-tym":{name:"Finanční tým",acc:"r",badges:[{t:"2× Next",c:"next"},{t:"3 backlog",c:"bl"}],
     top:"Procesní mapa a mapa zodpovědností finančního týmu (F9)",aC:2,bC:3,
     active:[
-      {id:"F9",q:"Next",name:"Procesní mapa a mapa zodpovědností finančního týmu",st:"ip",dl:null,ice:{i:7,c:8,e:6},
+      {id:"F9",q:"Next",name:"Procesní mapa a mapa zodpovědností finančního týmu",
        ch:[{t:"Získat pracovní náplň od účetní",d:true},{t:"Získat pracovní náplň od Dominika",d:true},{t:"Zodpovědnosti Lukáše doplněny",d:true},{t:"Zpracovat náplně + role → procesní mapa (kdo dělá co)",d:false},{t:"Sestavit mapu zodpovědností (RACI nebo podobné)",d:false}]},
-      {id:"F12",q:"Next",name:"Wise.com: založit a aktivovat účet pro RB EDU",st:"ip",dl:"2026-05-16",ice:{i:5,c:8,e:7},
+      {id:"F12",q:"Next",name:"Wise.com: založit a aktivovat účet pro RB EDU",
        ch:[{t:"Zahájit registraci firemního účtu (ověřit entitu — RB EDU / RBJD)",d:false},{t:"Připravit potřebné dokumenty (IČO, výpis z OR)",d:false},{t:"Dokončit verifikaci a aktivovat účet",d:false},{t:"Napojit na platební procesy (faktury v EUR)",d:false}]}
     ],
-    bl:[{id:"F2",q:"Next",name:"Analýza uzavřených zakázek Q1 2026",st:"ns",ice:{i:6,c:8,e:7}},{id:"F4",q:"Next",name:"Cashflow forecast v Alfrédu",st:"wt",ice:{i:7,c:6,e:4}},{id:"F7",q:"Backlog",name:"Nákladová struktura dashboard",st:"ns",ice:{i:6,c:5,e:4}}],
+    bl:[{id:"F2",q:"Next",name:"Analýza uzavřených zakázek Q1 2026"},{id:"F4",q:"Next",name:"Cashflow forecast v Alfrédu"},{id:"F7",q:"Backlog",name:"Nákladová struktura dashboard"}],
     w:["Přefakturace (Honza, Luboš, Lukáš?) — systematické řešení není rozhodnuto"],
     done:["F5 — Daňové přiznání FY2025 ✅ (podáno Martina + Lenka)","F10 — Pozvat Lenku na pondělní meeting ✅","F11 — Formalizovat Lenčinu roli ✅"],
     m:["PNL březen 2026: +367 000 Kč","<a href='https://docs.google.com/document/d/1Nw2vPzH7FwtJvjI0DEhxDZR3GKLXi4MKoD0jKe3SblM/' target='_blank'>Dominik — pracovní náplň (Google Doc)</a>",ARTIFACT_BTN]},
@@ -225,20 +163,19 @@ const D={
   "ma-odyssey":{name:"M&A Odyssey",acc:"r",badges:[{t:"2× ASAP",c:"asap"},{t:"1× Next",c:"next"}],
     top:"Plaud transcript + follow-up Honza Lokajíček 🔥",aC:3,bC:0,
     active:[
-      {id:"O1",q:"ASAP",name:"Smluvní rámec akvizice (Lokajíček)",st:"wt",dl:null,ice:{i:10,c:5,e:3},
+      {id:"O1",q:"ASAP",name:"Smluvní rámec akvizice (Lokajíček)",
        ch:[{t:"Sledovat přípravu podkladů ze strany Odyssey (bod 1)",d:false},{t:"Promyslet cash mechanismus pro platbu Martinovi (bod 2)",d:false},{t:"Připravit smlouvy owners RB Associates s.r.o. (bod 3)",d:false}]},
-      {id:"O3",q:"ASAP",name:"Projít Plaud transcript + ověřit follow-up od Honzy",st:"ns",dl:null,ice:{i:9,c:9,e:7},
-       ch:[{t:"Přečíst Plaud přepis z jednání s Lokajíčkem",d:false},{t:"Porovnat s O1 — doplnit nové detaily",d:false},{t:"Ověřit, zda Honza Lokajíček odeslal follow-up",d:false}]},
-      {id:"O2",q:"Next",name:"Vyhodnotit nabídku půjčky od Romana (PeStratEx)",st:"dn",dl:null,ice:{i:7,c:7,e:7},
+      {id:"O3",q:"ASAP",name:"Projít Plaud transcript + ověřit follow-up od Honzy",
+       ch:[{t:"Přečíst Plaud přepis z jednání s Lokajíčkem",d:false},{t:"Porovnat s O1 — doplnit nové detaily",d:false},{t:"Ověřit, zda Honza odeslal follow-up",d:false}]},
+      {id:"O2",q:"Next",name:"Vyhodnotit nabídku půjčky od Romana (PeStratEx)",
        ch:[{t:"Zjistit podmínky — úrok, splatnost, forma",d:false},{t:"Rozhodnout, zda zapojit do cash mechanismu O1 bod 2",d:false}]}
     ],
-    bl:[],w:[],
-    m:["<a href='https://web.plaud.ai/s/pub_fbd7a061-c334-46d2-abe8-23aa84e2286c::fUzCwyiFEsSXyIaGtKTBq4GQyf5vnVi2PRYBIfw_RCQ913fV9oc1TfNq2yGYPaA-vdn_LekMEDSIdfM9K-IC' target='_blank'>O3 — Plaud nahrávka z jednání s Lokajíčkem</a>"]},
+    bl:[],w:[],m:[]},
 
   "obchodni-podminky-rb-edu":{name:"Obchodní podmínky",acc:"am",badges:[{t:"1× Next",c:"next"}],
     top:"OB pro akademie + Edu revize",aC:1,bC:0,
     active:[
-      {id:"H3",q:"Next",name:"OB pro akademie + Edu revize",st:"ns",dl:"2026-05-31",ice:{i:6,c:5,e:4},
+      {id:"H3",q:"Next",name:"OB pro akademie + Edu revize",
        ch:[{t:"Zjistit u Lukáše D. aktuální stav a co potřebuje",d:false}]}
     ],
     bl:[],w:[],
@@ -248,37 +185,35 @@ const D={
   "kratky-potlesk":{name:"Krátký potlesk",acc:"te",badges:[{t:"2× Next",c:"next"}],
     top:"Google Cloud + směrování domény (Radek)",aC:2,bC:0,
     active:[
-      {id:"K1",q:"Next",name:"Nastavit Google Cloud a platební kartu",st:"ns",dl:null,ice:{i:5,c:9,e:8},
+      {id:"K1",q:"Next",name:"Nastavit Google Cloud a platební kartu",
        ch:[{t:"Vytvořit Google Cloud projekt",d:false},{t:"Přidat platební kartu / billing účet",d:false},{t:"Ověřit, že billing funguje",d:false}]},
-      {id:"K2",q:"Next",name:"Spojit se s Radkem a vyřešit směrování domény",st:"ns",dl:null,ice:{i:5,c:8,e:7},
-       ch:[{t:"Kontaktovat Radka a domluvit schůzku / call",d:false},{t:"Upřesnit co přesně se mění (DNS záznamy)",d:false},{t:"Provést změnu + ověřit že doména funguje",d:false}]}
+      {id:"K2",q:"Next",name:"Spojit se s Radkem a vyřešit směrování domény",
+       ch:[{t:"Kontaktovat Radka a domluvit schůzku / call",d:false},{t:"Upřesnit co přesně se mění (DNS záznamy…)",d:false},{t:"Provést změnu + ověřit že doména funguje",d:false}]}
     ],
-    bl:[],w:[],
-    done:["K3 — Přehodit fotky a popis pošťáka ✅ (Pošťák, Ondra, Pája — 7.5.2026)"],
-    m:[]},
+    bl:[],w:[],m:[]},
 
   "vibe-coding":{name:"Vibe coding",acc:"te",badges:[{t:"1× Backlog",c:"bl"},{t:"1 backlog",c:"tl"}],
     top:"Fix n8n: extrakce Google Docs z emailu",aC:1,bC:1,
     active:[
-      {id:"V2",q:"Backlog",name:"Fix n8n: extrakce obsahu Google Doc z emailu",st:"ns",dl:null,ice:{i:4,c:8,e:7},
+      {id:"V2",q:"Backlog",name:"Fix n8n: extrakce obsahu Google Doc z emailu",
        ch:[{t:"Zkontrolovat OAuth scope Google Drive credential v n8n",d:false},{t:"Ověřit nasdílení dokumentu se správným Google účtem",d:false},{t:"Nahradit Code Node za nativní n8n Google Drive / HTTP Request node",d:false}]}
     ],
-    bl:[{id:"V1",q:"",name:"Karpathy vibe coding guidelines pro Cursor",st:"ns",ice:null}],
+    bl:[{id:"V1",q:"",name:"Karpathy vibe coding guidelines pro Cursor"}],
     w:[],m:["<a href='https://github.com/forrestchang/andrej-karpathy-skills/blob/main/.cursor/rules/karpathy-guidelines.mdc' target='_blank'>GitHub — karpathy-guidelines.mdc</a>"]},
 
   "rb-network":{name:"Red Button Network",acc:"gr",badges:[{t:"1 backlog",c:"bl"}],
     top:"Katalog koučů/mentorů — domluvit s Adélou",aC:0,bC:1,
-    active:[],bl:[{id:"N1",q:"Next",name:"Katalog RB Network: první podoba",st:"wt",ice:null}],
+    active:[],bl:[{id:"N1",q:"Next",name:"Katalog RB Network: první podoba"}],
     w:["Adéla ze sítě — domluvit schůzku"],m:[]},
 
   "obecna-inspirace":{name:"Obecná inspirace",acc:"gr",badges:[{t:"4 backlog",c:"bl"}],
     top:"Petr Pouchlý / Video Lukáš Dzuroška",aC:0,bC:4,
     active:[],
     bl:[
-      {id:"I1",q:"",name:"Petr Pouchlý — gildo / Business Game Design",st:"ns",ice:null},
-      {id:"I2",q:"",name:"Video Lukáš Dzuroška (doporučeno Evou)",st:"ns",ice:null},
-      {id:"I3",q:"",name:"Video Jiří Jirman: kvalita AI výstupů",st:"ns",ice:null},
-      {id:"I4",q:"",name:"Fyzioterapeut Ptáček",st:"ns",ice:null}
+      {id:"I1",q:"",name:"Petr Pouchlý — gildo / Business Game Design"},
+      {id:"I2",q:"",name:"Video Lukáš Dzuroška (doporučeno Evou)"},
+      {id:"I3",q:"",name:"Video Jiří Jirman: kvalita AI výstupů"},
+      {id:"I4",q:"",name:"Fyzioterapeut Ptáček"}
     ],
     w:[],m:[
       "<a href='https://www.linkedin.com/posts/petrpouchly-leadership-change-culture_gildo-bgd-businessgamedesign-ugcPost-7454870591561641984-4NnC' target='_blank'>LinkedIn — Petr Pouchlý #gildo</a>",
@@ -288,7 +223,7 @@ const D={
 };
 
 const ORDER=["strategy","firemni-procesy","rb-universe-development","financni-tym","ma-odyssey","obchodni-podminky-rb-edu","kratky-potlesk","vibe-coding","rb-network","obecna-inspirace"];
-const qc=q=>q==="ASAP"?"asap":q==="Next"?"next":"bl";
+const qc=q=>q==="ASAP"?"asap":q==="Next"?"next":q==="Backlog"?"bl":"bl";
 const bh=b=>b.map(x=>`<span class="b ${x.c}">${x.t}</span>`).join("");
 
 const active=ORDER.filter(k=>D[k].aC>0);
@@ -311,45 +246,21 @@ document.getElementById("pg").innerHTML=passive.map(k=>{const p=D[k];return`
     <div class="pi">${p.top}</div>
   </div>`;}).join("");
 
-function tkHtml(t){
-  const dlH = fmtDl(t.dl);
-  const stH = t.st ? `<span class="status ${ST_CLASS[t.st]}">${ST_LABEL[t.st]}</span>` : '';
-  const icH = iceHtml(t.ice);
-  const hasMeta = stH||icH||dlH;
-  let ch='';
-  if(t.ch&&t.ch.length){
-    ch=`<div class="tch">${t.ch.map(c=>`<div class="ch"><div class="cb${c.d?' d':''}">${c.d?'✓':''}</div><span class="${c.d?'cd':''}">${c.t}</span></div>`).join('')}</div>`;
-  }
-  return `<div class="tk">
-    <div class="tk-top">
-      <div class="tl2">
-        <div class="tnm">${t.name}${dlH?' '+dlH:''}</div>
-        ${hasMeta?`<div class="tm-row">
-          <span class="tid">${t.id}</span>
-          ${stH?`<span class="msep">·</span>${stH}`:''}
-          ${icH?`<span class="msep">·</span>${icH}`:''}
-        </div>`:`<div class="tm-row"><span class="tid">${t.id}</span></div>`}
-        ${ch}
-      </div>
-      <span class="tb b ${qc(t.q)}">${t.q}</span>
-    </div>
-  </div>`;
-}
-
 function sd(k){
   const p=D[k];
   let h=`<div class="dh"><div><div class="dn">${p.name}</div><div class="ds">${k}</div></div><div class="bdg">${bh(p.badges)}</div></div>`;
   if(p.active.length){
     h+=`<div class="blk"><div class="blt">Aktivní úkoly</div>`;
-    p.active.forEach(t=>{ h+=tkHtml(t); });
+    p.active.forEach(t=>{
+      h+=`<div class="tk"><div class="tl2"><div class="tid">${t.id}</div><div class="tnm">${t.name}</div>`;
+      if(t.ch.length) h+=`<div class="tch">${t.ch.map(c=>`<div class="ch"><div class="cb${c.d?" d":""}">${c.d?"✓":""}</div><span class="${c.d?"cd":""}">${c.t}</span></div>`).join("")}</div>`;
+      h+=`</div><span class="tb b ${qc(t.q)}">${t.q}</span></div>`;
+    });
     h+=`</div>`;
   }
   if(p.bl&&p.bl.length){
     h+=`<div class="blk"><div class="blt">Backlog</div>`;
-    p.bl.forEach(b=>{
-      const icH=iceHtml(b.ice);
-      h+=`<div class="bi"><span class="bid">${b.id}</span><b>${b.name}</b>${b.q?` <span class="b ${qc(b.q)}" style="font-size:9px;padding:1px 5px">${b.q}</span>`:''}${icH?' <span class="msep">·</span> '+icH:''}</div>`;
-    });
+    p.bl.forEach(b=>{h+=`<div class="bi"><span class="bid">${b.id}</span><b>${b.name}</b>${b.q?` <span class="b ${qc(b.q)}" style="font-size:9px;padding:1px 5px">${b.q}</span>`:""}</div>`;});
     h+=`</div>`;
   }
   if(p.w&&p.w.length){
