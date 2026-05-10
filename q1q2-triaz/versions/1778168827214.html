@@ -155,8 +155,8 @@ const TASKS = [
   {p:"ASAP", id:"P8", st:"wt", name:"Neurazitelný: stav podpisu smlouvy + náklady Káťa Gaillard", proj:"firemni-procesy", dl:null, related:null,
    ice:{i:6,c:8,e:8}, ch:[
      {t:"Zjistit aktuální stav podpisu smlouvy",d:false},
-     {t:"Ověřit: jsou náklady na Káťu Gaillard součástí 8% režie, nebo nad rámec?",d:true},
-     {t:"Výsledek: náklady jdou za námi, nemění 8% ze zisku",d:true}]},
+     {t:"Ověřit: jsou náklady na Káťu Gaillard součástí 8% režie, nebo nad rámec?",d:false},
+     {t:"Výsledek zapsat zpět do projektu",d:false}]},
   {p:"ASAP", id:"S1", st:"wt", name:"Konference 2026: rozhodnutí event vs. konference", proj:"strategy", dl:"2026-05-15", related:null,
    ice:{i:8,c:7,e:6}, ch:[
      {t:"Rozhodnutí na Strategy týmu (začátek května)",d:false},
@@ -185,16 +185,15 @@ const TASKS = [
      {t:"Sledovat přípravu podkladů ze strany Odyssey",d:false},
      {t:"Promyslet cash mechanismus pro platbu Martinovi",d:false},
      {t:"Připravit smlouvy owners RB Associates s.r.o.",d:false}]},
-  {p:"ASAP", id:"T8", st:"dn", name:"Bug: uživatel nevidí historii plateb", proj:"rb-universe-development", dl:"2026-05-16", related:null,
+  {p:"ASAP", id:"T8", st:"ip", name:"Bug: uživatel nevidí historii plateb", proj:"rb-universe-development", dl:"2026-05-16", related:null,
    ice:{i:6,c:9,e:7}, ch:[
      {t:"Reprodukovat bug (screenshot od Káti)",d:false},
      {t:"Dohledat kde se history plateb fetchuje z Alfrédu",d:false},
      {t:"Opravit + otestovat",d:false}]},
   {p:"ASAP", id:"F12", st:"ip", name:"Wise.com: založit a aktivovat účet pro RB EDU", proj:"financni-tym", dl:"2026-05-16", related:null,
    ice:{i:5,c:8,e:7}, ch:[
-     {t:"Zahájit registraci firemního účtu",d:true},
-     {t:"Připravit potřebné dokumenty (IČO, výpis z OR)",d:true},
-     {t:"Získat doklady od Luboše Malého a Jana Maška (do 11. 5.)",d:false},
+     {t:"Zahájit registraci firemního účtu",d:false},
+     {t:"Připravit potřebné dokumenty (IČO, výpis z OR)",d:false},
      {t:"Dokončit verifikaci a aktivovat účet",d:false},
      {t:"Napojit na platební procesy (faktury v EUR)",d:false}]},
   {p:"ASAP", id:"F8", st:"ns", name:"Pravidla pro náhrady za cestovné (use-case list)", proj:"firemni-procesy", dl:"2026-05-11", related:null,
