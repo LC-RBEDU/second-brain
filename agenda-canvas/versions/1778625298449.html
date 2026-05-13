@@ -79,9 +79,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   <div class="topbar">
     <span class="tit">Agenda canvas</span>
     <div class="stats">
-      <div><div class="sn">10</div><div class="sl">aktivních</div></div>
+      <div><div class="sn">9</div><div class="sl">aktivních</div></div>
       <div><div class="sn">3</div><div class="sl">sledovaných</div></div>
-      <div><div class="sn">32</div><div class="sl">úkolů</div></div>
+      <div><div class="sn">30</div><div class="sl">úkolů</div></div>
     </div>
   </div>
   <div class="lbl">Aktivní projekty</div>
@@ -215,17 +215,6 @@ const D={
     bl:[],w:[],
     m:["<a href='https://rb-edu.slack.com/archives/D0AQHLQ7998/p1778487386785449' target='_blank'>Slack DM od Lucie Přibylové — zadání formuláře</a>"]},
 
-  "pipedrive-a-dalsi-nastroje":{name:"Pipedrive a nástroje",acc:"r",badges:[{t:"1× ASAP",c:"asap"},{t:"1× Next",c:"next"}],
-    top:"PD1 — formulář pro medailonky, varianta 2 (deadline 16. 5.) 🔥",aC:2,bC:0,
-    active:[
-      {id:"PD1",q:"ASAP",name:"Implementovat formulář pro medailonky (varianta 2)",
-       ch:[{t:"Získat seznam expertů od Lucie / Evy",d:false},{t:"Implementovat na webu - formuláře dle jmen",d:false},{t:"Otestovat funkčnost (+ ověřit, že Eva to bere jako SQL lead)",d:false}]},
-      {id:"PD2",q:"Next",name:"Vyčistit a aktualizovat reporty pro Lukáše D.",
-       ch:[{t:"Report: Aktuální stav (dle streamů)",d:false},{t:"Report: Order Entry pro aktuální FY (dle streamů)",d:false},{t:"Dashboardy pro jednotlivé produkty / streamy",d:false},{t:"Vyčistit produktové portfolio — doplnit / restrukturovat moduly z Allfreda",d:false}]}
-    ],
-    bl:[],w:["Čeká na seznam expertů od Lucie / Evy (blokuje PD1)"],
-    m:["<a href='https://rb-edu.slack.com/archives/D0AQHLQ7998/p1778487386785449' target='_blank'>Slack DM od Lucie Přibylové — formulář medailonky</a>"]},
-
   "vibe-coding":{name:"Vibe coding",acc:"te",badges:[{t:"1× Backlog",c:"bl"},{t:"2 backlog",c:"tl"}],
     top:"Fix n8n: extrakce Google Docs z emailu",aC:1,bC:2,
     active:[
@@ -268,7 +257,7 @@ const D={
     ]}
 };
 
-const ORDER=["strategy","firemni-procesy","rb-universe-development","financni-tym","ma-odyssey","obchodni-podminky-rb-edu","kratky-potlesk","operations","pipedrive-a-dalsi-nastroje","vibe-coding","rb-network","exponential-summit","obecna-inspirace"];
+const ORDER=["strategy","firemni-procesy","rb-universe-development","financni-tym","ma-odyssey","obchodni-podminky-rb-edu","kratky-potlesk","operations","vibe-coding","rb-network","exponential-summit","obecna-inspirace"];
 const qc=q=>q==="ASAP"?"asap":q==="Next"?"next":q==="Backlog"?"bl":"bl";
 const bh=b=>b.map(x=>`<span class="b ${x.c}">${x.t}</span>`).join("");
 
