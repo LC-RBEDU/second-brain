@@ -522,7 +522,11 @@ function showProject(key){
     p.watch.forEach(w=>{ h+=`<div class="wi">${w}</div>`; });
     h+=`</div>`;
   }
-
+  if(p.materials&&p.materials.length){
+    h+=`<div class="blk"><div class="blt">Materiály</div>`;
+    p.materials.forEach(m=>{ h+=`<div class="mi">${m}</div>`; });
+    h+=`</div>`;
+  }
   const allDone=[...(p.done||[])];
   dt.forEach(t=>{ if(!allDone.some(d=>d.includes(t.id))) allDone.push(`${t.id} — ${t.name} ✅`); });
   if(allDone.length){
