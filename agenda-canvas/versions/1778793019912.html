@@ -404,15 +404,6 @@ const PROJECTS = {
 
 const PROJ_ORDER = ["strategy","firemni-procesy","rb-universe-development","financni-tym","ma-odyssey","obchodni-podminky-rb-edu","kratky-potlesk","operations","pipedrive-a-dalsi-nastroje","vibe-coding","rb-network","exponential-summit","obecna-inspirace"];
 
-// ── LINKIFY ───────────────────────────
-function linkify(text){
-  // Pattern "↗ label: URL" → ↗ <a>label</a>
-  const m = text.match(/^(↗\s*)(.*?):\s*(https?:\/\/\S+)$/);
-  if(m) return `${m[1]}<a href="${m[3]}" target="_blank" style="color:#185FA5;text-decoration:none;font-weight:500">${m[2]}</a>`;
-  // General: bare URLs → clickable
-  return text.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" style="color:#185FA5;text-decoration:none">$1</a>');
-}
-
 // ── UTILS ─────────────────────────────
 const ice = t => t.ice.i * t.ice.c * t.ice.e;
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
@@ -494,7 +485,7 @@ function showProject(key){
     h+=`<div class="blk"><div class="blt">Aktivní úkoly</div>`;
     at.forEach(t=>{
       h+=`<div class="tk"><div class="tl2"><div class="tid">${t.id}</div><div class="tnm">${t.name}</div>`;
-      if(t.ch&&t.ch.length) h+=`<div class="tch">${t.ch.map((c,i)=>`<div class="ch"><div class="cb${c.d?' d':''}">${c.d?'✓':''}</div><span class="ch-num">${i+1}.</span><span class="${c.d?'cd':''}">${linkify(c.t)}</span></div>`).join('')}</div>`;
+      if(t.ch&&t.ch.length) h+=`<div class="tch">${t.ch.map((c,i)=>`<div class="ch"><div class="cb${c.d?' d':''}">${c.d?'✓':''}</div><span class="ch-num">${i+1}.</span><span class="${c.d?'cd':''}">${c.t}</span></div>`).join('')}</div>`;
       h+=`</div><span class="tb b ${qc(t.p)}">${t.p}</span></div>`;
     });
     h+=`</div>`;
@@ -576,7 +567,7 @@ function renderTaskList(){
       const card=document.createElement('div'); card.className='task'+(isDone?' is-done':'');
       let cl=`<div class="checklist${expanded[t.id]?' open':''}" id="cl-${t.id}">`;
       if(t.related) cl+=`<div style="font-size:11px;color:#888;padding:5px 0 2px;font-style:italic">${t.related}</div>`;
-      if(t.ch&&t.ch.length) t.ch.forEach((c,i)=>{ cl+=`<div class="ch-item"><div class="ch-box${c.d?' done':''}">${c.d?'✓':''}</div><span class="ch-num">${i+1}.</span><span class="${c.d?'ch-done':''}">${linkify(c.t)}</span></div>`; });
+      if(t.ch&&t.ch.length) t.ch.forEach((c,i)=>{ cl+=`<div class="ch-item"><div class="ch-box${c.d?' done':''}">${c.d?'✓':''}</div><span class="ch-num">${i+1}.</span><span class="${c.d?'ch-done':''}">${c.t}</span></div>`; });
       else if(!t.related) cl+=`<div class="no-ch">Bez checklistu</div>`;
       cl+='</div>';
       card.innerHTML=`<div class="task-main" onclick="toggleTask('${t.id}')">
