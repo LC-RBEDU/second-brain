@@ -295,9 +295,7 @@ async function loadData() {
       jsonStr = result;
     } else if (result && Array.isArray(result.content) && result.content[0] && result.content[0].text) {
       const inner = JSON.parse(result.content[0].text);
-      // atob vrací Latin-1 — pro UTF-8 (česká diakritika) nutno dekódovat přes TextDecoder
-      const bytes = Uint8Array.from(atob(inner.content), c => c.charCodeAt(0));
-      jsonStr = new TextDecoder('utf-8').decode(bytes);
+      jsonStr = atob(inner.content);
     } else if (result && typeof result.content === 'string') {
       try { jsonStr = atob(result.content); } catch(e) { jsonStr = result.content; }
     } else {
