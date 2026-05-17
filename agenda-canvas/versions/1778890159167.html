@@ -596,18 +596,6 @@ function buildTaskCard(t){
 }
 
 // ── BOOT ──────────────────────────────────────────────────
-// window.cowork je injektováno Cowork aplikací asynchronně — čekáme na něj
-(async function boot() {
-  const deadline = Date.now() + 10000;
-  while (!window.cowork && Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 150));
-  }
-  if (!window.cowork) {
-    document.getElementById('loading').innerHTML =
-      '<div style="color:#C0392B;padding:20px;font-size:13px">Artefakt je nutné otevřít přes Cowork aplikaci — <code>window.cowork</code> API není dostupné.</div>';
-    return;
-  }
-  await loadData();
-})();
+window.addEventListener('load', loadData);
 </script>
 </body></html>
