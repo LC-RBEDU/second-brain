@@ -231,6 +231,38 @@ const TASKS = [
      {t:"Napojit na finanční data",d:false},
      {t:"Připravit wireframe / mockup",d:false}]},
 
+  {p:"ASAP", id:"S9", st:"ns", name:"Analýza dubnových výsledků (−280k, podprodej 900k vs. plán)", proj:"strategy", dl:"2026-05-25", related:null,
+   ice:{i:9,c:8,e:6}, ch:[
+     {t:"Sednout si s Lukášem Dzuroškou na data za duben",d:false},
+     {t:"Identifikovat příčiny odchylky v tržbách (900k pod plánem)",d:false},
+     {t:"Identifikovat příčiny výsledku −280k: tržby vs. náklady",d:false},
+     {t:"Připravit stručný výstup pro Strategy tým",d:false}]},
+  {p:"ASAP", id:"T25", st:"ns", name:"Fix: scoring pipeline zaseknutá + entity_summary 32 chybějících", proj:"rb-universe-development", dl:null, related:null,
+   ice:{i:8,c:9,e:7}, ch:[
+     {t:"Dohledat Celery logy: proč scoring.run_scoring zasekl",d:false},
+     {t:"Opravit příčinu + spustit scoring manuálně, ověřit výsledek",d:false},
+     {t:"Dohledat proč entity_summary_pipeline nepokryla 32 entit",d:false},
+     {t:"Opravit + spustit znovu, ověřit že počet klesne na 0",d:false},
+     {t:"Zvážit monitoring/alerting",d:false}]},
+  {p:"ASAP", id:"P19", st:"ns", name:"Projít handover procesní mapu a doplnit finance kroky v Alfredovi", proj:"firemni-procesy", dl:"2026-05-22", related:null,
+   ice:{i:8,c:8,e:7}, ch:[
+     {t:"↗ Procesní mapa Miro: https://miro.com/app/board/uXjVGsmebuo=/?moveToWidget=3458764664976764250&cot=14",d:false},
+     {t:"Projít mapu — identifikovat kroky, kde chybí finance / Allfred kontext",d:false},
+     {t:"Doplnit konkrétní kroky v Alfredovi (co, kdy, kdo, jak)",d:false},
+     {t:"Výsledek sdílet s Martinem Rumanem",d:false}]},
+  {p:"ASAP", id:"F18", st:"ns", name:"Zahájit splácení půjček společníků (Luboš + Honza)", proj:"financni-tym", dl:null, related:null,
+   ice:{i:7,c:8,e:8}, ch:[
+     {t:"Domluvit se s Lubošem a Honzou na výši a frekvenci splátek",d:false},
+     {t:"Nastavit pravidelné platby (trvalý příkaz nebo Allfred plánovaný výdaj)",d:false},
+     {t:"Zaznamenat dohodu interně (příp. Lenka T. k posouzení)",d:false}]},
+  {p:"ASAP", id:"F19", st:"ns", name:"Šuplíčky Happiness: srovnání + mock doklady + procesní dokument", proj:"financni-tym", dl:"2026-05-31", related:null,
+   ice:{i:7,c:7,e:5}, ch:[
+     {t:"Srovnat šuplíčky za leden–únor s cutoffem 1. 3.",d:false},
+     {t:"Přidat výdaje za duben a květen",d:false},
+     {t:"Koordinovat s Janou (účetní) ohledně zpracování",d:false},
+     {t:"Koordinovat s Dominikem ohledně taguování v Alfrédu",d:false},
+     {t:"Přepsat procesní dokument pro mock doklady",d:false}]},
+
   // ── NEXT ──────────────────────────────────────────────
   {p:"Next", id:"K1", st:"ns", name:"Nastavit Google Cloud a platební kartu", proj:"kratky-potlesk", dl:null, related:null,
    ice:{i:5,c:9,e:8}, ch:[
