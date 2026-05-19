@@ -17,40 +17,40 @@ gen_uuid() {
   openssl rand -hex 12
 }
 
-exists=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
-  "SELECT id FROM projects WHERE name='${PROJECT_NAME}' LIMIT 1;" 2>/dev/null || echo "")
+PSQL='docker exec coolify-db psql -U coolify -d coolify -q -t -A'
+
+exists=$($PSQL -c "SELECT id FROM projects WHERE name='${PROJECT_NAME}' LIMIT 1;" 2>/dev/null || echo "")
 
 if [[ -n "${exists}" ]]; then
   echo "Project '${PROJECT_NAME}' already exists (id=${exists})"
   PROJECT_ID="${exists}"
 else
   PROJECT_UUID=$(gen_uuid)
-  PROJECT_ID=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
+  PROJECT_ID=$($PSQL -c \
     "INSERT INTO projects (uuid, name, description, team_id, created_at, updated_at)
      VALUES ('${PROJECT_UUID}', '${PROJECT_NAME}', 'MrLUC dashboard + triage cron', ${TEAM_ID}, NOW(), NOW())
      RETURNING id;")
   echo "Created project id=${PROJECT_ID} uuid=${PROJECT_UUID}"
 fi
 
-ENV_ID=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
+ENV_ID=$($PSQL -c \
   "SELECT id FROM environments WHERE project_id=${PROJECT_ID} AND name='production' LIMIT 1;")
 if [[ -z "${ENV_ID}" ]]; then
   ENV_UUID=$(gen_uuid)
-  ENV_ID=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
+  ENV_ID=$($PSQL -c \
     "INSERT INTO environments (uuid, name, project_id, created_at, updated_at)
      VALUES ('${ENV_UUID}', 'production', ${PROJECT_ID}, NOW(), NOW()) RETURNING id;")
   echo "Created environment id=${ENV_ID}"
 fi
 
-APP_ID=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
+APP_ID=$($PSQL -c \
   "SELECT id FROM applications WHERE environment_id=${ENV_ID} AND name='${APP_NAME}' LIMIT 1;")
 if [[ -n "${APP_ID}" ]]; then
   echo "Application already exists id=${APP_ID}"
-  APP_UUID=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
-    "SELECT uuid FROM applications WHERE id=${APP_ID};")
+  APP_UUID=$($PSQL -c "SELECT uuid FROM applications WHERE id=${APP_ID};")
 else
   APP_UUID=$(gen_uuid)
-  APP_ID=$(docker exec coolify-db psql -U coolify -d coolify -t -A -c \
+  APP_ID=$($PSQL -c \
     "INSERT INTO applications (
       uuid, name, git_repository, git_branch, git_commit_sha, build_pack, static_image,
       ports_exposes, base_directory, publish_directory, health_check_path, health_check_host,
@@ -66,8 +66,8 @@ else
       '80', '${BASE_DIR}', '/', '/', 'localhost', 'GET', 200, 'http',
       5, 5, 10, 5,
       '0', '0', 60, '0', '0', 1024, 'exited:unknown', '{{pr_id}}.{{domain}}',
-      'App\\\\Models\\\\StandaloneDocker', ${SERVER_DESTINATION_ID},
-      'App\\\\Models\\\\GithubApp', ${GITHUB_APP_SOURCE_ID}, ${ENV_ID},
+      'App\Models\StandaloneDocker', ${SERVER_DESTINATION_ID},
+      'App\Models\GithubApp', ${GITHUB_APP_SOURCE_ID}, ${ENV_ID},
       true, '/Dockerfile', '${DOMAIN}',
       '-v /data/mrluc-second-brain:/data/mrluc',
       NOW(), NOW(), 'Second Brain — MrLUC dashboard + supercronic', 'http'
@@ -92,11 +92,25 @@ else
 fi
 
 echo "Queue deployment..."
-docker exec coolify-db psql -U coolify -d coolify -q -c \
-  "INSERT INTO application_deployment_queues (application_id, deployment_uuid, status, created_at, updated_at)
-   SELECT ${APP_ID}, '${APP_UUID}', 'queued', NOW(), NOW()
-   WHERE NOT EXISTS (SELECT 1 FROM application_deployment_queues WHERE application_id=${APP_ID} AND status IN ('queued','in_progress'));"
+DEPLOY_UUID=$(gen_uuid)
+QUEUE_ID=$($PSQL -c \
+  "INSERT INTO application_deployment_queues (
+     application_id, deployment_uuid, status, created_at, updated_at, commit,
+     pull_request_id, force_rebuild, is_webhook, restart_only,
+     server_id, destination_id, application_name, server_name
+   )
+   SELECT '${APP_ID}', '${DEPLOY_UUID}', 'queued', NOW(), NOW(), 'HEAD',
+     0, false, false, false,
+     0, '0', '${APP_NAME}', 'DEVELOPMENT SERVER'
+   WHERE NOT EXISTS (
+     SELECT 1 FROM application_deployment_queues
+     WHERE application_id='${APP_ID}' AND status IN ('queued','in_progress')
+   )
+   RETURNING id;")
+if [[ -n "${QUEUE_ID}" ]]; then
+  echo "Queued deployment id=${QUEUE_ID} — trigger via Coolify UI or push to ${GIT_BRANCH}"
+fi
 
-echo "Done. App UUID: ${APP_UUID:-$(docker exec coolify-db psql -U coolify -d coolify -t -A -c "SELECT uuid FROM applications WHERE id=${APP_ID};"))}"
+echo "Done. App UUID: ${APP_UUID:-$($PSQL -c "SELECT uuid FROM applications WHERE id=${APP_ID};")}"
 echo "Domain: ${DOMAIN}"
 echo "Branch: ${GIT_BRANCH} (auto_deploy should be enabled in application_settings)"
