@@ -15,4 +15,4 @@ if [ -f "${LEGACY_TASKS}" ] || [ -d "${VAULT_PATH}/02-Projekty" ]; then
 fi
 
 echo "second-brain-hub: supercronic only (no public HTTP)"
-exec supercronic -passthrough-logs /app/crontab
+exec supercronic /app/crontab
