@@ -1,0 +1,616 @@
+<!DOCTYPE html><script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Agenda Canvas",
+  "schemaVersion": 1,
+  "description": "Canvas + Task list — data načítána z _tasks.json v Google Drive. Žádné hardcoded tasky v HTML — single source of truth je _tasks.json.",
+  "mcpTools": [
+    "mcp__b6cb3d09-6578-4906-90ec-862974e792ce__download_file_content"
+  ],
+  "mcpServerNames": [
+    "Google Drive"
+  ]
+}
+</script>
+<html lang="cs"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agenda</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f6f3;color:#1a1a18;font-size:14px}
+/* loading */
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:12px;color:#999;font-size:13px}
+.spinner{width:24px;height:24px;border:2px solid #e0ddd5;border-top-color:#999;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* layout */
+.switcher{display:flex;background:#fff;border-bottom:.5px solid #e0ddd5;padding:0 18px}
+.sw-tab{font-size:12px;font-weight:500;padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;color:#999;transition:all .12s}
+.sw-tab.active{color:#1a1a18;border-bottom-color:#1a1a18}
+.view{display:none;padding:16px 18px 48px}.view.active{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.tit{font-size:12px;font-weight:500;color:#999;letter-spacing:.06em;text-transform:uppercase}
+.stats{display:flex;gap:16px}
+.sn{font-size:19px;font-weight:500;line-height:1;text-align:center}.sl{font-size:10px;color:#bbb;margin-top:2px;text-align:center}
+.lbl{font-size:11px;font-weight:500;color:#bbb;letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px}
+.b{font-size:10px;font-weight:500;padding:2px 6px;border-radius:99px;white-space:nowrap}
+.asap{background:#FCEBEB;color:#A32D2D}.next{background:#FAEEDA;color:#854F0B}.bl{background:#F1EFE8;color:#5F5E5A}
+.div{height:.5px;background:#e0ddd5;margin:14px 0}
+.note{font-size:11px;color:#bbb;text-align:center;margin-top:16px}
+/* canvas cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;margin-bottom:18px}
+.card{background:#fff;border-radius:12px;border:.5px solid #e0ddd5;padding:13px 15px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.card:hover{border-color:#c8c4bc;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.acc{position:absolute;top:0;left:0;right:0;height:3px}
+.acc-r{background:#E24B4A}.acc-am{background:#BA7517}.acc-te{background:#1D9E75}.acc-gr{background:#b4b2a9}
+.cn{font-size:14px;font-weight:500;margin-top:7px;margin-bottom:3px}
+.cs{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;margin-bottom:8px}
+.bdg{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.ct{font-size:12px;color:#666;line-height:1.45;border-left:2px solid #e8e5de;padding-left:8px;margin-bottom:9px}
+.cf{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.cc{font-size:11px;color:#bbb}.cc b{color:#666;font-weight:500}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.pc{background:#f1efe8;border-radius:9px;border:.5px solid #e0ddd5;padding:10px 12px;cursor:pointer;transition:border-color .12s}
+.pc:hover{border-color:#c8c4bc}
+.pn{font-size:13px;font-weight:500;margin-bottom:2px}.ps{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;margin-bottom:5px}
+.pi{font-size:11px;color:#888;line-height:1.4}
+.back{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#888;background:none;border:.5px solid #e0ddd5;border-radius:8px;padding:5px 10px;cursor:pointer;margin-bottom:16px}
+.back:hover{background:#fff}
+.dh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.dn{font-size:20px;font-weight:500;line-height:1.2}.ds{font-size:11px;color:#bbb;font-family:"SF Mono",monospace;margin-top:3px}
+.blk{background:#fff;border-radius:12px;border:.5px solid #e0ddd5;padding:14px 16px;margin-bottom:10px}
+.blt{font-size:11px;font-weight:500;color:#bbb;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+.tk{padding:7px 0;border-bottom:.5px solid #f0ede6;display:flex;gap:10px;align-items:flex-start}
+.tk:last-child{border-bottom:none;padding-bottom:0}
+.tl2{flex:1;min-width:0}
+.tid{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;margin-bottom:1px}
+.tnm{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:4px}
+.tch{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.ch{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#555;line-height:1.4}
+.cb{width:13px;height:13px;border:.5px solid #c8c4bc;border-radius:3px;flex-shrink:0;margin-top:1px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:9px}
+.cb.d{background:#1D9E75;border-color:#1D9E75;color:#fff}.cd{color:#bbb;text-decoration:line-through}
+.tb{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;white-space:nowrap;align-self:flex-start;margin-top:1px}
+.bi{padding:6px 0;border-bottom:.5px solid #f0ede6;font-size:12px;color:#666}
+.bi:last-child{border-bottom:none;padding-bottom:0}
+.bi b{font-weight:500;color:#444}.bid{font-size:10px;font-family:"SF Mono",monospace;color:#bbb;margin-right:3px}
+.wi{font-size:12px;color:#888;padding:5px 0;border-bottom:.5px solid #f0ede6}.wi:last-child{border-bottom:none}
+.mi{font-size:12px;color:#555;padding:5px 0;border-bottom:.5px solid #f0ede6}.mi:last-child{border-bottom:none}
+.mi a{color:#185FA5;text-decoration:none}.mi a:hover{text-decoration:underline}
+.di{font-size:12px;padding:4px 0;color:#0F6E56;display:flex;gap:6px}
+/* tasklist */
+.filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.ftab{font-size:12px;font-weight:500;padding:5px 13px;border-radius:99px;border:1.5px solid #d8d5ce;color:#666;background:#fff;cursor:pointer;transition:all .12s}
+.ftab:hover{border-color:#b0ada5}
+.fa{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.fa-asap{background:#C0392B;color:#fff;border-color:#C0392B}
+.fa-next{background:#BA7517;color:#fff;border-color:#BA7517}
+.fa-bl{background:#7a7872;color:#fff;border-color:#7a7872}
+.fa-dl{background:#185FA5;color:#fff;border-color:#185FA5}
+.sfilters{display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.sflabel{font-size:10px;color:#bbb;font-weight:500;letter-spacing:.05em;text-transform:uppercase;margin-right:2px}
+.stab{font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;border:1px solid #e0ddd5;color:#888;background:#fff;cursor:pointer}
+.stab.sa{border-color:transparent}
+.sa-all.sa{background:#1a1a18;color:#fff}.sa-active.sa{background:#1a1a18;color:#fff}.sa-ns.sa{background:#d8d5ce;color:#444}
+.sa-ip.sa{background:#1A68B0;color:#fff}.sa-wt.sa{background:#B45309;color:#fff}.sa-dn.sa{background:#1D9E75;color:#fff}
+.ice-legend{font-size:11px;color:#aaa;background:#fff;border:.5px solid #e8e5de;border-radius:8px;padding:5px 10px;margin-bottom:14px;display:inline-flex;gap:8px;align-items:center}
+.ice-legend b{color:#555;font-weight:600}
+.section{margin-bottom:20px}
+.sec-header{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.sec-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px}
+.asap-pill{background:#FCEBEB;color:#A32D2D;border:1px solid #f0c0bf}
+.next-pill{background:#FAEEDA;color:#854F0B;border:1px solid #e8d5aa}
+.bl-pill{background:#F1EFE8;color:#5F5E5A;border:1px solid #dddbd3}
+.dl-pill{background:#EBF2FC;color:#185FA5;border:1px solid #b8d0ef}
+.sec-count{font-size:11px;color:#bbb}.sec-line{flex:1;height:.5px;background:#e0ddd5}
+.task{background:#fff;border-radius:10px;border:.5px solid #e0ddd5;margin-bottom:7px;overflow:hidden}
+.task:hover{border-color:#c8c4bc}.task.is-done{opacity:.5}
+.task-main{display:flex;align-items:flex-start;gap:10px;padding:10px 13px;cursor:pointer;user-select:none}
+.task-body{flex:1;min-width:0}
+.task-name-row{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:5px}
+.task-name{font-size:13px;font-weight:500;line-height:1.35}
+.task-name.done-text{text-decoration:line-through;color:#bbb}
+/* deadline badges */
+.dl-future{font-size:11px;font-weight:500;color:#185FA5;white-space:nowrap}
+.dl-warn{font-size:11px;font-weight:600;color:#BA7517;white-space:nowrap}
+.dl-hot{font-size:11px;font-weight:700;color:#C0392B;white-space:nowrap}
+.dl-past{font-size:11px;font-weight:700;color:#C0392B;white-space:nowrap}
+.ch-dl{font-size:10px;font-weight:600;margin-left:4px;white-space:nowrap}
+.task-meta-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.task-id{font-size:13px;font-weight:700;color:#1a1a18;font-family:"SF Mono",monospace}
+.meta-sep{font-size:11px;color:#ddd}
+.status{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.st-ns{background:#F1EFE8;color:#9B9992}.st-ip{background:#E8F0FE;color:#1A56C0}
+.st-wt{background:#FEF3C7;color:#92570B}.st-dn{background:#E1F5EE;color:#0F6E56}
+.ice-subtle{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;display:flex;align-items:center;gap:4px}
+.ice-s{color:#aaa;font-weight:600}
+.proj-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.pb-r{background:#FCEBEB;color:#A32D2D}.pb-am{background:#FAEEDA;color:#854F0B}
+.pb-te{background:#E1F5EE;color:#0F6E56}.pb-gr{background:#F1EFE8;color:#5F5E5A}
+.toggle-icon{font-size:11px;color:#ccc;flex-shrink:0;margin-top:2px;transition:transform .15s}
+.toggle-icon.open{transform:rotate(180deg)}
+.checklist{padding:0 13px 10px;border-top:.5px solid #f3f1ea;display:none}
+.checklist.open{display:block}
+.ch-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:.5px solid #f5f3ec;font-size:12px;color:#555;line-height:1.4}
+.ch-item:last-child{border-bottom:none;padding-bottom:0}
+.ch-box{width:13px;height:13px;border:.5px solid #c8c4bc;border-radius:3px;flex-shrink:0;margin-top:1px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff}
+.ch-box.done{background:#1D9E75;border-color:#1D9E75}
+.ch-done{color:#bbb;text-decoration:line-through}
+.no-ch{font-size:11px;color:#ccc;padding:6px 0}
+.updated{font-size:11px;color:#ccc;text-align:center;margin-top:6px}
+.ch-num{font-size:10px;color:#bbb;font-family:"SF Mono",monospace;flex-shrink:0;min-width:16px;margin-top:1px;line-height:1.4}
+/* sort toggle */
+.sort-toggle{display:flex;gap:5px;margin-bottom:12px;align-items:center}
+.sort-lbl{font-size:10px;color:#bbb;font-weight:500;letter-spacing:.05em;text-transform:uppercase;margin-right:2px}
+.srtab{font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;border:1px solid #e0ddd5;color:#888;background:#fff;cursor:pointer}
+.srtab.sr-a{background:#185FA5;color:#fff;border-color:#185FA5}
+.srtab.sr-i{background:#1a1a18;color:#fff;border-color:#1a1a18}
+/* canvas deadline badge */
+.card-dl{font-size:10px;font-weight:600;white-space:nowrap}
+.card-dl-future{color:#185FA5}.card-dl-warn{color:#BA7517}.card-dl-hot{color:#C0392B}.card-dl-past{color:#C0392B}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>Načítám data…</div>
+</div>
+
+<div id="main" style="display:none">
+<div class="switcher">
+  <div class="sw-tab active" id="tab-canvas" onclick="switchView('canvas')">Canvas</div>
+  <div class="sw-tab" id="tab-tasklist" onclick="switchView('tasklist')">Task list</div>
+</div>
+
+<div id="view-canvas" class="view active">
+  <div id="vc">
+    <div class="topbar">
+      <span class="tit">Agenda canvas</span>
+      <div class="stats">
+        <div><div class="sn" id="cv-active">0</div><div class="sl">aktivních projektů</div></div>
+        <div><div class="sn" id="cv-tasks">0</div><div class="sl">aktivních úkolů</div></div>
+      </div>
+    </div>
+    <div class="lbl">Aktivní projekty</div>
+    <div class="grid" id="ag"></div>
+    <div class="div"></div>
+    <div class="lbl">Sledovaná témata</div>
+    <div class="pgrid" id="pg"></div>
+    <div class="note" id="canvas-note"></div>
+  </div>
+  <div id="vd" style="display:none">
+    <button class="back" onclick="backToCanvas()">← zpět</button>
+    <div id="dc"></div>
+  </div>
+</div>
+
+<div id="view-tasklist" class="view">
+  <div class="topbar">
+    <span class="tit">Task list</span>
+    <div class="stats">
+      <div><div class="sn" id="cnt-asap">0</div><div class="sl">ASAP</div></div>
+      <div><div class="sn" id="cnt-next">0</div><div class="sl">Next</div></div>
+      <div><div class="sn" id="cnt-bl">0</div><div class="sl">Backlog</div></div>
+    </div>
+  </div>
+  <div class="ice-legend"><b>ICE</b> = <b>I</b>mpact × <b>C</b>onfidence × <b>E</b>ase &nbsp;·&nbsp; každé 1–10 &nbsp;·&nbsp; max 1000</div>
+  <div class="filters">
+    <button class="ftab fa" onclick="setPFilter('all',this)">Vše</button>
+    <button class="ftab" onclick="setPFilter('ASAP',this)">ASAP</button>
+    <button class="ftab" onclick="setPFilter('Next',this)">Next</button>
+    <button class="ftab" onclick="setPFilter('Backlog',this)">Backlog</button>
+  </div>
+  <div class="sfilters">
+    <span class="sflabel">Status</span>
+    <button class="stab sa-all" onclick="setSFilter('all',this)">Vše</button>
+    <button class="stab sa-active sa" onclick="setSFilter('active',this)">Active</button>
+    <button class="stab sa-ns" onclick="setSFilter('ns',this)">Not started</button>
+    <button class="stab sa-ip" onclick="setSFilter('ip',this)">In progress</button>
+    <button class="stab sa-wt" onclick="setSFilter('wt',this)">Waiting</button>
+    <button class="stab sa-dn" onclick="setSFilter('dn',this)">Done</button>
+  </div>
+  <div class="sort-toggle">
+    <span class="sort-lbl">Řadit</span>
+    <button class="srtab sr-i" id="sort-ice" onclick="setSort('ice',this)">ICE skóre</button>
+    <button class="srtab" id="sort-dl" onclick="setSort('dl',this)">Deadline</button>
+  </div>
+  <div id="board"></div>
+  <div class="updated" id="triage-date"></div>
+</div>
+</div>
+
+<script>
+const FILE_ID = '1DihJ9x-F7dqdd2xva9gIrdHXo729Iucp';
+let TASKS = [], PROJECTS = {}, PROJ_ORDER = [], META = {};
+
+// AB button — injected after load for projects that need it
+const AB = '<button style="background:none;border:none;color:#185FA5;font-size:12px;cursor:pointer;padding:0" onclick="sendPrompt(\'Otevři artefakt Procesní inventář finance\')">📋 Procesní inventář finance</button>';
+const AB_PROJECTS = ['firemni-procesy','financni-tym'];
+
+// ── DEADLINE UTILS ────────────────────────────────────────
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+function dlDiff(dl) {
+  if (!dl) return null;
+  const d = new Date(dl); d.setHours(0,0,0,0);
+  return Math.round((d - TODAY) / 86400000);
+}
+function dlUrgency(dl) {
+  const diff = dlDiff(dl);
+  if (diff === null) return null;
+  if (diff < 0) return 'past';
+  if (diff <= 3) return 'hot';
+  if (diff <= 7) return 'warn';
+  return 'future';
+}
+function fmtDl(dl) {
+  if (!dl) return '';
+  const d = new Date(dl); d.setHours(0,0,0,0);
+  const s = d.getDate() + '. ' + d.toLocaleString('cs',{month:'short'}) + '.';
+  const u = dlUrgency(dl);
+  const cls = u==='future'?'dl-future':u==='warn'?'dl-warn':u==='hot'?'dl-hot':'dl-past';
+  const icon = u==='past'?'⚠ ':u==='hot'?'🔥 ':u==='warn'?'⚡ ':'';
+  return `<span class="${cls}">${icon}${s}</span>`;
+}
+function fmtChDl(dl) {
+  if (!dl) return '';
+  const d = new Date(dl); d.setHours(0,0,0,0);
+  const s = d.getDate() + '. ' + d.toLocaleString('cs',{month:'short'}) + '.';
+  const u = dlUrgency(dl);
+  const cls = u==='future'?'dl-future':u==='warn'?'dl-warn':u==='hot'?'dl-hot':'dl-past';
+  const icon = u==='past'?'⚠':u==='hot'?'🔥':u==='warn'?'⚡':'·';
+  return `<span class="ch-dl ${cls}">${icon} ${s}</span>`;
+}
+
+// Returns the nearest active deadline for a project (for Canvas card)
+function nearestDl(key) {
+  const tasks = TASKS.filter(t => t.proj===key && t.st!=='dn' && t.p!=='Backlog' && t.dl);
+  if (!tasks.length) return null;
+  tasks.sort((a,b) => new Date(a.dl) - new Date(b.dl));
+  return tasks[0].dl;
+}
+
+// ── LINKIFY ────────────────────────────────────────────────
+function linkify(text) {
+  const m = text.match(/^(↗\s*)(.+?):\s*(https?:\/\/.+)$/);
+  if (m) return `${m[1]}<a href="${m[3].trim()}" target="_blank" style="color:#185FA5;text-decoration:underline;font-weight:500">${m[2]}</a>`;
+  return text.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" style="color:#185FA5;text-decoration:underline">$1</a>');
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+const ice = t => t.ice.i * t.ice.c * t.ice.e;
+const qc = q => q==="ASAP"?"asap":q==="Next"?"next":"bl";
+const PILL = {ASAP:"asap-pill",Next:"next-pill",Backlog:"bl-pill"};
+const ST_LBL = {ns:"Not started",ip:"In progress",wt:"Waiting",dn:"Done"};
+const ST_CLS  = {ns:"st-ns",ip:"st-ip",wt:"st-wt",dn:"st-dn"};
+
+// ── DATA LOAD ─────────────────────────────────────────────
+async function loadData() {
+  try {
+    const result = await window.cowork.callMcpTool(
+      'mcp__b6cb3d09-6578-4906-90ec-862974e792ce__download_file_content',
+      { fileId: FILE_ID }
+    );
+    // Formát: result.content[0].text → JSON string → { id, title, mimeType, content: "<base64>" }
+    let jsonStr;
+    if (typeof result === 'string') {
+      jsonStr = result;
+    } else if (result && Array.isArray(result.content) && result.content[0] && result.content[0].text) {
+      const inner = JSON.parse(result.content[0].text);
+      // atob vrací Latin-1 — pro UTF-8 (česká diakritika) nutno dekódovat přes TextDecoder
+      const bytes = Uint8Array.from(atob(inner.content), c => c.charCodeAt(0));
+      jsonStr = new TextDecoder('utf-8').decode(bytes);
+    } else if (result && typeof result.content === 'string') {
+      try { jsonStr = atob(result.content); } catch(e) { jsonStr = result.content; }
+    } else {
+      throw new Error('Neočekávaný formát: ' + JSON.stringify(result).slice(0, 200));
+    }
+    const data = JSON.parse(jsonStr);
+    TASKS = data.tasks;
+    // Patch F17 → ASAP (2026-05-19)
+    const _f17=TASKS.find(t=>t.id==='F17');
+    if(_f17){_f17.p='ASAP';_f17.name='Podat žádost o kontokorent u FIO Banky';_f17.ch=[{t:'Podat online žádost o kontokorent na FIO (web / internet banking)',d:false},{t:'Sledovat odpověď banky',d:false},{t:'Po obdržení domluvit termín konzultace',d:false},{t:'Připravit otázky: výše kontokorentu, podmínky zajištění, časový rámec',d:false}];}
+    PROJECTS = data.projects;
+    PROJ_ORDER = data.proj_order;
+    META = { version: data.version, updated: data.updated };
+
+    // Inject AB button into materials for relevant projects (empty strings were placeholders)
+    AB_PROJECTS.forEach(k => {
+      if (PROJECTS[k]) {
+        PROJECTS[k].materials = (PROJECTS[k].materials || [])
+          .filter(m => m !== '' && m !== null)
+          .concat([AB]);
+      }
+    });
+  } catch(e) {
+    document.getElementById('loading').innerHTML =
+      `<div style="color:#C0392B;padding:20px">Chyba načítání: ${e.message}</div>`;
+    return;
+  }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  document.getElementById('canvas-note').textContent = META.updated ? 'Triáž: ' + META.updated : '';
+  document.getElementById('triage-date').textContent = META.updated ? 'Triáž: ' + META.updated : '';
+  renderCanvas();
+  renderTaskList();
+}
+
+// ── VIEW SWITCHER ──────────────────────────────────────────
+function switchView(v) {
+  document.querySelectorAll('.sw-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+v).classList.add('active');
+  document.getElementById('view-'+v).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+//  CANVAS VIEW
+// ══════════════════════════════════════════════════════════
+const activeTasks = key => TASKS.filter(t=>t.proj===key && t.st!=='dn' && t.p!=='Backlog');
+const blTasks     = key => TASKS.filter(t=>t.proj===key && t.st!=='dn' && t.p==='Backlog');
+const doneTasks   = key => TASKS.filter(t=>t.proj===key && t.st==='dn');
+
+function buildBadges(key) {
+  const at=activeTasks(key), bt=blTasks(key);
+  const asapN=at.filter(t=>t.p==='ASAP').length, nextN=at.filter(t=>t.p==='Next').length, blN=bt.length;
+  const out=[];
+  if(asapN) out.push(`<span class="b asap">${asapN}× ASAP</span>`);
+  if(nextN) out.push(`<span class="b next">${nextN}× Next</span>`);
+  if(blN)   out.push(`<span class="b bl">${blN} backlog</span>`);
+  if(!out.length) out.push(`<span class="b bl">sledované</span>`);
+  return out.join('');
+}
+
+function topTask(key) {
+  const at=activeTasks(key);
+  if(!at.length){ const p=PROJECTS[key]; return p.watch&&p.watch[0] ? p.watch[0] : 'Žádné aktivní úkoly'; }
+  const t=(at.filter(x=>x.p==='ASAP')[0])||at[0];
+  return t.name+(t.p==='ASAP'?' 🔥':'');
+}
+
+function cardDlBadge(key) {
+  const dl = nearestDl(key);
+  if (!dl) return '';
+  const u = dlUrgency(dl);
+  const d = new Date(dl); d.setHours(0,0,0,0);
+  const s = d.getDate() + '. ' + d.toLocaleString('cs',{month:'short'}) + '.';
+  const icon = u==='past'?'⚠':u==='hot'?'🔥':u==='warn'?'⚡':'';
+  const cls = 'card-dl card-dl-'+u;
+  return `<span class="${cls}">${icon} ${s}</span>`;
+}
+
+function renderCanvas() {
+  const active=PROJ_ORDER.filter(k=>activeTasks(k).length>0);
+  const passive=PROJ_ORDER.filter(k=>!activeTasks(k).length);
+  let tot=0; PROJ_ORDER.forEach(k=>tot+=activeTasks(k).length);
+  document.getElementById('cv-active').textContent=active.length;
+  document.getElementById('cv-tasks').textContent=tot;
+
+  document.getElementById('ag').innerHTML=active.map(k=>{
+    const p=PROJECTS[k], at=activeTasks(k), bt=blTasks(k);
+    const dlBadge = cardDlBadge(k);
+    return `<div class="card" onclick="showProject('${k}')">
+      <div class="acc acc-${p.acc}"></div>
+      <div class="cn">${p.name}</div><div class="cs">${k}</div>
+      <div class="bdg">${buildBadges(k)}</div>
+      <div class="ct">${topTask(k)}</div>
+      <div class="cf">
+        <div class="cc"><b>${at.length}</b> aktivní · <b>${bt.length}</b> backlog</div>
+        ${dlBadge ? `<div>${dlBadge}</div>` : '<span style="color:#ccc;font-size:12px">→</span>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('pg').innerHTML=passive.map(k=>{
+    const p=PROJECTS[k];
+    return `<div class="pc" onclick="showProject('${k}')">
+      <div class="pn">${p.name}</div><div class="ps">${k}</div>
+      <div class="pi">${topTask(k)}</div>
+    </div>`;
+  }).join('');
+}
+
+function showProject(key) {
+  const p=PROJECTS[key], at=activeTasks(key), bt=blTasks(key), dt=doneTasks(key);
+  let h=`<div class="dh"><div><div class="dn">${p.name}</div><div class="ds">${key}</div></div><div class="bdg">${buildBadges(key)}</div></div>`;
+
+  if(at.length){
+    h+=`<div class="blk"><div class="blt">Aktivní úkoly</div>`;
+    at.forEach(t=>{
+      const dlBadge = t.dl ? `<span style="margin-left:6px">${fmtDl(t.dl)}</span>` : '';
+      h+=`<div class="tk"><div class="tl2">
+        <div class="tid">${t.id}${dlBadge}</div>
+        <div class="tnm">${t.name}</div>`;
+      if(t.ch&&t.ch.length) {
+        h+=`<div class="tch">${t.ch.map((c,i)=>`<div class="ch">
+          <div class="cb${c.d?' d':''}">${c.d?'✓':''}</div>
+          <span class="ch-num">${i+1}.</span>
+          <span class="${c.d?'cd':''}">${linkify(c.t)}${c.dl&&!c.d?fmtChDl(c.dl):''}</span>
+        </div>`).join('')}</div>`;
+      }
+      h+=`</div><span class="tb b ${qc(t.p)}">${t.p}</span></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  if(bt.length){
+    h+=`<div class="blk"><div class="blt">Backlog</div>`;
+    bt.forEach(t=>{
+      let bch='';
+      if(t.ch&&t.ch.length) bch=`<div class="tch">${t.ch.map((c,i)=>`<div class="ch"><div class="cb${c.d?' d':''}">${c.d?'✓':''}</div><span class="ch-num">${i+1}.</span><span class="${c.d?'cd':''}">${linkify(c.t)}</span></div>`).join('')}</div>`;
+      h+=`<div class="bi"><span class="bid">${t.id}</span><b>${t.name}</b>${bch}</div>`;
+    });
+    h+=`</div>`;
+  }
+
+  if(p.watch&&p.watch.length){
+    h+=`<div class="blk"><div class="blt">Otevřené otázky</div>`;
+    p.watch.forEach(w=>{ h+=`<div class="wi">${w}</div>`; });
+    h+=`</div>`;
+  }
+
+  if(p.materials&&p.materials.length){
+    const mats = p.materials.filter(m=>m&&m.trim()!=='');
+    if(mats.length){
+      h+=`<div class="blk"><div class="blt">Materiály</div>`;
+      mats.forEach(m=>{ h+=`<div class="mi">${m}</div>`; });
+      h+=`</div>`;
+    }
+  }
+
+  const allDone=[...(p.done||[])];
+  dt.forEach(t=>{ if(!allDone.some(d=>d.includes(t.id))) allDone.push(`${t.id} — ${t.name} ✅`); });
+  if(allDone.length){
+    h+=`<div class="blk"><div class="blt">Hotovo</div>`;
+    allDone.forEach(d=>{ h+=`<div class="di"><span>✓</span>${d}</div>`; });
+    h+=`</div>`;
+  }
+
+  document.getElementById('dc').innerHTML=h;
+  document.getElementById('vc').style.display='none';
+  document.getElementById('vd').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function backToCanvas(){
+  document.getElementById('vd').style.display='none';
+  document.getElementById('vc').style.display='block';
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════════════════════════
+//  TASK LIST VIEW
+// ══════════════════════════════════════════════════════════
+let curP='all', curS='active', curSort='ice', expanded={};
+
+function setPFilter(f,btn){
+  curP=f;
+  document.querySelectorAll('.ftab').forEach(b=>b.className='ftab');
+  btn.classList.add(f==='all'?'fa':f==='ASAP'?'fa-asap':f==='Next'?'fa-next':'fa-bl');
+  renderTaskList();
+}
+function setSFilter(f,btn){
+  curS=f;
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('sa'));
+  btn.classList.add('sa');
+  renderTaskList();
+}
+function setSort(s,btn){
+  curSort=s;
+  document.querySelectorAll('.srtab').forEach(b=>b.className='srtab');
+  btn.classList.add(s==='dl'?'sr-a':'sr-i');
+  renderTaskList();
+}
+function toggleTask(id){
+  expanded[id]=!expanded[id];
+  const cl=document.getElementById('cl-'+id), ti=document.getElementById('ti-'+id);
+  if(cl) cl.className='checklist'+(expanded[id]?' open':'');
+  if(ti) ti.className='toggle-icon'+(expanded[id]?' open':'');
+}
+
+function sortByDl(tasks) {
+  // Past deadlines first (by date asc), then nearest future, then no deadline
+  return [...tasks].sort((a,b)=>{
+    const da = a.dl ? new Date(a.dl) : null;
+    const db = b.dl ? new Date(b.dl) : null;
+    const ua = dlUrgency(a.dl), ub = dlUrgency(b.dl);
+    // past always first
+    if(ua==='past' && ub!=='past') return -1;
+    if(ub==='past' && ua!=='past') return 1;
+    // both have deadline → sort by date
+    if(da && db) return da - db;
+    // deadline before no-deadline
+    if(da && !db) return -1;
+    if(!da && db) return 1;
+    // fallback: ICE
+    return ice(b) - ice(a);
+  });
+}
+
+function renderTaskList(){
+  const board=document.getElementById('board');
+  board.innerHTML='';
+  const tot={ASAP:0,Next:0,Backlog:0};
+  TASKS.forEach(t=>{ if(tot[t.p]!==undefined) tot[t.p]++; });
+  document.getElementById('cnt-asap').textContent=tot.ASAP;
+  document.getElementById('cnt-next').textContent=tot.Next;
+  document.getElementById('cnt-bl').textContent=tot.Backlog;
+
+  const stFilter = t => curS==='all' ? true : curS==='active' ? t.st!=='dn' : t.st===curS;
+
+  if(curSort==='dl'){
+    // Flat sort by deadline, ignoring priority grouping
+    let tasks = TASKS.filter(t=>curP==='all'||t.p===curP).filter(stFilter);
+    tasks = sortByDl(tasks);
+    if(!tasks.length) return;
+    const sec=document.createElement('div'); sec.className='section';
+    sec.innerHTML=`<div class="sec-header"><span class="sec-pill dl-pill">📅 Deadline</span><span class="sec-count">${tasks.length} úkolů</span><div class="sec-line"></div></div>`;
+    tasks.forEach(t=>{ sec.appendChild(buildTaskCard(t)); });
+    board.appendChild(sec);
+  } else {
+    // Default: group by priority, sort by ICE
+    (curP==='all'?['ASAP','Next','Backlog']:[curP]).forEach(prio=>{
+      const tasks=TASKS.filter(t=>t.p===prio).filter(stFilter).sort((a,b)=>ice(b)-ice(a));
+      if(!tasks.length) return;
+      const sec=document.createElement('div'); sec.className='section';
+      sec.innerHTML=`<div class="sec-header"><span class="sec-pill ${PILL[prio]}">${prio}</span><span class="sec-count">${tasks.length} úkolů</span><div class="sec-line"></div></div>`;
+      tasks.forEach(t=>{ sec.appendChild(buildTaskCard(t)); });
+      board.appendChild(sec);
+    });
+  }
+}
+
+function buildTaskCard(t){
+  const proj=PROJECTS[t.proj]||{name:t.proj,acc:"gr"};
+  const isDone=t.st==='dn';
+  const card=document.createElement('div'); card.className='task'+(isDone?' is-done':'');
+
+  let cl=`<div class="checklist${expanded[t.id]?' open':''}" id="cl-${t.id}">`;
+  if(t.related) cl+=`<div style="font-size:11px;color:#888;padding:5px 0 2px;font-style:italic">${t.related}</div>`;
+  if(t.ch&&t.ch.length){
+    t.ch.forEach((c,i)=>{
+      const chDl = (c.dl && !c.d) ? fmtChDl(c.dl) : '';
+      cl+=`<div class="ch-item">
+        <div class="ch-box${c.d?' done':''}">${c.d?'✓':''}</div>
+        <span class="ch-num">${i+1}.</span>
+        <span class="${c.d?'ch-done':''}">${linkify(c.t)}${chDl}</span>
+      </div>`;
+    });
+  } else if(!t.related) cl+=`<div class="no-ch">Bez checklistu</div>`;
+  cl+='</div>';
+
+  card.innerHTML=`<div class="task-main" onclick="toggleTask('${t.id}')">
+    <div class="task-body">
+      <div class="task-name-row">
+        <span class="task-name${isDone?' done-text':''}">${t.name}</span>
+        ${fmtDl(t.dl)}
+      </div>
+      <div class="task-meta-row">
+        <span class="task-id">${t.id}</span><span class="meta-sep">·</span>
+        <span class="status ${ST_CLS[t.st]}">${ST_LBL[t.st]}</span><span class="meta-sep">·</span>
+        <div class="ice-subtle"><span class="ice-s">ice ${ice(t)}</span><span style="color:#ccc">(${t.ice.i}×${t.ice.c}×${t.ice.e})</span></div>
+        <span class="meta-sep">·</span>
+        <span class="proj-badge pb-${proj.acc}">${proj.name}</span>
+      </div>
+    </div>
+    <div class="toggle-icon${expanded[t.id]?' open':''}" id="ti-${t.id}">▾</div>
+  </div>${cl}`;
+
+  return card;
+}
+
+// ── BOOT ──────────────────────────────────────────────────
+// window.cowork je injektováno Cowork aplikací asynchronně — čekáme na něj
+(async function boot() {
+  const deadline = Date.now() + 10000;
+  while (!window.cowork && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!window.cowork) {
+    document.getElementById('loading').innerHTML =
+      '<div style="color:#C0392B;padding:20px;font-size:13px">Artefakt je nutné otevřít přes Cowork aplikaci — <code>window.cowork</code> API není dostupné.</div>';
+    return;
+  }
+  await loadData();
+})();
+</script>
+</body></html>
