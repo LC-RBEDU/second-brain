@@ -309,9 +309,6 @@ async function loadData() {
     // Patch F17 → ASAP (2026-05-19)
     const _f17=TASKS.find(t=>t.id==='F17');
     if(_f17){_f17.p='ASAP';_f17.name='Podat žádost o kontokorent u FIO Banky';_f17.ch=[{t:'Podat online žádost o kontokorent na FIO (web / internet banking)',d:false},{t:'Sledovat odpověď banky',d:false},{t:'Po obdržení domluvit termín konzultace',d:false},{t:'Připravit otázky: výše kontokorentu, podmínky zajištění, časový rámec',d:false}];}
-    // Patch OPS2 → nová témata EDU news (2026-05-20)
-    const _ops2=TASKS.find(t=>t.id==='OPS2');
-    if(_ops2){_ops2.ch=[{t:'TuesdAI (19.5.): co jsem slyšel o AI v praxi od lidí co to staví',d:false},{t:'ČR je 27. z 27 zemí EU ve vzdělávání dospělých — data od Nadace ČS',d:false},{t:'AI Readiness: co řešíme s klientem před workshopem 3. 6.',d:false},{t:'Leadspicker: jak předáváme správu AI outreach nástroje v týmu',d:false},{t:'Scoring klientů: jak automaticky prioritizovat firmy v CRM',d:false}];}
     PROJECTS = data.projects;
     PROJ_ORDER = data.proj_order;
     META = { version: data.version, updated: data.updated };
