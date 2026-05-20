@@ -58,7 +58,7 @@ V Coolify UI u každé proměnné **Available at Runtime** (v DB `is_buildtime=f
 | `LEGACY_TASKS` | `/data/mrluc/00-System/dashboard-tasks-source.json` |
 | `GOOGLE_DRIVE_SA_JSON` | Obsah SA klíče (stejný jako RB Universe worker) — alternativa `GOOGLE_SERVICE_ACCOUNT_JSON` |
 | `CALENDAR_USER_EMAIL` | `lukas@redbuttonedu.cz` (domain-wide delegation) |
-| `CALENDAR_DAYS_AHEAD` | `7` |
+| `CALENDAR_DAYS_AHEAD` | `2` (dnes + zítra; max 14) |
 
 Kalendář: `cron/fetch_calendar.py` → `00-System/calendar-events.json`; `build_dashboard.py` to načte při buildu.
 
@@ -69,7 +69,7 @@ MrLUC **není** v gitu. Layout na hostu = stejný jako Obsidian vault:
 ```
 /data/mrluc/
 ├── 01-INBOX/slack|sembly|email|daily/
-├── 02-Projekty/
+├── 02-PROJEKTY/
 ├── 00-System/Triage-Pending/
 └── …
 ```
@@ -108,11 +108,34 @@ Alternativa na serveru: **rclone** `drive:MrLUC/01-INBOX` → `/data/mrluc-secon
 | `build_dashboard.py` | +5 min | 7:05 |
 | `edu_news_refresh.py` | 7:10 | 7:10 |
 
+`edu_news_refresh.py` (OPS2): z `02-PROJEKTY/*.md` (HOTOVO za posledních N dní + rozpracované úkoly s vysokým ICE) vybere max 5 témat pro EDU news → `00-System/edu-news-topics.json`, `dashboard-tasks-source.json` (`eduNews`), checklist v `operations.md`, pak `build_dashboard.py`.
+
+```bash
+# po natočení videa v Cursoru
+VAULT_PATH=… python3 cron/edu_news_refresh.py --clear
+```
+
+Volitelně `ANTHROPIC_API_KEY` pro LLM přeřazení kandidátů (bez klíče běží heuristika).
+
 `triage_run.py` skenuje pouze `01-INBOX/{slack,sembly,email,daily}/`.
 
 Logy: `docker logs <container>` nebo `docker exec … tail /var/log/second-brain/*.log`
 
 Schválení triáže: v Cursoru `schval pending triáž`.
+
+## Waiting (čekání)
+
+V `02-PROJEKTY/<téma>.md` u úkolu (`### F13 — …`):
+
+```markdown
+### F13 — Čekám na podpis
+**Waiting | Čekat do: 2026-05-23**
+```
+
+- Při přesunu do Waiting se v JSON mění jen `p` → `Waiting` a `waitUntil`; **ICE a `dl` zůstávají**.
+- Chybí-li datum → default **dnes + 3 dny** (Europe/Prague).
+- Po vypršení `waitUntil` úkol **zmizí ze sloupce Waiting**; `build_dashboard.py` vytvoří `00-System/Triage-Pending/waiting-<proj>-<id>-<YYYY-MM-DD>.json` (typ `waiting_expired`, návrhy „Čekat dál“ / „Vrátit do práce“). Schválení v Cursoru (`agenda-triage` PENDING), ne v `triage_run.py`.
+- TOP priority (max 3) **neobsahuje** Waiting.
 
 ## Dashboard lokálně (Mac)
 

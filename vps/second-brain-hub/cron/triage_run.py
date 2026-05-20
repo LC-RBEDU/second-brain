@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Scan 01-INBOX and write Triage-Pending batch JSON (semi-auto; approve in Cursor)."""
+"""Scan 01-INBOX and write Triage-Pending batch JSON (semi-auto; approve in Cursor).
+
+Waiting tasks with expired waitUntil are written by build_dashboard.py as
+`00-System/Triage-Pending/waiting-<proj>-<id>-<date>.json` (type waiting_expired).
+Approve in Cursor via agenda-triage PENDING mode — not processed by this script.
+"""
 from __future__ import annotations
 
 import json
@@ -19,8 +24,8 @@ SLUG_HINTS = [
     ("rb-universe", "rb-universe-development"),
     ("universe", "rb-universe-development"),
     ("pipedrive", "pipedrive-a-dalsi-nastroje"),
-    ("finance", "financni-tym"),
-    ("finan", "financni-tym"),
+    ("finance", "finance"),
+    ("finan", "finance"),
     ("strategy", "strategy"),
     ("strateg", "strategy"),
     ("proces", "firemni-procesy"),
@@ -43,7 +48,7 @@ def guess_proj(text: str, path: Path) -> str:
     if "sembly" in path.parts:
         return "strategy"
     if "email" in path.parts:
-        return "financni-tym"
+        return "finance"
     if "daily" in path.parts:
         return "firemni-procesy"
     return "firemni-procesy"

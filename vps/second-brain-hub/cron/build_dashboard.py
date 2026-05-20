@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Build dashboard-data.json from vault 02-Projekty + optional legacy _tasks.json."""
+"""Build dashboard-data.json from vault 02-PROJEKTY + optional legacy _tasks.json."""
 from __future__ import annotations
 
 import json
 import os
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 VAULT = Path(os.environ.get("VAULT_PATH", Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/MrLUC"))
+TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 _WEB_DIR = Path(__file__).resolve().parents[1] / "web"
 _DEFAULT_OUT = _WEB_DIR / "dashboard-data.json"
 OUT_JSON = Path(os.environ.get("DASHBOARD_JSON", _DEFAULT_OUT))
@@ -56,8 +58,8 @@ def task_id_suffix(task_id: str) -> str:
 
 
 def task_display_id(prefix: str, task_id: str) -> str:
-    suffix = task_id_suffix(task_id)
-    return f"{prefix}{suffix}" if prefix else (task_id or "")
+    """Markdown id is canonical (project-prefixed, vault-unique). Display = id."""
+    return task_id or prefix or ""
 
 
 def project_color_hex(slug: str, proj_order: list[str]) -> str:
@@ -167,6 +169,111 @@ def count_pending() -> int:
     return len(list_pending_items())
 
 
+def prague_today() -> date:
+    return datetime.now(TZ).date()
+
+
+def default_wait_until() -> str:
+    return (prague_today() + timedelta(days=3)).isoformat()
+
+
+def parse_wait_until(task: dict) -> date | None:
+    raw = task.get("waitUntil")
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(str(raw)[:10])
+    except ValueError:
+        return None
+
+
+def is_active_waiting(task: dict, today: date | None = None) -> bool:
+    if task.get("st") == "dn" or task.get("p") != "Waiting":
+        return False
+    wu = parse_wait_until(task)
+    if not wu:
+        return False
+    today = today or prague_today()
+    return wu > today
+
+
+def is_expired_waiting(task: dict, today: date | None = None) -> bool:
+    if task.get("st") == "dn" or task.get("p") != "Waiting":
+        return False
+    wu = parse_wait_until(task)
+    if not wu:
+        return False
+    today = today or prague_today()
+    return wu <= today
+
+
+def waiting_column(tasks: list[dict], today: date | None = None) -> list[dict]:
+    today = today or prague_today()
+    active = [t for t in tasks if is_active_waiting(t, today)]
+    return sorted(active, key=lambda t: (t.get("waitUntil") or "", t.get("proj") or "", t.get("id") or ""))
+
+
+def count_waiting_expired(tasks: list[dict], today: date | None = None) -> int:
+    today = today or prague_today()
+    return sum(1 for t in tasks if is_expired_waiting(t, today))
+
+
+def write_expired_waiting_pending(tasks: list[dict], today: date | None = None) -> int:
+    """Create Triage-Pending/waiting-<proj>-<id>-<date>.json for expired Waiting tasks."""
+    today = today or prague_today()
+    pending_dir = VAULT / "00-System/Triage-Pending"
+    pending_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(TZ)
+    written = 0
+    for t in tasks:
+        if not is_expired_waiting(t, today):
+            continue
+        proj = t.get("proj") or "unknown"
+        tid = t.get("id") or "task"
+        out = pending_dir / f"waiting-{proj}-{tid}-{today.isoformat()}.json"
+        if out.exists():
+            try:
+                prev = json.loads(out.read_text(encoding="utf-8"))
+                if prev.get("status", "open") != "open":
+                    continue
+            except json.JSONDecodeError:
+                pass
+            continue
+        display = t.get("displayId") or tid
+        name = t.get("name") or tid
+        wu = (t.get("waitUntil") or "")[:10]
+        extend_until = default_wait_until()
+        batch = {
+            "batchId": f"waiting-{proj}-{tid}-{today.isoformat()}",
+            "status": "open",
+            "created": now.isoformat(),
+            "type": "waiting_expired",
+            "summary": f"{display} — {name} (čekání vypršelo {wu})",
+            "taskRef": {"proj": proj, "id": tid, "name": name, "waitUntil": wu},
+            "proposals": [
+                {
+                    "id": "extend",
+                    "action": "waiting_extend",
+                    "title": "Čekat dál (+3 dny od dneška)",
+                    "suggestedProj": proj,
+                    "waitUntil": extend_until,
+                    "notes": f"V markdownu: **Waiting | Čekat do: {extend_until}**",
+                },
+                {
+                    "id": "reactivate",
+                    "action": "waiting_reactivate",
+                    "title": "Vrátit do práce (odstranit Waiting řádek, nastavit prioritu)",
+                    "suggestedProj": proj,
+                    "priority": "Next",
+                    "notes": "Zachovat dl a ICE beze změny; upravit jen prioritu v 02-PROJEKTY.",
+                },
+            ],
+        }
+        out.write_text(json.dumps(batch, ensure_ascii=False, indent=2), encoding="utf-8")
+        written += 1
+    return written
+
+
 def load_tasks() -> dict:
     legacy = LEGACY_TASKS or (VAULT / "00-System/dashboard-tasks-source.json")
     if Path(legacy).exists():
@@ -198,7 +305,7 @@ def top_priority(tasks: list, limit: int = 3) -> list:
                 pass
         return s
 
-    open_tasks = [t for t in tasks if t.get("st") != "dn"]
+    open_tasks = [t for t in tasks if t.get("st") != "dn" and t.get("p") != "Waiting"]
     ranked = sorted(open_tasks, key=score, reverse=True)
     picked: list[dict] = []
     seen: set[str] = set()
@@ -279,13 +386,24 @@ window.DASHBOARD_POLL_SEC = {json.dumps(poll_sec)};</script>
 
 
 
+def _filter_calendar(data: dict) -> dict:
+    import sys
+
+    cron_dir = Path(__file__).resolve().parent
+    if str(cron_dir) not in sys.path:
+        sys.path.insert(0, str(cron_dir))
+    from fetch_calendar import filter_calendar_payload
+
+    return filter_calendar_payload(data)
+
+
 def load_calendar() -> dict:
     """Plný Google Calendar (SA jako RB Universe) nebo cache calendar-events.json."""
     if os.environ.get("DASHBOARD_SKIP_CALENDAR", "").lower() in ("1", "true", "yes"):
         cached = VAULT / "00-System/calendar-events.json"
         if cached.exists():
             try:
-                return json.loads(cached.read_text(encoding="utf-8"))
+                return _filter_calendar(json.loads(cached.read_text(encoding="utf-8")))
             except json.JSONDecodeError:
                 pass
         return {"source": "skipped", "events": []}
@@ -298,14 +416,14 @@ def load_calendar() -> dict:
     cached = VAULT / "00-System/calendar-events.json"
     if cached.exists():
         try:
-            return json.loads(cached.read_text(encoding="utf-8"))
+            return _filter_calendar(json.loads(cached.read_text(encoding="utf-8")))
         except json.JSONDecodeError:
             pass
     return {"source": "none", "events": []}
 
 
 def refresh_sources() -> None:
-    """Sync tasks JSON from 02-Projekty when markdown is newer."""
+    """Sync tasks JSON from 02-PROJEKTY when markdown is newer."""
     sync_script = Path(__file__).resolve().parent / "sync_tasks_from_projekty.py"
     if sync_script.exists():
         import subprocess
@@ -328,6 +446,10 @@ def main() -> None:
     proj_order = src.get("proj_order", [])
     projects = src.get("projects", {})
     tasks = enrich_tasks(src.get("tasks", []), projects, proj_order)
+    today = prague_today()
+    expired_written = write_expired_waiting_pending(tasks, today)
+    waiting = waiting_column(tasks, today)
+    waiting_expired = count_waiting_expired(tasks, today)
     payload = {
         "version": 2,
         "generated": datetime.now().isoformat(timespec="seconds"),
@@ -335,11 +457,15 @@ def main() -> None:
         "inboxItems": list_inbox_items(),
         "pendingCount": count_pending(),
         "pendingItems": list_pending_items(),
+        "waitingExpiredCount": waiting_expired,
+        "waitingExpiredWritten": expired_written,
         "proj_order": proj_order,
         "projects": projects,
         "tasks": tasks,
+        "waiting": waiting,
         "topPriority": top_priority(tasks),
         "eduNews": src.get("eduNews", []),
+        "eduNewsUpdated": src.get("eduNewsUpdated"),
         "calendar": load_calendar(),
     }
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
@@ -354,7 +480,18 @@ def main() -> None:
         json.dumps({"generated": generated}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print("wrote", OUT_JSON, "inbox=", payload["inboxCount"], "pending=", payload["pendingCount"])
+    print(
+        "wrote",
+        OUT_JSON,
+        "inbox=",
+        payload["inboxCount"],
+        "pending=",
+        payload["pendingCount"],
+        "waiting=",
+        len(waiting),
+        "waiting_expired=",
+        waiting_expired,
+    )
     print("wrote", vault_data)
     print("wrote", vault_stamp)
     if os.environ.get("DASHBOARD_HTML", "1") not in ("0", "false", "no"):

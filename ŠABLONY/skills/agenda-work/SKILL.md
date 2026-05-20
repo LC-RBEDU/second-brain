@@ -24,10 +24,10 @@ description: "Use this skill when the user wants to work on a specific AGENDA to
 Před tím než cokoli uděláš:
 
 1. Přečti `CLAUDE COWORK/O MNĚ/about-me.md` (pokud ještě v session ne)
-2. Přečti `CLAUDE COWORK/AGENDA/<slug>.md` (kontext, aktivní úkoly, backlog, materiály)
-3. Projdi `CLAUDE COWORK/VÝSTUPY/<slug>/` — seznam existujících souborů s typem a odhadovaným stářím (datum z názvu nebo mtime)
+2. Přečti `MrLUC/02-PROJEKTY/<slug>.md` (kontext, aktivní úkoly, backlog, materiály)
+3. Projdi `MrLUC/02-PROJEKTY/<slug>/` — seznam existujících souborů s typem a odhadovaným stářím (datum z názvu nebo mtime)
 
-Pokud slug není jasný z uživatelovy zprávy → zobraz seznam aktivních témat z `AGENDA/_index.md` a ptej se.
+Pokud slug není jasný z uživatelovy zprávy → zobraz seznam aktivních témat z `00-System/Index.md` a ptej se.
 
 ### 2. Ukaž orientační přehled
 
@@ -121,7 +121,7 @@ Po dokončení práce navrhni update `AGENDA/<slug>.md`:
 - Uzavřené úkoly → přesuň do "Recently moved to HOTOVO" (s datem)
 - Nové úkoly → přidej s metadaty
 - Odkaz na nový/aktualizovaný výstup → do sekce Materiály
-- Update `AGENDA/_index.md` (počet aktivních, top priorita, datum)
+- Update `00-System/Index.md` (počet aktivních, top priorita, datum)
 
 Vždy jako preview, vždy čekej na potvrzení.
 

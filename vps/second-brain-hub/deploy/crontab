@@ -4,6 +4,7 @@ PATH=/usr/local/bin:/usr/bin:/bin
 VAULT_PATH=/data/mrluc
 DASHBOARD_JSON=/data/mrluc/00-System/dashboard-data.json
 LEGACY_TASKS=/data/mrluc/00-System/dashboard-tasks-source.json
+CALENDAR_DAYS_AHEAD=2
 TZ=Europe/Prague
 
 # Po-Pa: triage 7:00, 14:00, 20:00

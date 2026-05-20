@@ -1,6 +1,6 @@
 ---
 name: agenda-triage
-description: "Use this skill when the user wants to process accumulated items in CLAUDE COWORK/INBOX/, re-prioritize existing AGENDA topics, or asks 'projeď inbox', 'udělejme triage', 'co tam mám nasbíráno', 'co je nového', 'urovnej to'. Two modes: BATCH (rychle všechno najednou s krátkým souhrnem) and DEEP (jeden po druhém s diskusí). Updates AGENDA/<topic>.md with proper metadata, refreshes AGENDA/_index.md, and moves processed items to HOTOVO/processed/. ALWAYS show preview before persisting."
+description: "Use this skill when the user wants to process accumulated items in CLAUDE COWORK/INBOX/, re-prioritize existing AGENDA topics, or asks 'projeď inbox', 'udělejme triage', 'co tam mám nasbíráno', 'co je nového', 'urovnej to'. Two modes: BATCH (rychle všechno najednou s krátkým souhrnem) and DEEP (jeden po druhém s diskusí). Updates AGENDA/<topic>.md with proper metadata, refreshes 00-System/Index.md, and moves processed items to HOTOVO/processed/. ALWAYS show preview before persisting."
 ---
 
 # agenda-triage
@@ -32,7 +32,7 @@ Default: B.
 2. Pro každou: extrahuj obsah, navrhni téma + kvadrant + ICE
 3. Postav konsolidovaný preview podle vzoru z `agenda-capture` (viz krok 6 tam)
 4. Po potvrzení proveď zápis a archivaci (stejně jako capture skill)
-5. Update `AGENDA/_index.md`
+5. Update `00-System/Index.md`
 
 ## Deep mód
 
@@ -65,7 +65,7 @@ Po každém triage:
    - počet aktivních úkolů (řádky `- [ ]`)
    - top priorita = nejvyšší Score mezi aktivními
    - last update = datum dnes (pokud byly změny)
-2. Sestav tabulku v `AGENDA/_index.md` (sortováno podle počtu aktivních úkolů sestupně)
+2. Sestav tabulku v `00-System/Index.md` (sortováno podle počtu aktivních úkolů sestupně)
 3. Pokud nějaké téma má 0 aktivních úkolů a 0 v backlogu → navrhni archivaci celého tématu
 
 ## Re-prioritizace existujících úkolů

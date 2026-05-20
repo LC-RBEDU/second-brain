@@ -21,7 +21,7 @@ description: "Use this skill when the user pastes content into chat, drops a fil
 Vždycky před tím, než cokoli uděláš:
 
 1. Přečti `CLAUDE COWORK/O MNĚ/about-me.md` (pokud ještě v session ne)
-2. Přečti `CLAUDE COWORK/AGENDA/_index.md` (znát existující témata)
+2. Přečti `MrLUC/02-PROJEKTY/_index.md` (znát existující témata)
 3. Pokud capture skill spouští čtení z INBOXu, projdi všechny `CLAUDE COWORK/INBOX/*/` podsložky a najdi soubory novější než cokoli, co už je v `HOTOVO/processed/`
 
 ### 2. Vytěž obsah podle zdroje
@@ -86,7 +86,7 @@ Uživatel potvrdí, opraví, nebo škrtne. Pokud uživatel řekne jen "ano", pro
 
 - Pro každé téma: otevři `AGENDA/<slug>.md`, vlož položky do správných sekcí
 - Pokud téma nezná, vytvoř nový soubor podle `AGENDA/_ŠABLONA.md`
-- Update `AGENDA/_index.md` (počet aktivních úkolů, top priorita podle S, datum)
+- Update `00-System/Index.md` (počet aktivních úkolů, top priorita podle S, datum)
 - **Originál capture** přesuň z INBOXu do `HOTOVO/processed/<rok>/<měsíc>/<den>-<filename>`
 - V `AGENDA/<slug>.md` v sekci "Materiály a poznámky" přidej odkaz na archiv: `viz HOTOVO/processed/2026/04/28-…`
 

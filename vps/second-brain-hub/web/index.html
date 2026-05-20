@@ -15,7 +15,6 @@
       <span class="badge" id="badge-inbox">INBOX: —</span>
       <span class="badge badge-warn" id="badge-pending">Ke schválení: —</span>
     </div>
-    <p class="meta badge-hint">Klikni na INBOX / Ke schválení (když N &gt; 0) pro seznam položek.</p>
   </header>
 
   <section class="panel" id="top-priority">
@@ -24,15 +23,16 @@
     <div id="top-priority-list" class="cards"></div>
   </section>
 
-  <section class="panel">
-    <h2>Kalendář</h2>
-    <p class="hint">Plný Google Calendar — stejný SA jako RB Universe (<code>GOOGLE_SERVICE_ACCOUNT_JSON</code> / <code>GOOGLE_CALENDAR_CREDENTIALS</code>).</p>
-    <div id="calendar-root" class="calendar-root"></div>
+  <section class="panel panel-calendar">
+    <details class="cal-panel-details" data-open-key="cal">
+      <summary class="cal-panel-summary">Kalendář</summary>
+      <div id="calendar-root" class="calendar-root"></div>
+    </details>
   </section>
 
   <section class="panel">
     <h2>Úkoly</h2>
-    <p class="hint">Sloupce ASAP / Next / Backlog rozbalíš kliknutím na nadpis. U úkolů s badge checklist (např. 2/5) klikni pro subtasky.</p>
+    <p class="hint">Sloupce ASAP / Next / Backlog / Waiting rozbalíš kliknutím na nadpis. Waiting má badge „do 23. 5.“ U úkolů s checklist badge (např. 2/5) klikni pro subtasky.</p>
     <div class="columns" id="task-columns"></div>
   </section>
 

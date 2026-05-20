@@ -41,12 +41,7 @@ function taskIdSuffix(taskId) {
 }
 
 function taskDisplayId(t, data) {
-  if (t.displayId) return t.displayId;
-  const slug = t.proj;
-  const name = data?.projects?.[slug]?.name || slug;
-  const prefix = t.projPrefix || projectPrefix(name);
-  const tid = t.id || '';
-  return prefix ? prefix + taskIdSuffix(tid) : tid;
+  return t.displayId || t.id || '';
 }
 
 function resolveTaskColor(t, data) {
@@ -102,17 +97,35 @@ function iceBadgeHtml(t) {
 function urgencyPillHtml(t) {
   const p = t?.p;
   if (!p) return '';
-  const cls = { ASAP: 'asap', Next: 'next', Backlog: 'backlog' }[p] || p.toLowerCase();
+  const cls = { ASAP: 'asap', Next: 'next', Backlog: 'backlog', Waiting: 'waiting' }[p] || p.toLowerCase();
   return `<span class="urgency-pill ${cls}">${esc(p)}</span>`;
+}
+
+function formatWaitUntilBadge(iso) {
+  if (!iso) return '';
+  const d = new Date(String(iso).slice(0, 10) + 'T12:00:00');
+  if (Number.isNaN(d.getTime())) return '';
+  const label = d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' });
+  return `<span class="wait-until-badge" title="Čekat do">${esc('do ' + label)}</span>`;
 }
 
 function taskTitleHtml(displayId, t) {
   return `<span class="task-title-meta">
     <strong class="task-id">${esc(displayId)}</strong>
-    ${urgencyPillHtml(t)}
-    ${iceBadgeHtml(t)}
   </span>
   <span class="task-name">${esc(t.name)}</span>`;
+}
+
+function taskSummaryBadgesHtml(t, progress) {
+  const parts = [urgencyPillHtml(t), iceBadgeHtml(t)];
+  if (t?.p === 'Waiting' && t.waitUntil) {
+    parts.push(formatWaitUntilBadge(t.waitUntil));
+  }
+  if (progress) {
+    parts.push(`<span class="ch-badge" title="hotovo / celkem">${esc(progress)}</span>`);
+  }
+  const inner = parts.filter(Boolean).join('');
+  return inner ? `<span class="task-summary-badges">${inner}</span>` : '';
 }
 
 function subtaskProgress(ch) {
@@ -121,15 +134,126 @@ function subtaskProgress(ch) {
   return `${done}/${ch.length}`;
 }
 
+function isSafeHttpUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function firstUrlInText(text) {
+  const m = String(text || '').match(/https?:\/\/[^\s)>\]]+/);
+  return m ? m[0] : null;
+}
+
+function subtaskLinkLabel(text, url) {
+  let label = String(text || '')
+    .replace(url, '')
+    .replace(/^↗\s*/, '')
+    .replace(/:\s*$/, '')
+    .trim();
+  if (!label) label = 'Odkaz';
+  return label;
+}
+
+function subtaskBodyHtml(c) {
+  const url = c.url || firstUrlInText(c.t);
+  if (url && isSafeHttpUrl(url)) {
+    const label = subtaskLinkLabel(c.t, url);
+    return `<a class="subtask-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+  }
+  return esc(c.t);
+}
+
+function renderTaskSourceLink(t) {
+  const url = t.sourceUrl;
+  if (!url || !isSafeHttpUrl(url)) return '';
+  const label = t.sourceLabel || 'Sembly nahrávka';
+  return `<p class="task-source"><a class="subtask-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a></p>`;
+}
+
+function isSourceOnlySubtask(c) {
+  if (c.source) return true;
+  const t = (c.t || '').trim();
+  if (t.startsWith('↗')) return true;
+  const url = c.url || firstUrlInText(t);
+  if (url) {
+    const bare = t.replace(url, '').replace(/^↗\s*/, '').replace(/:\s*$/, '').trim();
+    if (bare.length < 4) return true;
+  }
+  return false;
+}
+
 function renderSubtasks(ch) {
   if (!ch?.length) return '';
+  let n = 0;
   const items = ch
-    .map(
-      (c) =>
-        `<li class="subtask${c.d ? ' done' : ''}"><span class="chk">${c.d ? '✓' : '○'}</span>${esc(c.t)}</li>`
-    )
+    .map((c) => {
+      const isSource = isSourceOnlySubtask(c);
+      const num = c.n != null && !isSource ? c.n : isSource ? null : ++n;
+      const numHtml = num != null ? `<span class="subtask-num">${num}.</span>` : '';
+      const cls = 'subtask' + (c.d ? ' done' : '') + (isSource ? ' subtask-source-line' : '');
+      return `<li class="${cls}"><span class="chk">${c.d ? '✓' : '○'}</span>${numHtml}${subtaskBodyHtml(c)}</li>`;
+    })
     .join('');
   return `<ul class="subtasks">${items}</ul>`;
+}
+
+function taskOpenKey(t) {
+  const proj = t?.proj || '';
+  const id = t?.id || '';
+  return `task:${proj}:${id}`;
+}
+
+const OPEN_STATE_KEY = 'mrluc-dashboard-open';
+
+function captureOpenState() {
+  const keys = [];
+  document.querySelectorAll('details[open]').forEach((el) => {
+    const k = el.dataset.openKey || el.id;
+    if (k) keys.push(k);
+  });
+  return keys;
+}
+
+function restoreOpenState(keys) {
+  if (!keys?.length) return;
+  const set = new Set(keys);
+  document.querySelectorAll('details').forEach((el) => {
+    const k = el.dataset.openKey || el.id;
+    if (k && set.has(k)) el.open = true;
+  });
+}
+
+function persistOpenState() {
+  try {
+    sessionStorage.setItem(OPEN_STATE_KEY, JSON.stringify(captureOpenState()));
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function loadPersistedOpenState() {
+  try {
+    const raw = sessionStorage.getItem(OPEN_STATE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function bindOpenStatePersistence() {
+  if (window.__DASHBOARD_OPEN_BOUND__) return;
+  window.__DASHBOARD_OPEN_BOUND__ = true;
+  document.addEventListener(
+    'toggle',
+    (e) => {
+      if (e.target instanceof HTMLDetailsElement) persistOpenState();
+    },
+    true
+  );
 }
 
 /** Task row: expandable when checklist (ch) exists */
@@ -138,20 +262,23 @@ function renderTaskRow(t, opts = {}) {
   const hasCh = Boolean(t.ch?.length);
   const metaHtml = opts.showMeta && t.dl ? `<div class="task-meta">${esc(t.dl)}</div>` : '';
   const displayId = opts.displayId ?? t.displayId ?? t.id;
+  const openKey = taskOpenKey(t);
 
   if (hasCh) {
-    return `<details class="task-details">
+    return `<details class="task-details" data-open-key="${esc(openKey)}">
       <summary class="task-summary">
         <span class="task-title">${taskTitleHtml(displayId, t)}</span>
-        <span class="task-summary-badges"><span class="ch-badge" title="hotovo / celkem">${esc(progress)}</span></span>
+        ${taskSummaryBadgesHtml(t, progress)}
       </summary>
       ${renderSubtasks(t.ch)}
+      ${renderTaskSourceLink(t)}
       ${metaHtml}
     </details>`;
   }
 
   return `<div class="task-flat">
-    ${taskTitleHtml(displayId, t)}
+    <span class="task-title">${taskTitleHtml(displayId, t)}</span>
+    ${taskSummaryBadgesHtml(t, null)}
     ${metaHtml}
   </div>`;
 }
@@ -175,44 +302,59 @@ function renderTop(data) {
   });
 }
 
+function renderColumnBlock(root, key, list, data, extraClass = '') {
+  const col = document.createElement('details');
+  col.className = 'col-details col ' + key.toLowerCase() + (extraClass ? ' ' + extraClass : '');
+  col.dataset.openKey = 'col:' + key;
+  const summary = document.createElement('summary');
+  summary.className = 'col-summary';
+  summary.textContent = `${key} (${list.length})`;
+  col.appendChild(summary);
+  const wrap = document.createElement('div');
+  wrap.className = 'task-list';
+  list.forEach((t) => {
+    const item = document.createElement('div');
+    item.className = 'task-item';
+    const { displayId } = taskProjectStyle(t, data);
+    applyTaskProjectEl(item, t, data);
+    item.innerHTML = renderTaskRow(t, { showMeta: true, displayId });
+    wrap.appendChild(item);
+  });
+  col.appendChild(wrap);
+  root.appendChild(col);
+}
+
 function renderColumns(data) {
   const root = document.getElementById('task-columns');
   const cols = { ASAP: [], Next: [], Backlog: [] };
   (data.tasks || []).forEach((t) => {
     if (t.st === 'dn') return;
     const p = t.p || 'Backlog';
+    if (p === 'Waiting') return;
     if (!cols[p]) cols[p] = [];
     cols[p].push(t);
   });
   root.innerHTML = '';
+  const waitingList = data.waiting || [];
+  if (waitingList.length) {
+    renderColumnBlock(root, 'Waiting', waitingList, data, 'waiting-col');
+  }
   for (const [key, list] of Object.entries(cols)) {
-    const col = document.createElement('details');
-    col.className = 'col-details col ' + key.toLowerCase();
-    const summary = document.createElement('summary');
-    summary.className = 'col-summary';
-    summary.textContent = `${key} (${list.length})`;
-    col.appendChild(summary);
-    const wrap = document.createElement('div');
-    wrap.className = 'task-list';
-    list.forEach((t) => {
-      const item = document.createElement('div');
-      item.className = 'task-item';
-      const { displayId } = taskProjectStyle(t, data);
-      applyTaskProjectEl(item, t, data);
-      item.innerHTML = renderTaskRow(t, { showMeta: true, displayId });
-      wrap.appendChild(item);
-    });
-    col.appendChild(wrap);
-    root.appendChild(col);
+    renderColumnBlock(root, key, list, data);
   }
 }
 
 function renderByProject(data) {
   const root = document.getElementById('by-project');
   const order = data.proj_order || [];
+  const waitingIds = new Set((data.waiting || []).map((t) => `${t.proj}:${t.id}`));
   root.innerHTML = '';
   order.forEach((slug, index) => {
-    const tasks = (data.tasks || []).filter((t) => t.proj === slug && t.st !== 'dn');
+    const tasks = (data.tasks || []).filter((t) => {
+      if (t.proj !== slug || t.st === 'dn') return false;
+      if (t.p === 'Waiting' && !waitingIds.has(`${t.proj}:${t.id}`)) return false;
+      return true;
+    });
     if (!tasks.length) return;
     const name = data.projects?.[slug]?.name || slug;
     const color = projectColor(slug, index);
@@ -220,6 +362,7 @@ function renderByProject(data) {
 
     const block = document.createElement('details');
     block.className = 'proj-details';
+    block.dataset.openKey = 'proj:' + slug;
     block.innerHTML = `<summary class="proj-summary" style="--proj-color:${color}">
       <span class="proj-name">${esc(name)}</span>
       <span class="proj-count">${tasks.length} úkolů${withCh ? ` · ${withCh} s checklistem` : ''}</span>
@@ -240,6 +383,30 @@ function renderByProject(data) {
   });
 }
 
+function pragueYmd(d = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+function pragueTomorrowYmd() {
+  const today = pragueYmd();
+  for (let h = 1; h <= 48; h += 1) {
+    const ymd = pragueYmd(new Date(Date.now() + h * 3600000));
+    if (ymd > today) return ymd;
+  }
+  return today;
+}
+
+function isCalendarDayAllowed(ymd) {
+  if (!ymd || ymd.length < 10) return false;
+  const day = ymd.slice(0, 10);
+  return day === pragueYmd() || day === pragueTomorrowYmd();
+}
+
 function formatEventTime(ev) {
   if (ev.allDay) {
     const d = (ev.start || '').slice(0, 10);
@@ -258,7 +425,7 @@ function renderCalendar(data) {
   const el = document.getElementById('calendar-root');
   if (!el) return;
   const cal = data.calendar || {};
-  const events = cal.events || [];
+  const events = (cal.events || []).filter((ev) => isCalendarDayAllowed((ev.start || '').slice(0, 10)));
   if (!events.length) {
     const err = cal.fetchError ? ` (${cal.fetchError})` : '';
     el.innerHTML = `<p class="hint">Kalendář prázdný nebo není nastaven SA${esc(err)}. Viz config.example.env.</p>`;
@@ -270,7 +437,7 @@ function renderCalendar(data) {
     if (!byDay[key]) byDay[key] = [];
     byDay[key].push(ev);
   });
-  const days = Object.keys(byDay).sort();
+  const days = Object.keys(byDay).filter(isCalendarDayAllowed).sort();
   let html = '';
   if (cal.source && cal.source !== 'google_api') {
     html += `<p class="hint cal-meta">Zdroj: ${esc(cal.source)}${cal.fetchError ? ' — ' + esc(cal.fetchError) : ''}</p>`;
@@ -361,14 +528,26 @@ function renderBadges(data) {
   root.replaceChildren(renderInboxBadge(data), renderPendingBadge(data));
 }
 
+function formatEduItem(item) {
+  if (typeof item === 'string') return `<li>${esc(item)}</li>`;
+  const title = esc(item.title || '—');
+  const one = item.oneLiner ? `<span class="edu-oneliner">${esc(item.oneLiner)}</span>` : '';
+  const metaParts = [];
+  if (item.proj) metaParts.push(esc(item.proj));
+  if (item.taskId) metaParts.push(esc(item.taskId));
+  const meta = metaParts.length ? `<span class="edu-meta">${metaParts.join(' · ')}</span>` : '';
+  return `<li class="edu-item"><strong>${title}</strong>${one ? ' — ' + one : ''}${meta}</li>`;
+}
+
 function renderEdu(data) {
   const el = document.getElementById('edu-news');
   const items = data.eduNews || [];
   if (!items.length) {
-    el.innerHTML = '<p class="hint">OPS2 — data z operations projektu (cron edu-news-refresh).</p>';
+    el.innerHTML = '<p class="hint">OPS2 — žádná témata. Cron <code>edu_news_refresh.py</code> nebo po natočení videa <code>--clear</code>.</p>';
     return;
   }
-  el.innerHTML = '<ul>' + items.map((i) => `<li>${esc(i)}</li>`).join('') + '</ul>';
+  const updated = data.eduNewsUpdated ? `<p class="hint edu-updated">Témata: ${esc(data.eduNewsUpdated)}</p>` : '';
+  el.innerHTML = updated + '<ul class="edu-list">' + items.map(formatEduItem).join('') + '</ul>';
 }
 
 const LIVE_POLL_MS = (() => {
@@ -378,10 +557,15 @@ const LIVE_POLL_MS = (() => {
 
 let lastSeenGenerated = null;
 
-function renderAll(data) {
+function renderAll(data, opts = {}) {
+  const openKeys = opts.preserveOpen ? captureOpenState() : [];
   const meta = document.getElementById('meta-updated');
   if (meta) {
-    meta.textContent = 'Aktualizováno: ' + (data.generated || data.updated || '—');
+    let text = 'Aktualizováno: ' + (data.generated || data.updated || '—');
+    if (data.waitingExpiredCount > 0) {
+      text += ` · čekání vypršelo: ${data.waitingExpiredCount}`;
+    }
+    meta.textContent = text;
   }
   renderBadges(data);
   renderTop(data);
@@ -389,24 +573,13 @@ function renderAll(data) {
   renderColumns(data);
   renderByProject(data);
   renderEdu(data);
-}
-
-function showFileProtocolHint() {
-  const header = document.querySelector('.header');
-  if (!header || document.getElementById('live-refresh-hint')) return;
-  const p = document.createElement('p');
-  p.id = 'live-refresh-hint';
-  p.className = 'meta live-refresh-hint';
-  p.textContent = 'Auto-refresh: spusť scripts/serve_dashboard.sh';
-  header.appendChild(p);
+  restoreOpenState(openKeys.length ? openKeys : loadPersistedOpenState());
+  if (opts.preserveOpen) persistOpenState();
 }
 
 function startLiveRefresh(initialData) {
   const proto = location.protocol;
-  if (proto === 'file:') {
-    showFileProtocolHint();
-    return;
-  }
+  if (proto === 'file:') return;
   if (proto !== 'http:' && proto !== 'https:') return;
 
   lastSeenGenerated = initialData?.generated || initialData?.updated || null;
@@ -425,7 +598,7 @@ function startLiveRefresh(initialData) {
       const data = await dataRes.json();
       lastSeenGenerated = data.generated || gen;
       window.__DASHBOARD_DATA__ = data;
-      renderAll(data);
+      renderAll(data, { preserveOpen: true });
     } catch {
       /* ignore transient network errors */
     }
@@ -436,6 +609,9 @@ function startLiveRefresh(initialData) {
 
 async function main() {
   try {
+    bindOpenStatePersistence();
+    const calPanel = document.querySelector('.cal-panel-details');
+    if (calPanel && !calPanel.dataset.openKey) calPanel.dataset.openKey = 'cal';
     const data = await loadData();
     renderAll(data);
     startLiveRefresh(data);

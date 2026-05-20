@@ -4,3 +4,8 @@ Icon?
 
 # Cursor IDE local state (not project source)
 .cursor/
+
+# Generated dashboard / Python cache (SSOT is MrLUC vault on iCloud)
+vps/second-brain-hub/web/dashboard-data.json
+**/__pycache__/
+*.pyc

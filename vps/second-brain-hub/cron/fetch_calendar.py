@@ -62,9 +62,53 @@ def _user_email() -> str:
 
 def _days_ahead() -> int:
     try:
-        return max(1, min(14, int(os.environ.get("CALENDAR_DAYS_AHEAD", "7"))))
+        return max(1, min(14, int(os.environ.get("CALENDAR_DAYS_AHEAD", "2"))))
     except ValueError:
-        return 7
+        return 2
+
+
+def calendar_window() -> tuple[date, date]:
+    """Inclusive Prague date range: today .. today + (days_ahead - 1). days_ahead=2 → today + tomorrow."""
+    today = datetime.now(PRAGUE).date()
+    last = today + timedelta(days=_days_ahead() - 1)
+    return today, last
+
+
+def _event_prague_date(start_raw: str) -> date | None:
+    if not start_raw:
+        return None
+    if len(start_raw) == 10 and start_raw[4] == "-":
+        try:
+            return date.fromisoformat(start_raw)
+        except ValueError:
+            return None
+    try:
+        dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=PRAGUE)
+    return dt.astimezone(PRAGUE).date()
+
+
+def filter_events_to_window(events: list[dict], first: date, last: date) -> list[dict]:
+    out: list[dict] = []
+    for ev in events:
+        d = _event_prague_date((ev.get("start") or ""))
+        if d is not None and first <= d <= last:
+            out.append(ev)
+    return out
+
+
+def filter_calendar_payload(payload: dict) -> dict:
+    """Drop events outside the configured Prague window (safety net for stale cache)."""
+    first, last = calendar_window()
+    events = filter_events_to_window(payload.get("events") or [], first, last)
+    return {
+        **payload,
+        "events": events,
+        "range": {"from": str(first), "to": str(last)},
+    }
 
 
 def load_cached() -> dict | None:
@@ -98,9 +142,8 @@ def fetch_from_google() -> dict:
     ).with_subject(mailbox)
     service = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
-    today = datetime.now(PRAGUE).date()
+    today, end_day = calendar_window()
     start_local = datetime(today.year, today.month, today.day, 0, 0, 0, tzinfo=PRAGUE)
-    end_day = today + timedelta(days=_days_ahead())
     end_local = datetime(end_day.year, end_day.month, end_day.day, 23, 59, 59, tzinfo=PRAGUE)
     time_min = start_local.astimezone(PRAGUE).isoformat()
     time_max = end_local.astimezone(PRAGUE).isoformat()
@@ -145,6 +188,8 @@ def fetch_from_google() -> dict:
         if not page_token:
             break
 
+    events = filter_events_to_window(events, today, end_day)
+
     return {
         "source": "google_api",
         "user": mailbox,
@@ -160,7 +205,7 @@ def refresh(force: bool = False) -> dict:
             cached = json.loads(OUT.read_text(encoding="utf-8"))
             gen = cached.get("generated", "")[:10]
             if gen == str(date.today()):
-                return cached
+                return filter_calendar_payload(cached)
         except json.JSONDecodeError:
             pass
     try:
@@ -168,6 +213,7 @@ def refresh(force: bool = False) -> dict:
     except Exception as e:
         cached = load_cached()
         if cached:
+            cached = filter_calendar_payload(cached)
             cached["source"] = "cache_stale"
             cached["fetchError"] = str(e)
             return cached
@@ -178,6 +224,7 @@ def refresh(force: bool = False) -> dict:
             "events": [],
             "fetchError": str(e),
         }
+    payload = filter_calendar_payload(payload)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return payload

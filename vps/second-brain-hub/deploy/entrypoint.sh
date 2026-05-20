@@ -7,10 +7,10 @@ mkdir -p /data/mrluc/01-INBOX/slack \
   /data/mrluc/01-INBOX/daily \
   /data/mrluc/00-System/Triage-Pending \
   /data/mrluc/00-System/Triage-Applied \
-  /data/mrluc/02-Projekty \
+  /data/mrluc/02-PROJEKTY \
   /var/log/second-brain
 
-if [ -f "${LEGACY_TASKS}" ] || [ -d "${VAULT_PATH}/02-Projekty" ]; then
+if [ -f "${LEGACY_TASKS}" ] || [ -d "${VAULT_PATH}/02-PROJEKTY" ]; then
   python3 /app/cron/build_dashboard.py >> /var/log/second-brain/build.log 2>&1 || true
 fi
 
