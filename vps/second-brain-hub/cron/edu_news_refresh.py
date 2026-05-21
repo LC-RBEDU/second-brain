@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-"""Refresh EDU news topic suggestions (OPS2) from MrLUC vault activity.
+"""Refresh EDU news topic suggestions (OPS2) z MrLUC vault aktivity.
+
+Phase 2 migrace — vault I/O přes lib/drive_io.DriveVault. Hub
+markdown přepis chráněn mtime CAS (pokud user mezitím upravil
+operations.md v Obsidianu, refresh se přeskočí).
 
 Reads completed work (HOTOVO), high-progress tasks, merges into
-00-System/edu-news-topics.json, syncs eduNews into dashboard-tasks-source.json,
-updates operations.md checklist, then rebuilds dashboard.
+00-System/edu-news-topics.json, syncs eduNews into
+00-System/dashboard-tasks-source.json, updates Operations.md OPS2
+checklist, then rebuilds dashboard via build_dashboard.main().
 
 Usage:
   python3 edu_news_refresh.py           # refresh (default)
-  python3 edu_news_refresh.py --clear   # after recording EDU news
-  python3 edu_news_refresh.py --dry-run # print candidates, no writes
+  python3 edu_news_refresh.py --clear   # po nahrání EDU news
+  python3 edu_news_refresh.py --dry-run # candidates, žádné writes
 """
 from __future__ import annotations
 
+import importlib
 import json
+import logging
 import os
 import re
 import sys
@@ -22,17 +29,23 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-VAULT = Path(
-    os.environ.get(
-        "VAULT_PATH",
-        Path("/Users/lukascypra/My Drive - PRV/# WORK/SECOND_BRAIN/OBSIDIAN"),
-    )
+_HERE = Path(__file__).resolve().parent
+_LIB = _HERE.parent / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+
+from drive_io import (  # noqa: E402
+    DriveConflictError,
+    DriveNotFoundError,
+    DriveVault,
+    credentials_from_env,
 )
-TASKS_JSON = Path(
-    os.environ.get("LEGACY_TASKS", VAULT / "00-System/dashboard-tasks-source.json")
-)
-TOPICS_JSON = VAULT / "00-System/edu-news-topics.json"
-OPERATIONS_MD = VAULT / "02-PROJEKTY/operations.md"
+
+TASKS_REL = "00-System/dashboard-tasks-source.json"
+TOPICS_REL = "00-System/edu-news-topics.json"
+OPERATIONS_REL = "02-PROJEKTY/Operations.md"
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
 MAX_TOPICS = int(os.environ.get("EDU_NEWS_MAX", "5"))
@@ -69,6 +82,22 @@ OPS2_TOPICS_MARKER = re.compile(
     re.DOTALL,
 )
 
+log = logging.getLogger("edu_news_refresh")
+_VAULT_SINGLETON: DriveVault | None = None
+
+
+def get_vault() -> DriveVault:
+    global _VAULT_SINGLETON
+    if _VAULT_SINGLETON is None:
+        root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
+        if not root_id:
+            raise RuntimeError(
+                "VAULT_DRIVE_ID env not set — Drive vault folder ID is required."
+            )
+        creds, _mode = credentials_from_env()
+        _VAULT_SINGLETON = DriveVault(root_id, credentials=creds)
+    return _VAULT_SINGLETON
+
 
 def _prague_today() -> date:
     return datetime.now(TZ).date()
@@ -90,27 +119,29 @@ def _parse_hotovo_date(block: str) -> date | None:
     return None
 
 
-def _slug_title(path: Path) -> tuple[str, str]:
-    text = path.read_text(encoding="utf-8")
+def _slug_title(name: str, text: str) -> tuple[str, str]:
     slug_m = re.search(r"^\*\*Slug\*\*:\s*`([^`]+)`", text, re.MULTILINE)
     title_m = re.search(r"^#\s+Téma:\s*(.+)$", text, re.MULTILINE)
-    slug = slug_m.group(1) if slug_m else path.stem
+    stem = os.path.splitext(name)[0]
+    slug = slug_m.group(1) if slug_m else stem
     title = title_m.group(1).strip() if title_m else slug
     return slug, title
 
 
 def collect_hotovo_candidates(cutoff: date) -> list[dict]:
+    vault = get_vault()
     out: list[dict] = []
-    proj_dir = VAULT / "02-PROJEKTY"
-    if not proj_dir.is_dir():
+    try:
+        hubs = vault.list_dir("02-PROJEKTY", pattern="*.md")
+    except DriveNotFoundError:
         return out
-    for md in sorted(proj_dir.glob("*.md")):
-        if md.name.startswith("_") or md.name.startswith("._"):
+    for meta in sorted(hubs, key=lambda m: m.name):
+        if meta.name.startswith("_") or meta.name.startswith("._"):
             continue
-        slug, proj_name = _slug_title(md)
+        text, _ = vault.read_text(meta.rel_path)
+        slug, proj_name = _slug_title(meta.name, text)
         if slug in EXCLUDE_SLUGS:
             continue
-        text = md.read_text(encoding="utf-8")
         m = HOTOVO_SECTION_RE.search(text)
         if not m:
             continue
@@ -149,7 +180,6 @@ def collect_hotovo_candidates(cutoff: date) -> list[dict]:
 
 
 def collect_progress_candidates(tasks: list[dict]) -> list[dict]:
-    """Tasks with most subtasks done and decent ICE — good 'work in progress' stories."""
     out: list[dict] = []
     for t in tasks:
         if t.get("st") == "dn" or t.get("p") in ("Waiting", "Backlog"):
@@ -270,31 +300,38 @@ def rank_topics(topics: list[dict], tasks: list[dict]) -> list[dict]:
 
 
 def load_tasks_data() -> dict:
-    if TASKS_JSON.exists():
-        return json.loads(TASKS_JSON.read_text(encoding="utf-8"))
+    vault = get_vault()
+    try:
+        data, _ = vault.read_json(TASKS_REL)
+        if isinstance(data, dict):
+            return data
+    except DriveNotFoundError:
+        pass
     return {"version": 1, "proj_order": [], "projects": {}, "tasks": []}
 
 
 def load_topics_state() -> dict:
-    if TOPICS_JSON.exists():
-        try:
-            return json.loads(TOPICS_JSON.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            pass
+    vault = get_vault()
+    try:
+        data, _ = vault.read_json(TOPICS_REL)
+        if isinstance(data, dict):
+            return data
+    except DriveNotFoundError:
+        pass
     return {"version": 1, "topics": []}
 
 
 def save_topics_state(topics: list[dict]) -> None:
-    TOPICS_JSON.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "version": 1,
         "updated": datetime.now(TZ).isoformat(timespec="seconds"),
         "topics": topics,
     }
-    TOPICS_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    get_vault().write_json(TOPICS_REL, payload)
 
 
 def sync_to_tasks_json(topics: list[dict]) -> None:
+    vault = get_vault()
     data = load_tasks_data()
     data["eduNews"] = [
         {
@@ -308,14 +345,19 @@ def sync_to_tasks_json(topics: list[dict]) -> None:
         for t in topics
     ]
     data["eduNewsUpdated"] = datetime.now(TZ).isoformat(timespec="seconds")
-    TASKS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    TASKS_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    vault.write_json(TASKS_REL, data)
 
 
 def patch_operations_md(topics: list[dict]) -> bool:
-    if not OPERATIONS_MD.exists():
+    """Update OPS2 EDU-news block in Operations.md with mtime CAS.
+
+    Returns True only on a successful write that changed content.
+    """
+    vault = get_vault()
+    try:
+        text, meta = vault.read_text(OPERATIONS_REL)
+    except DriveNotFoundError:
         return False
-    text = OPERATIONS_MD.read_text(encoding="utf-8")
     now = datetime.now(TZ).strftime("%Y-%m-%d %H:%M")
     if topics:
         lines = [f"**Návrhy témat** _(auto {now})_:"]
@@ -343,12 +385,15 @@ def patch_operations_md(topics: list[dict]) -> bool:
         )
     if new_text == text:
         return False
-    OPERATIONS_MD.write_text(new_text, encoding="utf-8")
+    try:
+        vault.write_text(OPERATIONS_REL, new_text, expect_mtime=meta.modified_time)
+    except DriveConflictError as e:
+        log.warning("operations.md changed externally during patch (%s) — skipping", e)
+        return False
     return True
 
 
 def llm_rerank(candidates: list[dict]) -> list[dict] | None:
-    """Optional Anthropic re-rank when ANTHROPIC_API_KEY is set."""
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not api_key or len(candidates) <= MAX_TOPICS:
         return None
@@ -415,12 +460,8 @@ def llm_rerank(candidates: list[dict]) -> list[dict] | None:
 
 
 def rebuild_dashboard() -> None:
-    cron_dir = Path(__file__).resolve().parent
-    if str(cron_dir) not in sys.path:
-        sys.path.insert(0, str(cron_dir))
-    import build_dashboard
-
-    build_dashboard.main()
+    bd = importlib.import_module("build_dashboard")
+    bd.main()
 
 
 def clear_all() -> None:
@@ -455,12 +496,16 @@ def refresh(*, dry_run: bool = False) -> list[dict]:
     save_topics_state(ranked)
     sync_to_tasks_json(ranked)
     if patch_operations_md(ranked):
-        print("edu_news: updated", OPERATIONS_MD)
+        print("edu_news: updated drive://", OPERATIONS_REL)
     rebuild_dashboard()
     return ranked
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=os.environ.get("EDU_NEWS_LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     argv = sys.argv[1:]
     if "--clear" in argv:
         if "--dry-run" in argv:
