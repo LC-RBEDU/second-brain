@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Merge task fields from 02-PROJEKTY/*.md into dashboard-tasks-source.json (preserve ICE/ch)."""
+"""Merge task fields from 02-PROJEKTY/*.md into dashboard-tasks-source.json
+(preserve ICE, čekání, sources). Phase 2 migrace — vault I/O přes
+DriveVault místo lokální VAULT_PATH.
+"""
 from __future__ import annotations
 
 import json
+import os
 import re
-from datetime import date, datetime, timedelta
+import sys
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import os
+_LIB = Path(__file__).resolve().parents[1] / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
 
-VAULT = Path(os.environ.get("VAULT_PATH", Path("/Users/lukascypra/My Drive - PRV/# WORK/SECOND_BRAIN/OBSIDIAN")))
-TASKS_JSON = Path(
-    os.environ.get("LEGACY_TASKS", VAULT / "00-System/dashboard-tasks-source.json")
-)
+from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+
+TASKS_REL = "00-System/dashboard-tasks-source.json"
+PROJEKTY_REL = "02-PROJEKTY"
 
 ACC_MAP = {
     "strategy": "r",
@@ -36,7 +43,7 @@ ACC_MAP = {
 
 PRIORITY_RE = re.compile(r"\b(ASAP|Q1|Q2|Next|Backlog)\b", re.I)
 WAITING_RE = re.compile(
-    r"\*\*Waiting\s*\|\s*Čekat\s+do:\s*(\d{4}-\d{2}-\d{2})\s*\*\*",
+    r"\*\*Waiting\s*\|\s*Čekat\s+do:\s*(\d{4}-\d{2}-\d{2})(?:[^*]*)?\*\*",
     re.I,
 )
 WAITING_MARK_RE = re.compile(r"\*\*Waiting\b", re.I)
@@ -71,6 +78,22 @@ H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 HOTOVO_DATE_RE = re.compile(r"_\((\d{4}-\d{2}-\d{2})\)_")
 
 
+_VAULT_SINGLETON: DriveVault | None = None
+
+
+def get_vault() -> DriveVault:
+    global _VAULT_SINGLETON
+    if _VAULT_SINGLETON is None:
+        root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
+        if not root_id:
+            raise RuntimeError(
+                "VAULT_DRIVE_ID env not set — Drive vault folder ID is required."
+            )
+        creds, _mode = credentials_from_env()
+        _VAULT_SINGLETON = DriveVault(root_id, credentials=creds)
+    return _VAULT_SINGLETON
+
+
 def _prague_today() -> date:
     return datetime.now(TZ).date()
 
@@ -103,7 +126,6 @@ def _priority_from(text: str) -> str:
     waiting_p, _ = _waiting_from(text)
     if waiting_p:
         return waiting_p
-    # Only look at the first **...** priority line — avoids matching Q1/Q2 in heading or body prose
     pl = PRIORITY_LINE_RE.search(text)
     search_in = pl.group(1) if pl else text
     m = PRIORITY_RE.search(search_in)
@@ -128,7 +150,6 @@ def _deadline_from(block: str) -> str | None:
 
 
 def _ice_from(block: str) -> dict | None:
-    """Parse 'ICE I8 C7 E6' anywhere in the block. None if missing."""
     m = ICE_RE.search(block)
     if not m:
         return None
@@ -136,7 +157,6 @@ def _ice_from(block: str) -> dict | None:
 
 
 def _parse_hotovo_section(text: str) -> dict[str, str]:
-    """Task ids marked done in ## … HOTOVO bullets (- **O1** — name ✅)."""
     m = HOTOVO_SECTION_RE.search(text)
     if not m:
         return {}
@@ -160,7 +180,6 @@ def _parse_hotovo_section(text: str) -> dict[str, str]:
 
 
 def _hotovo_dates_this_week(text: str) -> int:
-    """Count HOTOVO bullets with _(YYYY-MM-DD)_ in the last 7 days."""
     m = HOTOVO_SECTION_RE.search(text)
     if not m:
         return 0
@@ -255,7 +274,6 @@ def _parse_project_hub(text: str, slug: str) -> dict:
 
 
 def _is_source_only_line(line: str) -> bool:
-    """↗ odkazy / čisté zdroje bez číslování subtasku."""
     s = line.strip()
     if s.startswith("↗"):
         return True
@@ -289,7 +307,6 @@ def _parse_checklist(block: str) -> list[dict]:
 
 
 def _parse_source(block: str) -> dict:
-    """First https URL from _Zdroj: line (markdown link or bare URL)."""
     m = SOURCE_RE.search(block)
     if not m:
         return {}
@@ -306,18 +323,18 @@ def _parse_source(block: str) -> dict:
     return {}
 
 
-def _parse_file(path: Path, text: str | None = None) -> tuple[str, str, list[dict], dict[str, str]]:
-    if text is None:
-        text = path.read_text(encoding="utf-8")
+def _parse_text(name: str, text: str) -> tuple[str, str, list[dict], dict[str, str]]:
+    """Parse a hub markdown body. Returns (slug, title, tasks, hotovo_map)."""
     hotovo = _parse_hotovo_section(text)
     slug_m = SLUG_RE.search(text)
-    slug = slug_m.group(1) if slug_m else path.stem
+    stem = os.path.splitext(name)[0]
+    slug = slug_m.group(1) if slug_m else stem
     title_m = TITLE_RE.search(text)
     title = title_m.group(1).strip() if title_m else slug
     tasks: list[dict] = []
 
     for m in TASK_HEAD_RE.finditer(text):
-        tid, name = m.group(2), m.group(3).strip()
+        tid, tname = m.group(2), m.group(3).strip()
         if m.group(1) or m.group(4):
             st = "dn"
         else:
@@ -334,7 +351,7 @@ def _parse_file(path: Path, text: str | None = None) -> tuple[str, str, list[dic
             st = "dn"
         task_row: dict = {
             "id": tid,
-            "name": name,
+            "name": tname,
             "p": waiting_p or _priority_from(head_and_block),
             "dl": _deadline_from(block),
             "st": st,
@@ -352,12 +369,12 @@ def _parse_file(path: Path, text: str | None = None) -> tuple[str, str, list[dic
 
     for m in INLINE_TASK_RE.finditer(text):
         done = m.group(1).lower() == "x"
-        tid, name = m.group(2), m.group(4).strip()
+        tid, tname = m.group(2), m.group(4).strip()
         p = _priority_from(m.group(3) or "")
         tasks.append(
             {
                 "id": tid,
-                "name": name,
+                "name": tname,
                 "p": p,
                 "dl": None,
                 "st": "dn" if done else "wt",
@@ -368,36 +385,50 @@ def _parse_file(path: Path, text: str | None = None) -> tuple[str, str, list[dic
     return slug, title, tasks, hotovo
 
 
-def _newest_projekty_mtime() -> float:
-    proj = VAULT / "02-PROJEKTY"
-    if not proj.is_dir():
-        return 0.0
-    return max((p.stat().st_mtime for p in proj.glob("*.md")), default=0.0)
+def _list_hubs(vault: DriveVault) -> list:
+    """Return list of FileMeta for 02-PROJEKTY/*.md (excluding underscore files)."""
+    out = []
+    for meta in vault.list_dir(PROJEKTY_REL, pattern="*.md"):
+        if meta.name.startswith("_") or meta.name.startswith("._"):
+            continue
+        out.append(meta)
+    return sorted(out, key=lambda m: m.name)
 
 
-def needs_sync() -> bool:
-    if not TASKS_JSON.exists():
+def _newest_projekty_mtime(vault: DriveVault) -> datetime:
+    hubs = _list_hubs(vault)
+    if not hubs:
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+    return max(m.modified_time for m in hubs)
+
+
+def needs_sync(vault: DriveVault | None = None) -> bool:
+    vault = vault or get_vault()
+    try:
+        meta = vault.stat(TASKS_REL)
+    except DriveNotFoundError:
         return True
-    return _newest_projekty_mtime() > TASKS_JSON.stat().st_mtime
+    return _newest_projekty_mtime(vault) > meta.modified_time
 
 
 def sync(force: bool = False) -> bool:
-    if not force and not needs_sync():
+    vault = get_vault()
+    if not force and not needs_sync(vault):
         return False
-    data = (
-        json.loads(TASKS_JSON.read_text(encoding="utf-8"))
-        if TASKS_JSON.exists()
-        else {"version": 1, "proj_order": [], "projects": {}, "tasks": []}
-    )
+    try:
+        data, _ = vault.read_json(TASKS_REL)
+        if not isinstance(data, dict):
+            data = {"version": 1, "proj_order": [], "projects": {}, "tasks": []}
+    except DriveNotFoundError:
+        data = {"version": 1, "proj_order": [], "projects": {}, "tasks": []}
+
     by_id = {(t.get("proj"), t.get("id")): t for t in data.get("tasks", [])}
     proj_order: list[str] = list(data.get("proj_order", []))
     seen_keys: set[tuple[str, str]] = set()
 
-    for md in sorted((VAULT / "02-PROJEKTY").glob("*.md")):
-        if md.name.startswith("_") or md.name.startswith("._"):
-            continue
-        text = md.read_text(encoding="utf-8")
-        slug, title, parsed, hotovo = _parse_file(md, text)
+    for meta in _list_hubs(vault):
+        text, _ = vault.read_text(meta.rel_path)
+        slug, title, parsed, hotovo = _parse_text(meta.name, text)
         if slug not in proj_order:
             proj_order.append(slug)
         proj = data.setdefault("projects", {}).setdefault(
@@ -410,7 +441,7 @@ def sync(force: bool = False) -> bool:
         proj["name"] = title
         hub_meta = _parse_project_hub(text, slug)
         proj.update(hub_meta)
-        proj["hubFile"] = f"02-PROJEKTY/{md.name}"
+        proj["hubFile"] = f"02-PROJEKTY/{meta.name}"
         proj.pop("watch", None)
         proj.pop("done", None)
         for pt in parsed:
@@ -425,10 +456,10 @@ def sync(force: bool = False) -> bool:
                     existing["waitUntil"] = pt.get("waitUntil") or _default_wait_until()
                 else:
                     existing.pop("waitUntil", None)
-                existing["dl"] = pt["dl"]  # md is SSOT (None if removed)
+                existing["dl"] = pt["dl"]
                 if pt.get("ice"):
                     existing["ice"] = pt["ice"]
-                existing["ch"] = pt["ch"]  # md is SSOT (empty list if removed)
+                existing["ch"] = pt["ch"]
                 if pt.get("sourceUrl"):
                     existing["sourceUrl"] = pt["sourceUrl"]
                     if pt.get("sourceLabel"):
@@ -489,7 +520,6 @@ def sync(force: bool = False) -> bool:
             "doneWeek": _hotovo_dates_this_week(text),
         }
 
-    # Prune orphans: tasks in JSON but no longer in any md (md is SSOT)
     before = len(data.get("tasks", []))
     data["tasks"] = [
         t for t in data.get("tasks", []) if (t["proj"], t["id"]) in seen_keys
@@ -500,14 +530,13 @@ def sync(force: bool = False) -> bool:
 
     data["proj_order"] = proj_order
     data["updated"] = str(date.today())
-    TASKS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    TASKS_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    vault.write_json(TASKS_REL, data)
     return True
 
 
 def main() -> None:
-    if sync(force="--force" in __import__("sys").argv):
-        print("synced", TASKS_JSON)
+    if sync(force="--force" in sys.argv):
+        print("synced drive://", TASKS_REL)
     else:
         print("skip (projekty not newer than json)")
 
