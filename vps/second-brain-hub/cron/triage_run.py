@@ -1,23 +1,34 @@
 #!/usr/bin/env python3
-"""Scan 01-INBOX and write Triage-Pending batch JSON (semi-auto; approve in Cursor).
+"""Scan 01-INBOX (Drive) and write Triage-Pending batch JSON (semi-auto;
+approve in Cursor).
 
-Waiting tasks with expired waitUntil are written by build_dashboard.py as
-`00-System/Triage-Pending/waiting-<proj>-<id>-<date>.json` (type waiting_expired).
-Approve in Cursor via agenda-triage PENDING mode — not processed by this script.
+Waiting tasks with expired waitUntil are auto-reactivated to ASAP in hub
+markdown by build_dashboard.py (then re-synced to dashboard JSON).
+Approve in Cursor via agenda-triage PENDING mode — not processed by
+this script.
+
+Phase 2 migrace: Veškerý vault I/O probíhá přes lib/drive_io.DriveVault.
+Env: VAULT_DRIVE_ID + GOOGLE_DRIVE_OAUTH_JSON (preferred) /
+GOOGLE_DRIVE_SA_JSON (fallback).
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-VAULT = Path(os.environ.get("VAULT_PATH", Path("/Users/lukascypra/My Drive - PRV/# WORK/SECOND_BRAIN/OBSIDIAN")))
+_LIB = Path(__file__).resolve().parents[1] / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
+
+from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
-# Standard MrLUC INBOX layout (Drive mirror → VPS /data/mrluc/01-INBOX/)
 INBOX_SUBDIRS = ("slack", "sembly", "email", "daily")
 
 SLUG_HINTS = [
@@ -37,78 +48,108 @@ SLUG_HINTS = [
     ("vibe", "vibe-coding"),
 ]
 
+# How much of each file to read when checking the ZPRACOVÁNO marker.
+_HEADER_PROBE_BYTES = 400
 
-def guess_proj(text: str, path: Path) -> str:
-    low = (text + " " + str(path)).lower()
+_VAULT_SINGLETON: DriveVault | None = None
+
+
+def get_vault() -> DriveVault:
+    global _VAULT_SINGLETON
+    if _VAULT_SINGLETON is None:
+        root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
+        if not root_id:
+            raise RuntimeError(
+                "VAULT_DRIVE_ID env not set — Drive vault folder ID is required."
+            )
+        creds, _mode = credentials_from_env()
+        _VAULT_SINGLETON = DriveVault(root_id, credentials=creds)
+    return _VAULT_SINGLETON
+
+
+def guess_proj(text: str, rel_path: str) -> str:
+    low = (text + " " + rel_path).lower()
     for needle, slug in SLUG_HINTS:
         if needle in low:
             return slug
-    if "slack" in path.parts:
+    parts = rel_path.split("/")
+    if "slack" in parts:
         return "firemni-procesy"
-    if "sembly" in path.parts:
+    if "sembly" in parts:
         return "strategy"
-    if "email" in path.parts:
+    if "email" in parts:
         return "finance"
-    if "daily" in path.parts:
+    if "daily" in parts:
         return "firemni-procesy"
     return "firemni-procesy"
 
 
-def title_from_file(p: Path, body: str) -> str:
+def title_from_file(name: str, body: str) -> str:
     for line in body.splitlines()[:30]:
         if line.startswith("# "):
             return line[2:].strip()[:120]
     m = re.search(r"capture[:\s]+(.+)", body, re.I)
     if m:
         return m.group(1).strip()[:120]
-    return p.stem.replace("-", " ")[:120]
+    stem = os.path.splitext(name)[0]
+    return stem.replace("-", " ")[:120]
 
 
-def iter_inbox_files(inbox: Path) -> list[Path]:
-    files: list[Path] = []
-    if not inbox.exists():
-        return files
+def iter_inbox_items(vault: DriveVault) -> list[tuple[str, str]]:
+    """Return list of (rel_path, body) for unprocessed INBOX .md files.
+
+    Skipped:
+      * README*.md
+      * files whose first ~400 bytes contain "ZPRACOVÁNO" marker
+    """
+    items: list[tuple[str, str]] = []
     for sub in INBOX_SUBDIRS:
-        subdir = inbox / sub
-        if not subdir.is_dir():
+        sub_rel = f"01-INBOX/{sub}"
+        try:
+            files = vault.list_dir(sub_rel, pattern="*.md", recursive=True)
+        except DriveNotFoundError:
             continue
-        for p in subdir.rglob("*.md"):
-            if p.name.startswith("README"):
+        for meta in files:
+            if meta.name.startswith("README"):
                 continue
-            if "ZPRACOVÁNO" in p.read_text(encoding="utf-8", errors="ignore")[:400]:
+            try:
+                body, _ = vault.read_text(meta.rel_path)
+            except DriveNotFoundError:
                 continue
-            files.append(p)
-    return files
+            if "ZPRACOVÁNO" in body[:_HEADER_PROBE_BYTES]:
+                continue
+            items.append((meta.rel_path, body))
+    return items
 
 
 def main() -> None:
-    inbox = VAULT / "01-INBOX"
-    pending_dir = VAULT / "00-System/Triage-Pending"
-    pending_dir.mkdir(parents=True, exist_ok=True)
+    vault = get_vault()
+    vault.mkdir_p("00-System/Triage-Pending")
 
-    files = iter_inbox_files(inbox)
+    items = iter_inbox_items(vault)
 
-    if not files:
+    if not items:
         print("no inbox files to triage")
         return
+
+    items.sort(key=lambda it: it[0])
 
     now = datetime.now(TZ)
     batch_id = now.strftime("%Y-%m-%d-%H%M")
     proposals = []
-    for i, p in enumerate(sorted(files), 1):
-        rel = p.relative_to(VAULT)
-        body = p.read_text(encoding="utf-8", errors="ignore")
+    for i, (rel, body) in enumerate(items, 1):
+        name = rel.rsplit("/", 1)[-1]
         proposals.append(
             {
                 "id": f"p{i}",
                 "action": "add_task",
-                "title": title_from_file(p, body),
-                "suggestedProj": guess_proj(body, p),
+                "title": title_from_file(name, body),
+                "suggestedProj": guess_proj(body, rel),
                 "priority": "Next",
                 "ice": [7, 6, 5],
                 "notes": "",
                 "subtasks": [],
-                "sourceFile": str(rel),
+                "sourceFile": rel,
             }
         )
 
@@ -119,16 +160,21 @@ def main() -> None:
         "sourceFiles": [pr["sourceFile"] for pr in proposals],
         "proposals": proposals,
     }
-    out = pending_dir / f"{batch_id}-batch.json"
-    out.write_text(json.dumps(batch, ensure_ascii=False, indent=2), encoding="utf-8")
+    out_rel = f"00-System/Triage-Pending/{batch_id}-batch.json"
+    vault.write_json(out_rel, batch)
 
-    summary = pending_dir / f"{batch_id}-summary.md"
-    lines = [f"# Triage batch {batch_id}\n", f"**Počet návrhů:** {len(proposals)}\n", "| ID | Návrh | Projekt |", "|----|-------|---------|"]
+    summary_rel = f"00-System/Triage-Pending/{batch_id}-summary.md"
+    lines = [
+        f"# Triage batch {batch_id}\n",
+        f"**Počet návrhů:** {len(proposals)}\n",
+        "| ID | Návrh | Projekt |",
+        "|----|-------|---------|",
+    ]
     for pr in proposals:
         lines.append(f"| {pr['id']} | {pr['title'][:60]} | {pr['suggestedProj']} |")
     lines.append("\nSchválení: v Cursoru `schval pending triáž`\n")
-    summary.write_text("\n".join(lines), encoding="utf-8")
-    print("wrote", out, "proposals=", len(proposals))
+    vault.write_text(summary_rel, "\n".join(lines))
+    print("wrote drive://", out_rel, "proposals=", len(proposals))
 
 
 if __name__ == "__main__":
