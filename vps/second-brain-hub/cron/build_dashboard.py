@@ -1,24 +1,37 @@
 #!/usr/bin/env python3
-"""Build dashboard-data.json from vault 02-PROJEKTY + optional legacy _tasks.json."""
+"""Build dashboard-data.json + Dashboard.html z vault 02-PROJEKTY (Drive API).
+
+Phase 2 migrace: vault I/O výhradně přes lib/drive_io.DriveVault.
+"""
 from __future__ import annotations
 
+import hashlib
+import importlib
 import json
+import logging
 import os
 import re
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-VAULT = Path(os.environ.get("VAULT_PATH", Path("/Users/lukascypra/My Drive - PRV/# WORK/SECOND_BRAIN/OBSIDIAN")))
-TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
-_WEB_DIR = Path(__file__).resolve().parents[1] / "web"
-_DEFAULT_OUT = _WEB_DIR / "dashboard-data.json"
-OUT_JSON = Path(os.environ.get("DASHBOARD_JSON", _DEFAULT_OUT))
-_DEFAULT_HTML = VAULT / "00-System/Dashboard.html"
-OUT_HTML = Path(os.environ.get("DASHBOARD_HTML", _DEFAULT_HTML))
-_legacy_env = os.environ.get("LEGACY_TASKS", "").strip()
-LEGACY_TASKS = Path(_legacy_env) if _legacy_env else None
+_HERE = Path(__file__).resolve().parent
+_WEB_DIR = _HERE.parent / "web"
+_LIB = _HERE.parent / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
 
+from drive_io import (  # noqa: E402
+    DriveConflictError,
+    DriveNotFoundError,
+    DriveVault,
+    credentials_from_env,
+)
+
+TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 INBOX_SUBDIRS = ("slack", "sembly", "email", "daily")
 
 # Keep in sync with web/app.js PROJECT_PALETTE
@@ -38,9 +51,27 @@ PROJECT_PALETTE = [
     "#90a4ae",
 ]
 
+_VAULT_SINGLETON: DriveVault | None = None
+log = logging.getLogger("build_dashboard")
+
+
+def get_vault() -> DriveVault:
+    global _VAULT_SINGLETON
+    if _VAULT_SINGLETON is None:
+        root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
+        if not root_id:
+            raise RuntimeError(
+                "VAULT_DRIVE_ID env not set — Drive vault folder ID is required."
+            )
+        creds, _mode = credentials_from_env()
+        _VAULT_SINGLETON = DriveVault(root_id, credentials=creds)
+    return _VAULT_SINGLETON
+
+
+# ----------------------------------------------------------------- enrich tasks
+
 
 def project_prefix(name: str) -> str:
-    """First letter of each of the first 3 whitespace-separated words (uppercase)."""
     parts: list[str] = []
     for word in (name or "").split()[:3]:
         word = word.strip()
@@ -50,7 +81,6 @@ def project_prefix(name: str) -> str:
 
 
 def task_id_suffix(task_id: str) -> str:
-    """Numeric tail after stripping leading letters (F1→1, OPS1→1, T20→20)."""
     if not task_id:
         return ""
     suffix = re.sub(r"^[A-Za-z]+", "", task_id)
@@ -58,7 +88,6 @@ def task_id_suffix(task_id: str) -> str:
 
 
 def task_display_id(prefix: str, task_id: str) -> str:
-    """Markdown id is canonical (project-prefixed, vault-unique). Display = id."""
     return task_id or prefix or ""
 
 
@@ -88,41 +117,49 @@ def enrich_tasks(tasks: list[dict], projects: dict, proj_order: list[str]) -> li
     return out
 
 
-def title_from_md(p: Path, body: str | None = None) -> str:
-    text = body if body is not None else p.read_text(encoding="utf-8", errors="ignore")
-    for line in text.splitlines()[:30]:
+def title_from_md(filename: str, body: str) -> str:
+    for line in body.splitlines()[:30]:
         if line.startswith("# "):
             return line[2:].strip()[:120]
-    return p.stem.replace("-", " ")[:120]
+    stem = os.path.splitext(filename)[0]
+    return stem.replace("-", " ")[:120]
+
+
+# ---------------------------------------------------------------------- inbox
 
 
 def list_inbox_items() -> list[dict]:
-    inbox = VAULT / "01-INBOX"
-    if not inbox.exists():
-        return []
+    vault = get_vault()
     items: list[dict] = []
     for sub in INBOX_SUBDIRS:
-        subdir = inbox / sub
-        if not subdir.is_dir():
+        try:
+            files = vault.list_dir(f"01-INBOX/{sub}", pattern="*.md", recursive=True)
+        except DriveNotFoundError:
             continue
-        for p in sorted(subdir.rglob("*.md")):
-            if p.name.startswith("README"):
+        for meta in files:
+            if meta.name.startswith("README"):
                 continue
-            rel = p.relative_to(VAULT)
-            body = p.read_text(encoding="utf-8", errors="ignore")
+            try:
+                body, _ = vault.read_text(meta.rel_path)
+            except DriveNotFoundError:
+                continue
             items.append(
                 {
-                    "path": str(rel),
-                    "filename": p.name,
+                    "path": meta.rel_path,
+                    "filename": meta.name,
                     "source": sub,
-                    "title": title_from_md(p, body),
+                    "title": title_from_md(meta.name, body),
                 }
             )
+    items.sort(key=lambda it: it["path"])
     return items
 
 
 def count_inbox() -> int:
     return len(list_inbox_items())
+
+
+# -------------------------------------------------------------------- pending
 
 
 def pending_batch_label(batch: dict) -> str:
@@ -140,22 +177,26 @@ def pending_batch_label(batch: dict) -> str:
 
 
 def list_pending_items() -> list[dict]:
-    pending = VAULT / "00-System/Triage-Pending"
-    if not pending.exists():
+    vault = get_vault()
+    try:
+        files = vault.list_dir("00-System/Triage-Pending", pattern="*.json")
+    except DriveNotFoundError:
         return []
     items: list[dict] = []
-    for f in sorted(pending.glob("*.json")):
+    for meta in files:
         try:
-            batch = json.loads(f.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+            batch, _ = vault.read_json(meta.rel_path)
+        except (DriveNotFoundError, json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(batch, dict):
             continue
         if batch.get("status", "open") != "open":
             continue
         proposals = batch.get("proposals") or []
         items.append(
             {
-                "filename": f.name,
-                "batchId": batch.get("batchId", f.stem.replace("-batch", "")),
+                "filename": meta.name,
+                "batchId": batch.get("batchId") or meta.name.replace("-batch.json", "").replace(".json", ""),
                 "created": batch.get("created"),
                 "label": pending_batch_label(batch),
                 "proposalCount": len(proposals),
@@ -167,6 +208,9 @@ def list_pending_items() -> list[dict]:
 
 def count_pending() -> int:
     return len(list_pending_items())
+
+
+# -------------------------------------------------------------------- waiting
 
 
 def prague_today() -> date:
@@ -218,67 +262,153 @@ def count_waiting_expired(tasks: list[dict], today: date | None = None) -> int:
     return sum(1 for t in tasks if is_expired_waiting(t, today))
 
 
-def write_expired_waiting_pending(tasks: list[dict], today: date | None = None) -> int:
-    """Create Triage-Pending/waiting-<proj>-<id>-<date>.json for expired Waiting tasks."""
+# ---------------------------------------------------------------------- waiting → ASAP rewriting
+
+TASK_HEAD_RE = re.compile(
+    r"^###\s+(~~)?([A-Z]+\d+[a-z]?)\s*[—–-]\s*(.+?)(?:~~)?\s*(✅|HOTOVO)?\s*$",
+    re.MULTILINE,
+)
+WAITING_PRIORITY_LINE_RE = re.compile(
+    r"\*\*Waiting\s*\|\s*Čekat\s+do:\s*\d{4}-\d{2}-\d{2}([^*]*)\*\*",
+    re.I,
+)
+ICE_RE = re.compile(r"ICE\s+I(\d+)\s+C(\d+)\s+E(\d+)", re.I)
+
+
+def _asap_priority_line(suffix: str, block: str) -> str:
+    ice_m = ICE_RE.search(suffix) or ICE_RE.search(block[:600])
+    if ice_m:
+        return f"**ASAP | ICE I{ice_m.group(1)} C{ice_m.group(2)} E{ice_m.group(3)}**"
+    return "**ASAP**"
+
+
+def _reactivate_waiting_block(block: str) -> tuple[str, bool]:
+    m = WAITING_PRIORITY_LINE_RE.search(block)
+    if not m:
+        return block, False
+    new_line = _asap_priority_line(m.group(1), block)
+    return block[: m.start()] + new_line + block[m.end() :], True
+
+
+def reactivate_expired_waiting_in_vault(
+    tasks: list[dict], projects: dict, today: date | None = None
+) -> list[dict]:
+    """Po vypršení waitUntil: hub .md Waiting → ASAP (SSOT), aby šel do top priority.
+
+    Mtime-based CAS: pokud user mezitím zapsal stejný hub v Obsidianu
+    (Drive Desktop sync ~60s), reaktivace se přeskočí a další iterace
+    cronu zkusí znovu.
+    """
+    vault = get_vault()
     today = today or prague_today()
-    pending_dir = VAULT / "00-System/Triage-Pending"
-    pending_dir.mkdir(parents=True, exist_ok=True)
-    now = datetime.now(TZ)
-    written = 0
+    by_proj: dict[str, list[dict]] = {}
     for t in tasks:
-        if not is_expired_waiting(t, today):
+        if is_expired_waiting(t, today):
+            by_proj.setdefault(t.get("proj") or "", []).append(t)
+
+    reactivated: list[dict] = []
+    for proj, proj_tasks in by_proj.items():
+        if not proj:
             continue
-        proj = t.get("proj") or "unknown"
-        tid = t.get("id") or "task"
-        out = pending_dir / f"waiting-{proj}-{tid}-{today.isoformat()}.json"
-        if out.exists():
-            try:
-                prev = json.loads(out.read_text(encoding="utf-8"))
-                if prev.get("status", "open") != "open":
+        hub_rel = (projects.get(proj) or {}).get("hubFile")
+        if not hub_rel:
+            continue
+        try:
+            text, meta = vault.read_text(hub_rel)
+        except DriveNotFoundError:
+            continue
+        changed = False
+        proj_reactivated: list[dict] = []
+        for t in proj_tasks:
+            tid = t.get("id") or ""
+            if not tid:
+                continue
+            for m in TASK_HEAD_RE.finditer(text):
+                if m.group(2) != tid:
                     continue
-            except json.JSONDecodeError:
-                pass
+                start = m.end()
+                nxt = TASK_HEAD_RE.search(text, start)
+                end = nxt.start() if nxt else len(text)
+                block = text[start:end]
+                new_block, ok = _reactivate_waiting_block(block)
+                if ok:
+                    text = text[:start] + new_block + text[end:]
+                    changed = True
+                    proj_reactivated.append(
+                        {
+                            "proj": proj,
+                            "id": tid,
+                            "displayId": t.get("displayId") or tid,
+                            "name": t.get("name") or tid,
+                            "waitUntil": (t.get("waitUntil") or "")[:10],
+                        }
+                    )
+                break
+        if changed:
+            try:
+                vault.write_text(hub_rel, text, expect_mtime=meta.modified_time)
+            except DriveConflictError as e:
+                log.warning(
+                    "reactivate skipped: %s changed externally during build (%s)",
+                    hub_rel,
+                    e,
+                )
+                continue
+            reactivated.extend(proj_reactivated)
+    return reactivated
+
+
+def archive_auto_reactivated_waiting_pending(reactivated: list[dict], today: date | None = None) -> int:
+    """Po automatické reaktivaci přesune odpovídající waiting-* pending batches do Triage-Applied."""
+    vault = get_vault()
+    today = today or prague_today()
+    try:
+        pending_files = vault.list_dir("00-System/Triage-Pending", pattern="*.json")
+    except DriveNotFoundError:
+        return 0
+    by_name = {meta.name: meta for meta in pending_files}
+    archived = 0
+    for item in reactivated:
+        proj = item.get("proj") or ""
+        tid = item.get("id") or ""
+        if not proj or not tid:
             continue
-        display = t.get("displayId") or tid
-        name = t.get("name") or tid
-        wu = (t.get("waitUntil") or "")[:10]
-        extend_until = default_wait_until()
-        batch = {
-            "batchId": f"waiting-{proj}-{tid}-{today.isoformat()}",
-            "status": "open",
-            "created": now.isoformat(),
-            "type": "waiting_expired",
-            "summary": f"{display} — {name} (čekání vypršelo {wu})",
-            "taskRef": {"proj": proj, "id": tid, "name": name, "waitUntil": wu},
-            "proposals": [
-                {
-                    "id": "extend",
-                    "action": "waiting_extend",
-                    "title": "Čekat dál (+3 dny od dneška)",
-                    "suggestedProj": proj,
-                    "waitUntil": extend_until,
-                    "notes": f"V markdownu: **Waiting | Čekat do: {extend_until}**",
-                },
-                {
-                    "id": "reactivate",
-                    "action": "waiting_reactivate",
-                    "title": "Vrátit do práce (odstranit Waiting řádek, nastavit prioritu)",
-                    "suggestedProj": proj,
-                    "priority": "Next",
-                    "notes": "Zachovat dl a ICE beze změny; upravit jen prioritu v 02-PROJEKTY.",
-                },
-            ],
-        }
-        out.write_text(json.dumps(batch, ensure_ascii=False, indent=2), encoding="utf-8")
-        written += 1
-    return written
+        prefix = f"waiting-{proj}-{tid}-"
+        for name, meta in list(by_name.items()):
+            if not name.startswith(prefix):
+                continue
+            try:
+                batch, _ = vault.read_json(meta.rel_path)
+            except (DriveNotFoundError, json.JSONDecodeError, ValueError):
+                continue
+            if not isinstance(batch, dict) or batch.get("status") != "open":
+                continue
+            batch["status"] = "applied"
+            batch["appliedAt"] = datetime.now(TZ).isoformat()
+            batch["appliedNote"] = "auto_waiting_reactivate_asap"
+            applied_name = name.replace(".json", "-applied.json")
+            applied_rel = f"00-System/Triage-Applied/{applied_name}"
+            vault.write_json(applied_rel, batch)
+            try:
+                vault.delete(meta.rel_path)
+            except DriveNotFoundError:
+                pass
+            archived += 1
+            del by_name[name]
+    return archived
+
+
+# ---------------------------------------------------------------------- tasks
 
 
 def load_tasks() -> dict:
-    legacy = LEGACY_TASKS or (VAULT / "00-System/dashboard-tasks-source.json")
-    if Path(legacy).exists():
-        return json.loads(Path(legacy).read_text(encoding="utf-8"))
-    # Minimal fallback
+    vault = get_vault()
+    try:
+        data, _ = vault.read_json("00-System/dashboard-tasks-source.json")
+        if isinstance(data, dict):
+            return data
+    except DriveNotFoundError:
+        pass
     return {"version": 1, "updated": str(date.today()), "proj_order": [], "projects": {}, "tasks": []}
 
 
@@ -352,8 +482,10 @@ def top_priority(tasks: list, limit: int = 3) -> list:
     return picked[:limit]
 
 
+# ---------------------------------------------------------------------- HTML
+
+
 def meta_refresh_tag() -> str:
-    """Legacy file:// full-page reload — výchozí vypnuto (resetuje vyhledávání a UI)."""
     raw = os.environ.get("DASHBOARD_AUTO_REFRESH_SEC", "0").strip()
     if raw.lower() in ("0", "false", "no", "off"):
         return ""
@@ -365,10 +497,10 @@ def meta_refresh_tag() -> str:
 
 
 def build_standalone_html(payload: dict) -> str:
-    """Single .html file (embedded CSS/JS/data) — open via Finder, no http.server."""
     css = (_WEB_DIR / "styles.css").read_text(encoding="utf-8")
     js = (_WEB_DIR / "app.js").read_text(encoding="utf-8")
     data_js = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+    embed_fp = payload.get("fingerprint") or payload.get("generated") or ""
     poll_sec = os.environ.get("DASHBOARD_POLL_SEC", "60").strip() or "60"
     idx = (_WEB_DIR / "index.html").read_text(encoding="utf-8")
     start = idx.index("<body>") + len("<body>")
@@ -390,6 +522,7 @@ def build_standalone_html(payload: dict) -> str:
 <body>
 {body}
   <script>window.__DASHBOARD_DATA__ = {data_js};
+window.__DASHBOARD_EMBED_FP__ = {json.dumps(embed_fp)};
 window.DASHBOARD_POLL_SEC = {json.dumps(poll_sec)};</script>
   <script>
 {js}
@@ -399,51 +532,49 @@ window.DASHBOARD_POLL_SEC = {json.dumps(poll_sec)};</script>
 """
 
 
+# ---------------------------------------------------------------------- calendar / sync
+
 
 def _filter_calendar(data: dict) -> dict:
-    import sys
-
-    cron_dir = Path(__file__).resolve().parent
-    if str(cron_dir) not in sys.path:
-        sys.path.insert(0, str(cron_dir))
-    from fetch_calendar import filter_calendar_payload
-
-    return filter_calendar_payload(data)
+    fc = importlib.import_module("fetch_calendar")
+    return fc.filter_calendar_payload(data)
 
 
 def load_calendar() -> dict:
-    """Plný Google Calendar (SA jako RB Universe) nebo cache calendar-events.json."""
+    """Plný Google Calendar fetch + filter, nebo cached výstup z Drive."""
     if os.environ.get("DASHBOARD_SKIP_CALENDAR", "").lower() in ("1", "true", "yes"):
-        cached = VAULT / "00-System/calendar-events.json"
-        if cached.exists():
-            try:
-                return _filter_calendar(json.loads(cached.read_text(encoding="utf-8")))
-            except json.JSONDecodeError:
-                pass
-        return {"source": "skipped", "events": []}
-    cal_script = Path(__file__).resolve().parent / "fetch_calendar.py"
-    if cal_script.exists():
-        import subprocess
-        import sys
-
-        subprocess.run([sys.executable, str(cal_script)], check=False)
-    cached = VAULT / "00-System/calendar-events.json"
-    if cached.exists():
         try:
-            return _filter_calendar(json.loads(cached.read_text(encoding="utf-8")))
-        except json.JSONDecodeError:
-            pass
-    return {"source": "none", "events": []}
+            data, _ = get_vault().read_json("00-System/calendar-events.json")
+            return _filter_calendar(data) if isinstance(data, dict) else {"source": "skipped", "events": []}
+        except (DriveNotFoundError, json.JSONDecodeError, ValueError):
+            return {"source": "skipped", "events": []}
+    fc = importlib.import_module("fetch_calendar")
+    try:
+        payload = fc.refresh()
+    except Exception as e:  # noqa: BLE001
+        log.warning("fetch_calendar.refresh failed: %s", e)
+        try:
+            data, _ = get_vault().read_json("00-System/calendar-events.json")
+            return _filter_calendar(data) if isinstance(data, dict) else {"source": "none", "events": []}
+        except (DriveNotFoundError, json.JSONDecodeError, ValueError):
+            return {"source": "none", "events": []}
+    return payload if isinstance(payload, dict) else {"source": "none", "events": []}
 
 
 def refresh_sources() -> None:
-    """Sync tasks JSON from 02-PROJEKTY when markdown is newer."""
-    sync_script = Path(__file__).resolve().parent / "sync_tasks_from_projekty.py"
-    if sync_script.exists():
-        import subprocess
-        import sys
+    """Sync tasks JSON from 02-PROJEKTY when markdown is newer (modulárně)."""
+    try:
+        sync_mod = importlib.import_module("sync_tasks_from_projekty")
+    except ImportError as e:
+        log.warning("sync_tasks_from_projekty unavailable: %s", e)
+        return
+    try:
+        sync_mod.sync()
+    except Exception as e:  # noqa: BLE001
+        log.warning("sync_tasks_from_projekty.sync failed: %s", e)
 
-        subprocess.run([sys.executable, str(sync_script)], check=False)
+
+# ---------------------------------------------------------------------- weekly review meta
 
 
 def iso_week_label(d: date | None = None) -> str:
@@ -453,29 +584,25 @@ def iso_week_label(d: date | None = None) -> str:
 
 
 def weekly_review_meta() -> dict:
-    """Latest weekly draft/final paths for dashboard."""
-    wdir = VAULT / "00-System/weekly"
+    vault = get_vault()
     week = iso_week_label()
-    draft = wdir / f"{week}-draft.md"
-    final = wdir / f"{week}.md"
     meta: dict = {"week": week}
-    if draft.is_file():
-        meta["draftFile"] = str(draft.relative_to(VAULT))
-    if final.is_file():
-        meta["finalFile"] = str(final.relative_to(VAULT))
-    retro_d = VAULT / "00-System/Memory" / f"retro-{week}-draft.md"
-    retro_f = VAULT / "00-System/Memory" / f"retro-{week}.md"
-    if retro_d.is_file():
-        meta["retroDraftFile"] = str(retro_d.relative_to(VAULT))
-    if retro_f.is_file():
-        meta["retroFinalFile"] = str(retro_f.relative_to(VAULT))
+    candidates = [
+        ("draftFile", f"00-System/weekly/{week}-draft.md"),
+        ("finalFile", f"00-System/weekly/{week}.md"),
+        ("retroDraftFile", f"00-System/Memory/retro-{week}-draft.md"),
+        ("retroFinalFile", f"00-System/Memory/retro-{week}.md"),
+    ]
+    for key, rel in candidates:
+        if vault.exists(rel):
+            meta[key] = rel
     return meta
 
 
-def dashboard_data_fingerprint(payload: dict) -> str:
-    """Stable hash — změna jen při obsahu úkolů/badges, ne při každém rebuild timestampu."""
-    import hashlib
+# ---------------------------------------------------------------------- entry
 
+
+def dashboard_data_fingerprint(payload: dict) -> str:
     core = {
         "inboxCount": payload.get("inboxCount"),
         "pendingCount": payload.get("pendingCount"),
@@ -489,14 +616,12 @@ def dashboard_data_fingerprint(payload: dict) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
-def dashboard_file_url(path: Path | None = None) -> str:
-    p = (path or OUT_HTML).resolve()
-    from urllib.parse import quote
-
-    return "file://" + quote(str(p).replace("\\", "/"), safe="/:")
-
-
 def main() -> None:
+    logging.basicConfig(
+        level=os.environ.get("BUILD_DASHBOARD_LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    vault = get_vault()
     if os.environ.get("DASHBOARD_SKIP_SYNC", "").lower() not in ("1", "true", "yes"):
         refresh_sources()
     src = load_tasks()
@@ -504,7 +629,14 @@ def main() -> None:
     projects = src.get("projects", {})
     tasks = enrich_tasks(src.get("tasks", []), projects, proj_order)
     today = prague_today()
-    expired_written = write_expired_waiting_pending(tasks, today)
+    waiting_expired_before = count_waiting_expired(tasks, today)
+    reactivated = reactivate_expired_waiting_in_vault(tasks, projects, today)
+    if reactivated:
+        archive_auto_reactivated_waiting_pending(reactivated, today)
+        refresh_sources()
+        src = load_tasks()
+        projects = src.get("projects", {})
+        tasks = enrich_tasks(src.get("tasks", []), projects, proj_order)
     waiting = waiting_column(tasks, today)
     waiting_expired = count_waiting_expired(tasks, today)
     payload = {
@@ -515,7 +647,8 @@ def main() -> None:
         "pendingCount": count_pending(),
         "pendingItems": list_pending_items(),
         "waitingExpiredCount": waiting_expired,
-        "waitingExpiredWritten": expired_written,
+        "waitingExpiredBeforeReactivate": waiting_expired_before,
+        "waitingReactivated": reactivated,
         "proj_order": proj_order,
         "projects": projects,
         "tasks": tasks,
@@ -529,36 +662,23 @@ def main() -> None:
     generated = payload["generated"]
     fingerprint = dashboard_data_fingerprint(payload)
     payload["fingerprint"] = fingerprint
-    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    OUT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    vault_system = VAULT / "00-System"
-    vault_system.mkdir(parents=True, exist_ok=True)
-    vault_data = vault_system / "dashboard-data.json"
-    vault_stamp = vault_system / "dashboard-build-stamp.json"
-    vault_data.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    vault_stamp.write_text(
-        json.dumps({"generated": generated, "fingerprint": fingerprint}, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+    vault.write_json("00-System/dashboard-data.json", payload)
+    vault.write_json(
+        "00-System/dashboard-build-stamp.json",
+        {"generated": generated, "fingerprint": fingerprint},
     )
     print(
-        "wrote",
-        OUT_JSON,
-        "inbox=",
-        payload["inboxCount"],
-        "pending=",
-        payload["pendingCount"],
-        "waiting=",
-        len(waiting),
-        "waiting_expired=",
-        waiting_expired,
+        "wrote drive:// 00-System/dashboard-data.json",
+        "inbox=", payload["inboxCount"],
+        "pending=", payload["pendingCount"],
+        "waiting=", len(waiting),
+        "waiting_expired=", waiting_expired,
+        "waiting_reactivated=", len(reactivated),
     )
-    print("wrote", vault_data)
-    print("wrote", vault_stamp)
     if os.environ.get("DASHBOARD_HTML", "1") not in ("0", "false", "no"):
-        OUT_HTML.parent.mkdir(parents=True, exist_ok=True)
-        OUT_HTML.write_text(build_standalone_html(payload), encoding="utf-8")
-        print("wrote", OUT_HTML)
-        print("open", dashboard_file_url(OUT_HTML))
+        html = build_standalone_html(payload)
+        vault.write_text("00-System/Dashboard.html", html, mime_type="text/html")
+        print("wrote drive:// 00-System/Dashboard.html")
 
 
 if __name__ == "__main__":
