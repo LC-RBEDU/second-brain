@@ -139,8 +139,9 @@ V `02-PROJEKTY/<téma>.md` u úkolu (`### F13 — …`):
 
 - Při přesunu do Waiting se v JSON mění jen `p` → `Waiting` a `waitUntil`; **ICE a `dl` zůstávají**.
 - Chybí-li datum → default **dnes + 3 dny** (Europe/Prague).
-- Po vypršení `waitUntil` úkol **zmizí ze sloupce Waiting**; `build_dashboard.py` vytvoří `00-System/Triage-Pending/waiting-<proj>-<id>-<YYYY-MM-DD>.json` (typ `waiting_expired`, návrhy „Čekat dál“ / „Vrátit do práce“). Schválení v Cursoru (`agenda-triage` PENDING), ne v `triage_run.py`.
-- TOP priority (max 3) **neobsahuje** Waiting.
+- Po vypršení `waitUntil` (den ≤ dnes, Europe/Prague) `build_dashboard.py` **automaticky** přepíše v hubu `**Waiting | Čekat do: …**` → `**ASAP | ICE …**` (ICE a deadline zůstanou), znovu syncne JSON a úkol jde do **top priority** scoringu.
+- Ve sloupci Waiting zůstávají jen úkoly s `waitUntil` **po dnešku**.
+- TOP priority (max 3) **neobsahuje** aktivní Waiting; po reaktivaci ano (ASAP + ICE).
 
 ## Dashboard lokálně (Mac)
 
@@ -154,7 +155,7 @@ V `02-PROJEKTY/<téma>.md` u úkolu (`### F13 — …`):
 | Režim | Chování |
 |-------|---------|
 | **http://127.0.0.1:8765/Dashboard.html** | Live poll stamp + data (Cache-Control: no-cache) |
-| **file://** (dvojklik na `Dashboard.html`) | Meta refresh každých 30 s (`DASHBOARD_AUTO_REFRESH_SEC`); v hlavičce hint na `serve_dashboard.sh` |
+| **file://** (dvojklik na `Dashboard.html`) | Poll každých 60 s (`DASHBOARD_POLL_SEC`) — načte `dashboard-data.json` vedle HTML; při úspěchu překreslí bez reloadu (zachová vyhledávání). Když prohlížeč `file://` fetch blokuje → hint v hlavičce na `serve_dashboard.sh` |
 
 ```bash
 # terminál 1 — rebuild při editaci vaultu

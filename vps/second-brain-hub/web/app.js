@@ -214,10 +214,15 @@ async function loadData() {
     if (res.ok) {
       const data = await res.json();
       window.__DASHBOARD_DATA__ = data;
+      const embedFp = window.__DASHBOARD_EMBED_FP__;
+      const dataFp = data.fingerprint || data.generated;
+      if (embedFp && dataFp && embedFp !== dataFp) {
+        /* HTML starší než JSON — preferuj čerstvý build */
+      }
       return data;
     }
   } catch {
-    /* file:// nebo offline — fallback na embed */
+    /* file:// bez fetch — fallback na embed v HTML */
   }
   if (window.__DASHBOARD_DATA__) return window.__DASHBOARD_DATA__;
   throw new Error('dashboard-data.json missing — spusť build_dashboard.py');
@@ -979,8 +984,11 @@ function renderAll(data, opts = {}) {
   const meta = document.getElementById('meta-updated');
   if (meta) {
     let text = 'Aktualizováno: ' + formatCzDateTime(data.generated || data.updated);
-    if (data.waitingExpiredCount > 0) {
-      text += ` · čekání vypršelo: ${data.waitingExpiredCount}`;
+    if (data.waitingReactivated?.length) {
+      const ids = data.waitingReactivated.map((t) => t.displayId || t.id).join(', ');
+      text += ` · Waiting→ASAP: ${ids}`;
+    } else if (data.waitingExpiredCount > 0) {
+      text += ` · čekání vypršelo: ${data.waitingExpiredCount} (spusť build)`;
     }
     meta.textContent = text;
   }
@@ -1019,39 +1027,74 @@ function bindLivePollPause() {
   }
 }
 
-function startLiveRefresh(initialData) {
-  const proto = location.protocol;
-  if (proto !== 'http:' && proto !== 'https:') {
-    /* file:// — žádný meta refresh ani poll (viz build_dashboard DASHBOARD_AUTO_REFRESH_SEC=0) */
-    return;
+let livePollFileBlocked = false;
+
+function showDashboardRefreshNotice(generated) {
+  const meta = document.getElementById('meta-updated');
+  if (!meta) return;
+  const when = formatCzDateTime(generated);
+  meta.textContent = `Aktualizováno: ${when} · právě načteno z buildu`;
+  meta.classList.add('meta-just-refreshed');
+  window.setTimeout(() => meta.classList.remove('meta-just-refreshed'), 4000);
+}
+
+function updateFilePollHint() {
+  const meta = document.getElementById('meta-updated');
+  if (!meta || location.protocol === 'http:' || location.protocol === 'https:') return;
+  if (!livePollFileBlocked) return;
+  const base = meta.textContent.replace(/\s*·\s*live refresh[^·]*$/i, '').trim();
+  meta.textContent = `${base} · live refresh: spusť ./scripts/serve_dashboard.sh (file://)`;
+}
+
+async function pollDashboardData() {
+  if (shouldPauseLivePoll()) return false;
+  try {
+    const stampRes = await fetch('./dashboard-build-stamp.json?t=' + Date.now(), {
+      cache: 'no-store',
+    });
+    if (!stampRes.ok) {
+      if (location.protocol === 'file:') livePollFileBlocked = true;
+      updateFilePollHint();
+      return false;
+    }
+    const stamp = await stampRes.json();
+    const fp = stamp.fingerprint || stamp.generated;
+    if (!fp || fp === lastSeenFingerprint) return false;
+    const dataRes = await fetch('./dashboard-data.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!dataRes.ok) return false;
+    const data = await dataRes.json();
+    const nextFp = data.fingerprint || data.generated || fp;
+    if (nextFp === lastSeenFingerprint) return false;
+    lastSeenFingerprint = nextFp;
+    window.__DASHBOARD_DATA__ = data;
+    dashboardDataRef.current = data;
+    renderAll(data, { preserveOpen: true });
+    showDashboardRefreshNotice(data.generated || data.updated);
+    livePollFileBlocked = false;
+    return true;
+  } catch {
+    if (location.protocol === 'file:') {
+      livePollFileBlocked = true;
+      updateFilePollHint();
+    }
+    return false;
   }
+}
+
+function startLiveRefresh(initialData) {
   lastSeenFingerprint =
     initialData?.fingerprint || initialData?.generated || initialData?.updated || null;
 
-  const poll = async () => {
-    if (shouldPauseLivePoll()) return;
-    try {
-      const stampRes = await fetch('./dashboard-build-stamp.json?t=' + Date.now(), {
-        cache: 'no-store',
-      });
-      if (!stampRes.ok) return;
-      const stamp = await stampRes.json();
-      const fp = stamp.fingerprint || stamp.generated;
-      if (!fp || fp === lastSeenFingerprint) return;
-      const dataRes = await fetch('./dashboard-data.json?t=' + Date.now(), { cache: 'no-store' });
-      if (!dataRes.ok) return;
-      const data = await dataRes.json();
-      const nextFp = data.fingerprint || data.generated || fp;
-      if (nextFp === lastSeenFingerprint) return;
-      lastSeenFingerprint = nextFp;
-      window.__DASHBOARD_DATA__ = data;
-      renderAll(data, { preserveOpen: true });
-    } catch {
-      /* ignore transient network errors */
-    }
-  };
+  const embedFp = window.__DASHBOARD_EMBED_FP__;
+  if (embedFp && embedFp !== lastSeenFingerprint) {
+    pollDashboardData();
+  }
 
-  setInterval(poll, LIVE_POLL_MS);
+  setInterval(() => {
+    pollDashboardData();
+  }, LIVE_POLL_MS);
+
+  window.setTimeout(() => pollDashboardData(), 2500);
 }
 
 async function main() {

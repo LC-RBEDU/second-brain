@@ -41,7 +41,7 @@ Pro každou položku: shrnutí, návrh tématu/metadata, OK/uprav/přeskoč/drop
 ## PENDING (cron)
 
 1. Načti nejnovější `00-System/Triage-Pending/*-batch.json` + summary
-2. Ukaž změny (waiting_expired, nové úkoly, …)
+2. Ukaž změny (nové úkoly, …). Vypršené **Waiting** řeší `build_dashboard.py` automaticky (hub → **ASAP**); staré `waiting_expired` pending batch jen archivuj, neptej se znovu.
 3. **Nikdy neaplikuj bez explicitního „ano“ / „apply“**
 4. Po schválení: aplikuj na hub `.md`, přesuň batch do `Triage-Applied/`, rebuild dashboard pokud požádáno
 
