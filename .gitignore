@@ -5,11 +5,24 @@ Icon?
 # Cursor IDE local state (not project source)
 .cursor/
 
-# Generated dashboard / Python cache (SSOT vault on Google Drive)
+# Vault content (SSoT = Google Drive, ne git)
+# - úkoly, projekty, INBOX, dashboard JSON/HTML, weekly drafts, retro, Memory, …
+# - vše se synchronizuje přes Google Drive Desktop mirror, repo drží jen kód
+OBSIDIAN/
+
+# Generated outputs / Python cache
 vps/second-brain-hub/web/dashboard-data.json
-OBSIDIAN/00-System/dashboard-data.json
-OBSIDIAN/00-System/dashboard-build-stamp.json
-OBSIDIAN/00-System/Dashboard.html
-OBSIDIAN/00-System/calendar-events.json
 **/__pycache__/
 *.pyc
+
+# Python venvs (heavy, regenerate from requirements.txt)
+.venv/
+venv/
+
+# Test artefacts
+.pytest_cache/
+
+# Secrets (never commit)
+*.client_secret*.json
+oauth_creds.json
+oauth_client.json

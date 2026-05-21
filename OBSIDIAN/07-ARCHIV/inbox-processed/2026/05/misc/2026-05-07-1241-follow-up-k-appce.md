@@ -1,1 +1,0 @@
-**ZPRACOVÁNO** — přesunuto do HOTOVO/sembly/ dne 7. 5. 2026. → T4 (spec update), T11 (bug drafty), T12 ✅ (buddy task fix), T13 (checklist Pavla), T14 ✅ (Alfréd přístup Kateřina), rb-universe-development.md
