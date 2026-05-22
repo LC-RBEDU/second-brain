@@ -423,7 +423,7 @@ def sync(force: bool = False) -> bool:
         data = {"version": 1, "proj_order": [], "projects": {}, "tasks": []}
 
     by_id = {(t.get("proj"), t.get("id")): t for t in data.get("tasks", [])}
-    proj_order: list[str] = list(data.get("proj_order", []))
+    proj_order: list[str] = []
     seen_keys: set[tuple[str, str]] = set()
 
     for meta in _list_hubs(vault):
@@ -529,6 +529,9 @@ def sync(force: bool = False) -> bool:
         print(f"pruned {pruned} orphaned tasks (no longer in md)")
 
     data["proj_order"] = proj_order
+    data["projects"] = {
+        s: data["projects"][s] for s in proj_order if s in data.get("projects", {})
+    }
     data["updated"] = str(date.today())
     vault.write_json(TASKS_REL, data)
     return True

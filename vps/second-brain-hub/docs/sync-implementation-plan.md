@@ -1,6 +1,8 @@
 # Implementační plán — migrace na Drive API
 
-> **Status (2026-05-21 16:00):** Vault přemigrován z `lukas.cypra@gmail.com` (původně `1RNrztmMo4oS872x2mPgHMdofV4B7UC3f`) pod **`lukas@redbuttonedu.cz`** Workspace účet. Cesta autentikace přepnuta z **Service Account** na **OAuth user delegation** (důvod: Drive vlastník je single-user personal Drive — SA bez DWD nemůže vytvářet soubory). Phase 0 a Phase 1 hotové, smoke test prošel proti reálnému Drive (write+read+CAS+delete OK). Pokračujeme do Phase 2.
+> **Status (2026-05-22):** Phase **0–3** hotové (Drive API cron na Coolify-dev, OAuth). **Phase 4** — smoke v kontejneru + 24–48h monitoring. **Phase 5** — cleanup volume až po stabilním týdnu. **Obsidian Sync** aktivní (Mac + mobil).
+>
+> **Hub opravy (2026-05-22):** `edu_news_refresh` — `cycleStartedAt` + `progressBaseline` (žádné znovunačtení po `--clear`); `triage_run` — skip INBOX už v open pending batchi; `sync_tasks` — prune orphan projects.
 
 **Aktuální vault root:** `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/` na lukas@redbuttonedu.cz).
 

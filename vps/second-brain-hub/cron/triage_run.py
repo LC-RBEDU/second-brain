@@ -95,6 +95,30 @@ def title_from_file(name: str, body: str) -> str:
     return stem.replace("-", " ")[:120]
 
 
+def _open_pending_source_files(vault: DriveVault) -> set[str]:
+    """sourceFile paths already in an open Triage-Pending batch."""
+    sources: set[str] = set()
+    try:
+        batches = vault.list_dir("00-System/Triage-Pending", pattern="*-batch.json")
+    except DriveNotFoundError:
+        return sources
+    for meta in batches:
+        try:
+            data, _ = vault.read_json(meta.rel_path)
+        except DriveNotFoundError:
+            continue
+        if data.get("status") != "open":
+            continue
+        for rel in data.get("sourceFiles") or []:
+            if rel:
+                sources.add(rel)
+        for pr in data.get("proposals") or []:
+            rel = pr.get("sourceFile")
+            if rel:
+                sources.add(rel)
+    return sources
+
+
 def iter_inbox_items(vault: DriveVault) -> list[tuple[str, str]]:
     """Return list of (rel_path, body) for unprocessed INBOX .md files.
 
@@ -127,6 +151,13 @@ def main() -> None:
     vault.mkdir_p("00-System/Triage-Pending")
 
     items = iter_inbox_items(vault)
+    pending_sources = _open_pending_source_files(vault)
+    if pending_sources:
+        before = len(items)
+        items = [(rel, body) for rel, body in items if rel not in pending_sources]
+        skipped = before - len(items)
+        if skipped:
+            print("skip inbox already in open pending batch:", skipped)
 
     if not items:
         print("no inbox files to triage")

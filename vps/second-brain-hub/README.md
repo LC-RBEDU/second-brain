@@ -113,7 +113,7 @@ Alternativa na serveru: **rclone** `drive:OBSIDIAN/01-INBOX` → `/data/mrluc-se
 
 Nedělní večer: drafty v `00-System/weekly/YYYY-Www-draft.md` a `00-System/Memory/retro-YYYY-Www-draft.md` → schválení skills `agenda-weekly-review`, `agenda-retro`. Revize priorit: ad-hoc `agenda-priority-review`.
 
-`edu_news_refresh.py` (OPS2): z `02-PROJEKTY/*.md` (HOTOVO za posledních N dní + rozpracované úkoly s vysokým ICE) vybere max 5 témat pro EDU news → `00-System/edu-news-topics.json`, `dashboard-tasks-source.json` (`eduNews`), checklist v `operations.md`, pak `build_dashboard.py`.
+`edu_news_refresh.py` (OPS2): z `02-PROJEKTY/*.md` (HOTOVO za posledních N dní + rozpracované úkoly s vysokým ICE) vybere max 5 témat pro EDU news → `00-System/edu-news-topics.json`, `dashboard-tasks-source.json` (`eduNews`), checklist v `operations.md`, pak `build_dashboard.py`. Po `--clear` (natočení videa) nastaví `cycleStartedAt` + `progressBaseline` — staré HOTOVO a beze změny rozpracované úkoly se znovu nenabídnou, dokud nepřibude nový hotovo krok nebo posun subtasků.
 
 ```bash
 # po natočení videa v Cursoru

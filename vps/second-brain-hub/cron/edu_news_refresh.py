@@ -12,7 +12,7 @@ checklist, then rebuilds dashboard via build_dashboard.main().
 
 Usage:
   python3 edu_news_refresh.py           # refresh (default)
-  python3 edu_news_refresh.py --clear   # po nahrání EDU news
+  python3 edu_news_refresh.py --clear   # po nahrání EDU news (nastaví cycleStartedAt)
   python3 edu_news_refresh.py --dry-run # candidates, žádné writes
 """
 from __future__ import annotations
@@ -71,6 +71,10 @@ HOTOVO_HEAD_RE = re.compile(
 )
 DATE_ISO_RE = re.compile(r"_\(\s*(\d{4}-\d{2}-\d{2})\s*\)_")
 DATE_CZ_RE = re.compile(r"_\(\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\s*\)_")
+HOTOVO_INLINE_CZ_RE = re.compile(
+    r"(?:přesunuto do HOTOVO|HOTOVO|smazáno)\s+(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})",
+    re.I,
+)
 
 POSITIVE_RE = re.compile(
     r"\b(nasazen|spuštěn|opraven|hotov|dokončen|rollout|integrac|formulář|universe|rb universe|proces|tým|akadem)\b",
@@ -103,6 +107,29 @@ def _prague_today() -> date:
     return datetime.now(TZ).date()
 
 
+def _cycle_start_date(state: dict) -> date | None:
+    """Datum začátku EDU news cyklu (po --clear / natočení videa)."""
+    raw = state.get("cycleStartedAt")
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=TZ)
+        return dt.astimezone(TZ).date()
+    except ValueError:
+        return None
+
+
+def _effective_hotovo_cutoff(today: date, state: dict) -> date:
+    """Lookback window, but never před cycleStartedAt (po vyčištění topics)."""
+    base = today - timedelta(days=LOOKBACK_DAYS)
+    started = _cycle_start_date(state)
+    if started is None:
+        return base
+    return max(base, started)
+
+
 def _parse_hotovo_date(block: str) -> date | None:
     m = DATE_ISO_RE.search(block)
     if m:
@@ -111,6 +138,12 @@ def _parse_hotovo_date(block: str) -> date | None:
         except ValueError:
             pass
     m = DATE_CZ_RE.search(block)
+    if m:
+        try:
+            return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        except ValueError:
+            pass
+    m = HOTOVO_INLINE_CZ_RE.search(block)
     if m:
         try:
             return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
@@ -155,7 +188,9 @@ def collect_hotovo_candidates(cutoff: date) -> list[dict]:
             nxt_h = HOTOVO_HEAD_RE.search(section, start)
             block = section[start : nxt_h.start() if nxt_h else len(section)]
             completed = _parse_hotovo_date(block)
-            if completed and completed < cutoff:
+            if completed is None:
+                continue
+            if completed < cutoff:
                 continue
             if EXCLUDE_NAME_RE.search(title):
                 continue
@@ -165,21 +200,59 @@ def collect_hotovo_candidates(cutoff: date) -> list[dict]:
                 one_liner = title
             out.append(
                 {
-                    "key": f"{slug}:{tid}",
+                    "key": key,
                     "title": title,
                     "oneLiner": one_liner,
                     "proj": slug,
                     "projName": proj_name,
                     "taskId": tid,
                     "source": "hotovo",
-                    "completed": (completed or _prague_today()).isoformat(),
+                    "completed": completed.isoformat(),
                     "kind": "done",
                 }
             )
     return out
 
 
-def collect_progress_candidates(tasks: list[dict]) -> list[dict]:
+def _progress_done_count(task: dict) -> int:
+    actionable = [c for c in (task.get("ch") or []) if not c.get("source")]
+    return sum(1 for c in actionable if c.get("d"))
+
+
+def build_progress_baseline(tasks: list[dict]) -> dict[str, int]:
+    """Snapshot rozpracovaných úkolů při --clear (nesmí se hned znovu nabídnout)."""
+    baseline: dict[str, int] = {}
+    for t in tasks:
+        if t.get("st") == "dn" or t.get("p") in ("Waiting", "Backlog"):
+            continue
+        slug = t.get("proj") or ""
+        if slug in EXCLUDE_SLUGS:
+            continue
+        name = t.get("name") or ""
+        if EXCLUDE_NAME_RE.search(name):
+            continue
+        ch = t.get("ch") or []
+        actionable = [c for c in ch if not c.get("source")]
+        if len(actionable) < 2:
+            continue
+        done_n = _progress_done_count(t)
+        ratio = done_n / len(actionable)
+        if ratio < 0.5:
+            continue
+        ice = t.get("ice") or {}
+        i, c, e = ice.get("i", 5), ice.get("c", 5), max(ice.get("e", 5), 1)
+        if (i * c) / e < 5.0:
+            continue
+        tid = t.get("id") or ""
+        baseline[f"{slug}:{tid}"] = done_n
+    return baseline
+
+
+def collect_progress_candidates(
+    tasks: list[dict],
+    *,
+    progress_baseline: dict[str, int] | None = None,
+) -> list[dict]:
     out: list[dict] = []
     for t in tasks:
         if t.get("st") == "dn" or t.get("p") in ("Waiting", "Backlog"):
@@ -194,7 +267,7 @@ def collect_progress_candidates(tasks: list[dict]) -> list[dict]:
         actionable = [c for c in ch if not c.get("source")]
         if len(actionable) < 2:
             continue
-        done_n = sum(1 for c in actionable if c.get("d"))
+        done_n = _progress_done_count(t)
         ratio = done_n / len(actionable)
         if ratio < 0.5:
             continue
@@ -203,6 +276,11 @@ def collect_progress_candidates(tasks: list[dict]) -> list[dict]:
         if (i * c) / e < 5.0:
             continue
         tid = t.get("id") or ""
+        key = f"{slug}:{tid}"
+        if progress_baseline is not None:
+            prev_done = progress_baseline.get(key)
+            if prev_done is not None and done_n <= prev_done:
+                continue
         out.append(
             {
                 "key": f"{slug}:{tid}",
@@ -255,7 +333,12 @@ def attach_ice(topics: list[dict], tasks: list[dict]) -> None:
             topic["ice"] = ice
 
 
-def merge_topics(existing: list[dict], fresh: list[dict]) -> list[dict]:
+def merge_topics(
+    existing: list[dict],
+    fresh: list[dict],
+    *,
+    min_completed: date | None = None,
+) -> list[dict]:
     by_key: dict[str, dict] = {}
     for t in existing:
         k = t.get("key")
@@ -265,6 +348,14 @@ def merge_topics(existing: list[dict], fresh: list[dict]) -> list[dict]:
         k = t.get("key")
         if not k:
             continue
+        if min_completed and t.get("kind") == "done":
+            comp = t.get("completed")
+            if comp:
+                try:
+                    if date.fromisoformat(comp[:10]) < min_completed:
+                        continue
+                except ValueError:
+                    pass
         prev = by_key.get(k)
         if prev:
             prev.update({kk: vv for kk, vv in t.items() if vv is not None})
@@ -275,9 +366,14 @@ def merge_topics(existing: list[dict], fresh: list[dict]) -> list[dict]:
     return list(by_key.values())
 
 
-def rank_topics(topics: list[dict], tasks: list[dict]) -> list[dict]:
+def rank_topics(
+    topics: list[dict],
+    tasks: list[dict],
+    *,
+    hotovo_cutoff: date | None = None,
+) -> list[dict]:
     today = _prague_today()
-    cutoff = today - timedelta(days=LOOKBACK_DAYS)
+    cutoff = hotovo_cutoff or (today - timedelta(days=LOOKBACK_DAYS))
     attach_ice(topics, tasks)
     filtered: list[dict] = []
     for t in topics:
@@ -321,12 +417,25 @@ def load_topics_state() -> dict:
     return {"version": 1, "topics": []}
 
 
-def save_topics_state(topics: list[dict]) -> None:
-    payload = {
+def save_topics_state(
+    topics: list[dict],
+    *,
+    cycle_started_at: str | None = None,
+    progress_baseline: dict[str, int] | None = None,
+    preserve_cycle: bool = True,
+) -> None:
+    prev = load_topics_state() if preserve_cycle else {}
+    payload: dict = {
         "version": 1,
         "updated": datetime.now(TZ).isoformat(timespec="seconds"),
         "topics": topics,
     }
+    csa = cycle_started_at if cycle_started_at is not None else prev.get("cycleStartedAt")
+    if csa:
+        payload["cycleStartedAt"] = csa
+    bl = progress_baseline if progress_baseline is not None else prev.get("progressBaseline")
+    if bl:
+        payload["progressBaseline"] = bl
     get_vault().write_json(TOPICS_REL, payload)
 
 
@@ -465,23 +574,35 @@ def rebuild_dashboard() -> None:
 
 
 def clear_all() -> None:
-    save_topics_state([])
+    now = datetime.now(TZ).isoformat(timespec="seconds")
+    tasks = load_tasks_data().get("tasks", [])
+    baseline = build_progress_baseline(tasks)
+    save_topics_state(
+        [],
+        cycle_started_at=now,
+        progress_baseline=baseline,
+        preserve_cycle=False,
+    )
     sync_to_tasks_json([])
     patch_operations_md([])
-    print("edu_news: cleared topics")
+    print(
+        f"edu_news: cleared topics (cycleStartedAt={now}, "
+        f"progressBaseline={len(baseline)})"
+    )
 
 
 def refresh(*, dry_run: bool = False) -> list[dict]:
     today = _prague_today()
-    cutoff = today - timedelta(days=LOOKBACK_DAYS)
+    state = load_topics_state()
+    cutoff = _effective_hotovo_cutoff(today, state)
     tasks_data = load_tasks_data()
     tasks = tasks_data.get("tasks", [])
 
+    baseline = state.get("progressBaseline") or {}
     fresh = collect_hotovo_candidates(cutoff)
-    fresh.extend(collect_progress_candidates(tasks))
-    state = load_topics_state()
-    merged = merge_topics(state.get("topics", []), fresh)
-    ranked = rank_topics(merged, tasks)
+    fresh.extend(collect_progress_candidates(tasks, progress_baseline=baseline or None))
+    merged = merge_topics(state.get("topics", []), fresh, min_completed=cutoff)
+    ranked = rank_topics(merged, tasks, hotovo_cutoff=cutoff)
     llm = llm_rerank(merged)
     if llm is not None:
         ranked = llm

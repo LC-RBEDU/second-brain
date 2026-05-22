@@ -9,13 +9,16 @@ flowchart LR
   cron["coolify-dev<br/>supercronic kontejner<br/>(stateless)"]
   driveVault["Drive<br/>OBSIDIAN root<br/>1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-"]
   driveDesktop["Google Drive Desktop<br/>(Mac mirror)"]
-  obsidian["Obsidian (PC)"]
+  obsidianSync["Obsidian Sync<br/>(Mac + mobil)"]
+  obsidian["Obsidian klienti"]
 
   n8n -->|".md drop"| driveInbox
   driveInbox -.->|Drive API| cron
   cron -.->|Drive API| driveVault
   driveVault <-->|sync| driveDesktop
   driveDesktop <--> obsidian
+  obsidianSync <--> obsidian
+  driveVault -.->|propagace přes Mac + Drive Desktop| obsidianSync
 ```
 
 ## Klíčové vlastnosti
@@ -27,8 +30,19 @@ flowchart LR
   - **stateless** — žádný volume mount, žádný lokální mirror
   - all I/O přes Google Drive API v3 (OAuth user delegation)
   - `/data/mrluc/` neexistuje, jen `/var/log/second-brain/` pro logy uvnitř kontejneru
-- Mac Obsidian vidí výsledky cronu skrz Google Drive Desktop mirror (existující, neměníme)
+- **Mac:** Obsidian otevírá vault z cesty na Google Drive Desktop mirror; výsledky cronu sem dorazí přes Drive → mirror.
+- **Mobil (od 2026-05-22):** stejný vault přes **Obsidian Sync** (aktivní) — úpravy hubů / INBOX / Tasks na telefonu; na Drive se propsou po sync na Macu (Drive Desktop upload). Cron je nečte přímo z Obsidian Sync.
 - INBOX = `OBSIDIAN/01-INBOX/` — v kódu pracujeme s VAULT root ID a relativními cestami
+
+## Klienti vaultu (kdo jak syncuje)
+
+| Klient | Mechanismus | Poznámka |
+|--------|-------------|----------|
+| n8n | Google Drive API | drop `.md` do `01-INBOX/` |
+| Cron (`second-brain-hub`) | Google Drive API (OAuth) | stateless, žádný volume |
+| Cursor / agent (Mac) | Cesta na Drive Desktop mirror | repo `SECOND_BRAIN` mimo vault |
+| Obsidian Mac | Drive Desktop cesta + **Obsidian Sync** | Sync pro konzistenci s mobilem |
+| Obsidian mobil | **Obsidian Sync** | bez Drive app; viz `OBSIDIAN/00-System/Memory/vault-gdrive-migration.md` |
 
 ## Auth: OAuth user delegation
 
@@ -104,7 +118,7 @@ Drive `modifiedTime` má sec-granularitu (ISO 8601 s ms). False-positive konflik
 
 - n8n workflowy (drop souborů do Drive už funguje)
 - Google Calendar fetch (`fetch_calendar.py` používá jiný scope, jiný subject)
-- Mac Obsidian path (Drive Desktop mirror funguje, neměníme)
+- Mac Obsidian path (Drive Desktop mirror); **Obsidian Sync** aktivní Mac + mobil (2026-05-22)
 - Supercronic scheduling, časy běhů, log formát
 - Dashboard UI (`web/app.js`, `styles.css`, HTML structure)
 
