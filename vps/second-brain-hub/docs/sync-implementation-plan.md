@@ -1,8 +1,10 @@
 # Implementační plán — migrace na Drive API
 
-> **Status (2026-05-22):** Phase **0–3** hotové (Drive API cron na Coolify-dev, OAuth). **Phase 4** — smoke v kontejneru + 24–48h monitoring. **Phase 5** — cleanup volume až po stabilním týdnu. **Obsidian Sync** aktivní (Mac + mobil).
+> **Status (2026-05-23):** Phase **0–3** hotové. **Git `29863b2`** na `main` (hub fixy) — **Coolify Auto Deploy zatím nespustil** (kontejner stále `29df869`). **Ruční Redeploy** v Coolify UI → pak znovu Phase 4.1 smoke na image s `29863b2`.
 >
-> **Hub opravy (2026-05-22):** `edu_news_refresh` — `cycleStartedAt` + `progressBaseline` (žádné znovunačtení po `--clear`); `triage_run` — skip INBOX už v open pending batchi; `sync_tasks` — prune orphan projects.
+> **Phase 4.1 smoke (2026-05-23, image `29df869`):** `triage_run` OK (`proposals=1`); `build_dashboard` OK (`inbox=1 pending=3`); logy bez tracebacku. `edu_news_refresh --dry-run` na starém image — **20 signálů vč. HOTOVO** (fix `progressBaseline` v kontejneru ještě není).
+>
+> **Hub opravy v `29863b2`:** `edu_news_refresh` — `cycleStartedAt` + `progressBaseline`; `triage_run` — skip INBOX v open pending; `sync_tasks` — prune orphan projects.
 
 **Aktuální vault root:** `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/` na lukas@redbuttonedu.cz).
 
