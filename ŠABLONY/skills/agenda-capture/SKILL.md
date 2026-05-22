@@ -14,7 +14,7 @@ description: "Capture into MrLUC vault: paste, files, or new files in OBSIDIAN/0
 
 - Uživatel paste-ne text do chatu
 - V chatu se objeví soubor (PDF, .docx, .xlsx, .png, audio)
-- Nové soubory v `01-INBOX/{slack,sembly,email,daily}/` (n8n → Drive)
+- Nové soubory v `01-INBOX/{slack,sembly,email,email/sent,daily}/` (n8n → Drive)
 - „zapiš si“, „hoď to k tématu X“, „rozhoď to“, „máš tam něco v inboxu?“
 
 ## Workflow
@@ -33,7 +33,8 @@ description: "Capture into MrLUC vault: paste, files, or new files in OBSIDIAN/0
 - **Audio** → transkripce pokud k dispozici; jinak požádej o text
 - **INBOX/sembly/** → markdown ze Sembly
 - **INBOX/slack/** → markdown z n8n
-- **INBOX/email/** → markdown z n8n; přílohy vedle .md otevři zvlášť
+- **INBOX/email/** → markdown z n8n (forward); přílohy vedle .md otevři zvlášť
+- **INBOX/email/sent/** → odeslané z Workspace (`source: sent`); hledej Lukášovy sliby/úkoly; cron je zpracuje jako commitment návrhy v Triage-Pending
 
 ### 3. Rozsekej na položky
 

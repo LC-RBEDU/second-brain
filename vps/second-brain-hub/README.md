@@ -15,7 +15,7 @@ flowchart LR
 
 | Kde | Co běží |
 |-----|---------|
-| **Google Drive** | `01-INBOX/{slack,sembly,email,daily}/` — SSOT pro n8n capture |
+| **Google Drive** | `01-INBOX/{slack,sembly,email,email/sent,daily}/` — SSOT pro n8n capture |
 | **coolify-dev** | Docker: `triage_run.py`, `build_dashboard.py`, `edu_news_refresh.py` |
 | **Mac** | Dashboard HTML + `dashboard-data.json` (žádná veřejná URL) |
 
@@ -59,6 +59,8 @@ V Coolify UI u každé proměnné **Available at Runtime** (v DB `is_buildtime=f
 | `GOOGLE_DRIVE_SA_JSON` | Obsah SA klíče (stejný jako RB Universe worker) — alternativa `GOOGLE_SERVICE_ACCOUNT_JSON` |
 | `CALENDAR_USER_EMAIL` | `lukas@redbuttonedu.cz` (domain-wide delegation) |
 | `CALENDAR_DAYS_AHEAD` | `2` (dnes + zítra; max 14) |
+| `ANTHROPIC_API_KEY` | volitelné — LLM pro EDU news rerank a extrakci e-mailových závazků |
+| `ANTHROPIC_MODEL` | volitelné, default `claude-3-5-haiku-20241022` |
 
 Kalendář: `cron/fetch_calendar.py` → `00-System/calendar-events.json`; `build_dashboard.py` to načte při buildu.
 
@@ -68,7 +70,7 @@ MrLUC **není** v gitu. Layout na hostu = stejný jako Obsidian vault:
 
 ```
 /data/mrluc/
-├── 01-INBOX/slack|sembly|email|daily/
+├── 01-INBOX/slack|sembly|email|email/sent|daily/
 ├── 02-PROJEKTY/
 ├── 00-System/Triage-Pending/
 └── …
@@ -120,9 +122,9 @@ Nedělní večer: drafty v `00-System/weekly/YYYY-Www-draft.md` a `00-System/Mem
 VAULT_PATH=… python3 cron/edu_news_refresh.py --clear
 ```
 
-Volitelně `ANTHROPIC_API_KEY` pro LLM přeřazení kandidátů (bez klíče běží heuristika).
+Volitelně `ANTHROPIC_API_KEY` pro LLM přeřazení kandidátů EDU news a pro extrakci e-mailových závazků (bez klíče běží heuristika).
 
-`triage_run.py` skenuje pouze `01-INBOX/{slack,sembly,email,daily}/`.
+`triage_run.py` skenuje `01-INBOX/{slack,sembly,email,daily}/` (včetně `email/sent/`). U odeslaných e-mailů volá `triage_commitments.py` — extrahuje Lukášovy závazky (`kind: commitment`, volitelně `confidence`). Bez `ANTHROPIC_API_KEY` běží česká heuristika; s klíčem LLM (stejný pattern jako `edu_news_refresh.py`). Capture: n8n `workspace-sent-to-inbox.json` → viz `ŠABLONY/workspace-sent-email-setup.md`.
 
 Logy: `docker logs <container>` nebo `docker exec … tail /var/log/second-brain/*.log`
 

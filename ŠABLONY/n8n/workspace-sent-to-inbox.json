@@ -1,0 +1,102 @@
+{
+  "name": "Workspace SENT → INBOX/email/sent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "in:sent from:lukas@redbuttonedu.cz -in:trash"
+        },
+        "options": {}
+      },
+      "id": "gmail-sent-trigger",
+      "name": "Gmail: odeslané (workspace)",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_WORKSPACE_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Workspace lukas@redbuttonedu.cz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.processedMessageIds) staticData.processedMessageIds = {};\nconst seen = staticData.processedMessageIds;\nconst MAX_IDS = 5000;\nconst out = [];\nfor (const item of $input.all()) {\n  const id = String(item.json.id || item.json.messageId || '').trim();\n  if (!id || seen[id]) continue;\n  out.push(item);\n  seen[id] = Date.now();\n}\nconst keys = Object.keys(seen);\nif (keys.length > MAX_IDS) {\n  keys.sort((a, b) => (seen[a] || 0) - (seen[b] || 0)).slice(0, keys.length - MAX_IDS).forEach((k) => delete seen[k]);\n}\nreturn out;"
+      },
+      "id": "dedupe-message-id",
+      "name": "Dedupe: messageId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'Europe/Prague';\nfunction slug(s, maxLen) {\n  let t = String(s || '').normalize('NFC').replace(/[\\\\/:?*|#\"<>%]+/g, '-').replace(/\\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;\n}\nfunction tsPrague(d) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;\n}\nfunction addr(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v)) return v.map(addr).filter(Boolean).join(', ');\n  if (Array.isArray(v.value)) return v.value.map(x => x && (x.address || x.name)).filter(Boolean).join(', ');\n  return '';\n}\nfunction htmlToText(html) {\n  if (!html) return '';\n  return String(html).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n  const messageId = String(e.id || e.messageId || '').trim();\n  const date = new Date(e.internalDate ? parseInt(String(e.internalDate), 10) : (e.date ? new Date(e.date).getTime() : Date.now()));\n  const fromText = addr(e.from) || 'lukas@redbuttonedu.cz';\n  const toText = addr(e.to) || '';\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n  const filename = `${tsPrague(date)}-sent-${slug(toText.split(',')[0] || 'recipient', 40)}-${slug(subjectClean, 60) || 'no-subject'}.md`;\n  const plain = e.text && String(e.text).trim();\n  const htmlText = htmlToText(e.html != null ? e.html : e.textAsHtml || '');\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body = plain || htmlText || (snippet ? snippet + '\\n\\n_(snippet — vypni Simplify u triggeru)_' : '_(prázdné tělo)_');\n  const fm = ['---', 'source: sent', `messageId: ${messageId}`, `to: ${toText.replace(/\\n/g, ' ')}`, `subject: ${subject.replace(/\\n/g, ' ')}`, `date: ${date.toISOString()}`, `from: ${fromText.replace(/\\n/g, ' ')}`, '---', ''].join('\\n');\n  const md = [fm, `# Email: ${subject}`, '', '**Source**: sent', `**From**: ${fromText}`, `**To**: ${toText}`, `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`, `**Gmail message ID**: ${messageId}`, '', '## Tělo', '', body, ''].join('\\n');\n  items.push({ json: { filename, content: md, messageId } });\n}\nreturn items;"
+      },
+      "id": "format-sent-md",
+      "name": "Format → Markdown (sent)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "createFromText",
+        "content": "={{ $json.content }}",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_DRIVE_ID"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_INBOX_EMAIL_SENT_FOLDER_ID"
+        },
+        "options": {}
+      },
+      "id": "save-sent-to-drive",
+      "name": "Drive: Save .md to INBOX/email/sent/",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [860, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "REPLACE_WITH_GDRIVE_CREDENTIAL_ID",
+          "name": "Google Drive Lukáš"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail: odeslané (workspace)": {
+      "main": [[{ "node": "Dedupe: messageId", "type": "main", "index": 0 }]]
+    },
+    "Dedupe: messageId": {
+      "main": [[{ "node": "Format → Markdown (sent)", "type": "main", "index": 0 }]]
+    },
+    "Format → Markdown (sent)": {
+      "main": [[{ "node": "Drive: Save .md to INBOX/email/sent/", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "_NOTES_FOR_LUKAS": [
+    "Gmail OAuth na lukas@redbuttonedu.cz (Workspace), ne osobní Gmail.",
+    "Filter: in:sent from:lukas@redbuttonedu.cz — Simplify OFF.",
+    "Dedupe přes workflow static data (messageId). Po reinstall n8n může znovu zpracovat historii.",
+    "Cíl: OBSIDIAN/01-INBOX/email/sent/ — REPLACE_WITH_INBOX_EMAIL_SENT_FOLDER_ID.",
+    "Alternativa Gmail API v cron vyžaduje OAuth token v Coolify — n8n je jednodušší bez secretů v repu.",
+    "triage_run.py + triage_commitments.py extrahují závazky (heuristika nebo ANTHROPIC_API_KEY)."
+  ]
+}

@@ -22,10 +22,14 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 _LIB = Path(__file__).resolve().parents[1] / "lib"
+_CRON = Path(__file__).resolve().parent
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
+if str(_CRON) not in sys.path:
+    sys.path.insert(0, str(_CRON))
 
 from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+from triage_commitments import extract_commitments, is_sent_email  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
@@ -168,11 +172,25 @@ def main() -> None:
     now = datetime.now(TZ)
     batch_id = now.strftime("%Y-%m-%d-%H%M")
     proposals = []
-    for i, (rel, body) in enumerate(items, 1):
+    pid = 0
+    for rel, body in items:
+        if is_sent_email(rel, body):
+            sent = extract_commitments(rel, body, guess_proj=guess_proj)
+            if not sent:
+                print("skip sent email without commitments:", rel)
+                continue
+            for pr in sent:
+                pid += 1
+                pr = dict(pr)
+                pr["id"] = f"p{pid}"
+                proposals.append(pr)
+            continue
+
         name = rel.rsplit("/", 1)[-1]
+        pid += 1
         proposals.append(
             {
-                "id": f"p{i}",
+                "id": f"p{pid}",
                 "action": "add_task",
                 "title": title_from_file(name, body),
                 "suggestedProj": guess_proj(body, rel),
@@ -183,6 +201,10 @@ def main() -> None:
                 "sourceFile": rel,
             }
         )
+
+    if not proposals:
+        print("no proposals after filtering (sent emails may lack commitments)")
+        return
 
     batch = {
         "batchId": batch_id,
@@ -198,11 +220,16 @@ def main() -> None:
     lines = [
         f"# Triage batch {batch_id}\n",
         f"**Počet návrhů:** {len(proposals)}\n",
-        "| ID | Návrh | Projekt |",
-        "|----|-------|---------|",
+        "| ID | Návrh | Projekt | Typ |",
+        "|----|-------|---------|-----|",
     ]
     for pr in proposals:
-        lines.append(f"| {pr['id']} | {pr['title'][:60]} | {pr['suggestedProj']} |")
+        kind = pr.get("kind") or "inbox"
+        conf = pr.get("confidence")
+        conf_s = f" ({conf:.2f})" if isinstance(conf, (int, float)) else ""
+        lines.append(
+            f"| {pr['id']} | {pr['title'][:60]} | {pr['suggestedProj']} | {kind}{conf_s} |"
+        )
     lines.append("\nSchválení: v Cursoru `schval pending triáž`\n")
     vault.write_text(summary_rel, "\n".join(lines))
     print("wrote drive://", out_rel, "proposals=", len(proposals))

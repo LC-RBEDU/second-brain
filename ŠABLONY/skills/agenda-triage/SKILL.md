@@ -34,6 +34,14 @@ Default: B (nebo P pokud uživatel žádá pending).
 3. Preview jako v `agenda-capture`
 4. Po OK: zápis do `02-PROJEKTY/`, archiv, Index
 
+### Odeslané e-maily (`01-INBOX/email/sent/`)
+
+- Capture: n8n `workspace-sent-to-inbox.json` (Workspace `lukas@redbuttonedu.cz`, frontmatter `source: sent`)
+- Cron `triage_run.py` + `triage_commitments.py` navrhne jen **Lukášovy závazky** z odeslané pošty (ne generický úkol na celý mail)
+- Batch JSON může mít `kind: "commitment"`, `confidence` (0–1), `action`: `add_task` | `add_note_to_task` | `commitment_watch`
+- Odeslaný mail bez závazku → cron ho přeskočí (žádný návrh v batchi)
+- PENDING: u commitmentů zkontroluj `notes` (citace z e-mailu) a `confidence` před schválením
+
 ## Deep
 
 Pro každou položku: shrnutí, návrh tématu/metadata, OK/uprav/přeskoč/drop.
@@ -41,7 +49,7 @@ Pro každou položku: shrnutí, návrh tématu/metadata, OK/uprav/přeskoč/drop
 ## PENDING (cron)
 
 1. Načti nejnovější `00-System/Triage-Pending/*-batch.json` + summary
-2. Ukaž změny (nové úkoly, …). Vypršené **Waiting** řeší `build_dashboard.py` automaticky (hub → **ASAP**); staré `waiting_expired` pending batch jen archivuj, neptej se znovu.
+2. Ukaž změny (nové úkoly, commitment z sent mail, …). U `kind: commitment` zobraz `confidence` a citaci v `notes`. Vypršené **Waiting** řeší `build_dashboard.py` automaticky (hub → **ASAP**); staré `waiting_expired` pending batch jen archivuj, neptej se znovu.
 3. **Nikdy neaplikuj bez explicitního „ano“ / „apply“**
 4. Po schválení: aplikuj na hub `.md`, přesuň batch do `Triage-Applied/`, rebuild dashboard pokud požádáno
 
