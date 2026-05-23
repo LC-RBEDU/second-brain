@@ -1,10 +1,14 @@
 # Implementační plán — migrace na Drive API
 
-> **Status (2026-05-23):** Phase **0–3** hotové v kódu. Phase **4.1 částečně** (smoke na starém image `29df869`). **Coolify Redeploy** nutný pro image s commity po `29df869`. **Git `20cb834`** na `main`.
+> **Status (2026-05-23):** Phase **0–3** hotové. **Coolify Redeploy hotov** — běží image **`881b458`** (`140b40c7afe90d0827d8489a-012514625772`, supercronic OK). Phase **4.1 částečně** — triage + build + hourly cron ověřeno; **`edu_news_refresh --dry-run` padá** (`NameError: key` v `collect_hotovo_candidates`, ř. 203 — chybí `f"{slug}:{tid}"`). Phase **4.2–4.3** čekají na čas / E2E.
 >
-> **Phase 4.1 smoke (2026-05-23, image `29df869`):** `triage_run` OK (`proposals=1`); `build_dashboard` OK (`inbox=1 pending=3`); logy bez tracebacku. `edu_news_refresh --dry-run` na starém image — **20 signálů vč. HOTOVO** (fix `progressBaseline` v kontejneru ještě není).
+> **Phase 4.1 smoke (2026-05-23, image `881b458`, po redeploy):**
+> - `triage_run` OK (`no inbox files to triage`)
+> - `build_dashboard` OK (`inbox=0 pending=0 waiting=8`, bez tracebacku)
+> - `/app/crontab` — hourly `build_dashboard` **8–21, :35** ✓; sent fallback v `triage_run.py` (`proposalType`, `archive_only`) ✓
+> - `edu_news_refresh --dry-run` **FAIL** — `NameError: name 'key' is not defined` (`collect_hotovo_candidates`); `progressBaseline` / `cycleStartedAt` nelze ověřit dokud není fix
 >
-> **Nové v repu (po `29863b2`):** sent-email fallback (`proposalType`, `archive_only`, business-action heuristika); summary batch v češtině; hourly `build_dashboard` v `deploy/crontab` (8–21, `:35`); README → Drive API architektura.
+> **Předchozí smoke (image `29df869`, před redeploy):** `triage_run` OK (`proposals=1`); `build_dashboard` OK (`inbox=1 pending=3`); `edu_news_refresh` běžel, ale bez `progressBaseline` logiky z novějších commitů.
 
 **Aktuální vault root:** `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/` na lukas@redbuttonedu.cz).
 
@@ -249,7 +253,7 @@ Git push `main` → Auto Deploy stáhne nový image.
 
 ## Phase 4 — Smoke a 24h cyklus
 
-- [~] **4.1** Manuální smoke v kontejneru — **částečně hotovo** na image `29df869`; **vyžaduje Coolify Redeploy** na image s commity po `29df869` (sent fallback, `progressBaseline`, hourly cron)
+- [~] **4.1** Manuální smoke v kontejneru — **částečně hotovo** na image **`881b458`** (2026-05-23 redeploy): `triage_run` ✓, `build_dashboard` ✓, hourly cron 8–21 ✓, sent fallback v kódu ✓; **`edu_news_refresh --dry-run` ✗** (`NameError: key` — fix v `collect_hotovo_candidates` před uzavřením 4.1)
 - [ ] **4.2** Sledování cron logů 24–48 h (Po–Pá triage 7/14/20, build +5 min, hourly build 8–21)
 - [ ] **4.3** End-to-end: drop INBOX → batch → `agenda-triage` → hub + archiv → dashboard
 
