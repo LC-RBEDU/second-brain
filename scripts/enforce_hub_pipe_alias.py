@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Rewrite bare slug wikilinks to pipe-alias form pointing at the hub charter.
+"""Rewrite hub wikilinks to clean `[[<HubFilename>]]` form (readable display).
 
-Bare `[[ma-odyssey]]` relies on Obsidian alias resolution from the hub frontmatter
-(`aliases: [ma-odyssey]`). When a folder of the same name exists (`02-PROJEKTY/ma-odyssey/`),
-the resolution can be flaky depending on Obsidian settings (New link format,
-alias cache rebuilds). Pipe-alias `[[M&A Odyssey|ma-odyssey]]` is deterministic —
-it explicitly targets the hub file, display stays as the slug.
+Display in body should be the human hub name ("M&A Odyssey"), not the slug
+("ma-odyssey"). Target should be the hub charter file, not the folder
+`02-PROJEKTY/<slug>/`. Best Obsidian form: `[[M&A Odyssey]]` — target = file,
+display = filename without `.md`, fully readable.
+
+Two patterns rewritten:
+1. Bare `[[<slug>]]` → `[[<HubFilename>]]`     (slug-as-display, ambiguous folder/file)
+2. Pipe-alias `[[<HubFilename>|<slug>]]` → `[[<HubFilename>]]`  (drop slug display)
 
 Scope:
 - All .md files under 02-PROJEKTY/ (hubs + tasks/ + materials/ + outputs)
 - Frontmatter (within YAML strings) is left alone — Bases plugin uses
   `this.file.asLink()` and resolves aliases reliably for queries
-- Body wikilinks rewritten only when:
-  - Match is `[[<slug>]]` (no pipe, no path, no anchor) — exact bare form
-  - <slug> is a known project slug from migration-mapping.json
-  - The wikilink isn't inside a code fence
+- Body wikilinks rewritten only outside code fences
 
-Idempotent — pipe-alias form `[[Hub|slug]]` is left untouched on re-run.
+Idempotent — `[[<HubFilename>]]` form stays untouched on re-run.
 
 Usage:
     python3 scripts/enforce_hub_pipe_alias.py --dry-run
@@ -54,9 +54,13 @@ def load_mapping() -> dict[str, str]:
 
 
 def rewrite_body(body: str, mapping: dict[str, str]) -> tuple[str, int]:
-    """Replace bare [[<slug>]] with [[<HubFilenameNoExt>|<slug>]] in body markdown.
+    """Replace hub wikilinks with clean [[<HubFilename>]] form.
 
-    Skips wikilinks inside code fences. Preserves anything with pipe or anchor.
+    Patterns rewritten:
+    1. Bare `[[<slug>]]` -> `[[<HubFilename>]]`
+    2. Pipe-alias `[[<HubFilename>|<slug>]]` -> `[[<HubFilename>]]`
+
+    Skips wikilinks inside code fences. Preserves anchors `[[X#section]]`.
     """
     n_changes = 0
     code_spans: list[tuple[int, int]] = [
@@ -66,22 +70,43 @@ def rewrite_body(body: str, mapping: dict[str, str]) -> tuple[str, int]:
     def in_code(pos: int) -> bool:
         return any(s <= pos < e for s, e in code_spans)
 
-    # Match exactly [[slug]] — no pipe, no /, no #, no |
-    pattern = re.compile(r"\[\[([^\[\]\|\#/]+)\]\]")
+    # Reverse map: hub_filename_no_ext -> slug (for matching pipe-alias form)
+    hub_to_slug = {v: k for k, v in mapping.items()}
 
-    def replace(m: re.Match) -> str:
+    # 1. Bare [[<slug>]] -> [[<HubFilename>]]
+    bare_pattern = re.compile(r"\[\[([^\[\]\|\#/]+)\]\]")
+
+    def replace_bare(m: re.Match) -> str:
         nonlocal n_changes
         if in_code(m.start()):
             return m.group(0)
-        slug = m.group(1).strip()
-        hub = mapping.get(slug)
-        if not hub:
-            return m.group(0)
-        n_changes += 1
-        return f"[[{hub}|{slug}]]"
+        text = m.group(1).strip()
+        # If text is a known slug, rewrite to hub filename
+        hub = mapping.get(text)
+        if hub:
+            n_changes += 1
+            return f"[[{hub}]]"
+        return m.group(0)
 
-    new_body = pattern.sub(replace, body)
-    return new_body, n_changes
+    body = bare_pattern.sub(replace_bare, body)
+
+    # 2. Pipe-alias [[<HubFilename>|<slug>]] -> [[<HubFilename>]]
+    pipe_pattern = re.compile(r"\[\[([^\[\]\|\#]+)\|([^\[\]\|\#]+)\]\]")
+
+    def replace_pipe(m: re.Match) -> str:
+        nonlocal n_changes
+        if in_code(m.start()):
+            return m.group(0)
+        target = m.group(1).strip()
+        display = m.group(2).strip()
+        # Only collapse if target is a known hub and display is its slug
+        if target in hub_to_slug and hub_to_slug[target] == display:
+            n_changes += 1
+            return f"[[{target}]]"
+        return m.group(0)
+
+    body = pipe_pattern.sub(replace_pipe, body)
+    return body, n_changes
 
 
 def patch_file(path: Path, mapping: dict[str, str], dry_run: bool = False) -> int:
