@@ -11,12 +11,20 @@ regardless of whether the file is named `<ID>.md` (legacy) or
 
 Frontmatter:
     recurring:
-      frequency: weekly | monthly | every-n-days | weekday
+      frequency: weekly | monthly | every-n-days | weekday | last-weekday-before-day
       interval: 42                     # for every-n-days
-      weekday: thursday                # for weekly
+      weekday: thursday                # for weekly | weekday | last-weekday-before-day
+      day: 15                          # for last-weekday-before-day (cutoff day of month)
       reset_body_sections: ["## Operativní kroky", "## Poznámky / log"]
       preserve_body_sections: ["## Kontext"]
     extra_module: edu_news             # optional, calls lifecycle_extra_<module>.py clear
+
+The `last-weekday-before-day` frequency is useful for monthly rituals that
+must land on a specific weekday before a fixed monthly anchor (e.g. CFO
+commentary must arrive on the last Friday before the strategic meeting,
+which is held on the 15th of every month). The next deadline is the
+largest date in the next month where that anchor has not yet passed,
+restricted to (a) the configured weekday and (b) day-of-month ≤ (day - 1).
 
 Workflow per Done recurring task:
 1. Move current file (e.g. `<ID> — <Title>.md`) to
@@ -36,6 +44,7 @@ Idempotent — re-running on Already-rotated task does nothing (status no longer
 """
 from __future__ import annotations
 
+import calendar
 import os
 import re
 import sys
@@ -117,8 +126,69 @@ def compute_next_deadline(rec: dict, last_deadline: Optional[date], today: date)
             days_ahead = 7
         return today + timedelta(days=days_ahead)
 
+    if freq == "last-weekday-before-day":
+        wd_name = (rec.get("weekday") or "").lower().strip()
+        wd = WEEKDAY_MAP.get(wd_name)
+        try:
+            day = int(rec.get("day") or 0)
+        except (ValueError, TypeError):
+            day = 0
+        if wd is None or day < 2:
+            # Misconfigured — fallback to +30 days so the task still rotates.
+            return today + timedelta(days=30)
+        return next_last_weekday_before_day(today, day, wd)
+
     # Unknown frequency — fallback to +7 days
     return today + timedelta(days=7)
+
+
+def _last_weekday_before_day_in_month(
+    year: int, month: int, day: int, weekday_idx: int
+) -> Optional[date]:
+    """Largest date in (year, month) with `date.weekday() == weekday_idx`
+    and day-of-month ≤ (day - 1). Returns None if no such date exists
+    (only happens for pathological inputs like day ≤ 1).
+
+    Caps the cutoff at the actual length of the month so that
+    `day` values larger than the month length (e.g. day=31 in February)
+    still yield a sensible answer.
+    """
+    if day < 2:
+        return None
+    days_in_month = calendar.monthrange(year, month)[1]
+    cutoff = min(day - 1, days_in_month)
+    # cutoff ≥ 1 because day ≥ 2.
+    # weekday occurs at most every 7 days, so scanning back at most 6 days finds it.
+    for offset in range(7):
+        d = cutoff - offset
+        if d < 1:
+            return None
+        candidate = date(year, month, d)
+        if candidate.weekday() == weekday_idx:
+            return candidate
+    return None
+
+
+def next_last_weekday_before_day(today: date, day: int, weekday_idx: int) -> date:
+    """Next strictly-future date matching the `last-weekday-before-day` rule.
+
+    Walks forward month by month starting from `today.month` and returns
+    the first match strictly later than `today`. Bounded by 14 months to
+    avoid infinite loops on impossible inputs (would also catch a bug).
+    """
+    year, month = today.year, today.month
+    for _ in range(14):
+        candidate = _last_weekday_before_day_in_month(year, month, day, weekday_idx)
+        if candidate is not None and candidate > today:
+            return candidate
+        month += 1
+        if month > 12:
+            month = 1
+            year += 1
+    raise ValueError(
+        f"last-weekday-before-day: no valid date found within 14 months "
+        f"of {today.isoformat()} (day={day}, weekday_idx={weekday_idx})"
+    )
 
 
 def reset_body(body: str, reset_sections: list[str], preserve_sections: list[str], task_id: str = "") -> str:
