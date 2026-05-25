@@ -158,6 +158,7 @@ def build_v2_proposal(
     new_id = next_id_for_slug(vault, slug, prefix)
     filename = f"{new_id}-{_slugify_filename(title)}.md"
     target_path = f"02-PROJEKTY/{slug}/tasks/{filename}"
+    hub_basename = (entry.get("hub_filename") or "").removesuffix(".md") or slug
 
     body_md = (
         f"# {new_id} — {title}\n\n"
@@ -174,7 +175,8 @@ def build_v2_proposal(
         "frontmatter": {
             "id": new_id,
             "type": "task",
-            "project": f"[[{slug}]]",
+            "title": title,
+            "project": f"[[{hub_basename}]]",
             "slug": slug,
             "status": priority,
             "ice_i": ice[0],

@@ -211,10 +211,11 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
             tid = str(fm.get("id") or "")
             if not tid:
                 continue
-            title = ""
-            mt = HUB_TITLE_RE.search(body)
-            if mt:
-                title = re.sub(rf"^{re.escape(tid)}\s*[—–-]\s*", "", mt.group(1).strip()).strip()
+            title = str(fm.get("title") or "").strip()
+            if not title:
+                mt = HUB_TITLE_RE.search(body)
+                if mt:
+                    title = re.sub(rf"^{re.escape(tid)}\s*[—–-]\s*", "", mt.group(1).strip()).strip()
             try:
                 rel_path = str(task_file.relative_to(vault))
             except ValueError:

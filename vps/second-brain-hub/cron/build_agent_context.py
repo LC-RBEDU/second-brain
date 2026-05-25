@@ -62,10 +62,11 @@ def task_to_dict(task) -> dict:
     fm = task.frontmatter
     tid = str(fm.get("id") or "")
     body = task.body or ""
-    title = ""
-    mt = HUB_TITLE_RE.search(body)
-    if mt:
-        title = re.sub(rf"^{re.escape(tid)}\s*[—–-]\s*", "", mt.group(1).strip()).strip()
+    title = str(fm.get("title") or "").strip()
+    if not title:
+        mt = HUB_TITLE_RE.search(body)
+        if mt:
+            title = re.sub(rf"^{re.escape(tid)}\s*[—–-]\s*", "", mt.group(1).strip()).strip()
     i = _to_int(fm.get("ice_i"))
     c = _to_int(fm.get("ice_c"))
     e = max(_to_int(fm.get("ice_e")), 1)

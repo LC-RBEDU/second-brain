@@ -294,13 +294,36 @@ def task_filename(task_id: str, title: str) -> str:
     return f"{task_id}.md"
 
 
+_MAPPING_CACHE: dict[str, str] | None = None
+
+
+def _hub_basename_for(slug: str) -> str:
+    """Resolve slug → hub filename (without .md). Falls back to slug if unmapped."""
+    global _MAPPING_CACHE
+    if _MAPPING_CACHE is None:
+        try:
+            raw = json.loads(MAPPING_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            _MAPPING_CACHE = {}
+        else:
+            _MAPPING_CACHE = {
+                row["slug"]: row["hub_filename"].removesuffix(".md")
+                for row in raw
+                if row.get("slug") and row.get("hub_filename")
+            }
+    return _MAPPING_CACHE.get(slug, slug)
+
+
 def render_task_file(task: ParsedTask, project_slug: str, source_default: str = "") -> str:
     today_str = str(date.today())
+    hub_target = _hub_basename_for(project_slug)
+    title_escaped = task.title.replace("\\", "\\\\").replace('"', '\\"')
     fm_lines = [
         "---",
         f"id: {task.task_id}",
         "type: task",
-        f'project: "[[{project_slug}]]"',
+        f'title: "{title_escaped}"',
+        f'project: "[[{hub_target}]]"',
         f"slug: {project_slug}",
         f"status: {task.status}",
         f"ice_i: {task.ice_i}",
