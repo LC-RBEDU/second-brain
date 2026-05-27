@@ -2,8 +2,11 @@
 """F6.2: Auto-flip task status Waiting → ASAP when waitUntil <= today.
 
 Scans 02-PROJEKTY/<slug>/tasks/*.md for `status: Waiting` && `waitUntil <= today`.
-Patches frontmatter status: ASAP + updated: today, appends log line.
+Patches frontmatter: status → ASAP, waitUntil → empty, updated → today; appends log.
 CAS-aware.
+
+waitUntil is only valid for status Waiting; see lifecycle_waituntil_hygiene.py for
+tasks flipped manually without clearing the field.
 
 Idempotent.
 """
@@ -45,8 +48,8 @@ def main() -> None:
             continue
 
         log = (
-            f"- {today_str}: Waiting → ASAP (waitUntil={wu.isoformat()} expired). "
-            f"[lifecycle_waiting_to_asap]\n"
+            f"- {today_str}: Waiting → ASAP (waitUntil={wu.isoformat()} expired, "
+            f"waitUntil cleared). [lifecycle_waiting_to_asap]\n"
         )
         ok = update_task(
             vault,

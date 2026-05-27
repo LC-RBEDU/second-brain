@@ -46,7 +46,8 @@ bash scripts/sync-agenda-skills.sh
 | Skript | Frekvence | Účel |
 |--------|-----------|------|
 | `lifecycle_done_from_checkboxes.py` | 03:00 | All checkboxes [x] → status: Done |
-| `lifecycle_waiting_to_asap.py` | 03:10 | Waiting + waitUntil ≤ dnes → ASAP |
+| `lifecycle_waiting_to_asap.py` | 03:10 | Waiting + waitUntil ≤ dnes → ASAP (waitUntil smaže) |
+| `lifecycle_waituntil_hygiene.py` | 03:15 | waitUntil vyčistí u tasků mimo Waiting |
 | `lifecycle_overdue_flag.py` | 03:20 | Append OVERDUE log do body |
 | `archive_done_tasks.py` | 04:00 | Done > 90 dní → 07-ARCHIV/tasks-done/<slug>/ |
 | `lifecycle_recurring.py` | 04:30 | Done + recurring → archive + nová instance |

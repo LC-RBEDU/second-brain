@@ -16,8 +16,10 @@ TZ=Europe/Prague
 # === V2 LIFECYCLE (denně) ===
 # 03:00 — done from checkboxes (auto-flip status: Done if all [x])
 0 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_done_from_checkboxes.py >> /var/log/second-brain/lifecycle.log 2>&1
-# 03:10 — waiting → asap when waitUntil expired
+# 03:10 — waiting → asap when waitUntil expired (clears waitUntil)
 10 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_to_asap.py >> /var/log/second-brain/lifecycle.log 2>&1
+# 03:15 — clear stray waitUntil on non-Waiting tasks (manual status edits)
+15 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_waituntil_hygiene.py >> /var/log/second-brain/lifecycle.log 2>&1
 # 03:20 — overdue flag (append OVERDUE log line in body)
 20 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_overdue_flag.py >> /var/log/second-brain/lifecycle.log 2>&1
 # 04:00 — archive Done tasks (move .md → 07-ARCHIV/tasks-done/<slug>/)

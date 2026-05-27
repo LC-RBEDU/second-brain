@@ -45,14 +45,15 @@ Mapping user intent → frontmatter změna:
 
 | User intent | Patch |
 |-------------|-------|
-| "hotovo" / "done" | `status: Done`, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>` |
+| "hotovo" / "done" | `status: Done`, `waitUntil:` prázdné, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>` |
 | "hotovo PD4-3" | flip checkbox `**PD4-3**` v `## Operativní kroky` na `[x]` (single subtask) |
-| "ASAP" / "urgent" | `status: ASAP`, `updated: <today>` |
+| "ASAP" / "urgent" | `status: ASAP`, `waitUntil:` prázdné, `updated: <today>` |
 | "odlož do YYYY-MM-DD" | `status: Waiting`, `waitUntil: <date>`, `updated: <today>` |
 | "ztím čekat" (bez data) | `status: Waiting`, `waitUntil: <today + 3 dny>`, `updated: <today>` |
 | "zruš" / "cancel" | Confirm s userem; pak smazat soubor (NE archive) |
 | "deadline YYYY-MM-DD" | `deadline: <date>`, `updated: <today>` |
 | "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` |
+| status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`) |
 
 ### 4. Preview (povinné)
 
@@ -90,6 +91,7 @@ python3 scripts/build_agent_context.py
 ## Pravidla
 
 - Pouze single-task ops; bulk přes `agenda-work` / `agenda-co-ted` / `agenda-priority-review`
-- Nikdy nemaž frontmatter pole, jen patchni / přidávej
+- **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na ASAP / Next / Backlog / Doing / Done vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (03:15) vyčistí opomenutí z manuálních editací.
+- Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej
 - "Zruš" → potvrď s userem (mazání je destruktivní)
 - Recurring tasky (`recurring:` blok ve frontmatteru) — Done flip spustí cron `lifecycle_recurring.py` (vytvoří next instance) — ne dělej manuálně
