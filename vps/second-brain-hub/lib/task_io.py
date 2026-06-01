@@ -81,7 +81,7 @@ def serialize_task(frontmatter: dict[str, Any], body: str) -> str:
 def iter_active_tasks(vault: DriveVault) -> Iterator[ParsedTask]:
     """Iter over 02-PROJEKTY/<slug>/tasks/*.md, parse each."""
     for slug_dir_meta in vault.list_dir(PROJEKTY_DIR):
-        if slug_dir_meta.mime != "application/vnd.google-apps.folder":
+        if not slug_dir_meta.is_folder:
             continue
         slug = slug_dir_meta.name
         tasks_rel = f"{PROJEKTY_DIR}/{slug}/tasks"
@@ -119,7 +119,7 @@ def iter_archive_tasks(vault: DriveVault, slug: str | None = None) -> Iterator[P
     except DriveNotFoundError:
         return
     for slug_meta in slug_dirs:
-        if slug_meta.mime != "application/vnd.google-apps.folder":
+        if not slug_meta.is_folder:
             continue
         yield from iter_archive_tasks(vault, slug_meta.name)
 
