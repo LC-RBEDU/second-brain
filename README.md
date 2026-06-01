@@ -45,12 +45,14 @@ bash scripts/sync-agenda-skills.sh
 
 | Skript | Frekvence | Účel |
 |--------|-----------|------|
-| `lifecycle_done_from_checkboxes.py` | 03:00 | All checkboxes [x] → status: Done |
-| `lifecycle_waiting_to_asap.py` | 03:10 | Waiting + waitUntil ≤ dnes → ASAP (waitUntil smaže) |
-| `lifecycle_waituntil_hygiene.py` | 03:15 | waitUntil vyčistí u tasků mimo Waiting |
-| `lifecycle_overdue_flag.py` | 03:20 | Append OVERDUE log do body |
-| `archive_done_tasks.py` | 04:00 | Done > 90 dní → 07-ARCHIV/tasks-done/<slug>/ |
-| `lifecycle_recurring.py` | 04:30 | Done + recurring → archive + nová instance |
+| `lifecycle_done_from_checkboxes.py` | every 2h :00 | All checkboxes [x] → status: Done |
+| `lifecycle_waiting_to_asap.py` | every 2h :01 | Waiting + waitUntil ≤ dnes → ASAP (waitUntil smaže) |
+| `lifecycle_waiting_default_waituntil.py` | every 2h :02 | Waiting bez waitUntil → doplní dnes + 3 dny |
+| `lifecycle_waituntil_hygiene.py` | every 2h :03 | waitUntil vyčistí u tasků mimo Waiting |
+| `lifecycle_overdue_flag.py` | every 2h :04 | Append OVERDUE log do body |
+| `archive_done_tasks.py` | every 2h :05 | Done > 90 dní → 07-ARCHIV/tasks-done/<slug>/ |
+| `lifecycle_recurring.py` | every 2h :06 | Done + recurring → archive + nová instance |
+| `lifecycle_asap_backfill.py` | každou hodinu 10:00–02:00 | ASAP < 3 → promote top Next (today_score) |
 | `triage_run.py` | Po-Pa 7/14/20, So-Ne 7 | INBOX → Triage-Pending/*.json (v2 schema) |
 | `lifecycle_extra_edu_news.py` | denně 07:10 | OPS2 marker block refresh (top 5 témat) |
 | `build_agent_context.py` (VPS) | každých 15 min v workhours | agent-context.json refresh |

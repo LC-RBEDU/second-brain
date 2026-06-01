@@ -13,19 +13,21 @@ PATH=/usr/local/bin:/usr/bin:/bin
 CALENDAR_DAYS_AHEAD=2
 TZ=Europe/Prague
 
-# === V2 LIFECYCLE (denně) ===
-# 03:00 — done from checkboxes (auto-flip status: Done if all [x])
-0 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_done_from_checkboxes.py >> /var/log/second-brain/lifecycle.log 2>&1
-# 03:10 — waiting → asap when waitUntil expired (clears waitUntil)
-10 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_to_asap.py >> /var/log/second-brain/lifecycle.log 2>&1
-# 03:15 — clear stray waitUntil on non-Waiting tasks (manual status edits)
-15 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_waituntil_hygiene.py >> /var/log/second-brain/lifecycle.log 2>&1
-# 03:20 — overdue flag (append OVERDUE log line in body)
-20 3 * * * /usr/local/bin/python3 /app/cron/lifecycle_overdue_flag.py >> /var/log/second-brain/lifecycle.log 2>&1
-# 04:00 — archive Done tasks (move .md → 07-ARCHIV/tasks-done/<slug>/)
-0 4 * * * /usr/local/bin/python3 /app/cron/archive_done_tasks.py >> /var/log/second-brain/lifecycle.log 2>&1
-# 04:30 — recurring tasks rotation (Done → archive + create next instance, F7.2)
-30 4 * * * /usr/local/bin/python3 /app/cron/lifecycle_recurring.py >> /var/log/second-brain/lifecycle.log 2>&1
+# === V2 LIFECYCLE (every 2 hours, staggered +0–+6 min) ===
+# :00 — done from checkboxes (auto-flip status: Done if all [x])
+0 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_done_from_checkboxes.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :01 — waiting → asap when waitUntil expired (clears waitUntil)
+1 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_to_asap.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :02 — Waiting without waitUntil → default +3 days (reactivation date)
+2 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_default_waituntil.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :03 — clear stray waitUntil on non-Waiting tasks (manual status edits)
+3 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_waituntil_hygiene.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :04 — overdue flag (append OVERDUE log line in body)
+4 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_overdue_flag.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :05 — archive Done tasks (move .md → 07-ARCHIV/tasks-done/<slug>/)
+5 */2 * * * /usr/local/bin/python3 /app/cron/archive_done_tasks.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :06 — recurring tasks rotation (Done → archive + create next instance, F7.2)
+6 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_recurring.py >> /var/log/second-brain/lifecycle.log 2>&1
 
 # === TRIAGE ===
 # Po-Pa: triage 7:00, 14:00, 20:00
@@ -46,6 +48,10 @@ TZ=Europe/Prague
 # === AGENT CONTEXT (F8) ===
 # Every 15 min during workday — refresh agent-context.json
 */15 7-22 * * * /usr/local/bin/python3 /app/cron/build_agent_context.py >> /var/log/second-brain/agent-context.log 2>&1
+
+# === ASAP BACKFILL (work hours) ===
+# Hourly 10:00–23:00 + 00:00–02:00 — if open ASAP < 3, promote top Next by today_score
+0 10-23,0-2 * * * /usr/local/bin/python3 /app/cron/lifecycle_asap_backfill.py >> /var/log/second-brain/lifecycle.log 2>&1
 
 # === LEGACY (deprecated, will be removed in F9) ===
 # Po-Pa: rebuild +5 min (po triage) — pouze pro stary HTML dashboard

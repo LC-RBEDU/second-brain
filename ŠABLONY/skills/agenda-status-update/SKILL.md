@@ -50,6 +50,7 @@ Mapping user intent → frontmatter změna:
 | "ASAP" / "urgent" | `status: ASAP`, `waitUntil:` prázdné, `updated: <today>` |
 | "odlož do YYYY-MM-DD" | `status: Waiting`, `waitUntil: <date>`, `updated: <today>` |
 | "ztím čekat" (bez data) | `status: Waiting`, `waitUntil: <today + 3 dny>`, `updated: <today>` |
+| kanban / ruční Waiting bez data | cron `lifecycle_waiting_default_waituntil` (every 2h :02) doplní `waitUntil: dnes + 3` |
 | "zruš" / "cancel" | Confirm s userem; pak smazat soubor (NE archive) |
 | "deadline YYYY-MM-DD" | `deadline: <date>`, `updated: <today>` |
 | "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` |
@@ -72,7 +73,7 @@ OK? (ano / uprav / cancel)
 
 - Patch frontmatter (CAS-aware: read → modify → write)
 - Append do body sekce `## Poznámky / log` pokud relevantní
-- **Pokud `status: Done`**: cron `archive_done_tasks.py` (denní 04:00) přesune do `07-ARCHIV/tasks-done/<slug>/`. Manuální archiv hned: přesun + update `open_tasks_count` v hub.
+- **Pokud `status: Done`**: cron `archive_done_tasks.py` (every 2h :05) přesune do `07-ARCHIV/tasks-done/<slug>/`. Manuální archiv hned: přesun + update `open_tasks_count` v hub.
 - Bases dashboard se aktualizuje sám.
 
 ### 6. Refresh agent context
@@ -91,7 +92,8 @@ python3 scripts/build_agent_context.py
 ## Pravidla
 
 - Pouze single-task ops; bulk přes `agenda-work` / `agenda-co-ted` / `agenda-priority-review`
-- **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na ASAP / Next / Backlog / Doing / Done vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (03:15) vyčistí opomenutí z manuálních editací.
+- **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na ASAP / Next / Backlog / Doing / Done vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (every 2h :03) vyčistí opomenutí z manuálních editací. Cron `lifecycle_waiting_default_waituntil.py` (every 2h :02) doplní `waitUntil = dnes + 3 dny`, pokud je Waiting bez data.
+- **`ASAP` backfill:** cron `lifecycle_asap_backfill.py` (hourly 10:00–02:00) — pokud je v vaultu méně než 3 otevřené ASAP, promote nejvyšší `Next` podle `today_score` (stejná logika jako dashboard TOP 3).
 - Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej
 - "Zruš" → potvrď s userem (mazání je destruktivní)
 - Recurring tasky (`recurring:` blok ve frontmatteru) — Done flip spustí cron `lifecycle_recurring.py` (vytvoří next instance) — ne dělej manuálně

@@ -70,16 +70,18 @@ git push origin main
 
 ## Cron (Europe/Prague) — viz `deploy/crontab`
 
-### v2 lifecycle (denně)
+### v2 lifecycle (every 2 hours, staggered :00–:06)
 
 | Job | Čas | Co dělá |
 |-----|-----|---------|
-| `lifecycle_done_from_checkboxes.py` | 03:00 | Všechny `[x]` → `status: Done` |
-| `lifecycle_waiting_to_asap.py` | 03:10 | `Waiting` + `waitUntil` ≤ dnes → `ASAP` (smaže `waitUntil`) |
-| `lifecycle_waituntil_hygiene.py` | 03:15 | `waitUntil` vyčistí u tasků, kde `status != Waiting` |
-| `lifecycle_overdue_flag.py` | 03:20 | Append `OVERDUE` log do body |
-| `archive_done_tasks.py` | 04:00 | `Done` > 90 dní → `07-ARCHIV/tasks-done/<slug>/` |
-| `lifecycle_recurring.py` | 04:30 | Recurring `Done` → archive + nová instance |
+| `lifecycle_done_from_checkboxes.py` | every 2h :00 | Všechny `[x]` → `status: Done` |
+| `lifecycle_waiting_to_asap.py` | every 2h :01 | `Waiting` + `waitUntil` ≤ dnes → `ASAP` (smaže `waitUntil`) |
+| `lifecycle_waiting_default_waituntil.py` | every 2h :02 | `Waiting` bez `waitUntil` → doplní `dnes + 3 dny` |
+| `lifecycle_waituntil_hygiene.py` | every 2h :03 | `waitUntil` vyčistí u tasků, kde `status != Waiting` |
+| `lifecycle_overdue_flag.py` | every 2h :04 | Append `OVERDUE` log do body |
+| `archive_done_tasks.py` | every 2h :05 | `Done` > 90 dní → `07-ARCHIV/tasks-done/<slug>/` |
+| `lifecycle_recurring.py` | every 2h :06 | Recurring `Done` → archive + nová instance |
+| `lifecycle_asap_backfill.py` | hourly 10:00–02:00 | `ASAP` < 3 → promote top `Next` (`today_score`) |
 | `build_agent_context.py` | každých 15 min v 7-22 | refresh `00-System/agent-context.json` |
 
 ### Triage / EDU news / Weekly
