@@ -7,7 +7,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-amd64" \
       -o /usr/local/bin/supercronic \
-    && chmod +x /usr/local/bin/supercronic
+    && chmod +x /usr/local/bin/supercronic \
+    && curl -fsSL https://cursor.com/install | bash \
+    && ln -sf /root/.local/bin/cursor-agent /usr/local/bin/cursor-agent \
+    && ln -sf /root/.local/bin/agent /usr/local/bin/agent
 
 WORKDIR /app
 

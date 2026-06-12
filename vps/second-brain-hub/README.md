@@ -20,7 +20,7 @@ flowchart LR
 | Kde | Co běží |
 |-----|---------|
 | **Google Drive** | Vault root `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/`) — SSOT |
-| **coolify-dev** | Docker stateless: lifecycle scripts (`done_from_checkboxes`, `waiting_to_asap`, `overdue_flag`, `archive_done_tasks`, `recurring`), `triage_run.py`, `lifecycle_extra_edu_news.py`, `build_agent_context.py` — vše přes Drive API + CAS |
+| **coolify-dev** | Docker stateless: lifecycle scripts, `triage_llm_run.py`, `lifecycle_hub_state.py`, `build_agent_context.py` — vše přes Drive API + CAS |
 | **Mac** | Obsidian + Bases plugin čte frontmatter live, agent-context.json sync přes Drive Desktop |
 
 INBOX = `OBSIDIAN/01-INBOX/{slack,sembly,email,email/sent,daily,Clippings}/`.
@@ -65,6 +65,7 @@ git push origin main
 | `CALENDAR_DAYS_AHEAD` | `2` (max 14) |
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
+| `CURSOR_API_KEY` | **LLM triáž** (`triage_llm_run.py`) — user API key z Cursor Dashboard → API Keys |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
 
