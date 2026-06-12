@@ -30,9 +30,9 @@ ALIASES: dict[str, list[str]] = {
     "Jan Mašek": ["Jan Mašek", "Honza Mašek", "Honza"],
     "Jarda Fulnek": ["Jarda Fulnek"],
     "Michal Šrajer": ["Michal Šrajer"],
-    "Michaela Valdéz": ["Michaela Valdéz"],
-    "Saša Gallisová": ["Saša Gallisová"],
-    "Ondra Suchý": ["Ondra Suchý"],
+    "Michaela Valdéz": ["Michaela Valdéz", "Michaela González Valdés"],
+    "Saša Gallisová": ["Saša Gallisová", "Alexandra Gallisová"],
+    "Ondra Suchý": ["Ondra Suchý", "Ondřej Suchý"],
     "Veronika Kuncová": [
         "Veronika Kuncová",
         "Verča Kuncová",
@@ -88,16 +88,118 @@ NICKNAMES: dict[str, list[str]] = {
     "Veronika Hanzalová": ["Verča"],
 }
 
-KNOWN_META: dict[str, dict[str, str]] = {
-    "Luboš Malý": {"role": "Co-strategist / CEO, principal Learning Designer", "org": "Red Button EDU"},
-    "Dominik Holíček": {"role": "Finance specialist", "org": "Red Button EDU"},
-    "Martin Ruman": {"role": "Procesní architekt / Delivery & Operations", "org": "Red Button EDU"},
-    "Pavel Kroupa": {"role": "Delivery / PM", "org": "Red Button EDU"},
-    "Lukáš Dzuroška": {"role": "CCO", "org": "Red Button EDU"},
-    "Jan Mašek": {"role": "Growth (Strategy tým)", "org": "Red Button EDU"},
-    "Veronika Kuncová": {"role": "Sales Ops / PRE-SALES, KAM", "org": "Red Button EDU"},
-    "Veronika Hanzalová": {"role": "EDUtéka / EC komunita", "org": "Red Button EDU"},
-    "Kateřina Bayerová": {"role": "Strategy / People (schůzky, Town Hall)", "org": "Red Button EDU"},
+KNOWN_META: dict[str, dict[str, str | list[str]]] = {
+    "Luboš Malý": {
+        "role": "Co-strategist / CEO, principal Learning Designer",
+        "org": "Red Button EDU",
+        "email": "lubos@redbuttonedu.cz",
+        "slack": "Luboš",
+        "projects": ["Strategy", "Owners"],
+    },
+    "Dominik Holíček": {
+        "role": "Finance specialist (~50 %)",
+        "org": "Red Button EDU",
+        "email": "dominik@redbuttonedu.cz",
+        "slack": "Domča",
+        "projects": ["Finance", "Allfred", "Firemní procesy"],
+    },
+    "Martin Ruman": {
+        "role": "Procesní architekt / Delivery & Operations",
+        "org": "Red Button EDU",
+        "email": "martin.ruman@redbuttonedu.cz",
+        "slack": "Martin R.",
+        "projects": ["Firemní procesy", "Sales a Business Development", "Strategy", "M&A Odyssey"],
+    },
+    "Pavel Kroupa": {
+        "role": "Delivery / PM (RB Universe)",
+        "org": "Red Button EDU",
+        "email": "pavel@redbuttonedu.cz",
+        "slack": "Pavel K.",
+        "projects": ["RB Universe development", "Firemní procesy"],
+    },
+    "Lukáš Dzuroška": {
+        "role": "CCO — Commercial (Sales + Marketing)",
+        "org": "Red Button EDU",
+        "email": "lukas.dzuroska@redbuttonedu.cz",
+        "projects": ["Strategy", "Sales a Business Development", "Exponential Summit"],
+    },
+    "Jan Mašek": {
+        "role": "Growth (Strategy tým)",
+        "org": "Red Button EDU",
+        "email": "jan@redbutton.cz",
+        "slack": "Honza",
+        "projects": ["Strategy", "M&A Odyssey"],
+    },
+    "Veronika Kuncová": {
+        "role": "Sales Ops / PRE-SALES, KAM",
+        "org": "Red Button EDU",
+        "email": "veronika.kuncova@redbuttonedu.cz",
+        "slack": "Verča K.",
+        "projects": ["Sales a Business Development", "Firemní procesy"],
+    },
+    "Veronika Hanzalová": {
+        "role": "EDUtéka / EC komunita",
+        "org": "Red Button EDU",
+        "email": "veronika@redbuttonedu.cz",
+        "slack": "Verča",
+        "projects": ["Strategy", "Firemní procesy"],
+    },
+    "Kateřina Bayerová": {
+        "role": "Strategy / People (schůzky, Town Hall)",
+        "org": "Red Button EDU",
+        "email": "katerina@redbuttonedu.cz",
+        "slack": "Káťa",
+        "projects": ["Strategy", "RB Universe development"],
+    },
+    "Lenka Turečková": {
+        "role": "Externí finanční konzultant (Rainfellows, ad-hoc)",
+        "org": "Rainfellows",
+        "email": "lenka.tureckova@rainfellows.cz",
+        "projects": ["Finance"],
+    },
+    "Lenka Vašková": {
+        "role": "People & Culture (Strategy tým)",
+        "org": "Red Button EDU",
+        "email": "lenka@redbuttonedu.cz",
+        "projects": ["Strategy"],
+    },
+    "Martina Mašková": {
+        "role": "Účetní (RBA)",
+        "org": "Red Button EDU",
+        "email": "martina@redbuttonedu.cz",
+        "projects": ["Finance"],
+    },
+    "Jarda Fulnek": {
+        "role": "Expertní konzultant (GS/GAS, odchází)",
+        "org": "Red Button EDU",
+        "email": "jaromir.fulnek@redbuttonedu.cz",
+        "slack": "Jarda",
+        "projects": ["Finance"],
+    },
+    "Michal Šrajer": {
+        "role": "Dramaturgie eventu / speakers (Exponential Summit)",
+        "org": "Red Button EDU",
+        "email": "michal.srajer@redbuttonedu.cz",
+        "projects": ["Exponential Summit", "RB Universe development"],
+    },
+    "Michaela Valdéz": {
+        "role": "Event management, produkce (Michaela González Valdés)",
+        "org": "Red Button EDU",
+        "email": "michaela@redbuttonedu.cz",
+        "projects": ["Exponential Summit"],
+    },
+    "Saša Gallisová": {
+        "role": "Allfred support (Alexandra Gallisová, Allfred.io)",
+        "org": "Allfred.io",
+        "email": "alex@allfred.io",
+        "projects": ["Allfred"],
+    },
+    "Ondra Suchý": {
+        "role": "Externí spolupracovník (Sudety — Equilibrium / Human in AI)",
+        "org": "Sudety",
+        "email": "ondrej.suchy@sudety.cz",
+        "projects": ["Vibe coding"],
+    },
 }
 
 
@@ -317,6 +419,9 @@ def linkify_vault(dry_run: bool, *, paths: list[Path] | None = None) -> int:
 
 
 def rebuild_person_files(dry_run: bool) -> dict[str, int]:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from lide_person_template import build_person_document, normalize_person_file  # noqa: E402
+
     mentions: dict[str, dict[str, dict]] = {p: {} for p in ALIASES}
     for fpath in VAULT.rglob("*.md"):
         rel = fpath.relative_to(VAULT).as_posix()
@@ -349,41 +454,22 @@ def rebuild_person_files(dry_run: bool) -> dict[str, int]:
         rows = sorted(rows_by_path.values(), key=lambda r: r["date"], reverse=True)
         counts[person] = len(rows)
         pf = LIDE / f"{person}.md"
-        existing_role = existing_org = None
         if pf.exists():
-            fm, _ = split_frontmatter(pf.read_text(encoding="utf-8"))
-            for line in fm.splitlines():
-                if line.startswith("role:"):
-                    existing_role = line.split(":", 1)[1].strip()
-                if line.startswith("org:"):
-                    existing_org = line.split(":", 1)[1].strip()
-        meta = KNOWN_META.get(person, {})
-        role = existing_role or meta.get("role")
-        org = existing_org or meta.get("org")
-
-        yaml = "---\ntype: person\naliases:\n"
-        yaml += f"- {person}\n"
-        for nick in NICKNAMES.get(person, []):
-            yaml += f"- {nick}\n"
-        if role:
-            yaml += f"role: {role}\n"
-        if org:
-            yaml += f"org: {org}\n"
-        yaml += "---\n\n"
-
-        body = f"# {person}\n\n"
-        nicks = NICKNAMES.get(person, [])
-        if nicks:
-            body += f"*Přezdívka:* {', '.join(nicks)}\n\n"
-        body += "## Zmínky a materiály\n\n"
-        body += "| Datum | Typ | Odkaz | Kontext |\n|-------|-----|-------|--------|\n"
-        for r in rows:
-            k = r["kontext"].replace("|", "\\|")
-            body += f"| {r['date']} | {r['typ']} | {r['link']} | {k} |\n"
-        if not rows:
-            body += "| — | — | — | zatím žádné zmínky ve vaultu |\n"
+            new_text = normalize_person_file(
+                pf,
+                mentions_rows=rows,
+                known_meta=KNOWN_META.get(person),
+                nicknames=NICKNAMES.get(person),
+            )
+        else:
+            new_text = build_person_document(
+                person,
+                mentions_rows=rows,
+                known_meta=KNOWN_META.get(person),
+                nicknames=NICKNAMES.get(person),
+            )
         if not dry_run:
-            pf.write_text(yaml + body, encoding="utf-8")
+            pf.write_text(new_text, encoding="utf-8")
     return counts
 
 

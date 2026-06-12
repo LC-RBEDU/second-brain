@@ -53,7 +53,7 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 - Kontext bez akce → **material soubor** v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/` (viz `.cursor/rules/resources-para.mdc`)
 - **Osoby ve zdroji** — porovnej s `05-RESOURCES/lide/*.md` (aliases v frontmatteru):
   - neznámá osoba → preview `add_person` (soubor ze `_ŠABLONA-person.md`, vytěž role/org/email)
-  - nová info u známé → preview `update_person` (patch Kontakty/Významná data/Témata)
+  - nová info u známé → preview `update_person` (patch frontmatter: email/slack/birthday/significant_dates + Témata)
   - ve všech task/materiálech používej `[[Jméno]]` wikilinks
 
 **Single-user filter:** Capture vždy z Lukášovy perspektivy. Pokud zachycujeme cizí commitment ("Pavel udělá X"), patří jako kontext do související materiálky / `## Poznámky` u tasku, ne jako samostatný task. Lukášova reakce ("zkontrolovat, že Pavel dodá") = task ve statusu `Waiting`.

@@ -89,7 +89,8 @@ git push origin main
 
 | Job | Po-Pa | So-Ne |
 |-----|-------|-------|
-| `triage_run.py` | 7:00, 14:00, 20:00 | 7:00 |
+| `triage_llm_run.py` | 7:00, 14:00, 20:00 | 7:00 |
+| `inbox_inventory.py` | Po 6:55 | — |
 | `lifecycle_extra_edu_news.py` | 7:10 | 7:10 |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
 | `retro_draft.py` | — | Ne 20:10 |
