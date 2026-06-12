@@ -23,10 +23,14 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 1. **PRIMARY:** `OBSIDIAN/00-System/agent-context.json` → najdi `projects[]` podle `slug`, vyextrahuj briefing (status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug)
 2. (1× per session) `OBSIDIAN/00-System/Memory/about-me.md`
-3. Hub `OBSIDIAN/02-PROJEKTY/<HubName>.md` — frontmatter (slug, status, area, open_tasks_count) + body (Cíl, Scope, Lidé / spolupráce, Hranice / vymezení, Metriky / KPI, Kontext, Otevřené otázky)
+3. Hub `OBSIDIAN/02-PROJEKTY/<HubName>.md` — frontmatter (`slug`, `status`, `area`, `open_tasks_count`, **`sources:`**, `notebooklm:`, `workspace:`) + body (Scope, **## Stav (auto)**, Kontext, **## Zdroje dat**, Otevřené otázky)
 4. Tasky `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md` — frontmatter každého souboru (id, status, ICE, deadline, waitUntil, materials, source)
 5. Outputs `OBSIDIAN/02-PROJEKTY/<slug>/` (mimo `tasks/` a `materials/`) — soubory výstupů
-6. Materials `OBSIDIAN/02-PROJEKTY/<slug>/materials/` + cross-project `05-RESOURCES/` (přes `materials:` array v task frontmatteru)
+6. Materials `OBSIDIAN/02-PROJEKTY/<slug>/materials/` + cross-project `05-RESOURCES/` (přes `materials:` array v task frontmatteru; **vynoř** podle `topics:` — viz `.cursor/rules/resources-para.mdc`)
+7. **Externí zdroje z hub frontmatteru** (pokud `sources:` non-empty):
+   - `notebooklm` → `python3 scripts/notebooklm_query.py ask "<notebook>" "<otázka>"`
+   - `google-workspace` → Workspace MCP dle `workspace:` pointerů (kalendář, gmail filtry, drive složky)
+   - `rb-mcp` / `procesni-architekt` → RB Universe MCP; u procesních témat zkontroluj existující procesy v Architektovi
 
 Pokud slug není jasný → zobraz seznam aktivních projektů z `00-System/Index.md` (Bases embed) a ptej se.
 
@@ -116,12 +120,16 @@ Proveď zápis až po potvrzení. Vždy preview → confirm → write.
 - V hubu **## Materiály** pomocí Bases embed `![[All-materials.base#ProjectMaterials]]` — pokud výstup chceš mít v Bases, ulož jako material soubor (s `type: material` frontmatter v `02-PROJEKTY/<slug>/materials/`)
 - Jinak prostý odkaz `[[02-PROJEKTY/<slug>/<output_filename>]]` v sekci ## Materiály mimo Bases embed
 
-### 5. Aktualizuj task soubory + hub
+### 5. Aktualizuj task soubory + hub (narativní vrstva)
 
 - Uzavřené tasky → status `Done` ve frontmatteru (cron archivuje)
 - Nové tasky → vytvoř nové `.md` soubory v `tasks/`
 - Update `open_tasks_count` v hub frontmatteru
-- Hub Otevřené otázky / Progress sekce — manuálně doplň pokud relevantní
+- **`updated:` v hub frontmatteru** → dnešní datum po schváleném zápisu do hubu
+- **Po uzavření/přidání tasků nebo významném výstupu** vždy navrhni patch:
+  - `## Kontext` — 1–3 věty co se posunulo (preview diff)
+  - `## Otevřené otázky` — přidat/uzavřít otázky pokud relevantní
+- Sekce `## Stav (auto)` **needituj** — generuje cron `lifecycle_hub_state.py`
 
 Vždy jako preview, vždy čekej na potvrzení.
 

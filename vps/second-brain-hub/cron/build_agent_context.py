@@ -27,6 +27,12 @@ from task_io import (  # noqa: E402
     parse_task_text,
 )
 from today_priority import select_top_priority  # noqa: E402
+from hub_state import (  # noqa: E402
+    STALE_AREA_WEEKS,
+    STALE_NARRATIVE_DAYS,
+    compute_last_task_activity,
+    is_narrative_stale,
+)
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 OUTPUT_REL = "00-System/agent-context.json"
@@ -126,6 +132,36 @@ def collect_projects(vault: DriveVault) -> list[dict]:
     return out
 
 
+def collect_areas(vault: DriveVault) -> list[dict]:
+    out = []
+    try:
+        files = vault.list_dir("03-AREAS", pattern="*.md")
+    except DriveNotFoundError:
+        return out
+    for meta in files:
+        if meta.name.startswith("_"):
+            continue
+        try:
+            text, _ = vault.read_text(meta.rel_path)
+        except DriveNotFoundError:
+            continue
+        parsed = parse_task_text(text, rel_path=meta.rel_path)
+        fm = parsed.frontmatter
+        if (fm.get("type") or "").lower() != "area":
+            continue
+        projects = fm.get("projects") or []
+        if isinstance(projects, str):
+            projects = [projects]
+        out.append({
+            "slug": fm.get("slug") or meta.name.removesuffix(".md"),
+            "filename": meta.name,
+            "projects": list(projects),
+            "updated": _date_str(fm.get("updated")),
+            "review_cadence": fm.get("review_cadence") or "weekly",
+        })
+    return out
+
+
 def main() -> None:
     root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
     if not root_id:
@@ -137,6 +173,7 @@ def main() -> None:
     today_str = today.isoformat()
 
     projects = collect_projects(vault)
+    areas = collect_areas(vault)
     active_dicts = [task_to_dict(t) for t in iter_active_tasks(vault)]
     archive_dicts = [task_to_dict(t) for t in iter_archive_tasks(vault)]
 
@@ -183,6 +220,72 @@ def main() -> None:
     recurring_done = [t for t in active_dicts if t.get("is_recurring") and t["status"] == "Done"]
     blocked = {t["id"]: t.get("blocked_by", []) for t in active_dicts if t.get("blocked_by")}
 
+    stale_hubs: list[dict] = []
+    for p in projects:
+        slug = p["slug"]
+        slug_tasks = [t for t in active_dicts if t.get("slug") == slug]
+        arch_slug = [t for t in archive_dicts if t.get("slug") == slug]
+
+        def _last_act(tasks_list):
+            latest = None
+            for t in tasks_list:
+                upd = t.get("updated")
+                if not upd:
+                    continue
+                try:
+                    d = date.fromisoformat(str(upd)[:10])
+                except ValueError:
+                    continue
+                if latest is None or d > latest:
+                    latest = d
+            return latest
+
+        last_act = _last_act(slug_tasks + arch_slug)
+        if is_narrative_stale(p.get("updated"), last_act, threshold_days=STALE_NARRATIVE_DAYS):
+            stale_hubs.append({
+                "slug": slug,
+                "hub_filename": p.get("hub_filename"),
+                "hub_updated": p.get("updated"),
+                "last_task_activity": last_act.isoformat() if last_act else None,
+                "open_tasks_count": p.get("open_tasks_count", 0),
+            })
+
+    threshold = today - timedelta(days=STALE_AREA_WEEKS * 7)
+    stale_areas: list[dict] = []
+    for area in areas:
+        slugs = set(area.get("projects") or [])
+        area_tasks = [t for t in active_dicts if t.get("slug") in slugs]
+        open_in = [t for t in area_tasks if t.get("status") != "Done"]
+
+        def _last_act(tasks_list):
+            latest = None
+            for t in tasks_list:
+                upd = t.get("updated")
+                if not upd:
+                    continue
+                try:
+                    d = date.fromisoformat(str(upd)[:10])
+                except ValueError:
+                    continue
+                if latest is None or d > latest:
+                    latest = d
+            return latest
+
+        last_act = _last_act(area_tasks)
+        if not open_in and not last_act:
+            continue
+        if last_act and last_act >= threshold:
+            continue
+        if not last_act and open_in:
+            continue
+        stale_areas.append({
+            "slug": area["slug"],
+            "filename": area["filename"],
+            "projects": list(slugs),
+            "last_task_activity": last_act.isoformat() if last_act else None,
+            "open_tasks_in_area": len(open_in),
+        })
+
     snapshot = {
         "version": 2,
         "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
@@ -196,6 +299,7 @@ def main() -> None:
             "recurring_pending_rotation": len(recurring_done),
         },
         "projects": projects,
+        "areas": areas,
         "priority_rules": {
             "base": "priority_score = (ice_i * ice_c) / ice_e",
             "today_score": "priority_score + urgency_bonus(deadline)",
@@ -213,6 +317,14 @@ def main() -> None:
         "upcoming_deadlines": upcoming,
         "recurring_pending": recurring_done,
         "blocked_by_graph": blocked,
+        "stale_hubs": stale_hubs,
+        "stale_areas": stale_areas,
+        "health": {
+            "stale_narrative_days": STALE_NARRATIVE_DAYS,
+            "stale_hubs_count": len(stale_hubs),
+            "stale_areas_weeks": STALE_AREA_WEEKS,
+            "stale_areas_count": len(stale_areas),
+        },
     }
 
     vault.write_json(OUTPUT_REL, snapshot)

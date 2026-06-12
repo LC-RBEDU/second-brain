@@ -43,6 +43,12 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from today_priority import select_top_priority  # noqa: E402
+from hub_state import (  # noqa: E402
+    STALE_AREA_WEEKS,
+    STALE_NARRATIVE_DAYS,
+    compute_last_task_activity,
+    is_narrative_stale,
+)
 
 DEFAULT_VAULT = Path(
     os.environ.get(
@@ -246,10 +252,70 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
     return out
 
 
+def collect_areas(vault: Path) -> list[dict]:
+    areas_dir = vault / "03-AREAS"
+    if not areas_dir.exists():
+        return []
+    out: list[dict] = []
+    for f in sorted(areas_dir.glob("*.md")):
+        if f.name.startswith("_"):
+            continue
+        try:
+            fm, _ = parse_frontmatter(f.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if (fm.get("type") or "").lower() != "area":
+            continue
+        projects = fm.get("projects") or []
+        if isinstance(projects, str):
+            projects = [projects]
+        out.append({
+            "slug": fm.get("slug") or f.stem,
+            "filename": f.name,
+            "title": f.stem,
+            "projects": list(projects),
+            "updated": _date_str(fm.get("updated")),
+            "review_cadence": fm.get("review_cadence") or "weekly",
+        })
+    return out
+
+
+def compute_stale_areas(
+    areas: list[dict],
+    active_tasks: list[TaskInfo],
+    today: date,
+    *,
+    threshold_weeks: int = STALE_AREA_WEEKS,
+) -> list[dict]:
+    threshold = today - timedelta(days=threshold_weeks * 7)
+    stale: list[dict] = []
+    for area in areas:
+        slugs = set(area.get("projects") or [])
+        area_tasks = [t for t in active_tasks if t.slug in slugs]
+        open_in_area = [t for t in area_tasks if t.status != "Done"]
+        last_act = compute_last_task_activity(area_tasks)
+        if not open_in_area and not last_act:
+            continue
+        if last_act and last_act >= threshold:
+            continue
+        if not last_act and open_in_area:
+            # has open tasks but no updated dates — not stale
+            continue
+        stale.append({
+            "slug": area["slug"],
+            "filename": area["filename"],
+            "projects": list(slugs),
+            "last_task_activity": last_act.isoformat() if last_act else None,
+            "open_tasks_in_area": len(open_in_area),
+        })
+    return stale
+
+
 def build_snapshot(vault: Path) -> dict:
     today = date.today()
     today_str = today.isoformat()
     projects = collect_projects(vault)
+    areas = collect_areas(vault)
     active_tasks = collect_tasks(vault, archive=False)
     archived = collect_tasks(vault, archive=True)
 
@@ -294,6 +360,22 @@ def build_snapshot(vault: Path) -> dict:
     recurring_done = [t for t in active_tasks if t.is_recurring and t.status == "Done"]
     blocked = {t.id: t.blocked_by for t in active_tasks if t.blocked_by}
 
+    stale_hubs: list[dict] = []
+    for p in projects:
+        slug_tasks = [t for t in active_tasks if t.slug == p.slug]
+        arch_slug = [t for t in archived if t.slug == p.slug]
+        last_act = compute_last_task_activity(slug_tasks + arch_slug)
+        if is_narrative_stale(p.updated, last_act, threshold_days=STALE_NARRATIVE_DAYS):
+            stale_hubs.append({
+                "slug": p.slug,
+                "hub_filename": p.hub_filename,
+                "hub_updated": p.updated,
+                "last_task_activity": last_act.isoformat() if last_act else None,
+                "open_tasks_count": p.open_tasks_count,
+            })
+
+    stale_areas = compute_stale_areas(areas, active_tasks, today)
+
     return {
         "version": 2,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -307,6 +389,7 @@ def build_snapshot(vault: Path) -> dict:
             "recurring_pending_rotation": len(recurring_done),
         },
         "projects": [p.to_dict() for p in projects],
+        "areas": areas,
         "priority_rules": {
             "base": "priority_score = (ice_i * ice_c) / ice_e",
             "today_score": "priority_score + urgency_bonus(deadline)",
@@ -324,6 +407,14 @@ def build_snapshot(vault: Path) -> dict:
         "upcoming_deadlines": [t.to_dict() for t in upcoming],
         "recurring_pending": [t.to_dict() for t in recurring_done],
         "blocked_by_graph": blocked,
+        "stale_hubs": stale_hubs,
+        "stale_areas": stale_areas,
+        "health": {
+            "stale_narrative_days": STALE_NARRATIVE_DAYS,
+            "stale_hubs_count": len(stale_hubs),
+            "stale_areas_weeks": STALE_AREA_WEEKS,
+            "stale_areas_count": len(stale_areas),
+        },
     }
 
 

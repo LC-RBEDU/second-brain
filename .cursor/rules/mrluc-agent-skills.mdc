@@ -1,0 +1,18 @@
+---
+description: MrLUC — Agent Skills: single source in ŠABLONY/skills, symlinks to ~/.cursor/skills
+alwaysApply: true
+---
+
+# MrLUC skills — odpovědnost agenta
+
+Když jde o **Agent Skills** pro MrLUC / Second Brain (nový skill, úprava SKILL.md, `ŠABLONY/skills/`):
+
+- **Agent to vždy udělá sám** — nenechává uživateli jen příkazy `cp` nebo „zkopíruj si to“.
+- **Zdroj pravdy:** `ŠABLONY/skills/<skill>/SKILL.md` v repozitáři SECOND_BRAIN (verzováno gitem).
+- **Distribuce (Cursor):** globální `~/.cursor/skills/<skill>/` = **symlink** na `ŠABLONY/skills/<skill>/`. Po editaci spusť:
+  ```bash
+  bash scripts/install_agenda_skills.sh
+  ```
+- **Nepoužívat:** `.cursor/skills/` v repu (zrušeno), `~/.claude/skills/` (Claude se nepoužívá), ruční trojcestný sync.
+
+Související skills: `agenda-capture`, `agenda-triage`, `agenda-co-ted`, `agenda-work`, `agenda-analyze`, `agenda-proces`, `agenda-weekly-review`, `agenda-priority-review`, `agenda-retro`, `agenda-status-update`.

@@ -27,6 +27,30 @@ Mám N položek v INBOXu.
 Default: B (nebo P pokud uživatel žádá pending).
 ```
 
+## Triage routing (PARA)
+
+| Typ obsahu | Kam |
+|------------|-----|
+| Lukášův akční krok | `add_task` → `02-PROJEKTY/<slug>/tasks/` |
+| Referenční materiál | `05-RESOURCES/<kategorie>/` nebo project `materials/` + `topics:` |
+| Zodpovědnostní postřeh bez akce | `area_log` → `03-AREAS/<area>.md` sekce `## Log rozhodnutí` |
+| Neznámá osoba ve zdroji | `add_person` → `05-RESOURCES/lide/<Jméno>.md` ze `_ŠABLONA-person.md` |
+| Nová info o známé osobě | `update_person` → patch frontmatter/sekcí person souboru |
+
+Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy vždy vedle obsahu, ne centrální folder.
+
+## Lidé — automatická detekce (každý zdroj)
+
+Pro každý INBOX / pending zdroj:
+1. Extrahuj zmíněné osoby (jména + aliasy z `05-RESOURCES/lide/` frontmatter).
+2. **Neznámá** → proposal `add_person` (role/org/email z textu).
+3. **Nový kontakt/narozeniny/role/téma** u známé → proposal `update_person`.
+4. Preview v batchi; apply až po schválení. Po apply spusť `sync_lide_people.py`.
+
+## Hub narativ po apply
+
+Po schválení batch s novými tasky pro projekt **nabídn** doplnění `## Kontext` hubu (nové téma z triáže) + `updated:`.
+
 ## Auto-routing „komplexních" zdrojů
 
 V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a routuje ho do DEEP, místo aby ho mlel přes default add_task flow.
@@ -35,6 +59,7 @@ V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a ro
 
 - Subdir `01-INBOX/sembly/` → **vždy** DEEP (přepisy meetingů).
 - Subdir `01-INBOX/email/sent/` → **nikdy** DEEP (commitment fast-path).
+- Subdir `01-INBOX/Clippings/` → BATCH nebo DEEP dle `triage_complexity` (dlouhé clipy); viz `01-INBOX/Clippings/README.md`.
 - `word_count > 800` nebo `line_count > 100`.
 - 3+ H2/H3 headingů v těle.
 - 5+ otevřených checkboxů `- [ ]`.
@@ -104,6 +129,8 @@ Vault patří **jednomu uživateli (Lukáš)**. Tasky v `02-PROJEKTY/<slug>/task
 - Ostatní → vlož do "Vyřazeno z preview (cizí míček)" sekce.
 - User pak může explicitně říct "i tenhle uložit jako Waiting" — apply pouze po konfirmaci.
 
+**Zmínka tasku v chatu (povinné):** vždy **`ID — title`** z frontmatter, ne samotné ID (`SBD4` bez názvu = špatně). Tabulky: sloupce ID + Název. Viz `.cursor/rules/task-mention-convention.mdc`.
+
 ## PENDING (cron)
 
 1. Načti nejnovější `00-System/Triage-Pending/*-batch.json`.
@@ -120,7 +147,7 @@ Vault patří **jednomu uživateli (Lukáš)**. Tasky v `02-PROJEKTY/<slug>/task
 
 ```json
 {
-  "proposalType": "add_task" | "update_task" | "archive_only" | "deep_analysis",
+  "proposalType": "add_task" | "update_task" | "archive_only" | "deep_analysis" | "add_person" | "update_person" | "area_log",
   "target_path": "02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md",
   "frontmatter": {
     "id": "RBU30",
@@ -221,8 +248,16 @@ V2 — žádný cron build pro dashboard nepotřebuje. **Bases dashboard** (`OBS
 **Po každém zápisu** (apply triage batch / commit task changes):
 
 1. (Volitelně) update `open_tasks_count` v hub `.md` frontmatteru pro každý dotčený slug
-2. **Vždy spusť** `python3 scripts/build_agent_context.py` (vault root) — refresh `00-System/agent-context.json` pro Cursor agenta
-3. V chatu uveď výsledek: `tasks_created=N tasks_updated=M archived=K agent_context_refreshed=yes`
+2. **Vždy spusť** `sync_lide_people` — wikilinky v nových/změněných souborech + rebuild tabulek `05-RESOURCES/lide/*.md`:
+
+```bash
+python3 scripts/sync_lide_people.py --incremental --paths "<vault-relative cesty, čárkou>"
+```
+
+`--paths` = vše z batchi: nové/aktualizované tasky, materiály, archivované capture (`02-PROJEKTY/...`, `07-ARCHIV/inbox-processed/...`). Více cest odděl **středníkem** (`;`) — čárka v názvu souboru je jinak OK. Přeskoč JSON/summary v `Triage-Pending/`.
+
+3. **Vždy spusť** `python3 scripts/build_agent_context.py` (vault root) — refresh `00-System/agent-context.json` pro Cursor agenta
+4. V chatu uveď výsledek: `tasks_created=N tasks_updated=M archived=K lide_sync: linkified=L profiles_rebuilt=P agent_context_refreshed=yes`
 
 ## Refresh Index
 

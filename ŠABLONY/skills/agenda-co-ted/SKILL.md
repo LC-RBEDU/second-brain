@@ -45,6 +45,10 @@ V2 priority pořadí:
 - **WAITING**: `status = Waiting` && `waitUntil >= dnes` — zobraz zvlášť, **nikdy v TOP**
 - **BLOKOVANÉ**: `blocked_by != []` — kromě "nic"
 
+## Zmínka tasků v chatu
+
+Vždy **`ID — title`** (z frontmatter / `agent-context.json`), ne jen zkratka ID. Příklad: **SBD4 — Česká spořitelna — rozšíření rámcovky (dodatek)**. Viz `.cursor/rules/task-mention-convention.mdc`.
+
 ## Vrať dashboard
 
 ```

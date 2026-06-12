@@ -21,7 +21,7 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 
 - Uživatel paste-ne text do chatu
 - V chatu se objeví soubor (PDF, .docx, .xlsx, .png, audio)
-- Nové soubory v `01-INBOX/{slack,sembly,email,email/sent,daily}/` (n8n → Drive)
+- Nové soubory v `01-INBOX/{slack,sembly,email,email/sent,daily,Clippings}/` (n8n → Drive; Clippings = Web Clipper / ručně)
 - "zapiš si", "hoď to k tématu X", "rozhoď to", "máš tam něco v inboxu?"
 
 ## Workflow
@@ -42,13 +42,19 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 - **INBOX/slack/** → markdown z n8n
 - **INBOX/email/** → markdown z n8n (forward); přílohy vedle .md otevři zvlášť
 - **INBOX/email/sent/** → odeslané z Workspace (`source: sent`); hledej Lukášovy sliby/úkoly
+- **INBOX/Clippings/** → Web Clipper / uložené stránky (články, docs)
+- **INBOX/daily/** → ruční / mobilní zápisky
 
 ### 3. Rozsekej na položky
 
 - Akční bod → **task soubor** v `02-PROJEKTY/<slug>/tasks/`
 - Nápad bez akce → task se status `Backlog`
 - Otázka / čeká na odpověď → projektový hub `## Otevřené otázky`
-- Kontext bez akce → **material soubor** v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/`
+- Kontext bez akce → **material soubor** v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/` (viz `.cursor/rules/resources-para.mdc`)
+- **Osoby ve zdroji** — porovnej s `05-RESOURCES/lide/*.md` (aliases v frontmatteru):
+  - neznámá osoba → preview `add_person` (soubor ze `_ŠABLONA-person.md`, vytěž role/org/email)
+  - nová info u známé → preview `update_person` (patch Kontakty/Významná data/Témata)
+  - ve všech task/materiálech používej `[[Jméno]]` wikilinks
 
 **Single-user filter:** Capture vždy z Lukášovy perspektivy. Pokud zachycujeme cizí commitment ("Pavel udělá X"), patří jako kontext do související materiálky / `## Poznámky` u tasku, ne jako samostatný task. Lukášova reakce ("zkontrolovat, že Pavel dodá") = task ve statusu `Waiting`.
 
@@ -126,23 +132,26 @@ OK? (ano / uprav / vyhoď)
 
 - Vytvoř task soubor v `02-PROJEKTY/<slug>/tasks/`
 - Vytvoř material soubor v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<kategorie>/`
+- U Resources: progressive summarization (3–5 bullet výtah nahoře) + `topics:` tagy (PARA: `.cursor/rules/resources-para.mdc`)
 - Po vytvoření **inkrementuj** `open_tasks_count` v hub `.md` frontmatteru
 - Originál z INBOX → `07-ARCHIV/inbox-processed/YYYY/MM/<den>-<filename>`
 - V hubu odkaz na archiv v Materiálech (nebo nech projít přes triage)
 - **Bases dashboard** se sám zaktualizuje při dalším otevření `Dashboard.md` — žádný cron build potřeba.
 
-### 10. Refresh agent context (povinné)
+### 10. Sync lidí + agent context (povinné)
 
-Po každém zápisu spusť:
+Po každém zápisu spusť (repo root `SECOND_BRAIN/`):
+
 ```bash
+python3 scripts/sync_lide_people.py --incremental --paths "<cesty vault-relative oddělené středníkem ;>"
 python3 scripts/build_agent_context.py
 ```
 
-Aktualizuje `00-System/agent-context.json` — Cursor agent (s always-applied bootstrap rule) ho čte při dalších promptech.
+`sync_lide_people` doplní wikilinky k lidem v dotčených souborech a přegeneruje tabulky v `05-RESOURCES/lide/*.md`. `build_agent_context` aktualizuje `00-System/agent-context.json`.
 
 ### 11. Hláška
 
-Krátká, akční: kolik task souborů, do kterých projektů, top ASAP/Q1 pokud je.
+Krátká, akční: kolik task souborů, do kterých projektů, top ASAP/Q1 pokud je; `lide_sync: linkified=L profiles_rebuilt=P`.
 
 ## Speciální případy
 

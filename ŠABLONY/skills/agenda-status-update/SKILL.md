@@ -29,7 +29,7 @@ description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš, o
 
 ### 2. Načti frontmatter
 
-Přečti task `.md`, ukaž current status:
+Přečti task `.md`, ukaž current status. V chatu vždy **`ID — title`** z frontmatter (ne samotné ID). Viz `.cursor/rules/task-mention-convention.mdc`.
 
 ```
 RBU30 — Název úkolu
@@ -75,6 +75,10 @@ OK? (ano / uprav / cancel)
 - Append do body sekce `## Poznámky / log` pokud relevantní
 - **Pokud `status: Done`**: cron `archive_done_tasks.py` (every 2h :05) přesune do `07-ARCHIV/tasks-done/<slug>/`. Manuální archiv hned: přesun + update `open_tasks_count` v hub.
 - Bases dashboard se aktualizuje sám.
+
+### 5b. Hub narativ (volitelně, preview)
+
+Po status flipu s dopadem na projekt (Done významného tasku, nový ASAP, změna deadline u klíčového tasku) **nabídn** 1–2 větný patch `## Kontext` v hubu + bump `updated:`. Sekci `## Stav (auto)` needituj.
 
 ### 6. Refresh agent context
 

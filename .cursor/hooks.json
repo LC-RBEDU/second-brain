@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "bash scripts/hooks/rebuild_agent_context.sh"
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "python3 scripts/hooks/session_start_context.py"
+      }
+    ]
+  }
+}

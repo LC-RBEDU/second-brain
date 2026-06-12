@@ -115,6 +115,18 @@ Při každé větší změně kroků **přepiš Mermaid** tak, aby odpovídal po
 
 Neznámá role → nech text v `*Role:*`, upozorni že v Architektovi může spadnout do „nerozpoznaná“.
 
+## RB Universe Procesní architekt (oboustranně)
+
+**Před zápisem nového/upraveného procesu:**
+1. Přes RB Universe MCP (`rb-universe` / `mcp.redbuttonedu.cz`) ověř **aktuální import formát** Architekta — nepoužívej zastaralou šablonu slepě.
+2. Zkontroluj, zda podobný proces v Architektovi už neexistuje (kolize názvů/slug).
+
+**Po schválení draftu:**
+- Nabídn import do Universe (Procesní architekt UI).
+- Odkaz na task **RBU9 — Procesní architect** pro stav platformy.
+
+**Čtení (pro ostatní skills):** `agenda-work` / `agenda-analyze` při procesním tématu kontrolují Architekta přes MCP — nenavrhuj postup kolidující s existujícím procesem.
+
 ## Anti-patterns
 
 - BPMN / Excalidraw jako zdroj pravdy (jen export do MD, ne paralelní SSOT)

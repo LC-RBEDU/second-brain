@@ -28,12 +28,16 @@ TZ=Europe/Prague
 5 */2 * * * /usr/local/bin/python3 /app/cron/archive_done_tasks.py >> /var/log/second-brain/lifecycle.log 2>&1
 # :06 — recurring tasks rotation (Done → archive + create next instance, F7.2)
 6 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_recurring.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :07 — hub charter ## Stav (auto) blocks + staleness flags
+7 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_hub_state.py >> /var/log/second-brain/lifecycle.log 2>&1
 
-# === TRIAGE ===
-# Po-Pa: triage 7:00, 14:00, 20:00
-0 7,14,20 * * 1-5 /usr/local/bin/python3 /app/cron/triage_run.py >> /var/log/second-brain/triage.log 2>&1
-# So-Ne: jen ranni beh
-0 7 * * 0,6 /usr/local/bin/python3 /app/cron/triage_run.py >> /var/log/second-brain/triage.log 2>&1
+# === TRIAGE (LLM via cursor-agent CLI; manual fallback if CLI missing) ===
+# Po-Pa: 7:00, 14:00, 20:00
+0 7,14,20 * * 1-5 /usr/local/bin/python3 /app/cron/triage_llm_run.py >> /var/log/second-brain/triage.log 2>&1
+# So-Ne: jen ranní běh
+0 7 * * 0,6 /usr/local/bin/python3 /app/cron/triage_llm_run.py >> /var/log/second-brain/triage.log 2>&1
+# Fallback inventory (Po 6:55 — log only, no proposals)
+55 6 * * 1-5 /usr/local/bin/python3 /app/cron/inbox_inventory.py >> /var/log/second-brain/triage.log 2>&1
 
 # === EDU NEWS (recurring extra) ===
 # Po-Pa: edu news 7:10 (top kandidáti tématu pro OPS2 recurring task)

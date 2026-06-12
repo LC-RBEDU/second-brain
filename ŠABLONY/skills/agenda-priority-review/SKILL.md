@@ -34,12 +34,14 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat ASAP/
 
 ## Preview formát
 
+Každá zmínka tasku v chatu: **`ID — title`** z frontmatter (ne jen ID). Viz `.cursor/rules/task-mention-convention.mdc`.
+
 ```
 REVIZE PRIORIT — YYYY-MM-DD
 
 Navrhované změny (N):
-  [finance/F17] status: Next → ASAP, ICE I7→I10 (důvod: cashflow)
-  [strategy/S8] status: ASAP → Waiting, waitUntil: 2026-05-31 (důvod: čeká na Lenku)
+  [finance] F17 — Název úkolu: status Next → ASAP, ICE I7→I10 (důvod: cashflow)
+  [strategy] S8 — Název úkolu: status ASAP → Waiting, waitUntil: 2026-05-31 (důvod: čeká na Lenku)
   ...
 
 Beze změny (TOP 5 podle today_score):

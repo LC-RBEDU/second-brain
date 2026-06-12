@@ -27,19 +27,47 @@ Detaily: `OBSIDIAN/00-System/Templates/agenda-system.md`, `agent-bootstrap.md`.
 
 ## Příkazy
 
-### Refresh agent context (lokální, every-write)
+### Refresh agent context + lidé (lokální, po zápisu v Cursoru)
 
 ```bash
 python3 scripts/build_agent_context.py
+python3 scripts/sync_lide_people.py --incremental --paths "02-PROJEKTY/.../tasks/foo.md,07-ARCHIV/..."
 ```
 
-Píše `OBSIDIAN/00-System/agent-context.json` — Cursor agent ho čte přes always-applied rule `.cursor/rules/second-brain-bootstrap.mdc`.
+`build_agent_context` → `OBSIDIAN/00-System/agent-context.json`. `sync_lide_people` (incremental po triáži/capture) → wikilinky + tabulky `05-RESOURCES/lide/*.md`. Skills `agenda-triage` / `agenda-capture` to spouštějí automaticky po apply.
 
 ### Sync skills (po editaci ŠABLONY/skills/<skill>/SKILL.md)
 
 ```bash
-bash scripts/sync-agenda-skills.sh
+bash scripts/install_agenda_skills.sh
 ```
+
+Symlinky `~/.cursor/skills/agenda-*` → `ŠABLONY/skills/` (jediný SSOT).
+
+### Hub stav + zdroje dat
+
+```bash
+python3 scripts/update_hub_state.py          # ## Stav (auto) ve všech hubech
+python3 scripts/patch_hub_sources.py       # jednorázově / idempotentní sources frontmatter
+```
+
+Charter `sources:` / `notebooklm:` / `workspace:` + sekce `## Zdroje dat` — skills `agenda-work` / `agenda-analyze` je čtou z hubu.
+
+### NotebookLM (vyžaduje jednorázový login)
+
+```bash
+pip3 install --user "notebooklm-py[browser]"
+~/Library/Python/3.14/bin/notebooklm login   # browser OAuth — jednou
+python3 scripts/notebooklm_query.py list
+python3 scripts/notebooklm_query.py ask "Allfred" "…"
+```
+
+Po inventuře doplň `notebooklm:` v hub frontmatteru (např. Allfred).
+
+### Cursor hooks (repo `.cursor/hooks.json`)
+
+- `afterFileEdit` → debounced `build_agent_context.py`
+- `sessionStart` → výtah z `agent-context.json`
 
 ### VPS cron (Coolify, supercronic) — viz `vps/second-brain-hub/deploy/crontab`
 
@@ -52,11 +80,15 @@ bash scripts/sync-agenda-skills.sh
 | `lifecycle_overdue_flag.py` | every 2h :04 | Append OVERDUE log do body |
 | `archive_done_tasks.py` | every 2h :05 | Done > 90 dní → 07-ARCHIV/tasks-done/<slug>/ |
 | `lifecycle_recurring.py` | every 2h :06 | Done + recurring → archive + nová instance |
+| `lifecycle_hub_state.py` | every 2h :07 | `## Stav (auto)` v project hubech + staleness |
 | `lifecycle_asap_backfill.py` | každou hodinu 10:00–02:00 | ASAP < 3 → promote top Next (today_score) |
-| `triage_run.py` | Po-Pa 7/14/20, So-Ne 7 | INBOX → Triage-Pending/*.json (v2 schema) |
+| `triage_llm_run.py` | Po-Pa 7/14/20, So-Ne 7 | LLM triáž → Triage-Pending/*.json (`CURSOR_API_KEY` + `cursor-agent`) |
+| `inbox_inventory.py` | Po 6:55 | Log nezpracovaného INBOXu (bez návrhů) |
 | `lifecycle_extra_edu_news.py` | denně 07:10 | OPS2 marker block refresh (top 5 témat) |
 | `build_agent_context.py` (VPS) | každých 15 min v workhours | agent-context.json refresh |
 | `weekly_summary_draft.py` + `retro_draft.py` | Ne 20:00 | týdenní + retro draft |
+
+**Deploy LLM triáže:** nastav Coolify secret `CURSOR_API_KEY` + nainstaluj `cursor-agent` CLI v cron kontejneru. Bez klíče cron jen zaloguje inbox a triáž běží manuálně (`projeď inbox`).
 
 ## Git
 

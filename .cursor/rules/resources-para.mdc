@@ -1,0 +1,35 @@
+---
+description: PARA pravidla pro 05-RESOURCES — kam ukládat cross-project materiály, attachments, topics. Používat při capture, triage, analyze a work.
+alwaysApply: false
+globs:
+  - OBSIDIAN/05-RESOURCES/**
+  - OBSIDIAN/02-PROJEKTY/**/materials/**
+---
+
+# 05-RESOURCES — PARA pravidla
+
+Cross-project referenční knihovna. Index: `OBSIDIAN/05-RESOURCES/_index.md`.
+
+## Aktivní kategorie
+
+`lide/` · `inspirace/` · `vzdelavani/` · `komunity/` · `profil-rb-edu/` · `vystupy/` · `smlouvy/`
+
+## Pravidla zakládání
+
+1. **Vázané na jeden projekt** → `02-PROJEKTY/<slug>/materials/`, nikdy Resources.
+2. **Existující kategorie má přednost** — hraniční případy řeší `topics:` tag, ne nový folder.
+3. **Nová kategorie** až při 3+ položkách, které se nikam nevejdou — navrhuje triage/capture, schvaluje uživatel. Žádné prázdné foldery dopředu.
+4. **Název kategorie = téma** (jedno slovo/sousloví), nikdy název projektu.
+5. **Kategorie bez čtení/zápisu ~6 měsíců** → návrh na archivaci do `07-ARCHIV/`.
+6. **Přílohy (obrázky, PDF…) vždy k obsahu, ne podle formy** — žádný centrální attachments folder; příloha žije vedle poznámky/materiálu, ke kterému patří (project materials, resource kategorie). Platí pro Obsidian paste (`attachmentFolderPath` = vedle aktuální poznámky) i pro agenta při capture/triage.
+
+## Frontmatter
+
+- Resources materiály: `type: material` + `topics:` (array tagů pro vynořování).
+- `projects:` array pro M:N vazbu na projekty (cross-project materiál může mít více projektů).
+- Person soubory v `lide/`: `type: person` — viz F6.4.
+
+## Skills
+
+- `agenda-capture` / `agenda-triage`: progressive summarization + `topics:` při ukládání do Resources.
+- `agenda-work` / `agenda-analyze`: při otevření projektu prohledat Resources podle `topics:` + `materials:` M:N a nabídnout relevantní materiály.

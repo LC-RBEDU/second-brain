@@ -1,0 +1,110 @@
+---
+description: Always-applied bootstrap pro Second Brain v2 — file-per-task, frontmatter SSOT, Bases dashboardy. Načítá agent-context.json snapshot.
+alwaysApply: true
+---
+
+# Second Brain v2 — bootstrap
+
+## Statický kontext (vždy platí)
+
+### Vault
+- Root: `~/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/`
+- Obsidian vault: `OBSIDIAN/`
+- Repo (git versioned): `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/`
+- `OBSIDIAN/` je **git-ignored** — verzování řeší Google Drive native versioning
+
+### Datový model (file-per-task)
+- TASK = `02-PROJEKTY/<slug>/tasks/<ID>-<slug>.md` (single file, YAML frontmatter SSOT)
+- PROJECT = `02-PROJEKTY/<Hub>.md` (charter + Bases embed). Vault je single-user — owner = vždy Lukáš (nesepisujeme).
+- MATERIAL = `02-PROJEKTY/<slug>/materials/<file>.md` (project-specific) nebo `05-RESOURCES/<category>/<file>.md` (cross-project)
+- AREA = `03-AREAS/<Name>.md`
+- ARCHIVE = `07-ARCHIV/tasks-done/<slug>/<ID>-*.md`
+
+### Statusy
+`ASAP | Next | Backlog | Waiting | Doing | Done`
+
+### Priority score
+- `priority_score = (ice_i * ice_c) / ice_e` (Bases formula + agent-context.json)
+- **`today_score`** (TOP dnes): `priority_score` + urgency bonus — overdue +35, deadline dnes +30, zítra +15
+- **`top_priority_today`** (SSOT, max 5): jen `ASAP`; `Next` jen když v vaultu není žádný otevřený `ASAP`; nikdy `Waiting` / `Backlog`
+- **`top_priority`** (max 15): stejná eligibility + sort `today_score DESC`
+
+### Konvence — vždy zachovej
+- **Chat o konkrétním tasku:** vždy `**ID — title**` z frontmatter (ne jen `SBD4`) — viz `task-mention-convention.mdc`.
+- **Slug**: kebab-case, latin-only, primary key (technický identifikátor pro frontmatter, ID, filename).
+- **Wikilink na hub charter v body**: vždy `[[<HubFilename>]]` (např. `[[M&A Odyssey]]`, `[[RB Universe]]`). Display = lidský název, target = charter. Bare `[[<slug>]]` v body NEPOUŽÍVAT — kolize s folderem `02-PROJEKTY/<slug>/`. Frontmatter (`project:`, `materials:`) bare alias zůstává — Bases query si poradí.
+- **Pravidlo**: pokud existuje dokument zastřešující oblast (hub, area, memory note), odkazuj na něj, **ne na folder** se zdroji.
+- **Filename normalization**: `<ID>-<slugify(title)>.md` pro běžné tasky, `<ID>.md` (bez suffix) pro recurring.
+- **ID**: `<slug-prefix><N>` per projekt, sekvence z `migration-mapping.json`.
+- **CAS write**: každý cron job nese `expect_mtime` přes `DriveVault`, jinak konflikt.
+
+## Dynamický kontext
+
+### agent-context.json (primary)
+**VŽDY si načti** `OBSIDIAN/00-System/agent-context.json` jako první akci, pokud řešíš:
+- "co teď", "co dnes", "top priority", dashboard, status
+- konkrétní projekt — najdi ho v `projects[]` podle `slug`
+- recently done, upcoming deadlines, blocked tasks
+
+Snapshot obsahuje:
+- `projects[]` — všechny project huby (slug, hub_filename, status, area, owner, open_tasks_count)
+- `top_priority_today[]` — TOP dnes (max 5, eligibility + today_score) — **primární pro „co teď“**
+- `top_priority[]` — širší seznam (max 15, stejná pravidla)
+- `recently_done[]` — last 7 days
+- `upcoming_deadlines[]` — next 7 days
+- `recurring_pending[]` — recurring tasky čekající na rotaci
+- `stale_hubs[]` — chartery se zastaralým narativem (>14 dní od poslední task aktivity)
+- `stale_areas[]`, `areas[]` — area health (F6)
+
+**Refresh policy: every-write** (local trigger po každém zápisu do `02-PROJEKTY/` nebo `07-ARCHIV/tasks-done/`).
+
+Pokud snapshot chybí nebo je `generated_at` starší než 24 h, spusť:
+```bash
+python3 "scripts/build_agent_context.py"
+```
+
+### Když potřebuješ něco specifického
+- Konkrétní task — `02-PROJEKTY/<slug>/tasks/<ID>-*.md` (read frontmatter)
+- Konkrétní materiál — `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<category>/`
+- Project charter — `02-PROJEKTY/<Hub>.md` (Scope, **## Stav (auto)**, Kontext, **## Zdroje dat**, frontmatter `sources:` / `notebooklm:` / `workspace:`)
+
+## Lifecycle automatika (ví si sám, neptej se)
+- every 2h :00 done_from_checkboxes
+- every 2h :01 waiting_to_asap (waitUntil ≤ dnes → ASAP, waitUntil smaže)
+- every 2h :02 waiting_default_waituntil (Waiting bez data → waitUntil = dnes + 3 dny)
+- every 2h :03 waituntil_hygiene (waitUntil jen u Waiting; u ostatních statusů vyčistí)
+- every 2h :04 overdue_flag (append OVERDUE log)
+- every 2h :05 archive_done_tasks (>90 dní v Done)
+- every 2h :06 lifecycle_recurring (Done + recurring → archive + nová instance)
+- každou hodinu 10:00–02:00 asap_backfill (ASAP < 3 → promote top Next podle today_score)
+- every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech)
+- Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
+- Po 6:55 inbox_inventory (log only)
+- 7:10 lifecycle_extra_edu_news (OPS2 marker block refresh)
+
+## Skills
+
+| Skill | Kdy zavolat |
+|-------|-------------|
+| `agenda-capture` | "zapiš si", "capture", "INBOX" |
+| `agenda-triage` | "projeď inbox", "schvál pending" |
+| `agenda-co-ted` | "co teď", "co dnes", "co je urgentní" |
+| `agenda-work` | "jdeme na <slug>", "otevři <slug>" |
+| `agenda-status-update` | "označ X jako Done", "odlož na Y" |
+| `agenda-priority-review` | "přehodnoť ICE", "revize priorit" |
+| `agenda-analyze` | "analyzuj", "rozbor materiálů" |
+| `agenda-weekly-review` | "weekly review", "schvál draft" |
+| `agenda-retro` | "retro", "spolupráce" |
+| `agenda-proces` | "proces", "procesní mapa" |
+
+## Co (ne)dělat
+- **NE** vytvářej tasky H3 v hubu (legacy v1) — vždy file-per-task.
+- **NE** dělej HTML dashboard — Obsidian Bases je live source.
+- **NE** edituj `vps/second-brain-hub/cron/build_dashboard.py` ani `vps/web/` (deprecated, F9 cleanup).
+- **NE** zapisuj do `OBSIDIAN/00-System/dashboard-data.json` (legacy v1, nahrazeno `agent-context.json`).
+- **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
+
+## Související
+- `OBSIDIAN/00-System/agent-bootstrap.md` — uživatelská kopie tohoto kontextu
+- `OBSIDIAN/00-System/Templates/agenda-system.md` — kompletní průvodce v2 architekturou
+- `OBSIDIAN/00-System/Templates/konvence-a-slovnik.md`

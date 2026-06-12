@@ -28,9 +28,13 @@ description: "Use when user asks for týdenní shrnutí, weekly review, schvál 
 - (Po F8) Přečti `00-System/agent-context.json` pro kontext priorit
 - Jinak: scan `02-PROJEKTY/<slug>/tasks/*.md` frontmatterů (file-per-task) a `07-ARCHIV/tasks-done/<slug>/*.md` pro Done tasky tohoto týdne
 
-### 2. Obohať (LLM)
+### 2. Obohať (LLM) — struktura po **Areas** (F6)
 
-Doplň ke skeletonu:
+Projdi 7 oblastí z `03-AREAS/_index.md`. U každé area krátce:
+- **Je standard ohrožen?** (otevřené tasky, blokéry, stale flag z `agent-context.json`)
+- **Má area pohyb?** (nové logy, dokončené tasky v projektech area)
+
+Pak doplň ke skeletonu draftu:
 
 - **Co se povedlo** — 3–7 bulletů s dopadem (ne jen seznam task ID)
 - **Kam se posunulo** — per projekt max 1 věta u aktivních témat

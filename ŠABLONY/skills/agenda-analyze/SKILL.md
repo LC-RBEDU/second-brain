@@ -49,7 +49,9 @@ description: "Analyzuje materiály (URL, vault) k tématu/úkolu. Výstup: struk
 ### 2. Načti materiály + kontext úkolu
 
 - Zdroje: URL fetch, vault cesty, přílohy
-- Hub `### <ID> —` pokud vázané na úkol
+- Hub charter + **`sources:` / `notebooklm:` / `workspace:`** — aktivně použij deklarované zdroje
+- Prohledej `05-RESOURCES/` podle `topics:` relevantních k projektu (`.cursor/rules/resources-para.mdc`)
+- U procesních témat: RB Universe MCP — existující procesy v Architektovi
 - `00-System/Memory/about-me.md` pokud ještě v session ne
 
 ### 3. Zapiš analýzu (v2)
