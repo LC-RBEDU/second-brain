@@ -1,0 +1,523 @@
+{
+  "updatedAt": "2026-06-17T20:44:07.056Z",
+  "createdAt": "2026-06-17T20:44:07.056Z",
+  "id": "k5p32VUAgaPL0KPe",
+  "name": "SECOND BRAIN: Mobile → INBOX/daily",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mobile-cowork-capture",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-mobile-capture",
+      "name": "Webhook: mobile capture",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    {
+      "parameters": {
+        "jsCode": "const TZ = 'Europe/Prague';\nfunction slug(s, maxLen) {\n  let t = String(s || '').normalize('NFC').replace(/[\\\\/:?*|#\"<>%]+/g, '-').replace(/\\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'capture';\n  return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;\n}\nfunction tsPrague(d) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;\n}\nconst items = [];\nfor (const item of $input.all()) {\n  const raw = item.json.body !== undefined ? item.json.body : item.json;\n  let p = raw;\n  if (typeof raw === 'string') { try { p = JSON.parse(raw); } catch (_) { p = { text: raw }; } }\n  const title = (p.title || p.subject || 'Mobile capture').trim();\n  const text = String(p.text || p.content || p.note || '').trim();\n  const date = new Date(p.date || Date.now());\n  const filename = `${tsPrague(date)}-mobile-${slug(title, 50)}.md`;\n  const fm = ['---', 'source: mobile', `date: ${date.toISOString()}`, '---', ''].join('\\n');\n  const md = [fm, `# ${title}`, '', '## Tělo', '', text || '_(prázdné)_', ''].join('\\n');\n  items.push({ json: { filename, content: md, skipUpload: !item.binary || !Object.keys(item.binary).length }, binary: item.binary || {} });\n}\nreturn items;"
+      },
+      "id": "393a344b-b580-4e70-94e5-261ff43bd085",
+      "name": "Format → Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const keys = Object.keys(bin);\n  const stem = (item.json.filename || 'mobile.md').replace(/\\.md$/i, '');\n  if (!keys.length) { out.push({ json: { ...item.json, skipUpload: true } }); continue; }\n  for (const key of keys) {\n    const b = bin[key];\n    const raw = (b && b.fileName) || key;\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({ json: { uploadFileName: stem + '__' + safe, skipUpload: false }, binary: { data: b } });\n  }\n}\nreturn out;"
+      },
+      "id": "f1f65c11-233d-4079-b106-158e86abc768",
+      "name": "Code: Přílohy → položky",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "skip",
+              "leftValue": "={{ $json.skipUpload }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-skip-upload",
+      "name": "Bez příloh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        860,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{ $json.uploadFileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://drive.google.com/drive/u/0/folders/1hJWgIxgq5lJpMmjV7OILpRpmUu7zpA2K"
+        },
+        "options": {}
+      },
+      "id": "22415338-26ab-4018-9cd6-0b272bdc39a5",
+      "name": "Drive: Upload příloh",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1080,
+        420
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatItem = $('Format → Markdown').first().json;\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map(i => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  }));\n} catch (_) {}\nfunction formatFileSize(bytes) {\n  const n = Number(bytes); if (!n) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n/1024).toFixed(1)} kB`;\n  return `${(n/(1024*1024)).toFixed(1)} MB`;\n}\nlet content = String(formatItem.content || '').trimEnd();\nif (uploadedAttachments.length) {\n  const heading = uploadedAttachments.length === 1 ? '## Přílohy' : `## Přílohy (${uploadedAttachments.length})`;\n  const lines = [heading, ''];\n  for (const a of uploadedAttachments) {\n    const meta = [a.mimeType, formatFileSize(a.size)].filter(Boolean).join(', ');\n    lines.push(a.webViewLink ? `- [${a.name}](${a.webViewLink})${meta ? ` — ${meta}` : ''}` : `- ${a.name}`);\n  }\n  content += '\\n\\n' + lines.join('\\n') + '\\n';\n}\nreturn [{ json: { ...formatItem, content } }];"
+      },
+      "id": "finalize-attachments-md",
+      "name": "Code: Finalize ## Přílohy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "createFromText",
+        "content": "={{ $json.content }}",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://drive.google.com/drive/u/0/folders/1hJWgIxgq5lJpMmjV7OILpRpmUu7zpA2K"
+        },
+        "options": {}
+      },
+      "id": "save-mobile-drive",
+      "name": "Drive: Save .md to INBOX/daily/",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1300,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: mobile capture": {
+      "main": [
+        [
+          {
+            "node": "Format → Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format → Markdown": {
+      "main": [
+        [
+          {
+            "node": "Code: Přílohy → položky",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Přílohy → položky": {
+      "main": [
+        [
+          {
+            "node": "Bez příloh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bez příloh?": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive: Upload příloh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Upload příloh": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Finalize ## Přílohy": {
+      "main": [
+        [
+          {
+            "node": "Drive: Save .md to INBOX/daily/",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "8dc53e80-a58b-45e1-bba6-500966e5e1cc",
+  "activeVersionId": "8dc53e80-a58b-45e1-bba6-500966e5e1cc",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-06-17T20:44:07.056Z",
+      "createdAt": "2026-06-17T20:44:07.056Z",
+      "role": "workflow:owner",
+      "workflowId": "k5p32VUAgaPL0KPe",
+      "projectId": "X3Gb83P3UZlojuge",
+      "project": {
+        "updatedAt": "2025-11-15T16:08:05.137Z",
+        "createdAt": "2025-11-15T16:02:16.475Z",
+        "id": "X3Gb83P3UZlojuge",
+        "name": "Michal Šrajer <michal@redbutton.cz>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-06-17T20:44:07.056Z",
+    "createdAt": "2026-06-17T20:44:07.056Z",
+    "versionId": "8dc53e80-a58b-45e1-bba6-500966e5e1cc",
+    "workflowId": "k5p32VUAgaPL0KPe",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "mobile-cowork-capture",
+          "responseMode": "onReceived",
+          "options": {}
+        },
+        "id": "webhook-mobile-capture",
+        "name": "Webhook: mobile capture",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      {
+        "parameters": {
+          "jsCode": "const TZ = 'Europe/Prague';\nfunction slug(s, maxLen) {\n  let t = String(s || '').normalize('NFC').replace(/[\\\\/:?*|#\"<>%]+/g, '-').replace(/\\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'capture';\n  return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;\n}\nfunction tsPrague(d) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;\n}\nconst items = [];\nfor (const item of $input.all()) {\n  const raw = item.json.body !== undefined ? item.json.body : item.json;\n  let p = raw;\n  if (typeof raw === 'string') { try { p = JSON.parse(raw); } catch (_) { p = { text: raw }; } }\n  const title = (p.title || p.subject || 'Mobile capture').trim();\n  const text = String(p.text || p.content || p.note || '').trim();\n  const date = new Date(p.date || Date.now());\n  const filename = `${tsPrague(date)}-mobile-${slug(title, 50)}.md`;\n  const fm = ['---', 'source: mobile', `date: ${date.toISOString()}`, '---', ''].join('\\n');\n  const md = [fm, `# ${title}`, '', '## Tělo', '', text || '_(prázdné)_', ''].join('\\n');\n  items.push({ json: { filename, content: md, skipUpload: !item.binary || !Object.keys(item.binary).length }, binary: item.binary || {} });\n}\nreturn items;"
+        },
+        "id": "393a344b-b580-4e70-94e5-261ff43bd085",
+        "name": "Format → Markdown",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const keys = Object.keys(bin);\n  const stem = (item.json.filename || 'mobile.md').replace(/\\.md$/i, '');\n  if (!keys.length) { out.push({ json: { ...item.json, skipUpload: true } }); continue; }\n  for (const key of keys) {\n    const b = bin[key];\n    const raw = (b && b.fileName) || key;\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({ json: { uploadFileName: stem + '__' + safe, skipUpload: false }, binary: { data: b } });\n  }\n}\nreturn out;"
+        },
+        "id": "f1f65c11-233d-4079-b106-158e86abc768",
+        "name": "Code: Přílohy → položky",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "skip",
+                "leftValue": "={{ $json.skipUpload }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-skip-upload",
+        "name": "Bez příloh?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          860,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "upload",
+          "inputDataFieldName": "data",
+          "name": "={{ $json.uploadFileName }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "url",
+            "value": "https://drive.google.com/drive/u/0/folders/1hJWgIxgq5lJpMmjV7OILpRpmUu7zpA2K"
+          },
+          "options": {}
+        },
+        "id": "22415338-26ab-4018-9cd6-0b272bdc39a5",
+        "name": "Drive: Upload příloh",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1080,
+          420
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const formatItem = $('Format → Markdown').first().json;\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map(i => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  }));\n} catch (_) {}\nfunction formatFileSize(bytes) {\n  const n = Number(bytes); if (!n) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n/1024).toFixed(1)} kB`;\n  return `${(n/(1024*1024)).toFixed(1)} MB`;\n}\nlet content = String(formatItem.content || '').trimEnd();\nif (uploadedAttachments.length) {\n  const heading = uploadedAttachments.length === 1 ? '## Přílohy' : `## Přílohy (${uploadedAttachments.length})`;\n  const lines = [heading, ''];\n  for (const a of uploadedAttachments) {\n    const meta = [a.mimeType, formatFileSize(a.size)].filter(Boolean).join(', ');\n    lines.push(a.webViewLink ? `- [${a.name}](${a.webViewLink})${meta ? ` — ${meta}` : ''}` : `- ${a.name}`);\n  }\n  content += '\\n\\n' + lines.join('\\n') + '\\n';\n}\nreturn [{ json: { ...formatItem, content } }];"
+        },
+        "id": "finalize-attachments-md",
+        "name": "Code: Finalize ## Přílohy",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1080,
+          180
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "createFromText",
+          "content": "={{ $json.content }}",
+          "name": "={{ $json.filename }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "url",
+            "value": "https://drive.google.com/drive/u/0/folders/1hJWgIxgq5lJpMmjV7OILpRpmUu7zpA2K"
+          },
+          "options": {}
+        },
+        "id": "save-mobile-drive",
+        "name": "Drive: Save .md to INBOX/daily/",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1300,
+          300
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook: mobile capture": {
+        "main": [
+          [
+            {
+              "node": "Format → Markdown",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format → Markdown": {
+        "main": [
+          [
+            {
+              "node": "Code: Přílohy → položky",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Přílohy → položky": {
+        "main": [
+          [
+            {
+              "node": "Bez příloh?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bez příloh?": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Drive: Upload příloh",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: Upload příloh": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Finalize ## Přílohy": {
+        "main": [
+          [
+            {
+              "node": "Drive: Save .md to INBOX/daily/",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Michal Šrajer",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-06-17T20:44:07.185Z",
+        "id": 129,
+        "workflowId": "k5p32VUAgaPL0KPe",
+        "versionId": "8dc53e80-a58b-45e1-bba6-500966e5e1cc",
+        "event": "activated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    ]
+  }
+}

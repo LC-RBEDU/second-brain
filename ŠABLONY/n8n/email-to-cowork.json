@@ -1,5 +1,11 @@
 {
-  "name": "Email forward → Cowork INBOX",
+  "updatedAt": "2026-06-17T20:44:05.757Z",
+  "createdAt": "2026-04-28T21:32:49.301Z",
+  "id": "omQRpDBa48ePiKnT",
+  "name": "SECOND BRAIN: E-mail → INBOX",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -12,13 +18,13 @@
         },
         "simple": false,
         "filters": {
-          "q": "to:lukas.cypra+cowork@gmail.com -in:trash"
+          "q": "to:lukas+cowork@redbuttonedu.cz -in:trash"
         },
         "options": {
           "downloadAttachments": true
         }
       },
-      "id": "gmail-trigger",
+      "id": "188abca8-35e4-4a1a-910a-6c011339ff1d",
       "name": "Gmail: nové zprávy s +cowork",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.1,
@@ -28,16 +34,16 @@
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "REPLACE_WITH_GMAIL_CREDENTIAL_ID",
-          "name": "Gmail Lukáš"
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Gmail Trigger: Simplify = OFF (simple: false).\n// Drive fetch JE V DOWNSTREAM uzlech (Code node sandbox blokuje httpRequestWithAuthentication).\nconst TZ = 'Europe/Prague';\nconst MAX_LINKED_DOCS = 10;\n\n/** Slug pro název souboru: NFC, zachová diakritiku (češtinu), odstraní jen znaky nebezpečné v názvech souborů. */\nfunction filenameFriendlySlug(s, maxLen) {\n  let t = String(s || '').normalize('NFC');\n  t = t.replace(/<[^>]*>/g, ' ');\n  t = t.split('<')[0].trim();\n  t = t.replace(/^[\"'\\s]+|[\"'\\s]+$/g, '');\n  t = t.replace(/[\\u0000-\\u001f\\u007f\\\\/:?*|#\"<>%]+/g, '-');\n  t = t.replace(/\\s+/g, '-');\n  t = t.replace(/-+/g, '-').replace(/^-|-$/g, '');\n  t = t.toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  if (t.length > maxLen) t = t.substring(0, maxLen).replace(/-+$/g, '');\n  return t;\n}\n\nfunction pragueFilenameTs(date) {\n  const dtf = new Intl.DateTimeFormat('en-GB', {\n    timeZone: TZ,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false,\n  });\n  const parts = {};\n  for (const { type, value } of dtf.formatToParts(date)) {\n    if (type !== 'literal') parts[type] = value;\n  }\n  return `${parts.year}-${parts.month}-${parts.day}-${parts.hour}${parts.minute}`;\n}\n\nfunction addrToText(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'object') {\n    if (v.text) return v.text;\n    if (Array.isArray(v)) return v.map(addrToText).filter(Boolean).join(', ');\n    if (Array.isArray(v.value)) {\n      return v.value.map((x) => x && (x.address || x.name)).filter(Boolean).join(', ');\n    }\n  }\n  return '';\n}\n\nfunction htmlToText(html) {\n  if (html == null) return '';\n  const s =\n    typeof html === 'string'\n      ? html\n      : html && typeof html.toString === 'function'\n        ? html.toString()\n        : '';\n  if (!s) return '';\n  return s\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<head[\\s\\S]*?<\\/head>/gi, ' ')\n    .replace(/<br\\s*\\/?>(?=)/gi, '\\n')\n    .replace(/<\\/(p|div|li|tr|h[1-6])>/gi, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/[ \\t]+\\n/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/[ \\t]{2,}/g, ' ')\n    .trim();\n}\n\nfunction extractGoogleLinks(text) {\n  if (!text) return [];\n  const s = String(text);\n  const patterns = [\n    /https?:\\/\\/(?:docs|drive|sheets|slides|forms|sites|meet)\\.google\\.com\\/[^\\s\"'<>\\)\\]]+/gi,\n    /https?:\\/\\/drive\\.google\\.com\\/open\\?[^\\s\"'<>\\)\\]]+/gi,\n  ];\n  const all = [];\n  for (const re of patterns) {\n    const m = s.match(re) || [];\n    all.push(...m);\n  }\n  return Array.from(new Set(all.map((u) => u.replace(/[).,;]+$/, ''))));\n}\n\nfunction extractHrefsFromHtml(html) {\n  if (!html) return [];\n  const s = String(html);\n  const hrefs = [];\n  const re = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    hrefs.push(m[1].replace(/&amp;/g, '&'));\n  }\n  return hrefs;\n}\n\nfunction extractSaferedirectUrls(html) {\n  if (!html) return [];\n  const s = String(html);\n  const out = [];\n  const re = /data-saferedirecturl\\s*=\\s*[\"']([^\"']+)[\"']/gi;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    out.push(m[1].replace(/&amp;/g, '&'));\n  }\n  return out;\n}\n\nfunction expandRedirectUrls(urls) {\n  const seen = new Set();\n  const out = [];\n  for (const u of urls || []) {\n    if (u && !seen.has(u)) {\n      seen.add(u);\n      out.push(u);\n    }\n    if (!u || typeof u !== 'string') continue;\n    try {\n      if (!/google\\.(?:com|[a-z]{2,3})\\/url\\?/i.test(u)) continue;\n      const parsed = new URL(u);\n      for (const key of ['q', 'url']) {\n        const inner = parsed.searchParams.get(key);\n        if (!inner) continue;\n        let dec = inner;\n        try {\n          dec = decodeURIComponent(inner);\n        } catch (e) {\n          dec = inner;\n        }\n        if (/^https?:\\/\\//i.test(dec) && !seen.has(dec)) {\n          seen.add(dec);\n          out.push(dec);\n        }\n      }\n    } catch (e) {\n      /* ignore */\n    }\n  }\n  return out;\n}\n\nfunction extractDriveFileIds(urls) {\n  const seen = new Set();\n  const out = [];\n  const patterns = [\n    /\\/document\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/presentation\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/forms\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/file\\/d\\/([a-zA-Z0-9_-]+)/,\n    /[?&]id=([a-zA-Z0-9_-]+)/,\n  ];\n  for (const url of urls || []) {\n    for (const re of patterns) {\n      const m = String(url).match(re);\n      if (m && m[1] && !seen.has(m[1])) {\n        seen.add(m[1]);\n        out.push({ id: m[1], sourceUrl: url });\n      }\n    }\n  }\n  return out;\n}\n\nfunction binaryAttachmentList(binary) {\n  if (!binary || typeof binary !== 'object') return [];\n  return Object.keys(binary).map((k) => {\n    const b = binary[k];\n    const name = (b && b.fileName) || k;\n    const mime = (b && b.mimeType) || '';\n    return { key: k, name, mime };\n  });\n}\n\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n\n  const dateMs = e.internalDate\n    ? parseInt(String(e.internalDate), 10)\n    : e.date\n      ? new Date(e.date).getTime()\n      : Date.now();\n  const date = new Date(dateMs);\n  const ts = pragueFilenameTs(date);\n\n  const fromText = addrToText(e.from) || addrToText(e.headers && e.headers.from) || 'unknown';\n  const toText = addrToText(e.to) || addrToText(e.headers && e.headers.to) || '';\n  const fromDisplay = String(fromText)\n    .split('<')[0]\n    .replace(/<[^>]+>/g, '')\n    .trim()\n    .replace(/^[\"']|[\"']$/g, '');\n  const fromWords = fromDisplay.split(/\\s+/).filter(Boolean).slice(0, 2).join(' ');\n  const fromSlug = filenameFriendlySlug(fromWords || 'unknown', 40);\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n  const subjectSlug = filenameFriendlySlug(subjectClean, 80);\n  const filename = `${ts}-${fromSlug}-${subjectSlug || 'no-subject'}.md`;\n\n  const plain = e.text && String(e.text).trim();\n  const htmlRaw = e.html != null ? e.html : e.textAsHtml || '';\n  const htmlText = htmlToText(htmlRaw);\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body = plain || htmlText;\n  if (!body && snippet) {\n    body =\n      snippet +\n      '\\n\\n_(jen Gmail snippet — máš zapnutý Simplify u Gmail triggeru? Vypni ho pro plné tělo.)_';\n  }\n  if (!body) body = '_(prázdné tělo — ověř Simplify=OFF)_';\n\n  const hrefs = extractHrefsFromHtml(htmlRaw);\n  const safeUrls = extractSaferedirectUrls(htmlRaw);\n  const headerBlob =\n    e.headers && typeof e.headers === 'object'\n      ? JSON.stringify(e.headers).substring(0, 12000)\n      : '';\n  const haystackForLinks = `${plain || ''}\\n${String(htmlRaw || '')}\\n${hrefs.join('\\n')}\\n${safeUrls.join('\\n')}\\n${subject}\\n${snippet || ''}\\n${headerBlob}`;\n  let links = extractGoogleLinks(haystackForLinks);\n  links = expandRedirectUrls(links);\n  const fileRefs = extractDriveFileIds(links).slice(0, MAX_LINKED_DOCS);\n\n  const firstRef = fileRefs.length ? fileRefs[0] : null;\n\n  const TOPIC_KEYWORDS = {\n    'rb-universe': ['rb universe', 'rebel', 'pgvector', 'pipedrive', 'fio', 'fakturoid'],\n    'ceo-reporting': ['ceo', 'reporting', 'dashboard', 'mixpanel', 'sales review'],\n    'finance-procesy': ['fakturace', 'finance', 'účetní', 'allfred'],\n    'interni-pravidla': ['cesťák', 'cesťáky', 'výdaje', 'platby kartou', 'evidence'],\n  };\n  const haystack = (subject + ' ' + body).toLowerCase();\n  let suggestedTopic = null;\n  for (const [topic, kws] of Object.entries(TOPIC_KEYWORDS)) {\n    if (kws.some((k) => haystack.includes(k))) {\n      suggestedTopic = topic;\n      break;\n    }\n  }\n\n\n  const lines = [\n    `# Email: ${subject}`,\n    '',\n    `**From**: ${fromText}`,\n    `**To**: ${toText}`,\n    `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`,\n    `**Suggested topic**: ${suggestedTopic || '(nerozpoznáno)'}`,\n    `**Gmail message ID**: ${e.id || ''}`,\n    '',\n  ];\n\n  if (links.length) {\n    lines.push('## Shared links (Google Drive / Docs)', '');\n    for (const u of links) lines.push('- ' + u);\n    lines.push('');\n  }\n\n  lines.push('## Tělo', '', body, '');\n\n  const binList = binaryAttachmentList(item.binary);\n  if (binList.length) {\n    lines.push('## Přílohy (stažené v n8n)', '');\n    for (const a of binList) {\n      let row = '- ' + a.name;\n      if (a.mime) row += ' (' + a.mime + ')';\n      row += ' — binární klíč: ' + a.key;\n      lines.push(row);\n    }\n    lines.push('');\n  }\n\n\n  const md = lines.join('\\n');\n\n  const row = {\n    json: {\n      filename,\n      content: md,\n      firstRefId: firstRef ? firstRef.id : '',\n      firstRefUrl: firstRef ? firstRef.sourceUrl : '',\n      _meta: {\n        hasHtml: !!htmlRaw,\n        hasText: !!plain,\n        usedSnippetFallback: !plain && !htmlText && !!snippet,\n        linkCount: links.length,\n        binaryCount: binList.length,\n        firstRefId: firstRef ? firstRef.id : '',\n      },\n    },\n  };\n  if (item.binary && Object.keys(item.binary).length) {\n    row.binary = item.binary;\n  }\n  items.push(row);\n}\n\nreturn items;\n"
+        "jsCode": "// Gmail Trigger: Simplify = OFF (simple: false).\n// Drive fetch JE V DOWNSTREAM uzlech (Code node sandbox blokuje httpRequestWithAuthentication).\nconst TZ = 'Europe/Prague';\nconst MAX_LINKED_DOCS = 10;\n\n/** Slug pro název souboru: NFC, zachová diakritiku (češtinu), odstraní jen znaky nebezpečné v názvech souborů. */\nfunction filenameFriendlySlug(s, maxLen) {\n  let t = String(s || '').normalize('NFC');\n  t = t.replace(/<[^>]*>/g, ' ');\n  t = t.split('<')[0].trim();\n  t = t.replace(/^[\"'\\s]+|[\"'\\s]+$/g, '');\n  t = t.replace(/[\\u0000-\\u001f\\u007f\\\\/:?*|#\"<>%]+/g, '-');\n  t = t.replace(/\\s+/g, '-');\n  t = t.replace(/-+/g, '-').replace(/^-|-$/g, '');\n  t = t.toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  if (t.length > maxLen) t = t.substring(0, maxLen).replace(/-+$/g, '');\n  return t;\n}\n\nfunction pragueFilenameTs(date) {\n  const dtf = new Intl.DateTimeFormat('en-GB', {\n    timeZone: TZ,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false,\n  });\n  const parts = {};\n  for (const { type, value } of dtf.formatToParts(date)) {\n    if (type !== 'literal') parts[type] = value;\n  }\n  return `${parts.year}-${parts.month}-${parts.day}-${parts.hour}${parts.minute}`;\n}\n\nfunction addrToText(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'object') {\n    if (v.text) return v.text;\n    if (Array.isArray(v)) return v.map(addrToText).filter(Boolean).join(', ');\n    if (Array.isArray(v.value)) {\n      return v.value.map((x) => x && (x.address || x.name)).filter(Boolean).join(', ');\n    }\n  }\n  return '';\n}\n\nfunction htmlToText(html) {\n  if (html == null) return '';\n  const s =\n    typeof html === 'string'\n      ? html\n      : html && typeof html.toString === 'function'\n        ? html.toString()\n        : '';\n  if (!s) return '';\n  return s\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<head[\\s\\S]*?<\\/head>/gi, ' ')\n    .replace(/<br\\s*\\/?>(?=)/gi, '\\n')\n    .replace(/<\\/(p|div|li|tr|h[1-6])>/gi, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/[ \\t]+\\n/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/[ \\t]{2,}/g, ' ')\n    .trim();\n}\n\nfunction extractGoogleLinks(text) {\n  if (!text) return [];\n  const s = String(text);\n  const patterns = [\n    /https?:\\/\\/(?:docs|drive|sheets|slides|forms|sites|meet)\\.google\\.com\\/[^\\s\"'<>\\)\\]]+/gi,\n    /https?:\\/\\/drive\\.google\\.com\\/open\\?[^\\s\"'<>\\)\\]]+/gi,\n  ];\n  const all = [];\n  for (const re of patterns) {\n    const m = s.match(re) || [];\n    all.push(...m);\n  }\n  return Array.from(new Set(all.map((u) => u.replace(/[).,;]+$/, ''))));\n}\n\nfunction extractHrefsFromHtml(html) {\n  if (!html) return [];\n  const s = String(html);\n  const hrefs = [];\n  const re = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    hrefs.push(m[1].replace(/&amp;/g, '&'));\n  }\n  return hrefs;\n}\n\nfunction extractSaferedirectUrls(html) {\n  if (!html) return [];\n  const s = String(html);\n  const out = [];\n  const re = /data-saferedirecturl\\s*=\\s*[\"']([^\"']+)[\"']/gi;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    out.push(m[1].replace(/&amp;/g, '&'));\n  }\n  return out;\n}\n\nfunction expandRedirectUrls(urls) {\n  const seen = new Set();\n  const out = [];\n  for (const u of urls || []) {\n    if (u && !seen.has(u)) {\n      seen.add(u);\n      out.push(u);\n    }\n    if (!u || typeof u !== 'string') continue;\n    try {\n      if (!/google\\.(?:com|[a-z]{2,3})\\/url\\?/i.test(u)) continue;\n      const parsed = new URL(u);\n      for (const key of ['q', 'url']) {\n        const inner = parsed.searchParams.get(key);\n        if (!inner) continue;\n        let dec = inner;\n        try {\n          dec = decodeURIComponent(inner);\n        } catch (e) {\n          dec = inner;\n        }\n        if (/^https?:\\/\\//i.test(dec) && !seen.has(dec)) {\n          seen.add(dec);\n          out.push(dec);\n        }\n      }\n    } catch (e) {\n      /* ignore */\n    }\n  }\n  return out;\n}\n\nfunction extractDriveFileIds(urls) {\n  const seen = new Set();\n  const out = [];\n  const patterns = [\n    /\\/document\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/presentation\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/forms\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/file\\/d\\/([a-zA-Z0-9_-]+)/,\n    /[?&]id=([a-zA-Z0-9_-]+)/,\n  ];\n  for (const url of urls || []) {\n    for (const re of patterns) {\n      const m = String(url).match(re);\n      if (m && m[1] && !seen.has(m[1])) {\n        seen.add(m[1]);\n        out.push({ id: m[1], sourceUrl: url });\n      }\n    }\n  }\n  return out;\n}\n\nfunction binaryAttachmentList(binary) {\n  if (!binary || typeof binary !== 'object') return [];\n  return Object.keys(binary).map((k) => {\n    const b = binary[k];\n    const name = (b && b.fileName) || k;\n    const mime = (b && b.mimeType) || '';\n    return { key: k, name, mime };\n  });\n}\n\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n\n  const dateMs = e.internalDate\n    ? parseInt(String(e.internalDate), 10)\n    : e.date\n      ? new Date(e.date).getTime()\n      : Date.now();\n  const date = new Date(dateMs);\n  const ts = pragueFilenameTs(date);\n\n  const fromText = addrToText(e.from) || addrToText(e.headers && e.headers.from) || 'unknown';\n  const toText = addrToText(e.to) || addrToText(e.headers && e.headers.to) || '';\n  const fromDisplay = String(fromText)\n    .split('<')[0]\n    .replace(/<[^>]+>/g, '')\n    .trim()\n    .replace(/^[\"']|[\"']$/g, '');\n  const fromWords = fromDisplay.split(/\\s+/).filter(Boolean).slice(0, 2).join(' ');\n  const fromSlug = filenameFriendlySlug(fromWords || 'unknown', 40);\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n  const subjectSlug = filenameFriendlySlug(subjectClean, 80);\n  const filename = `${ts}-${fromSlug}-${subjectSlug || 'no-subject'}.md`;\n\n  const plain = e.text && String(e.text).trim();\n  const htmlRaw = e.html != null ? e.html : e.textAsHtml || '';\n  const htmlText = htmlToText(htmlRaw);\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body = plain || htmlText;\n  if (!body && snippet) {\n    body =\n      snippet +\n      '\\n\\n_(jen Gmail snippet — máš zapnutý Simplify u Gmail triggeru? Vypni ho pro plné tělo.)_';\n  }\n  if (!body) body = '_(prázdné tělo — ověř Simplify=OFF)_';\n\n  const hrefs = extractHrefsFromHtml(htmlRaw);\n  const safeUrls = extractSaferedirectUrls(htmlRaw);\n  const headerBlob =\n    e.headers && typeof e.headers === 'object'\n      ? JSON.stringify(e.headers).substring(0, 12000)\n      : '';\n  const haystackForLinks = `${plain || ''}\\n${String(htmlRaw || '')}\\n${hrefs.join('\\n')}\\n${safeUrls.join('\\n')}\\n${subject}\\n${snippet || ''}\\n${headerBlob}`;\n  let links = extractGoogleLinks(haystackForLinks);\n  links = expandRedirectUrls(links);\n  const fileRefs = extractDriveFileIds(links).slice(0, MAX_LINKED_DOCS);\n\n  const firstRef = fileRefs.length ? fileRefs[0] : null;\n\n  const TOPIC_KEYWORDS = {\n    'rb-universe': ['rb universe', 'rebel', 'pgvector', 'pipedrive', 'fio', 'fakturoid'],\n    'ceo-reporting': ['ceo', 'reporting', 'dashboard', 'mixpanel', 'sales review'],\n    'finance-procesy': ['fakturace', 'finance', 'účetní', 'allfred'],\n    'interni-pravidla': ['cesťák', 'cesťáky', 'výdaje', 'platby kartou', 'evidence'],\n  };\n  const haystack = (subject + ' ' + body).toLowerCase();\n  let suggestedTopic = null;\n  for (const [topic, kws] of Object.entries(TOPIC_KEYWORDS)) {\n    if (kws.some((k) => haystack.includes(k))) {\n      suggestedTopic = topic;\n      break;\n    }\n  }\n\n\n  const lines = [\n    `# Email: ${subject}`,\n    '',\n    `**From**: ${fromText}`,\n    `**To**: ${toText}`,\n    `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`,\n    `**Suggested topic**: ${suggestedTopic || '(nerozpoznáno)'}`,\n    `**Gmail message ID**: ${e.id || ''}`,\n    '',\n  ];\n\n  if (links.length) {\n    lines.push('## Shared links (Google Drive / Docs)', '');\n    for (const u of links) lines.push('- ' + u);\n    lines.push('');\n  }\n\n  lines.push('## Tělo', '', body, '');\n\n  const md = lines.join('\\n');\n  const binList = item.binary ? Object.keys(item.binary) : [];\n\n  const row = {\n    json: {\n      filename,\n      content: md,\n      firstRefId: firstRef ? firstRef.id : '',\n      firstRefUrl: firstRef ? firstRef.sourceUrl : '',\n      _meta: {\n        hasHtml: !!htmlRaw,\n        hasText: !!plain,\n        usedSnippetFallback: !plain && !htmlText && !!snippet,\n        linkCount: links.length,\n        binaryCount: binList.length,\n        firstRefId: firstRef ? firstRef.id : '',\n      },\n    },\n  };\n  if (item.binary && Object.keys(item.binary).length) {\n    row.binary = item.binary;\n  }\n  items.push(row);\n}\n\nreturn items;\n"
       },
-      "id": "format-md",
+      "id": "393a344b-b580-4e70-94e5-261ff43bd085",
       "name": "Format → Markdown",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -48,9 +54,9 @@
     },
     {
       "parameters": {
-        "jsCode": "// Rozdělí Gmail binární přílohy na jednu položku na soubor pro Drive Upload.\n// Výstup: json.uploadFileName, binary.data (očekává node „Drive: Upload příloh“).\nconst out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const baseName = item.json.filename || 'email.md';\n  const stem = baseName.replace(/\\.md$/i, '');\n  for (const key of Object.keys(bin)) {\n    const b = bin[key];\n    const raw =\n      (b && b.fileName) ||\n      (b && b.fileExtension ? key + '.' + b.fileExtension : key);\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({\n      json: {\n        uploadFileName: stem + '__' + safe,\n        relatedMarkdownFile: baseName,\n      },\n      binary: { data: b },\n    });\n  }\n}\nreturn out;\n"
+        "jsCode": "// Rozdělí Gmail binární přílohy; bez příloh → skipUpload pro přímý Finalize.\nconst out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const keys = Object.keys(bin);\n  const baseName = item.json.filename || 'email.md';\n  const stem = baseName.replace(/\\.md$/i, '');\n  if (!keys.length) {\n    out.push({ json: { ...item.json, skipUpload: true } });\n    continue;\n  }\n  for (const key of keys) {\n    const b = bin[key];\n    const raw = (b && b.fileName) || (b && b.fileExtension ? key + '.' + b.fileExtension : key);\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({\n      json: { uploadFileName: stem + '__' + safe, relatedMarkdownFile: baseName, skipUpload: false },\n      binary: { data: b },\n    });\n  }\n}\nreturn out;\n"
       },
-      "id": "split-attachments",
+      "id": "f1f65c11-233d-4079-b106-158e86abc768",
       "name": "Code: Přílohy → položky",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -67,17 +73,19 @@
         "name": "={{ $json.uploadFileName }}",
         "driveId": {
           "__rl": true,
+          "value": "My Drive",
           "mode": "list",
-          "value": "REPLACE_WITH_DRIVE_ID"
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
         },
         "folderId": {
           "__rl": true,
-          "mode": "id",
-          "value": "REPLACE_WITH_INBOX_EMAIL_ATTACHMENTS_FOLDER_ID"
+          "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+          "mode": "url"
         },
         "options": {}
       },
-      "id": "drive-upload-attachments",
+      "id": "22415338-26ab-4018-9cd6-0b272bdc39a5",
       "name": "Drive: Upload příloh",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -87,8 +95,8 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "REPLACE_WITH_GDRIVE_CREDENTIAL_ID",
-          "name": "Google Drive Lukáš"
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
         }
       }
     },
@@ -100,17 +108,19 @@
         "name": "={{ $json.filename }}",
         "driveId": {
           "__rl": true,
+          "value": "My Drive",
           "mode": "list",
-          "value": "REPLACE_WITH_DRIVE_ID"
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
         },
         "folderId": {
           "__rl": true,
-          "mode": "id",
-          "value": "REPLACE_WITH_INBOX_EMAIL_FOLDER_ID"
+          "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+          "mode": "url"
         },
         "options": {}
       },
-      "id": "save-to-drive",
+      "id": "be91678d-853a-44e6-8558-73b35c1567e7",
       "name": "Drive: Save .md to INBOX/email/",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -120,8 +130,8 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "REPLACE_WITH_GDRIVE_CREDENTIAL_ID",
-          "name": "Google Drive Lukáš"
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
         }
       }
     },
@@ -175,6 +185,11 @@
               "sheetsToFormat": "text/csv"
             }
           }
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+          "mode": "url"
         }
       },
       "id": "drive-download-doc",
@@ -187,8 +202,8 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "REPLACE_WITH_GDRIVE_CREDENTIAL_ID",
-          "name": "Google Drive Lukáš"
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
         }
       }
     },
@@ -203,6 +218,52 @@
       "position": [
         1040,
         140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Injekce kanonické sekce ## Přílohy po Drive uploadu (SSOT formát).\nconst formatItem = $('Format → Markdown').first().json;\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map(i => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  })).filter(a => a.name);\n} catch (_) {}\n\nfunction formatFileSize(bytes) {\n  const n = Number(bytes);\n  if (!n || n <= 0) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} kB`;\n  return `${(n / (1024 * 1024)).toFixed(1)} MB`;\n}\n\nlet content = String(formatItem.content || '');\nconst legacyRe = /\\n## Přílohy(?: \\(stažené v n8n\\)| \\(\\d+\\))?\\s*\\n[\\s\\S]*?(?=\\n## |\\n*$)/i;\ncontent = content.replace(legacyRe, '\\n').trimEnd();\n\nif (uploadedAttachments.length) {\n  const heading = uploadedAttachments.length === 1 ? '## Přílohy' : `## Přílohy (${uploadedAttachments.length})`;\n  const lines = [heading, ''];\n  for (const a of uploadedAttachments) {\n    const meta = [a.mimeType, formatFileSize(a.size)].filter(Boolean).join(', ');\n    if (a.webViewLink) lines.push(`- [${a.name}](${a.webViewLink})${meta ? ` — ${meta}` : ''}`);\n    else lines.push(`- ${a.name}${meta ? ` — ${meta}` : ''}`);\n  }\n  content += '\\n\\n' + lines.join('\\n') + '\\n';\n}\n\nreturn [{ json: { ...formatItem, content } }];\n"
+      },
+      "id": "finalize-attachments-md",
+      "name": "Code: Finalize ## Přílohy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "skip-upload",
+              "leftValue": "={{ $json.skipUpload }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-skip-upload",
+      "name": "Bez příloh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        840,
+        220
       ]
     }
   ],
@@ -222,12 +283,58 @@
       "main": [
         [
           {
-            "node": "Má sdílený dokument?",
+            "node": "Code: Přílohy → položky",
             "type": "main",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "Code: Přílohy → položky": {
+      "main": [
+        [
           {
-            "node": "Code: Přílohy → položky",
+            "node": "Bez příloh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bez příloh?": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive: Upload příloh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Upload příloh": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Finalize ## Přílohy": {
+      "main": [
+        [
+          {
+            "node": "Má sdílený dokument?",
             "type": "main",
             "index": 0
           }
@@ -273,34 +380,453 @@
           }
         ]
       ]
-    },
-    "Code: Přílohy → položky": {
-      "main": [
-        [
-          {
-            "node": "Drive: Upload příloh",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "_NOTES_FOR_LUKAS": [
-    "KRITICKÉ: Gmail trigger musí mít Simplify vypnutý (simple: false). Simplify zapnutý = metadata-only fetch = prázdné tělo v .md (viz n8n GmailTrigger.node.ts).",
-    "Code node Format → Markdown: stejný Drive OAuth — files.get + export. Odkazy: plain+HTML, href, data-saferedirecturl (Gmail), předmět, snippet, hlavičky (12k), rozbalení …google…/url?q=… Max 10 Drive ID.",
-    "Google Docs se exportují jako text/html (struktura blíž originálu); při skoro prázdném výstupu fallback text/plain. Zástupce (.shortcut) se sleduje na cílový soubor. Ořez exportu cca 250k znaků.",
-    "Export funguje pro Google Docs / Sheets / Slides a textové soubory na Drive. PDF/binární typy jen s poznámkou v .md. Dokument musí být nasdílený účtu z OAuth (typicky lukas@redbuttonedu.cz), ne jen +cowork aliasu.",
-    "Gmail plus-addressing: lukas.cypra+cowork@gmail.com",
-    "Filter q: 'to:lukas.cypra+cowork@gmail.com -in:trash'",
-    "Přílohy: Gmail je dává do item.binary; „Format → Markdown“ je předává dál a sekce v .md je jen přehled. Skutečný upload dělá větev „Code: Přílohy → položky“ → „Drive: Upload příloh“.",
-    "REPLACE_* — credentials a složky jako dřív",
-    "INBOX root: 1ZaWrGl9DktNsu4K8KQZzqo2JWPtb7-ur. Email .md → REPLACE_WITH_INBOX_EMAIL_FOLDER_ID; přílohy → REPLACE_WITH_INBOX_EMAIL_ATTACHMENTS_FOLDER_ID (nebo stejné ID).",
-    "Google Formulář: odpovědi bereme ze sdíleného Google Sheet (propojeného s formulářem), ne přes Form export v n8n.",
-    "Markdown fenced bloky u vloženého textu z Drive: funkce wrapMarkdownCodeFence (delší fence nebo ZWSP) brání předčasnému ukončení bloku obsahem dokumentu.",
-    "Drive fetch dokumentu z odkazů: Code node sandbox v n8n NEMÁ httpRequestWithAuthentication; export dělá uzel „Drive: Download dokumentu“ (Google File Conversion: Docs→HTML, Sheets→CSV, Slides→TXT). „Code: Append docs section“ pak HTML/text načte z binary.docExport a přilepí do .md."
-  ]
+  "staticData": {
+    "node:Gmail: nové zprávy s +cowork": {
+      "Gmail: nové zprávy s +cowork": {
+        "lastTimeChecked": 1780909001,
+        "possibleDuplicates": [
+          "19ea672ffb68cfd9",
+          "19e6a94187406b08"
+        ]
+      }
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "882d62d2-9b04-4109-8f18-3333e88fe153",
+  "activeVersionId": "882d62d2-9b04-4109-8f18-3333e88fe153",
+  "versionCounter": 122,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-20T21:15:48.443Z",
+      "createdAt": "2026-05-20T21:15:48.443Z",
+      "role": "workflow:owner",
+      "workflowId": "omQRpDBa48ePiKnT",
+      "projectId": "X3Gb83P3UZlojuge",
+      "project": {
+        "updatedAt": "2025-11-15T16:08:05.137Z",
+        "createdAt": "2025-11-15T16:02:16.475Z",
+        "id": "X3Gb83P3UZlojuge",
+        "name": "Michal Šrajer <michal@redbutton.cz>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-06-17T20:44:05.758Z",
+    "createdAt": "2026-06-17T20:44:05.758Z",
+    "versionId": "882d62d2-9b04-4109-8f18-3333e88fe153",
+    "workflowId": "omQRpDBa48ePiKnT",
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "simple": false,
+          "filters": {
+            "q": "to:lukas+cowork@redbuttonedu.cz -in:trash"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "188abca8-35e4-4a1a-910a-6c011339ff1d",
+        "name": "Gmail: nové zprávy s +cowork",
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          200,
+          220
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Gmail Trigger: Simplify = OFF (simple: false).\n// Drive fetch JE V DOWNSTREAM uzlech (Code node sandbox blokuje httpRequestWithAuthentication).\nconst TZ = 'Europe/Prague';\nconst MAX_LINKED_DOCS = 10;\n\n/** Slug pro název souboru: NFC, zachová diakritiku (češtinu), odstraní jen znaky nebezpečné v názvech souborů. */\nfunction filenameFriendlySlug(s, maxLen) {\n  let t = String(s || '').normalize('NFC');\n  t = t.replace(/<[^>]*>/g, ' ');\n  t = t.split('<')[0].trim();\n  t = t.replace(/^[\"'\\s]+|[\"'\\s]+$/g, '');\n  t = t.replace(/[\\u0000-\\u001f\\u007f\\\\/:?*|#\"<>%]+/g, '-');\n  t = t.replace(/\\s+/g, '-');\n  t = t.replace(/-+/g, '-').replace(/^-|-$/g, '');\n  t = t.toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  if (t.length > maxLen) t = t.substring(0, maxLen).replace(/-+$/g, '');\n  return t;\n}\n\nfunction pragueFilenameTs(date) {\n  const dtf = new Intl.DateTimeFormat('en-GB', {\n    timeZone: TZ,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false,\n  });\n  const parts = {};\n  for (const { type, value } of dtf.formatToParts(date)) {\n    if (type !== 'literal') parts[type] = value;\n  }\n  return `${parts.year}-${parts.month}-${parts.day}-${parts.hour}${parts.minute}`;\n}\n\nfunction addrToText(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'object') {\n    if (v.text) return v.text;\n    if (Array.isArray(v)) return v.map(addrToText).filter(Boolean).join(', ');\n    if (Array.isArray(v.value)) {\n      return v.value.map((x) => x && (x.address || x.name)).filter(Boolean).join(', ');\n    }\n  }\n  return '';\n}\n\nfunction htmlToText(html) {\n  if (html == null) return '';\n  const s =\n    typeof html === 'string'\n      ? html\n      : html && typeof html.toString === 'function'\n        ? html.toString()\n        : '';\n  if (!s) return '';\n  return s\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<head[\\s\\S]*?<\\/head>/gi, ' ')\n    .replace(/<br\\s*\\/?>(?=)/gi, '\\n')\n    .replace(/<\\/(p|div|li|tr|h[1-6])>/gi, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/[ \\t]+\\n/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/[ \\t]{2,}/g, ' ')\n    .trim();\n}\n\nfunction extractGoogleLinks(text) {\n  if (!text) return [];\n  const s = String(text);\n  const patterns = [\n    /https?:\\/\\/(?:docs|drive|sheets|slides|forms|sites|meet)\\.google\\.com\\/[^\\s\"'<>\\)\\]]+/gi,\n    /https?:\\/\\/drive\\.google\\.com\\/open\\?[^\\s\"'<>\\)\\]]+/gi,\n  ];\n  const all = [];\n  for (const re of patterns) {\n    const m = s.match(re) || [];\n    all.push(...m);\n  }\n  return Array.from(new Set(all.map((u) => u.replace(/[).,;]+$/, ''))));\n}\n\nfunction extractHrefsFromHtml(html) {\n  if (!html) return [];\n  const s = String(html);\n  const hrefs = [];\n  const re = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    hrefs.push(m[1].replace(/&amp;/g, '&'));\n  }\n  return hrefs;\n}\n\nfunction extractSaferedirectUrls(html) {\n  if (!html) return [];\n  const s = String(html);\n  const out = [];\n  const re = /data-saferedirecturl\\s*=\\s*[\"']([^\"']+)[\"']/gi;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    out.push(m[1].replace(/&amp;/g, '&'));\n  }\n  return out;\n}\n\nfunction expandRedirectUrls(urls) {\n  const seen = new Set();\n  const out = [];\n  for (const u of urls || []) {\n    if (u && !seen.has(u)) {\n      seen.add(u);\n      out.push(u);\n    }\n    if (!u || typeof u !== 'string') continue;\n    try {\n      if (!/google\\.(?:com|[a-z]{2,3})\\/url\\?/i.test(u)) continue;\n      const parsed = new URL(u);\n      for (const key of ['q', 'url']) {\n        const inner = parsed.searchParams.get(key);\n        if (!inner) continue;\n        let dec = inner;\n        try {\n          dec = decodeURIComponent(inner);\n        } catch (e) {\n          dec = inner;\n        }\n        if (/^https?:\\/\\//i.test(dec) && !seen.has(dec)) {\n          seen.add(dec);\n          out.push(dec);\n        }\n      }\n    } catch (e) {\n      /* ignore */\n    }\n  }\n  return out;\n}\n\nfunction extractDriveFileIds(urls) {\n  const seen = new Set();\n  const out = [];\n  const patterns = [\n    /\\/document\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/spreadsheets\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/presentation\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/forms\\/d\\/([a-zA-Z0-9_-]+)/,\n    /\\/file\\/d\\/([a-zA-Z0-9_-]+)/,\n    /[?&]id=([a-zA-Z0-9_-]+)/,\n  ];\n  for (const url of urls || []) {\n    for (const re of patterns) {\n      const m = String(url).match(re);\n      if (m && m[1] && !seen.has(m[1])) {\n        seen.add(m[1]);\n        out.push({ id: m[1], sourceUrl: url });\n      }\n    }\n  }\n  return out;\n}\n\nfunction binaryAttachmentList(binary) {\n  if (!binary || typeof binary !== 'object') return [];\n  return Object.keys(binary).map((k) => {\n    const b = binary[k];\n    const name = (b && b.fileName) || k;\n    const mime = (b && b.mimeType) || '';\n    return { key: k, name, mime };\n  });\n}\n\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n\n  const dateMs = e.internalDate\n    ? parseInt(String(e.internalDate), 10)\n    : e.date\n      ? new Date(e.date).getTime()\n      : Date.now();\n  const date = new Date(dateMs);\n  const ts = pragueFilenameTs(date);\n\n  const fromText = addrToText(e.from) || addrToText(e.headers && e.headers.from) || 'unknown';\n  const toText = addrToText(e.to) || addrToText(e.headers && e.headers.to) || '';\n  const fromDisplay = String(fromText)\n    .split('<')[0]\n    .replace(/<[^>]+>/g, '')\n    .trim()\n    .replace(/^[\"']|[\"']$/g, '');\n  const fromWords = fromDisplay.split(/\\s+/).filter(Boolean).slice(0, 2).join(' ');\n  const fromSlug = filenameFriendlySlug(fromWords || 'unknown', 40);\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n  const subjectSlug = filenameFriendlySlug(subjectClean, 80);\n  const filename = `${ts}-${fromSlug}-${subjectSlug || 'no-subject'}.md`;\n\n  const plain = e.text && String(e.text).trim();\n  const htmlRaw = e.html != null ? e.html : e.textAsHtml || '';\n  const htmlText = htmlToText(htmlRaw);\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body = plain || htmlText;\n  if (!body && snippet) {\n    body =\n      snippet +\n      '\\n\\n_(jen Gmail snippet — máš zapnutý Simplify u Gmail triggeru? Vypni ho pro plné tělo.)_';\n  }\n  if (!body) body = '_(prázdné tělo — ověř Simplify=OFF)_';\n\n  const hrefs = extractHrefsFromHtml(htmlRaw);\n  const safeUrls = extractSaferedirectUrls(htmlRaw);\n  const headerBlob =\n    e.headers && typeof e.headers === 'object'\n      ? JSON.stringify(e.headers).substring(0, 12000)\n      : '';\n  const haystackForLinks = `${plain || ''}\\n${String(htmlRaw || '')}\\n${hrefs.join('\\n')}\\n${safeUrls.join('\\n')}\\n${subject}\\n${snippet || ''}\\n${headerBlob}`;\n  let links = extractGoogleLinks(haystackForLinks);\n  links = expandRedirectUrls(links);\n  const fileRefs = extractDriveFileIds(links).slice(0, MAX_LINKED_DOCS);\n\n  const firstRef = fileRefs.length ? fileRefs[0] : null;\n\n  const TOPIC_KEYWORDS = {\n    'rb-universe': ['rb universe', 'rebel', 'pgvector', 'pipedrive', 'fio', 'fakturoid'],\n    'ceo-reporting': ['ceo', 'reporting', 'dashboard', 'mixpanel', 'sales review'],\n    'finance-procesy': ['fakturace', 'finance', 'účetní', 'allfred'],\n    'interni-pravidla': ['cesťák', 'cesťáky', 'výdaje', 'platby kartou', 'evidence'],\n  };\n  const haystack = (subject + ' ' + body).toLowerCase();\n  let suggestedTopic = null;\n  for (const [topic, kws] of Object.entries(TOPIC_KEYWORDS)) {\n    if (kws.some((k) => haystack.includes(k))) {\n      suggestedTopic = topic;\n      break;\n    }\n  }\n\n\n  const lines = [\n    `# Email: ${subject}`,\n    '',\n    `**From**: ${fromText}`,\n    `**To**: ${toText}`,\n    `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`,\n    `**Suggested topic**: ${suggestedTopic || '(nerozpoznáno)'}`,\n    `**Gmail message ID**: ${e.id || ''}`,\n    '',\n  ];\n\n  if (links.length) {\n    lines.push('## Shared links (Google Drive / Docs)', '');\n    for (const u of links) lines.push('- ' + u);\n    lines.push('');\n  }\n\n  lines.push('## Tělo', '', body, '');\n\n  const md = lines.join('\\n');\n\n  const row = {\n    json: {\n      filename,\n      content: md,\n      firstRefId: firstRef ? firstRef.id : '',\n      firstRefUrl: firstRef ? firstRef.sourceUrl : '',\n      _meta: {\n        hasHtml: !!htmlRaw,\n        hasText: !!plain,\n        usedSnippetFallback: !plain && !htmlText && !!snippet,\n        linkCount: links.length,\n        binaryCount: binList.length,\n        firstRefId: firstRef ? firstRef.id : '',\n      },\n    },\n  };\n  if (item.binary && Object.keys(item.binary).length) {\n    row.binary = item.binary;\n  }\n  items.push(row);\n}\n\nreturn items;\n"
+        },
+        "id": "393a344b-b580-4e70-94e5-261ff43bd085",
+        "name": "Format → Markdown",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Rozdělí Gmail binární přílohy; bez příloh → skipUpload pro přímý Finalize.\nconst out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const keys = Object.keys(bin);\n  const baseName = item.json.filename || 'email.md';\n  const stem = baseName.replace(/\\.md$/i, '');\n  if (!keys.length) {\n    out.push({ json: { ...item.json, skipUpload: true } });\n    continue;\n  }\n  for (const key of keys) {\n    const b = bin[key];\n    const raw = (b && b.fileName) || (b && b.fileExtension ? key + '.' + b.fileExtension : key);\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({\n      json: { uploadFileName: stem + '__' + safe, relatedMarkdownFile: baseName, skipUpload: false },\n      binary: { data: b },\n    });\n  }\n}\nreturn out;\n"
+        },
+        "id": "f1f65c11-233d-4079-b106-158e86abc768",
+        "name": "Code: Přílohy → položky",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          480
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "upload",
+          "inputDataFieldName": "data",
+          "name": "={{ $json.uploadFileName }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list",
+            "cachedResultName": "My Drive",
+            "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+            "mode": "url"
+          },
+          "options": {}
+        },
+        "id": "22415338-26ab-4018-9cd6-0b272bdc39a5",
+        "name": "Drive: Upload příloh",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          840,
+          480
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "createFromText",
+          "content": "={{ $json.content }}",
+          "name": "={{ $json.filename }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list",
+            "cachedResultName": "My Drive",
+            "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+            "mode": "url"
+          },
+          "options": {}
+        },
+        "id": "be91678d-853a-44e6-8558-73b35c1567e7",
+        "name": "Drive: Save .md to INBOX/email/",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1240,
+          220
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "has-firstrefid",
+                "leftValue": "={{ $json.firstRefId }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-has-firstref",
+        "name": "Má sdílený dokument?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          640,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "download",
+          "fileId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.firstRefId }}"
+          },
+          "options": {
+            "binaryPropertyName": "docExport",
+            "googleFileConversion": {
+              "conversion": {
+                "docsToFormat": "text/html",
+                "slidesToFormat": "text/plain",
+                "sheetsToFormat": "text/csv"
+              }
+            }
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+            "mode": "url"
+          }
+        },
+        "id": "drive-download-doc",
+        "name": "Drive: Download dokumentu",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          840,
+          140
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Po Drive: Download — vezme exportovaný binární soubor a přilepí ho do .md jako sekci.\nfunction wrapMarkdownCodeFence(text) {\n  const NL = String.fromCharCode(10);\n  const ZWSP = String.fromCharCode(0x200b);\n  let t = text == null ? '' : String(text);\n  t = t.replace(/\\0/g, '');\n  if (!t) return '```' + NL + '```';\n  let fence = '```';\n  let guard = 0;\n  while (t.includes(fence) && guard < 32) {\n    fence += '`';\n    guard += 1;\n  }\n  if (guard >= 32) {\n    t = t.replace(/```/g, ZWSP + '`' + ZWSP + '`' + ZWSP + '`');\n    fence = '```';\n  }\n  return fence + NL + t + NL + fence;\n}\n\nfunction htmlBodyToRoughMarkdown(html) {\n  if (!html || typeof html !== 'string') return '';\n  let s = html;\n  const bodyM = s.match(/<body[^>]*>([\\s\\S]*?)<\\/body>/i);\n  if (bodyM) s = bodyM[1];\n  s = s\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<\\/?(span|font|div|center|section|article)[^>]*>/gi, ' ')\n    .replace(/<br\\s*\\/?\\s*>/gi, '\\n')\n    .replace(/<\\/p>/gi, '\\n\\n')\n    .replace(/<\\/h1>/gi, '\\n\\n')\n    .replace(/<\\/h2>/gi, '\\n\\n')\n    .replace(/<\\/h3>/gi, '\\n\\n')\n    .replace(/<h1[^>]*>/gi, '\\n# ')\n    .replace(/<h2[^>]*>/gi, '\\n## ')\n    .replace(/<h3[^>]*>/gi, '\\n### ')\n    .replace(/<\\/(li|tr)>/gi, '\\n')\n    .replace(/<li[^>]*>/gi, '- ')\n    .replace(/<\\/?(strong|b)>/gi, '**')\n    .replace(/<\\/?(em|i)>/gi, '_')\n    .replace(/<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi, '[$2]($1)')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/[ \\t]+\\n/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/[ \\t]{2,}/g, ' ')\n    .trim();\n  return s;\n}\n\nreturn (async () => {\n  const inputs = $input.all();\n  const items = [];\n\n  for (let i = 0; i < inputs.length; i++) {\n    const item = inputs[i];\n    const j = item.json || {};\n    const bin = item.binary && item.binary.docExport;\n\n    let docText = '';\n    let docMime = (bin && bin.mimeType) || '';\n    let docName = (bin && bin.fileName) || '';\n    let docDecodeError = '';\n\n    if (bin) {\n      try {\n        const buf = await this.helpers.getBinaryDataBuffer(i, 'docExport');\n        docText = buf.toString('utf8');\n      } catch (eBuf) {\n        try {\n          docText = bin.data ? Buffer.from(bin.data, 'base64').toString('utf8') : '';\n          docDecodeError = 'fallback base64';\n        } catch (e2) {\n          docDecodeError = String((e2 && e2.message) || e2);\n        }\n      }\n    }\n\n  \n    const sectionLines = [];\n    sectionLines.push('## Obsah sdíleného Google dokumentu', '');\n    sectionLines.push('- **Název**: ' + (docName || '(bez názvu)'));\n    sectionLines.push('- **MIME**: `' + (docMime || '?') + '`');\n    if (j.firstRefUrl) sectionLines.push('- **Odkaz**: ' + j.firstRefUrl);\n    sectionLines.push('');\n\n    if (docText) {\n      const isHtml =\n        docMime.includes('text/html') ||\n        (docText.includes('<body') && docText.includes('</body>'));\n      if (isHtml) {\n        const rough = htmlBodyToRoughMarkdown(docText);\n        if (rough && rough.length > 40) {\n          sectionLines.push('### Čitelný přepis (zjednodušeně z HTML)', '');\n          sectionLines.push(rough, '');\n        }\n        sectionLines.push('_Níže celý HTML export z Google Docs._', '');\n      }\n      sectionLines.push(wrapMarkdownCodeFence(docText));\n      sectionLines.push('');\n    } else {\n      sectionLines.push(\n        '_(stažení dokumentu selhalo nebo soubor je prázdný — zkontroluj OAuth + sdílení s ' +\n          'Google účtem v n8n credential)_',\n        '',\n      );\n      if (docDecodeError) sectionLines.push('_decode error_: `' + docDecodeError + '`', '');\n    }\n\n    const newContent = (j.content || '') + '\\n' + sectionLines.join('\\n');\n\n    const newJson = {\n      ...j,\n      content: newContent,\n    };\n\n    const newBinary = {};\n    if (item.binary) {\n      for (const k of Object.keys(item.binary)) {\n        if (k !== 'docExport') newBinary[k] = item.binary[k];\n      }\n    }\n\n    const out = { json: newJson };\n    if (Object.keys(newBinary).length) out.binary = newBinary;\n    items.push(out);\n  }\n\n  return items;\n})();\n"
+        },
+        "id": "code-append-docs-section",
+        "name": "Code: Append docs section",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1040,
+          140
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Injekce kanonické sekce ## Přílohy po Drive uploadu (SSOT formát).\nconst formatItem = $('Format → Markdown').first().json;\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map(i => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  })).filter(a => a.name);\n} catch (_) {}\n\nfunction formatFileSize(bytes) {\n  const n = Number(bytes);\n  if (!n || n <= 0) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} kB`;\n  return `${(n / (1024 * 1024)).toFixed(1)} MB`;\n}\n\nlet content = String(formatItem.content || '');\nconst legacyRe = /\\n## Přílohy(?: \\(stažené v n8n\\)| \\(\\d+\\))?\\s*\\n[\\s\\S]*?(?=\\n## |\\n*$)/i;\ncontent = content.replace(legacyRe, '\\n').trimEnd();\n\nif (uploadedAttachments.length) {\n  const heading = uploadedAttachments.length === 1 ? '## Přílohy' : `## Přílohy (${uploadedAttachments.length})`;\n  const lines = [heading, ''];\n  for (const a of uploadedAttachments) {\n    const meta = [a.mimeType, formatFileSize(a.size)].filter(Boolean).join(', ');\n    if (a.webViewLink) lines.push(`- [${a.name}](${a.webViewLink})${meta ? ` — ${meta}` : ''}`);\n    else lines.push(`- ${a.name}${meta ? ` — ${meta}` : ''}`);\n  }\n  content += '\\n\\n' + lines.join('\\n') + '\\n';\n}\n\nreturn [{ json: { ...formatItem, content } }];\n"
+        },
+        "id": "finalize-attachments-md",
+        "name": "Code: Finalize ## Přílohy",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1040,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "skip-upload",
+                "leftValue": "={{ $json.skipUpload }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-skip-upload",
+        "name": "Bez příloh?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          840,
+          220
+        ]
+      }
+    ],
+    "connections": {
+      "Gmail: nové zprávy s +cowork": {
+        "main": [
+          [
+            {
+              "node": "Format → Markdown",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format → Markdown": {
+        "main": [
+          [
+            {
+              "node": "Code: Přílohy → položky",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Přílohy → položky": {
+        "main": [
+          [
+            {
+              "node": "Bez příloh?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bez příloh?": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Drive: Upload příloh",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: Upload příloh": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Finalize ## Přílohy": {
+        "main": [
+          [
+            {
+              "node": "Má sdílený dokument?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Má sdílený dokument?": {
+        "main": [
+          [
+            {
+              "node": "Drive: Download dokumentu",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Drive: Save .md to INBOX/email/",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: Download dokumentu": {
+        "main": [
+          [
+            {
+              "node": "Code: Append docs section",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Append docs section": {
+        "main": [
+          [
+            {
+              "node": "Drive: Save .md to INBOX/email/",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Michal Šrajer",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-06-17T20:44:05.818Z",
+        "id": 125,
+        "workflowId": "omQRpDBa48ePiKnT",
+        "versionId": "882d62d2-9b04-4109-8f18-3333e88fe153",
+        "event": "deactivated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      },
+      {
+        "createdAt": "2026-06-17T20:44:06.128Z",
+        "id": 126,
+        "workflowId": "omQRpDBa48ePiKnT",
+        "versionId": "882d62d2-9b04-4109-8f18-3333e88fe153",
+        "event": "activated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    ]
+  }
 }

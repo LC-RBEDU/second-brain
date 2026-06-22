@@ -16,3 +16,4 @@ fi
 
 cd "$REPO"
 python3 scripts/build_agent_context.py >> /tmp/sb-agent-context.log 2>&1 || true
+python3 scripts/build_sources_routing.py >> /tmp/sb-agent-context.log 2>&1 || true

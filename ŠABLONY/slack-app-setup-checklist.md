@@ -1,6 +1,6 @@
 # Slack App setup — checklist
 
-> Cíl: Slack appka se Socket Mode + n8n workflow `slack-reaction-capture.json` (soubor má historický název) — **nové zprávy v jednom vybraném kanálu** (typicky soukromý „capture“ kanál) se ukládají jako `.md` na Google Drive. Jednotný postup: důležité věci **forwarduješ / napíšeš do toho kanálu**, nemusíš řešit DM vs. group DM pro bota.
+> Cíl: Slack appka se Socket Mode + n8n workflow **`slack-cowork-inbox-with-attachments.json`** — **nové zprávy v jednom vybraném kanálu** (typicky soukromý „capture“ kanál) se ukládají jako `.md` + přílohy na Google Drive. Jednotný postup: důležité věci **forwarduješ / napíšeš do toho kanálu**, nemusíš řešit DM vs. group DM pro bota.
 
 ## Předpoklad
 
@@ -30,8 +30,10 @@
 - `channels:read`
 - `groups:read`
 - `reactions:write` — aby workflow mohl po uložení do Drive přidat **✅** k původní zprávě
+- `files:read` — stažení příloh ze zpráv i z **forwardovaných unfurlů** (`url_private_download`)
+- `im:history` — načtení vlákna z **DM forwardů** (`conversations.replies`)
 
-Volitelné (už ne pro tento workflow nutné): `reactions:read`, `im:history`, `mpim:history` — jen pokud chceš appku používat i jinde.
+Volitelné (už ne pro tento workflow nutné): `reactions:read` — jen pokud chceš appku používat i jinde.
 
 > Po přidání nového scope vždy **Install App → Reinstall to Workspace**, jinak Slack token nový scope nezná.
 
@@ -71,7 +73,7 @@ Volitelné (už ne pro tento workflow nutné): `reactions:read`, `im:history`, `
 
 ### 8. Import workflow
 
-- Importuj `ŠABLONY/n8n/slack-reaction-capture.json`
+- Importuj `ŠABLONY/n8n/slack-cowork-inbox-with-attachments.json` (SSOT; starý `slack-reaction-capture.json` nemá přílohy)
 - Ve **Slack: nová zpráva** nastav **Channel** = ten capture kanál (nebo vlož ID do `REPLACE_WITH_PRIVATE_CAPTURE_CHANNEL_ID` v JSON před importem).
 - **Watch Whole Workspace** musí být **vypnuté** (workflow je vázaný na jeden kanál).
 - Nastav Google Drive credential + `folderId` pro `INBOX/slack/`.
@@ -80,13 +82,19 @@ Volitelné (už ne pro tento workflow nutné): `reactions:read`, `im:history`, `
 ### 9. Test
 
 - Pošli do capture kanálu běžnou zprávu.
-- V n8n **Executions** ověř běh; na Drive přibyde `.md`.
+- Pošli **odpověď ve vlákně** — v `.md` by měla být sekce `## Vlákno (Slack API)` (trigger zpráva + navazující odpovědi).
+- **Forward** z jiného kanálu/DM — v `.md` je `## Forwardovaný obsah` (unfurl); **API vlákno se nestahuje** z cizích kanálů (bot tam není → dříve padal celý workflow bez ✅).
+- Vlákno přes API jen pro **odpovědi v capture kanálu** (`## Vlákno (Slack API)`).
+- V n8n **Executions** ověř běh; na Drive přibyde `.md` (+ přílohy ve stejné složce).
 - U původní zprávy ve Slacku se objeví **✅** od bota — to znamená „uloženo do Drive".
+
+> **Poznámka:** Bot musí mít přístup ke zdrojovému kanálu/DM (`groups:history` / `channels:history` / `im:history`). U soukromých kanálů musí být pozvaný.
 
 ## Troubleshooting
 
 - **Workflow se nespustí**: aktivní toggle; Socket Mode; v Slack app správné **message.groups** / **message.channels** + *Reinstall* po změně scopes.
-- `**channel_not_found`**: bot není v capture kanálu.
+- **`channel_not_found` v `Slack: Načti vlákno`**: dříve při forwardu z cizího kanálu — opraveno (forward vlákna se nefetchují; uzel má `continueRegularOutput`). Pokud padá u odpovědi **v capture kanálu**, bot není v `#_claude-capture`.
+- **`channel_not_found` (obecně)**: bot není v capture kanálu.
 - `**missing_scope**` (zejména u reaction add): chybí `reactions:write`, dopln scope a **Reinstall App**.
 - **Reakce ✅ se nepřidá, ostatní funguje**: Slack vrátil chybu jen v posledním uzlu — zkontroluj `reactions:write` scope a že bot je v kanálu.
 - **Žádný výstup po triggeru**: otevři výstup **Slack: nová zpráva** — Code **Filtrovat zprávy** zahodí systémové zprávy a `bot_message`; případně uprav filtr v Code uzlu.

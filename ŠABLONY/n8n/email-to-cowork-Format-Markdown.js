@@ -266,20 +266,8 @@ for (const item of $input.all()) {
 
   lines.push('## Tělo', '', body, '');
 
-  const binList = binaryAttachmentList(item.binary);
-  if (binList.length) {
-    lines.push('## Přílohy (stažené v n8n)', '');
-    for (const a of binList) {
-      let row = '- ' + a.name;
-      if (a.mime) row += ' (' + a.mime + ')';
-      row += ' — binární klíč: ' + a.key;
-      lines.push(row);
-    }
-    lines.push('');
-  }
-
-
   const md = lines.join('\n');
+  const binList = item.binary ? Object.keys(item.binary) : [];
 
   const row = {
     json: {

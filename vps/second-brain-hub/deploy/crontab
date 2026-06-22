@@ -52,6 +52,8 @@ TZ=Europe/Prague
 # === AGENT CONTEXT (F8) ===
 # Every 15 min during workday — refresh agent-context.json
 */15 7-22 * * * /usr/local/bin/python3 /app/cron/build_agent_context.py >> /var/log/second-brain/agent-context.log 2>&1
+# :05 stagger — sources-routing.json drift guard (from Zdroje-katalog.md SSOT)
+5 7-22 * * * /usr/local/bin/python3 /app/cron/build_sources_routing.py >> /var/log/second-brain/agent-context.log 2>&1
 
 # === ASAP BACKFILL (work hours) ===
 # Hourly 10:00–23:00 + 00:00–02:00 — if open ASAP < 3, promote top Next by today_score

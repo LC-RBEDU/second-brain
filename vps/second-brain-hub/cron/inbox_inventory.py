@@ -16,6 +16,8 @@ if str(_CRON) not in sys.path:
     sys.path.insert(0, str(_CRON))
 
 from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from triage_complexity import has_attachments_markers  # noqa: E402
+from triage_commitments import purge_dropped_sent_inbox  # noqa: E402
 from triage_run import iter_inbox_items, _open_pending_source_files  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -29,6 +31,7 @@ def main() -> None:
     vault = DriveVault(root_id, credentials=creds)
 
     items = iter_inbox_items(vault)
+    items = purge_dropped_sent_inbox(vault, items)
     pending = _open_pending_source_files(vault)
     if pending:
         items = [(r, b) for r, b in items if r not in pending]
@@ -39,10 +42,16 @@ def main() -> None:
         return
 
     print(f"inbox_inventory: {len(items)} files ({now})")
-    for rel, _ in items[:20]:
-        print(f"  - {rel}")
+    with_attachments = 0
+    for rel, body in items[:20]:
+        flag = " [attachments→DEEP]" if has_attachments_markers(body) else ""
+        if flag:
+            with_attachments += 1
+        print(f"  - {rel}{flag}")
     if len(items) > 20:
         print(f"  ... +{len(items) - 20} more")
+    if with_attachments:
+        print(f"inbox_inventory: {with_attachments} with ## Přílohy (DEEP triage)")
 
 
 if __name__ == "__main__":

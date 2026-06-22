@@ -33,6 +33,7 @@ from triage_commitments import (  # noqa: E402
     extract_commitments,
     is_sent_email,
     normalize_proposal,
+    purge_dropped_sent_inbox,
     sent_archive_only_proposal,
     sent_business_action_proposal,
 )
@@ -376,6 +377,7 @@ def main() -> None:
     vault.mkdir_p("00-System/Triage-Pending")
 
     items = iter_inbox_items(vault)
+    items = purge_dropped_sent_inbox(vault, items)
     pending_sources = _open_pending_source_files(vault)
     if pending_sources:
         before = len(items)

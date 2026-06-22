@@ -53,11 +53,15 @@ Pokud chceš ve Gmailu mít přehled, co se uložilo:
 
 ### Přílohy
 
-Aktuální workflow je vypisuje do .md souboru jen jako seznam (názvy + mimeType). Pokud chceš stáhnout i binárky:
-- Přidej druhý Drive Save node, vstup = binary z Gmail Trigger
-- Cíl: stejná složka, název = `<základní filename>-attachment-<index>.<ext>`
+Workflow `email-to-cowork.json` stahuje přílohy na Drive a do `.md` vkládá kanonický blok:
 
-To je rozšíření, dohodneme se až na to bude potřeba.
+```markdown
+## Přílohy
+
+- [soubor.pdf](https://drive.google.com/.../view) — application/pdf, 1.2 MB
+```
+
+Flow: Gmail download → upload → `Code: Finalize ## Přílohy` → save `.md`. Viz `ŠABLONY/n8n/README.md` a helper `ŠABLONY/n8n/lib/attachments-markdown.js`.
 
 ## Bezpečnost
 

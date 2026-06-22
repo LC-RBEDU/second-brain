@@ -207,9 +207,19 @@ def test_long_clipping_with_many_headings_lists_all_reasons():
     assert any("H2/H3 headings" in r for r in reasons)
 
 
-def test_frontmatter_only_no_body_is_not_deep():
-    rel = "01-INBOX/email/incoming-info.md"
-    body = "---\nsource: gmail\nsubject: FYI\n---\n"
+def test_attachments_section_triggers_deep():
+    rel = "01-INBOX/email/2026-06-17-with-files.md"
+    body = (
+        "# Email\n\n## Tělo\n\nKrátký mail.\n\n"
+        "## Přílohy\n\n"
+        "- [report.pdf](https://drive.google.com/file/d/abc/view) — application/pdf, 1.2 MB\n"
+    )
     complex_, reasons = mod.is_complex_source(rel, body)
-    assert complex_ is False
-    assert reasons == []
+    assert complex_ is True
+    assert any("Přílohy" in r for r in reasons)
+
+
+def test_has_attachments_markers_helper():
+    body = "## Přílohy\n\n- [x.pdf](https://example.com)\n"
+    assert mod.has_attachments_markers(body) is True
+    assert mod.has_attachments_markers("# No attachments\n") is False

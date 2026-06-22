@@ -76,6 +76,7 @@ class TaskInfo:
     updated: str | None = None
     materials: list[str] = None
     blocked_by: list[str] = None
+    source: str | None = None
     is_recurring: bool = False
     extra_module: str | None = None
 
@@ -100,6 +101,7 @@ class TaskInfo:
             "updated": self.updated,
             "materials": self.materials or [],
             "blocked_by": self.blocked_by or [],
+            "source": self.source,
             "is_recurring": self.is_recurring,
             "extra_module": self.extra_module,
         }
@@ -115,6 +117,13 @@ class ProjectInfo:
     area: str | None = None
     open_tasks_count: int = 0
     updated: str | None = None
+    sources: list[str] = None
+    notebooklm: list[str] = None
+    workspace: dict[str, Any] | None = None
+    context_source: str | None = None
+    charter_scope: str | None = None
+    charter_kontext: str | None = None
+    has_zdroje_dat: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -126,6 +135,13 @@ class ProjectInfo:
             "area": self.area,
             "open_tasks_count": self.open_tasks_count,
             "updated": self.updated,
+            "sources": self.sources or [],
+            "notebooklm": self.notebooklm or [],
+            "workspace": self.workspace or {},
+            "context_source": self.context_source,
+            "charter_scope": self.charter_scope,
+            "charter_kontext": self.charter_kontext,
+            "has_zdroje_dat": self.has_zdroje_dat,
         }
 
 
@@ -168,6 +184,28 @@ def _list_str(v: Any) -> list[str]:
     return [str(v)]
 
 
+def _section_excerpt(body: str, heading: str, max_len: int = 800) -> str | None:
+    pat = re.compile(rf"^{re.escape(heading)}\s*$", re.MULTILINE)
+    m = pat.search(body)
+    if not m:
+        return None
+    rest = body[m.end() :]
+    nxt = re.search(r"^##\s+\S", rest, re.MULTILINE)
+    block = (rest[: nxt.start()] if nxt else rest).strip()
+    if len(block) > max_len:
+        block = block[: max_len - 20] + "…"
+    return block or None
+
+
+def _workspace_dict(v: Any) -> dict[str, list[str]] | None:
+    if not v or not isinstance(v, dict):
+        return None
+    out: dict[str, list[str]] = {}
+    for k in ("calendar", "gmail", "drive"):
+        out[k] = _list_str(v.get(k))
+    return out
+
+
 def collect_projects(vault: Path) -> list[ProjectInfo]:
     projekty = vault / "02-PROJEKTY"
     if not projekty.exists():
@@ -193,6 +231,13 @@ def collect_projects(vault: Path) -> list[ProjectInfo]:
             aliases=_list_str(fm.get("aliases")),
             area=fm.get("area"),
             updated=_date_str(fm.get("updated")),
+            sources=_list_str(fm.get("sources")),
+            notebooklm=_list_str(fm.get("notebooklm")),
+            workspace=_workspace_dict(fm.get("workspace")),
+            context_source=fm.get("context_source"),
+            charter_scope=_section_excerpt(body, "## Scope"),
+            charter_kontext=_section_excerpt(body, "## Kontext"),
+            has_zdroje_dat="## Zdroje dat" in body,
         ))
     return out
 
@@ -246,6 +291,7 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
                 updated=_date_str(fm.get("updated")),
                 materials=_list_str(fm.get("materials")),
                 blocked_by=_list_str(fm.get("blocked_by")),
+                source=fm.get("source"),
                 is_recurring=bool(fm.get("recurring")),
                 extra_module=fm.get("extra_module"),
             ))

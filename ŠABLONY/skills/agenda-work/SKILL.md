@@ -21,16 +21,13 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 ### 1. Načti kontext (v2)
 
-1. **PRIMARY:** `OBSIDIAN/00-System/agent-context.json` → najdi `projects[]` podle `slug`, vyextrahuj briefing (status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug)
-2. (1× per session) `OBSIDIAN/00-System/Memory/about-me.md`
-3. Hub `OBSIDIAN/02-PROJEKTY/<HubName>.md` — frontmatter (`slug`, `status`, `area`, `open_tasks_count`, **`sources:`**, `notebooklm:`, `workspace:`) + body (Scope, **## Stav (auto)**, Kontext, **## Zdroje dat**, Otevřené otázky)
-4. Tasky `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md` — frontmatter každého souboru (id, status, ICE, deadline, waitUntil, materials, source)
-5. Outputs `OBSIDIAN/02-PROJEKTY/<slug>/` (mimo `tasks/` a `materials/`) — soubory výstupů
-6. Materials `OBSIDIAN/02-PROJEKTY/<slug>/materials/` + cross-project `05-RESOURCES/` (přes `materials:` array v task frontmatteru; **vynoř** podle `topics:` — viz `.cursor/rules/resources-para.mdc`)
-7. **Externí zdroje z hub frontmatteru** (pokud `sources:` non-empty):
-   - `notebooklm` → `python3 scripts/notebooklm_query.py ask "<notebook>" "<otázka>"`
-   - `google-workspace` → Workspace MCP dle `workspace:` pointerů (kalendář, gmail filtry, drive složky)
-   - `rb-mcp` / `procesni-architekt` → RB Universe MCP; u procesních témat zkontroluj existující procesy v Architektovi
+1. **PRIMARY:** `OBSIDIAN/00-System/agent-context.json` → najdi `projects[]` podle `slug`, vyextrahuj briefing (status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug, **`sources`**, `notebooklm`, `workspace`)
+2. **Work-context bundle:** `OBSIDIAN/00-System/Work-Context/<slug>.md` — pokud chybí, spusť `python3 scripts/build_work_context.py <slug>`
+3. (1× per session) `OBSIDIAN/00-System/Memory/about-me.md`
+4. Hub `OBSIDIAN/02-PROJEKTY/<HubName>.md` — frontmatter + body (Scope, Kontext, ## Zdroje dat)
+5. Tasky `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md`
+6. Outputs + Materials (sidecar `type: attachment` s `## Extrahovaný text`)
+7. **MCP enrichment (povinný):** `python3 scripts/build_sources_routing.py --check` → regeneruj pokud stale; načti `sources-routing.json`; pro každý hub `sources:` tag volej MCP/CLI dle routes
 
 Pokud slug není jasný → zobraz seznam aktivních projektů z `00-System/Index.md` (Bases embed) a ptej se.
 
@@ -137,6 +134,7 @@ Vždy jako preview, vždy čekej na potvrzení.
 
 ```bash
 python3 scripts/build_agent_context.py
+python3 scripts/build_work_context.py <slug>
 ```
 
 ### 6. Hláška na konci

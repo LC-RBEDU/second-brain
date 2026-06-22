@@ -32,6 +32,107 @@ _DEADLINE_HINT_RE = re.compile(
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
+_SUBJECT_PREFIX_RE = re.compile(r"^(Re:|Fwd:|FW:|RE:|FWD:)\s*", re.IGNORECASE)
+
+# Odeslané e-maily matching (to + subject) — neukládat do INBOX (n8n) + smazat z INBOX (cron).
+_SENT_INBOX_DROP_RULES: tuple[dict[str, str], ...] = (
+    {
+        "to": "finance@redbutton.cz",
+        "subject": "Fakturace dealu",
+        "reason": "rutinní fakturace dealu na finance — mimo Second Brain INBOX",
+    },
+)
+
+# Back-compat alias (tests / starší volání)
+_SENT_TRIAGE_IGNORE_RULES = _SENT_INBOX_DROP_RULES
+
+
+def _normalize_subject(subject: str) -> str:
+    s = (subject or "").strip()
+    while True:
+        m = _SUBJECT_PREFIX_RE.match(s)
+        if not m:
+            break
+        s = s[m.end() :].strip()
+    return s
+
+
+def _extract_email_address(raw: str) -> str:
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    m = re.search(r"<([^>]+)>", raw)
+    if m:
+        return m.group(1).strip().lower()
+    first = raw.split(",")[0].strip()
+    return first.lower()
+
+
+def parse_sent_email_headers(body: str) -> dict[str, str]:
+    """Return normalized ``to`` (email) and ``subject`` from sent INBOX markdown."""
+    fm = parse_frontmatter(body)
+    to_raw = fm.get("to", "")
+    subject = fm.get("subject", "")
+    if not to_raw:
+        m = re.search(r"^\*\*To\*\*:\s*(.+)$", body, re.M)
+        if m:
+            to_raw = m.group(1).strip()
+    if not subject:
+        m = re.search(r"^#\s*Email:\s*(.+)$", body, re.M)
+        if m:
+            subject = m.group(1).strip()
+    return {
+        "to": _extract_email_address(to_raw),
+        "subject": _normalize_subject(subject),
+    }
+
+
+def should_drop_sent_email_from_inbox(rel_path: str, body: str) -> tuple[bool, str]:
+    """True when sent capture matches a drop rule (do not keep in INBOX)."""
+    if not is_sent_email(rel_path, body):
+        return False, ""
+    meta = parse_sent_email_headers(body)
+    for rule in _SENT_INBOX_DROP_RULES:
+        rule_to = rule["to"].strip().lower()
+        rule_subj = _normalize_subject(rule["subject"])
+        if meta["to"] == rule_to and meta["subject"].lower() == rule_subj.lower():
+            reason = rule.get("reason") or f"drop to={rule_to!r} subject={rule_subj!r}"
+            return True, reason
+    return False, ""
+
+
+def should_ignore_sent_email_for_triage(rel_path: str, body: str) -> tuple[bool, str]:
+    """Alias — drop rules = no triage (file should not be in INBOX)."""
+    return should_drop_sent_email_from_inbox(rel_path, body)
+
+
+def purge_dropped_sent_inbox(vault, items: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Delete sent INBOX captures matching drop rules (+ co-located attachments)."""
+    kept: list[tuple[str, str]] = []
+    for rel, body in items:
+        drop, reason = should_drop_sent_email_from_inbox(rel, body)
+        if not drop:
+            kept.append((rel, body))
+            continue
+        print("purge sent inbox drop:", rel, reason)
+        try:
+            vault.delete(rel)
+        except Exception:
+            print("  already gone:", rel)
+            continue
+        parent, _, name = rel.rpartition("/")
+        stem = name[:-3] if name.endswith(".md") else name
+        prefix = f"{stem}__"
+        if parent:
+            try:
+                for meta in vault.list_dir(parent, recursive=False):
+                    if meta.name.startswith(prefix):
+                        vault.delete(meta.rel_path)
+                        print("  purge attachment:", meta.rel_path)
+            except Exception:
+                pass
+    return kept
+
 
 def is_sent_email(rel_path: str, body: str) -> bool:
     norm = rel_path.replace("\\", "/")

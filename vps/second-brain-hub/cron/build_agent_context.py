@@ -65,6 +65,25 @@ def _list_str(v):
     return [str(v)]
 
 
+def _section_excerpt(body: str, heading: str, max_len: int = 800):
+    pat = re.compile(rf"^{re.escape(heading)}\s*$", re.MULTILINE)
+    m = pat.search(body or "")
+    if not m:
+        return None
+    rest = body[m.end() :]
+    nxt = re.search(r"^##\s+\S", rest, re.MULTILINE)
+    block = (rest[: nxt.start()] if nxt else rest).strip()
+    if len(block) > max_len:
+        block = block[: max_len - 20] + "…"
+    return block or None
+
+
+def _workspace_dict(v):
+    if not v or not isinstance(v, dict):
+        return {}
+    return {k: _list_str(v.get(k)) for k in ("calendar", "gmail", "drive")}
+
+
 def task_to_dict(task) -> dict:
     fm = task.frontmatter
     tid = str(fm.get("id") or "")
@@ -90,6 +109,7 @@ def task_to_dict(task) -> dict:
         "updated": _date_str(fm.get("updated")),
         "materials": _list_str(fm.get("materials")),
         "blocked_by": _list_str(fm.get("blocked_by")),
+        "source": fm.get("source"),
         "is_recurring": bool(fm.get("recurring")),
         "extra_module": fm.get("extra_module"),
     }
@@ -128,6 +148,13 @@ def collect_projects(vault: DriveVault) -> list[dict]:
             "area": fm.get("area"),
             "open_tasks_count": 0,
             "updated": _date_str(fm.get("updated")),
+            "sources": _list_str(fm.get("sources")),
+            "notebooklm": _list_str(fm.get("notebooklm")),
+            "workspace": _workspace_dict(fm.get("workspace")),
+            "context_source": fm.get("context_source"),
+            "charter_scope": _section_excerpt(body, "## Scope"),
+            "charter_kontext": _section_excerpt(body, "## Kontext"),
+            "has_zdroje_dat": "## Zdroje dat" in body,
         })
     return out
 

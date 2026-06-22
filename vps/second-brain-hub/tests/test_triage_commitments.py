@@ -94,3 +94,96 @@ def test_email_body_text_strips_frontmatter():
 def test_extract_commitments_non_sent_returns_empty():
     incoming = "# Email\n\n## Tělo\n\nPošlu report zítra."
     assert mod.extract_commitments("01-INBOX/email/in.md", incoming, guess_proj=_guess_proj) == []
+
+
+FINANCE_INVOICE_SENT = """---
+source: sent
+messageId: fin-deal-1
+to: finance@redbutton.cz
+subject: Fakturace dealu
+date: 2026-06-17T10:00:00+02:00
+from: lukas@redbuttonedu.cz
+---
+
+# Email: Fakturace dealu
+
+**Source**: sent
+**To**: finance@redbutton.cz
+**Date**: 17. 6. 2026 10:00
+
+## Tělo
+
+Ahoj, posílám podklady k fakturaci dealu XYZ.
+"""
+
+
+def test_should_ignore_finance_deal_invoicing_sent():
+    skip, reason = mod.should_drop_sent_email_from_inbox(
+        "01-INBOX/email/sent/2026-06-17-fakturace-dealu.md",
+        FINANCE_INVOICE_SENT,
+    )
+    assert skip is True
+    assert "finance" in reason.lower() or "fakturace" in reason.lower()
+
+
+def test_should_not_ignore_other_sent_to_finance():
+    other = FINANCE_INVOICE_SENT.replace("Fakturace dealu", "Schůzka finance")
+    skip, _ = mod.should_drop_sent_email_from_inbox(
+        "01-INBOX/email/sent/other.md",
+        other,
+    )
+    assert skip is False
+
+
+def test_should_not_ignore_incoming_finance_deal():
+    incoming = """---
+source: email
+to: finance@redbutton.cz
+subject: Fakturace dealu
+---
+
+# Email: Fakturace dealu
+
+**From**: klient@example.com
+**To**: finance@redbutton.cz
+
+## Tělo
+
+Dotaz na fakturaci.
+"""
+    skip, _ = mod.should_drop_sent_email_from_inbox(
+        "01-INBOX/email/incoming.md",
+        incoming,
+    )
+    assert skip is False
+
+
+class _FakeVault:
+    def __init__(self):
+        self.deleted: list[str] = []
+        self.files = {
+            "01-INBOX/email/sent/deal.md": FINANCE_INVOICE_SENT,
+        }
+        self.attachments = ["01-INBOX/email/sent/deal__invoice.pdf"]
+
+    def delete(self, rel_path: str, *, permanent: bool = False) -> None:
+        self.deleted.append(rel_path)
+
+    def list_dir(self, parent: str, *, pattern: str | None = None, recursive: bool = False):
+        class Meta:
+            def __init__(self, rel_path: str, name: str):
+                self.rel_path = rel_path
+                self.name = name
+
+        if parent != "01-INBOX/email/sent":
+            return []
+        return [Meta(p, p.rsplit("/", 1)[-1]) for p in self.attachments]
+
+
+def test_purge_dropped_sent_inbox_deletes_md_and_attachments():
+    vault = _FakeVault()
+    items = [("01-INBOX/email/sent/deal.md", FINANCE_INVOICE_SENT)]
+    kept = mod.purge_dropped_sent_inbox(vault, items)
+    assert kept == []
+    assert "01-INBOX/email/sent/deal.md" in vault.deleted
+    assert "01-INBOX/email/sent/deal__invoice.pdf" in vault.deleted

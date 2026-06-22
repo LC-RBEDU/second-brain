@@ -28,6 +28,7 @@ if str(_CRON) not in sys.path:
     sys.path.insert(0, str(_CRON))
 
 from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from triage_commitments import purge_dropped_sent_inbox  # noqa: E402
 from triage_run import (  # noqa: E402
     INBOX_SUBDIRS,
     _open_pending_source_files,
@@ -133,6 +134,7 @@ def main() -> None:
     vault.mkdir_p("00-System/Triage-Pending")
 
     items = iter_inbox_items(vault)
+    items = purge_dropped_sent_inbox(vault, items)
     pending_sources = _open_pending_source_files(vault)
     if pending_sources:
         items = [(r, b) for r, b in items if r not in pending_sources]

@@ -1,5 +1,11 @@
 {
-  "name": "Workspace SENT → INBOX/email/sent",
+  "updatedAt": "2026-06-17T20:44:06.344Z",
+  "createdAt": "2026-05-23T00:25:08.835Z",
+  "id": "7fhDXThOaxl1yNtE",
+  "name": "SECOND BRAIN: E-mail SENT → INBOX",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -14,17 +20,22 @@
         "filters": {
           "q": "in:sent from:lukas@redbuttonedu.cz -in:trash"
         },
-        "options": {}
+        "options": {
+          "downloadAttachments": true
+        }
       },
-      "id": "gmail-sent-trigger",
+      "id": "e4b7b547-9854-4e99-ae92-aeb0824fa2b5",
       "name": "Gmail: odeslané (workspace)",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.1,
-      "position": [200, 300],
+      "position": [
+        200,
+        300
+      ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "REPLACE_WITH_WORKSPACE_GMAIL_CREDENTIAL_ID",
-          "name": "Gmail Workspace lukas@redbuttonedu.cz"
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
         }
       }
     },
@@ -32,21 +43,27 @@
       "parameters": {
         "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.processedMessageIds) staticData.processedMessageIds = {};\nconst seen = staticData.processedMessageIds;\nconst MAX_IDS = 5000;\nconst out = [];\nfor (const item of $input.all()) {\n  const id = String(item.json.id || item.json.messageId || '').trim();\n  if (!id || seen[id]) continue;\n  out.push(item);\n  seen[id] = Date.now();\n}\nconst keys = Object.keys(seen);\nif (keys.length > MAX_IDS) {\n  keys.sort((a, b) => (seen[a] || 0) - (seen[b] || 0)).slice(0, keys.length - MAX_IDS).forEach((k) => delete seen[k]);\n}\nreturn out;"
       },
-      "id": "dedupe-message-id",
+      "id": "b01e8928-a800-4f68-8b4e-326e808265a3",
       "name": "Dedupe: messageId",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 300]
+      "position": [
+        420,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const TZ = 'Europe/Prague';\nfunction slug(s, maxLen) {\n  let t = String(s || '').normalize('NFC').replace(/[\\\\/:?*|#\"<>%]+/g, '-').replace(/\\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;\n}\nfunction tsPrague(d) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;\n}\nfunction addr(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v)) return v.map(addr).filter(Boolean).join(', ');\n  if (Array.isArray(v.value)) return v.value.map(x => x && (x.address || x.name)).filter(Boolean).join(', ');\n  return '';\n}\nfunction htmlToText(html) {\n  if (!html) return '';\n  return String(html).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n  const messageId = String(e.id || e.messageId || '').trim();\n  const date = new Date(e.internalDate ? parseInt(String(e.internalDate), 10) : (e.date ? new Date(e.date).getTime() : Date.now()));\n  const fromText = addr(e.from) || 'lukas@redbuttonedu.cz';\n  const toText = addr(e.to) || '';\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n  const filename = `${tsPrague(date)}-sent-${slug(toText.split(',')[0] || 'recipient', 40)}-${slug(subjectClean, 60) || 'no-subject'}.md`;\n  const plain = e.text && String(e.text).trim();\n  const htmlText = htmlToText(e.html != null ? e.html : e.textAsHtml || '');\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body = plain || htmlText || (snippet ? snippet + '\\n\\n_(snippet — vypni Simplify u triggeru)_' : '_(prázdné tělo)_');\n  const fm = ['---', 'source: sent', `messageId: ${messageId}`, `to: ${toText.replace(/\\n/g, ' ')}`, `subject: ${subject.replace(/\\n/g, ' ')}`, `date: ${date.toISOString()}`, `from: ${fromText.replace(/\\n/g, ' ')}`, '---', ''].join('\\n');\n  const md = [fm, `# Email: ${subject}`, '', '**Source**: sent', `**From**: ${fromText}`, `**To**: ${toText}`, `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`, `**Gmail message ID**: ${messageId}`, '', '## Tělo', '', body, ''].join('\\n');\n  items.push({ json: { filename, content: md, messageId } });\n}\nreturn items;"
+        "jsCode": "// SSOT for workspace-sent-to-inbox Format node (+ mirror in triage_commitments.py)\nconst TZ = 'Europe/Prague';\n\nconst SENT_INBOX_DROP_RULES = [\n  { to: 'finance@redbutton.cz', subject: 'Fakturace dealu' },\n];\n\nfunction extractEmail(raw) {\n  const s = String(raw || '').trim();\n  const m = s.match(/<([^>]+)>/);\n  if (m) return m[1].trim().toLowerCase();\n  return s.split(',')[0].trim().toLowerCase();\n}\n\nfunction normalizeSubject(subject) {\n  let t = String(subject || '').trim();\n  while (/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/i.test(t)) {\n    t = t.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/i, '').trim();\n  }\n  return t;\n}\n\nfunction shouldDropSentFromInbox(toText, subject) {\n  const to = extractEmail(toText);\n  const subj = normalizeSubject(subject).toLowerCase();\n  return SENT_INBOX_DROP_RULES.some(\n    (r) => to === r.to.toLowerCase() && subj === r.subject.toLowerCase(),\n  );\n}\n\nfunction slug(s, maxLen) {\n  let t = String(s || '')\n    .normalize('NFC')\n    .replace(/[\\\\/:?*|#\"<>%]+/g, '-')\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '')\n    .toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;\n}\n\nfunction tsPrague(d) {\n  const p = Object.fromEntries(\n    new Intl.DateTimeFormat('en-GB', {\n      timeZone: TZ,\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false,\n    })\n      .formatToParts(d)\n      .filter((x) => x.type !== 'literal')\n      .map((x) => [x.type, x.value]),\n  );\n  return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;\n}\n\nfunction addr(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v)) return v.map(addr).filter(Boolean).join(', ');\n  if (Array.isArray(v.value))\n    return v.value.map((x) => x && (x.address || x.name)).filter(Boolean).join(', ');\n  return '';\n}\n\nfunction htmlToText(html) {\n  if (!html) return '';\n  return String(html)\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n  const messageId = String(e.id || e.messageId || '').trim();\n  const date = new Date(\n    e.internalDate\n      ? parseInt(String(e.internalDate), 10)\n      : e.date\n        ? new Date(e.date).getTime()\n        : Date.now(),\n  );\n  const fromText = addr(e.from) || 'lukas@redbuttonedu.cz';\n  const toText = addr(e.to) || '';\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n\n  if (shouldDropSentFromInbox(toText, subject)) {\n    continue;\n  }\n\n  const filename = `${tsPrague(date)}-sent-${slug(toText.split(',')[0] || 'recipient', 40)}-${slug(subjectClean, 60) || 'no-subject'}.md`;\n  const plain = e.text && String(e.text).trim();\n  const htmlText = htmlToText(e.html != null ? e.html : e.textAsHtml || '');\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body =\n    plain ||\n    htmlText ||\n    (snippet ? snippet + '\\n\\n_(snippet — vypni Simplify u triggeru)_' : '_(prázdné tělo)_');\n  const fm = [\n    '---',\n    'source: sent',\n    `messageId: ${messageId}`,\n    `to: ${toText.replace(/\\n/g, ' ')}`,\n    `subject: ${subject.replace(/\\n/g, ' ')}`,\n    `date: ${date.toISOString()}`,\n    `from: ${fromText.replace(/\\n/g, ' ')}`,\n    '---',\n    '',\n  ].join('\\n');\n  const md = [\n    fm,\n    `# Email: ${subject}`,\n    '',\n    '**Source**: sent',\n    `**From**: ${fromText}`,\n    `**To**: ${toText}`,\n    `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`,\n    `**Gmail message ID**: ${messageId}`,\n    '',\n    '## Tělo',\n    '',\n    body,\n    '',\n  ].join('\\n');\n  const row = { json: { filename, content: md, messageId } };\n  if (item.binary && Object.keys(item.binary).length) row.binary = item.binary;\n  items.push(row);\n}\nreturn items;\n"
       },
-      "id": "format-sent-md",
+      "id": "dec5abf6-bc9d-4fd4-b93b-d6458e4246ed",
       "name": "Format → Markdown (sent)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 300]
+      "position": [
+        640,
+        300
+      ]
     },
     {
       "parameters": {
@@ -56,47 +73,563 @@
         "name": "={{ $json.filename }}",
         "driveId": {
           "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/u/0/folders/1J-5ofYzbMODU_nMhIooSNnallpAM-DgJ",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "950a4f5a-6cef-481d-9d5f-0c32fef85979",
+      "name": "Drive: Save .md to INBOX/email/sent/",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const keys = Object.keys(bin);\n  const baseName = item.json.filename || 'sent.md';\n  const stem = baseName.replace(/\\.md$/i, '');\n  if (!keys.length) { out.push({ json: { ...item.json, skipUpload: true } }); continue; }\n  for (const key of keys) {\n    const b = bin[key];\n    const raw = (b && b.fileName) || key;\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({ json: { uploadFileName: stem + '__' + safe, skipUpload: false }, binary: { data: b } });\n  }\n}\nreturn out;"
+      },
+      "id": "sent-split-attachments",
+      "name": "Code: Přílohy → položky",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "skip",
+              "leftValue": "={{ $json.skipUpload }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sent-if-skip",
+      "name": "Bez příloh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{ $json.uploadFileName }}",
+        "driveId": {
+          "__rl": true,
           "mode": "list",
           "value": "REPLACE_WITH_DRIVE_ID"
         },
         "folderId": {
           "__rl": true,
-          "mode": "id",
-          "value": "REPLACE_WITH_INBOX_EMAIL_SENT_FOLDER_ID"
+          "value": "https://drive.google.com/drive/u/0/folders/1J-5ofYzbMODU_nMhIooSNnallpAM-DgJ",
+          "mode": "url"
         },
         "options": {}
       },
-      "id": "save-sent-to-drive",
-      "name": "Drive: Save .md to INBOX/email/sent/",
+      "id": "sent-upload",
+      "name": "Drive: Upload příloh",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [860, 300],
+      "position": [
+        1300,
+        420
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "REPLACE_WITH_GDRIVE_CREDENTIAL_ID",
-          "name": "Google Drive Lukáš"
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatItem = $('Format → Markdown (sent)').first().json;\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map(i => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  }));\n} catch (_) {}\nfunction formatFileSize(bytes) {\n  const n = Number(bytes); if (!n) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n/1024).toFixed(1)} kB`;\n  return `${(n/(1024*1024)).toFixed(1)} MB`;\n}\nlet content = String(formatItem.content || '').trimEnd();\nif (uploadedAttachments.length) {\n  const heading = uploadedAttachments.length === 1 ? '## Přílohy' : `## Přílohy (${uploadedAttachments.length})`;\n  const lines = [heading, ''];\n  for (const a of uploadedAttachments) {\n    const meta = [a.mimeType, formatFileSize(a.size)].filter(Boolean).join(', ');\n    lines.push(a.webViewLink ? `- [${a.name}](${a.webViewLink})${meta ? ` — ${meta}` : ''}` : `- ${a.name}`);\n  }\n  content += '\\n\\n' + lines.join('\\n') + '\\n';\n}\nreturn [{ json: { ...formatItem, content } }];"
+      },
+      "id": "sent-finalize",
+      "name": "Code: Finalize ## Přílohy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        180
+      ]
     }
   ],
   "connections": {
     "Gmail: odeslané (workspace)": {
-      "main": [[{ "node": "Dedupe: messageId", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Dedupe: messageId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Dedupe: messageId": {
-      "main": [[{ "node": "Format → Markdown (sent)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format → Markdown (sent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format → Markdown (sent)": {
-      "main": [[{ "node": "Drive: Save .md to INBOX/email/sent/", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Code: Přílohy → položky",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Přílohy → položky": {
+      "main": [
+        [
+          {
+            "node": "Bez příloh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bez příloh?": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive: Upload příloh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Upload příloh": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Finalize ## Přílohy": {
+      "main": [
+        [
+          {
+            "node": "Drive: Save .md to INBOX/email/sent/",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "_NOTES_FOR_LUKAS": [
-    "Gmail OAuth na lukas@redbuttonedu.cz (Workspace), ne osobní Gmail.",
-    "Filter: in:sent from:lukas@redbuttonedu.cz — Simplify OFF.",
-    "Dedupe přes workflow static data (messageId). Po reinstall n8n může znovu zpracovat historii.",
-    "Cíl: OBSIDIAN/01-INBOX/email/sent/ — REPLACE_WITH_INBOX_EMAIL_SENT_FOLDER_ID.",
-    "Alternativa Gmail API v cron vyžaduje OAuth token v Coolify — n8n je jednodušší bez secretů v repu.",
-    "triage_run.py + triage_commitments.py extrahují závazky (heuristika nebo ANTHROPIC_API_KEY)."
-  ]
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Gmail: odeslané (workspace)": {
+      "Gmail: odeslané (workspace)": {
+        "lastTimeChecked": 1781727281,
+        "possibleDuplicates": [
+          "19ed738c4d72eb62",
+          "19ed577225121ebd"
+        ]
+      }
+    },
+    "global": {
+      "processedMessageIds": {
+        "19e661a09de36d06": 1779829453401,
+        "19ed738c4d72eb62": 1781727327748
+      }
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "045eff5b-8e24-42bb-abfc-f115661806e1",
+  "activeVersionId": "045eff5b-8e24-42bb-abfc-f115661806e1",
+  "versionCounter": 246,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-23T00:25:08.835Z",
+      "createdAt": "2026-05-23T00:25:08.835Z",
+      "role": "workflow:owner",
+      "workflowId": "7fhDXThOaxl1yNtE",
+      "projectId": "X3Gb83P3UZlojuge",
+      "project": {
+        "updatedAt": "2025-11-15T16:08:05.137Z",
+        "createdAt": "2025-11-15T16:02:16.475Z",
+        "id": "X3Gb83P3UZlojuge",
+        "name": "Michal Šrajer <michal@redbutton.cz>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-06-17T20:44:06.345Z",
+    "createdAt": "2026-06-17T20:44:06.345Z",
+    "versionId": "045eff5b-8e24-42bb-abfc-f115661806e1",
+    "workflowId": "7fhDXThOaxl1yNtE",
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "simple": false,
+          "filters": {
+            "q": "in:sent from:lukas@redbuttonedu.cz -in:trash"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "e4b7b547-9854-4e99-ae92-aeb0824fa2b5",
+        "name": "Gmail: odeslané (workspace)",
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          200,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.processedMessageIds) staticData.processedMessageIds = {};\nconst seen = staticData.processedMessageIds;\nconst MAX_IDS = 5000;\nconst out = [];\nfor (const item of $input.all()) {\n  const id = String(item.json.id || item.json.messageId || '').trim();\n  if (!id || seen[id]) continue;\n  out.push(item);\n  seen[id] = Date.now();\n}\nconst keys = Object.keys(seen);\nif (keys.length > MAX_IDS) {\n  keys.sort((a, b) => (seen[a] || 0) - (seen[b] || 0)).slice(0, keys.length - MAX_IDS).forEach((k) => delete seen[k]);\n}\nreturn out;"
+        },
+        "id": "b01e8928-a800-4f68-8b4e-326e808265a3",
+        "name": "Dedupe: messageId",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const TZ = 'Europe/Prague';\nfunction slug(s, maxLen) {\n  let t = String(s || '').normalize('NFC').replace(/[\\\\/:?*|#\"<>%]+/g, '-').replace(/\\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLocaleLowerCase('cs-CZ');\n  if (!t) t = 'unnamed';\n  return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;\n}\nfunction tsPrague(d) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));\n  return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;\n}\nfunction addr(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v)) return v.map(addr).filter(Boolean).join(', ');\n  if (Array.isArray(v.value)) return v.value.map(x => x && (x.address || x.name)).filter(Boolean).join(', ');\n  return '';\n}\nfunction htmlToText(html) {\n  if (!html) return '';\n  return String(html).replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\nconst items = [];\nfor (const item of $input.all()) {\n  const e = item.json;\n  const messageId = String(e.id || e.messageId || '').trim();\n  const date = new Date(e.internalDate ? parseInt(String(e.internalDate), 10) : (e.date ? new Date(e.date).getTime() : Date.now()));\n  const fromText = addr(e.from) || 'lukas@redbuttonedu.cz';\n  const toText = addr(e.to) || '';\n  const subject = (e.subject && String(e.subject).trim()) || 'no-subject';\n  const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\\s*/gi, '').trim();\n  const filename = `${tsPrague(date)}-sent-${slug(toText.split(',')[0] || 'recipient', 40)}-${slug(subjectClean, 60) || 'no-subject'}.md`;\n  const plain = e.text && String(e.text).trim();\n  const htmlText = htmlToText(e.html != null ? e.html : e.textAsHtml || '');\n  const snippet = e.snippet && String(e.snippet).trim();\n  let body = plain || htmlText || (snippet ? snippet + '\\n\\n_(snippet — vypni Simplify u triggeru)_' : '_(prázdné tělo)_');\n  const fm = ['---', 'source: sent', `messageId: ${messageId}`, `to: ${toText.replace(/\\n/g, ' ')}`, `subject: ${subject.replace(/\\n/g, ' ')}`, `date: ${date.toISOString()}`, `from: ${fromText.replace(/\\n/g, ' ')}`, '---', ''].join('\\n');\n  const md = [fm, `# Email: ${subject}`, '', '**Source**: sent', `**From**: ${fromText}`, `**To**: ${toText}`, `**Date**: ${date.toLocaleString('cs-CZ', { timeZone: TZ })}`, `**Gmail message ID**: ${messageId}`, '', '## Tělo', '', body, ''].join('\\n');\n  const row = { json: { filename, content: md, messageId } };\n  if (item.binary && Object.keys(item.binary).length) row.binary = item.binary;\n  items.push(row);\n}\nreturn items;"
+        },
+        "id": "dec5abf6-bc9d-4fd4-b93b-d6458e4246ed",
+        "name": "Format → Markdown (sent)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "createFromText",
+          "content": "={{ $json.content }}",
+          "name": "={{ $json.filename }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list",
+            "cachedResultName": "My Drive",
+            "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1J-5ofYzbMODU_nMhIooSNnallpAM-DgJ",
+            "mode": "url"
+          },
+          "options": {}
+        },
+        "id": "950a4f5a-6cef-481d-9d5f-0c32fef85979",
+        "name": "Drive: Save .md to INBOX/email/sent/",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1520,
+          300
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  const keys = Object.keys(bin);\n  const baseName = item.json.filename || 'sent.md';\n  const stem = baseName.replace(/\\.md$/i, '');\n  if (!keys.length) { out.push({ json: { ...item.json, skipUpload: true } }); continue; }\n  for (const key of keys) {\n    const b = bin[key];\n    const raw = (b && b.fileName) || key;\n    const safe = String(raw).replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n    out.push({ json: { uploadFileName: stem + '__' + safe, skipUpload: false }, binary: { data: b } });\n  }\n}\nreturn out;"
+        },
+        "id": "sent-split-attachments",
+        "name": "Code: Přílohy → položky",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          860,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "skip",
+                "leftValue": "={{ $json.skipUpload }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "sent-if-skip",
+        "name": "Bez příloh?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1080,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "upload",
+          "inputDataFieldName": "data",
+          "name": "={{ $json.uploadFileName }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "REPLACE_WITH_DRIVE_ID"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1J-5ofYzbMODU_nMhIooSNnallpAM-DgJ",
+            "mode": "url"
+          },
+          "options": {}
+        },
+        "id": "sent-upload",
+        "name": "Drive: Upload příloh",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1300,
+          420
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const formatItem = $('Format → Markdown (sent)').first().json;\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map(i => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  }));\n} catch (_) {}\nfunction formatFileSize(bytes) {\n  const n = Number(bytes); if (!n) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n/1024).toFixed(1)} kB`;\n  return `${(n/(1024*1024)).toFixed(1)} MB`;\n}\nlet content = String(formatItem.content || '').trimEnd();\nif (uploadedAttachments.length) {\n  const heading = uploadedAttachments.length === 1 ? '## Přílohy' : `## Přílohy (${uploadedAttachments.length})`;\n  const lines = [heading, ''];\n  for (const a of uploadedAttachments) {\n    const meta = [a.mimeType, formatFileSize(a.size)].filter(Boolean).join(', ');\n    lines.push(a.webViewLink ? `- [${a.name}](${a.webViewLink})${meta ? ` — ${meta}` : ''}` : `- ${a.name}`);\n  }\n  content += '\\n\\n' + lines.join('\\n') + '\\n';\n}\nreturn [{ json: { ...formatItem, content } }];"
+        },
+        "id": "sent-finalize",
+        "name": "Code: Finalize ## Přílohy",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1300,
+          180
+        ]
+      }
+    ],
+    "connections": {
+      "Gmail: odeslané (workspace)": {
+        "main": [
+          [
+            {
+              "node": "Dedupe: messageId",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedupe: messageId": {
+        "main": [
+          [
+            {
+              "node": "Format → Markdown (sent)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format → Markdown (sent)": {
+        "main": [
+          [
+            {
+              "node": "Code: Přílohy → položky",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Přílohy → položky": {
+        "main": [
+          [
+            {
+              "node": "Bez příloh?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bez příloh?": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Drive: Upload příloh",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: Upload příloh": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Finalize ## Přílohy": {
+        "main": [
+          [
+            {
+              "node": "Drive: Save .md to INBOX/email/sent/",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Michal Šrajer",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-06-17T20:44:06.369Z",
+        "id": 127,
+        "workflowId": "7fhDXThOaxl1yNtE",
+        "versionId": "045eff5b-8e24-42bb-abfc-f115661806e1",
+        "event": "deactivated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      },
+      {
+        "createdAt": "2026-06-17T20:44:06.826Z",
+        "id": 128,
+        "workflowId": "7fhDXThOaxl1yNtE",
+        "versionId": "045eff5b-8e24-42bb-abfc-f115661806e1",
+        "event": "activated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    ]
+  }
 }

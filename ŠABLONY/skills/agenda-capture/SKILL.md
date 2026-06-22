@@ -35,8 +35,8 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 ### 2. Vytěž obsah podle zdroje
 
 - **Text v chatu** → ber jak je
-- **PDF / .docx / .xlsx** → extrakce textu
-- **Obrázek** → vision + OCR
+- **PDF / .docx / .xlsx** → `python3 scripts/extract_material_text.py <path>` (sidecar + `## Extrahovaný text`)
+- **Obrázek** → vision + OCR; sidecar `type: attachment` s embed `![[]]`
 - **Audio** → transkripce; jinak požádej o text
 - **INBOX/sembly/** → markdown ze Sembly
 - **INBOX/slack/** → markdown z n8n
@@ -132,6 +132,7 @@ OK? (ano / uprav / vyhoď)
 
 - Vytvoř task soubor v `02-PROJEKTY/<slug>/tasks/`
 - Vytvoř material soubor v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<kategorie>/`
+- **Přílohy z INBOX** (`## Přílohy` sekce): stáhni/zkopíruj binárku do `materials/<téma>/`, vytvoř sidecar `.md` (`type: attachment`, embed `![[]]`), spusť `python3 scripts/extract_material_text.py <binárka>`, propoj v task `materials:`
 - U Resources: progressive summarization (3–5 bullet výtah nahoře) + `topics:` tagy (PARA: `.cursor/rules/resources-para.mdc`)
 - Po vytvoření **inkrementuj** `open_tasks_count` v hub `.md` frontmatteru
 - Originál z INBOX → `07-ARCHIV/inbox-processed/YYYY/MM/<den>-<filename>`

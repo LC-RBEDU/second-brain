@@ -36,7 +36,16 @@ def main() -> int:
     lines.append("")
     lines.append("**TOP dnes:**")
     for t in top[:5]:
-        lines.append(f"- **{t.get('id')} — {t.get('title', '')[:55]}** (score {t.get('today_score', '?')})")
+        src_hint = ""
+        slug = t.get("slug")
+        for p in data.get("projects") or []:
+            if p.get("slug") == slug and p.get("sources"):
+                src_hint = f" [sources: {', '.join(p['sources'][:3])}]"
+                break
+        lines.append(
+            f"- **{t.get('id')} — {t.get('title', '')[:55]}** "
+            f"(score {t.get('today_score', '?')}){src_hint}"
+        )
     if upcoming[:3]:
         lines.append("")
         lines.append("**Deadlines (7d):**")

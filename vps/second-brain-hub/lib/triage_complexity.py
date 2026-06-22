@@ -21,6 +21,7 @@ Pravidla:
 7. 5+ unchecked checkboxů `- [ ]` v těle → DEEP (multi-action plán).
 8. Signální fráze v těle ("Action items", "Akční kroky", "Úkoly",
    "Závěry", "Decision points", "Rozhodnutí") → DEEP.
+9. Sekce ``## Přílohy`` s alespoň jednou položkou (Drive link / soubor) → DEEP.
 
 Funkce vrací `(is_complex, reasons)`; `reasons` je lidsky čitelný seznam
 pro debug / batch summary, nikdy neobsahuje větší výřez těla.
@@ -42,6 +43,16 @@ _HEADING_RE = re.compile(r"^(?:#{2,3})\s+\S", re.MULTILINE)
 # Unchecked checkbox — `- [ ]` nebo `* [ ]` (chceme jen otevřené úkoly,
 # proto vynecháváme `- [x]`).
 _CHECKBOX_OPEN_RE = re.compile(r"^[ \t]*[-*]\s\[\s\]\s+\S", re.MULTILINE)
+
+# ## Přílohy sekce — SSOT formát z n8n capture workflows.
+_ATTACHMENTS_SECTION_RE = re.compile(
+    r"^##\s+Přílohy(?:\s*\(\d+\))?\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+_ATTACHMENT_ITEM_RE = re.compile(
+    r"^-\s+(?:\[[^\]]+\]\([^)]+\)|\S)",
+    re.MULTILINE,
+)
 
 # Signální fráze — case-insensitive, hledáme jako samostatná slova /
 # nadpisy v body.
@@ -92,6 +103,23 @@ def _is_sembly_source(rel_path: str) -> bool:
 def _is_sent_email_source(rel_path: str) -> bool:
     norm = _normalize_path(rel_path)
     return "/email/sent/" in norm or norm.endswith("/email/sent")
+
+
+def _has_attachments_section(content: str) -> bool:
+    """True when body contains ``## Přílohy`` with at least one list item."""
+    m = _ATTACHMENTS_SECTION_RE.search(content)
+    if not m:
+        return False
+    rest = content[m.end() :]
+    next_heading = re.search(r"^##\s+\S", rest, re.MULTILINE)
+    block = rest[: next_heading.start()] if next_heading else rest
+    return bool(_ATTACHMENT_ITEM_RE.search(block))
+
+
+def has_attachments_markers(body: str) -> bool:
+    """Public helper — ``## Přílohy`` section in inbox markdown body."""
+    content = _strip_frontmatter(body or "")
+    return _has_attachments_section(content)
 
 
 def is_complex_source(rel_path: str, body: str) -> tuple[bool, list[str]]:
@@ -152,7 +180,11 @@ def is_complex_source(rel_path: str, body: str) -> tuple[bool, list[str]]:
     if matched_phrases:
         reasons.append("signal phrases: " + ", ".join(sorted(set(matched_phrases))))
 
+    # 9. Přílohy — materiál vyžaduje DEEP triáž (sidecar + materiály).
+    if _has_attachments_section(content):
+        reasons.append("## Přílohy section")
+
     return (len(reasons) > 0), reasons
 
 
-__all__ = ["is_complex_source"]
+__all__ = ["has_attachments_markers", "is_complex_source"]

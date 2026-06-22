@@ -37,7 +37,7 @@ Default: B (nebo P pokud uživatel žádá pending).
 | Neznámá osoba ve zdroji | `add_person` → `05-RESOURCES/lide/<Jméno>.md` ze `_ŠABLONA-person.md` |
 | Nová info o známé osobě | `update_person` → patch frontmatter/sekcí person souboru |
 
-Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy vždy vedle obsahu, ne centrální folder.
+Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy: co-located binárka + sidecar `.md` v `materials/<téma>/` (viz PARA rule); parsuj `## Přílohy` z INBOX `.md`; po apply spusť `extract_material_text.py`.
 
 ## Lidé — automatická detekce (každý zdroj)
 
@@ -63,6 +63,7 @@ V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a ro
 - `word_count > 800` nebo `line_count > 100`.
 - 3+ H2/H3 headingů v těle.
 - 5+ otevřených checkboxů `- [ ]`.
+- Sekce `## Přílohy` s alespoň jednou položkou → **DEEP** (materiály + sidecar).
 - Signální fráze: „Action items", „Akční kroky", „Úkoly", „Závěry", „Decision points", „Rozhodnutí", „Next steps", „Další kroky".
 - Override v souboru: `<!-- triage:deep -->` nebo `<!-- triage:simple -->` má precedenci přede vším ostatním.
 
@@ -82,6 +83,8 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 
 - Capture: n8n `workspace-sent-to-inbox.json` (Workspace `lukas@redbuttonedu.cz`, frontmatter `source: sent`)
 - Cron `triage_run.py` + `triage_commitments.py`: závazky (`kind: commitment`) nebo fallback u mailu bez závazku
+- **Drop list** (`triage_commitments._SENT_INBOX_DROP_RULES`): shoda `to` + `subject` → **n8n neukládá** do INBOX (`workspace-sent-to-inbox.json`); cron `purge_dropped_sent_inbox` **smaže** případné staré soubory (+ přílohy `stem__*`) bez triáže. Aktuálně: `finance@redbutton.cz` + `Fakturace dealu`.
+- **Manuální triáž (agenda-triage):** při BATCH/DEEP/PENDING — pokud soubor v `01-INBOX/email/sent/` odpovídá drop listu (normalizovaný `to` + `subject` z frontmatter / hlavičky, stejná logika jako `should_drop_sent_from_inbox` v `workspace-sent-format-markdown.js`), použij **`proposalType: drop`**: **smaž** zdroj + přílohy `stem__*`, **ne** archivuj, **ne** vytvářej task. V preview uveď „DROP (sent inbox rule)" — apply bez dalšího potvrzení, pokud user schválil batch obsahující drop.
 - Každý návrh v batchi má **`proposalType`**:
   - `add_task` — vytvoří `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (em-dash U+2014, sanitized title) + frontmatter `aliases: [<ID>]` + očíslované subtasky `**<ID>-N**`
   - `update_task` — patchne frontmatter / body existujícího task souboru
