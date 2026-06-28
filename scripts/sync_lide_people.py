@@ -45,6 +45,7 @@ ALIASES: dict[str, list[str]] = {
         "Verči H.",
     ],
     "Kateřina Bayerová": ["Kateřina Bayerová", "Kateřina Bayer"],
+    "Lucie Přibylová": ["Lucie Přibylová", "Lucky", "Lucie", "Luzka"],
 }
 
 # alias -> person; wikilink keeps alias as display ([[Person|alias]])
@@ -86,6 +87,7 @@ BROKEN_REPAIRS: list[tuple[str, str]] = [
 NICKNAMES: dict[str, list[str]] = {
     "Jan Mašek": ["Honza"],
     "Veronika Hanzalová": ["Verča"],
+    "Lucie Přibylová": ["Lucky", "Lucie"],
 }
 
 KNOWN_META: dict[str, dict[str, str | list[str]]] = {
@@ -150,6 +152,12 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "email": "katerina@redbuttonedu.cz",
         "slack": "Káťa",
         "projects": ["Strategy", "RB Universe development"],
+    },
+    "Lucie Přibylová": {
+        "role": "Web / design (Summit web, Figma)",
+        "org": "Red Button EDU",
+        "slack": "Lucky",
+        "projects": ["Exponential Summit"],
     },
     "Lenka Turečková": {
         "role": "Externí finanční konzultant (Rainfellows, ad-hoc)",

@@ -39,8 +39,11 @@ except ImportError:
     sys.exit(1)
 
 _LIB = Path(__file__).resolve().parents[1] / "vps" / "second-brain-hub" / "lib"
+_SCRIPTS = Path(__file__).resolve().parent
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
 
 from today_priority import select_top_priority  # noqa: E402
 from hub_state import (  # noqa: E402
@@ -48,6 +51,11 @@ from hub_state import (  # noqa: E402
     STALE_NARRATIVE_DAYS,
     compute_last_task_activity,
     is_narrative_stale,
+)
+from vault_reference import (  # noqa: E402
+    build_reference_index,
+    validate_hub_charter,
+    write_reference_index,
 )
 
 DEFAULT_VAULT = Path(
@@ -123,6 +131,9 @@ class ProjectInfo:
     context_source: str | None = None
     charter_scope: str | None = None
     charter_kontext: str | None = None
+    charter_cil: str | None = None
+    charter_definition_of_done: str | None = None
+    charter_people: str | None = None
     has_zdroje_dat: bool = False
 
     def to_dict(self) -> dict:
@@ -141,6 +152,9 @@ class ProjectInfo:
             "context_source": self.context_source,
             "charter_scope": self.charter_scope,
             "charter_kontext": self.charter_kontext,
+            "charter_cil": self.charter_cil,
+            "charter_definition_of_done": self.charter_definition_of_done,
+            "charter_people": self.charter_people,
             "has_zdroje_dat": self.has_zdroje_dat,
         }
 
@@ -237,6 +251,9 @@ def collect_projects(vault: Path) -> list[ProjectInfo]:
             context_source=fm.get("context_source"),
             charter_scope=_section_excerpt(body, "## Scope"),
             charter_kontext=_section_excerpt(body, "## Kontext"),
+            charter_cil=_section_excerpt(body, "## Cíl"),
+            charter_definition_of_done=_section_excerpt(body, "## Definition of done"),
+            charter_people=_section_excerpt(body, "## People"),
             has_zdroje_dat="## Zdroje dat" in body,
         ))
     return out
@@ -422,6 +439,23 @@ def build_snapshot(vault: Path) -> dict:
 
     stale_areas = compute_stale_areas(areas, active_tasks, today)
 
+    charter_warnings: list[str] = []
+    for hub in sorted((vault / "02-PROJEKTY").glob("*.md")):
+        if hub.name.startswith("_"):
+            continue
+        try:
+            _, body = parse_frontmatter(hub.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        charter_warnings.extend(validate_hub_charter(body, hub.name))
+
+    ref_index = build_reference_index(
+        vault,
+        parse_frontmatter=parse_frontmatter,
+        list_tasks=lambda: active_tasks,
+        list_archived_tasks=lambda: archived,
+    )
+
     return {
         "version": 2,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -460,7 +494,10 @@ def build_snapshot(vault: Path) -> dict:
             "stale_hubs_count": len(stale_hubs),
             "stale_areas_weeks": STALE_AREA_WEEKS,
             "stale_areas_count": len(stale_areas),
+            "charter_warnings": charter_warnings,
+            "charter_warnings_count": len(charter_warnings),
         },
+        "_reference_index": ref_index,
     }
 
 
@@ -476,15 +513,24 @@ def main() -> int:
         return 1
 
     snapshot = build_snapshot(args.vault)
+    ref_index = snapshot.pop("_reference_index", None)
     out = args.out or (args.vault / "00-System" / "agent-context.json")
 
     if args.dry_run:
         print(json.dumps(snapshot, ensure_ascii=False, indent=2)[:2000])
         print(f"\n(dry-run, would write to {out})")
+        if ref_index:
+            print(f"reference-index nodes: {len(ref_index.get('nodes', {}))}")
         return 0
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+    if ref_index:
+        ref_out = write_reference_index(args.vault, ref_index)
+        print(f"reference-index: {len(ref_index.get('nodes', {}))} nodes → {ref_out.relative_to(args.vault)}")
+    cw = snapshot.get("health", {}).get("charter_warnings_count", 0)
+    if cw:
+        print(f"charter warnings: {cw}")
     stats = snapshot["stats"]
     print(
         f"agent-context: projects={stats['active_projects']} "

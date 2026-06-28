@@ -51,6 +51,8 @@ Pro každý INBOX / pending zdroj:
 
 Po schválení batch s novými tasky pro projekt **nabídn** doplnění `## Kontext` hubu (nové téma z triáže) + `updated:`.
 
+Pokud batch vyžaduje **nový projekt** (nový slug): naved na [[00-System/Templates/new-project-workflow]] — nejdřív hub + `## Zdroje dat`, pak tasky.
+
 ## Auto-routing „komplexních" zdrojů
 
 V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a routuje ho do DEEP, místo aby ho mlel přes default add_task flow.
@@ -64,6 +66,7 @@ V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a ro
 - 3+ H2/H3 headingů v těle.
 - 5+ otevřených checkboxů `- [ ]`.
 - Sekce `## Přílohy` s alespoň jednou položkou → **DEEP** (materiály + sidecar).
+- **Inline odkaz** na Google Docs/Sheets/Slides nebo pdf/docx v těle → **DEEP** (materializace při interaktivním DEEP flow).
 - Signální fráze: „Action items", „Akční kroky", „Úkoly", „Závěry", „Decision points", „Rozhodnutí", „Next steps", „Další kroky".
 - Override v souboru: `<!-- triage:deep -->` nebo `<!-- triage:simple -->` má precedenci přede vším ostatním.
 
@@ -172,9 +175,12 @@ Vault patří **jednomu uživateli (Lukáš)**. Tasky v `02-PROJEKTY/<slug>/task
   "confidence": 0.85,
   "notes": "...",
   "requires_deep_analysis": false,
-  "deep_reasons": []
+  "deep_reasons": [],
+  "needs_link": false
 }
 ```
+
+**`needs_link` (cron):** pokud návrh nemá `project:` + `materials:` pro DEEP zdroj, nastav `needs_link: true` a **neaplikuj automaticky** (stejně jako `deep_analysis`).
 
 Body návrhu musí mít subtasky se prefixem `**<ID>-N**` v `## Operativní kroky`.
 

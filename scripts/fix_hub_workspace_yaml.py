@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fix broken workspace YAML in hub frontmatter (calendar:\\n[] → calendar: [])."""
+"""DEPRECATED — per-project workspace: frontmatter removed (2026-05).
+
+Was: Fix broken workspace YAML in hub frontmatter.
+Use: scripts/patch_hub_sources.py --strip-workspace if legacy hubs resurface.
+"""
 from __future__ import annotations
 
 import re

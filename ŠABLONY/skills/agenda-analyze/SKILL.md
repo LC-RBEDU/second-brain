@@ -49,7 +49,7 @@ description: "Analyzuje materiály (URL, vault) k tématu/úkolu. Výstup: struk
 ### 2. Načti materiály + kontext úkolu
 
 - Zdroje: URL fetch, vault cesty, přílohy (parsuj `## Přílohy` z INBOX `.md` — Drive linky; sidecar `type: attachment` s `## Extrahovaný text`)
-- Hub charter + **`sources:` / `notebooklm:` / `workspace:`** — aktivně použij deklarované zdroje
+- Hub charter + **`sources:` / `notebooklm:`** + **`## Zdroje dat`** (konkrétní URL). Google Workspace je globálně dostupný — nehledej per-project `workspace:` frontmatter.
 - **MCP routing (povinný):** `python3 scripts/build_sources_routing.py --check` → regeneruj pokud stale; načti `sources-routing.json`; pro každý hub `sources:` tag volej MCP/CLI dle routes
 - Prohledej `05-RESOURCES/` podle `topics:` relevantních k projektu (`.cursor/rules/resources-para.mdc`)
 - U procesních témat: RB Universe MCP — existující procesy v Architektovi

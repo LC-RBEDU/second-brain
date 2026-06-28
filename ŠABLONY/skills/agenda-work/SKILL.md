@@ -13,6 +13,7 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 - "Jdeme na <slug>" / "Pracujeme na <slug>" / "Otevři <slug>"
 - "Pokračujeme v <slug>" / "Co zbývá v <slug>"
+- "Založ projekt" / "Nový projekt <název>" — viz **Nový projekt** níže
 - "Udělej mi dokument / mindmapu / kalkulaci pro <téma>"
 - "Aktualizuj výstupy <slug>"
 - "Uprav úkoly v <slug>" / "Přidej task" / "Uzavři task"
@@ -21,8 +22,8 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 ### 1. Načti kontext (v2)
 
-1. **PRIMARY:** `OBSIDIAN/00-System/agent-context.json` → najdi `projects[]` podle `slug`, vyextrahuj briefing (status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug, **`sources`**, `notebooklm`, `workspace`)
-2. **Work-context bundle:** `OBSIDIAN/00-System/Work-Context/<slug>.md` — pokud chybí, spusť `python3 scripts/build_work_context.py <slug>`
+1. **PRIMARY:** `OBSIDIAN/00-System/agent-context.json` → najdi `projects[]` podle `slug`; briefing pole: `charter_cil`, `charter_scope`, `charter_definition_of_done`, `charter_people`, `charter_kontext`, status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug, **`sources`**, `notebooklm`
+2. **Work-context bundle:** `OBSIDIAN/00-System/Work-Context/<slug>.md` — **freshness check:** pokud chybí, nebo existuje `<slug>.stale`, nebo `generated_at` je starší než nejnovější mtime tasků v `02-PROJEKTY/<slug>/tasks/` → spusť `python3 scripts/build_work_context.py <slug>`. Při práci na konkrétním tasku: `python3 scripts/build_work_context.py --task <ID>` (efemérní stdout, nepersistuje).
 3. (1× per session) `OBSIDIAN/00-System/Memory/about-me.md`
 4. Hub `OBSIDIAN/02-PROJEKTY/<HubName>.md` — frontmatter + body (Scope, Kontext, ## Zdroje dat)
 5. Tasky `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md`
@@ -39,17 +40,15 @@ PROJEKT: <HubName> [<slug>]
 Status: <active/paused> | Area: <area>
 ═══════════════════════════════════════════════
 
-🎯 CÍL: <z body Cíl a hodnota>
+🎯 CÍL: <z agent-context.json charter_cil nebo ## Cíl>
 
-📋 SCOPE (In/Out): <z body Scope>
+📋 SCOPE (In/Out): <charter_scope nebo ## Scope>
 
-👥 LIDÉ: <z body Lidé / spolupráce — top 3 wikilinks + role>
+✅ DEFINITION OF DONE: <charter_definition_of_done nebo ## Definition of done>
 
-🔀 HRANICE: <z body Hranice / vymezení>
+👥 LIDÉ: <charter_people nebo ## People — top wikilinks + role>
 
-📊 METRIKY: <z body Metriky / KPI>
-
-📎 KONTEXT (zkráceně z hubu)
+📎 KONTEXT (zkráceně): <charter_kontext>
 
 ❓ OTEVŘENÉ OTÁZKY: <count>
   • ...
@@ -130,6 +129,24 @@ Proveď zápis až po potvrzení. Vždy preview → confirm → write.
 
 Vždy jako preview, vždy čekej na potvrzení.
 
+### 5c. Nový projekt
+
+Když téma nepatří do existujícího slugu:
+
+1. Načti [[00-System/Templates/new-project-workflow]] + [[00-System/Index]].
+2. Preview parametrů: `slug`, `hub-name`, `area`, `id-prefix`, basename kolize s `03-AREAS/`.
+3. Spusť scaffold (preview first):
+
+```bash
+python3 scripts/create_project_hub.py \
+  --slug <slug> --hub-name "<HubName>" \
+  --area "03-AREAS/<oblast>" --id-prefix <PREFIX> --dry-run
+```
+
+4. Po schválení — stejný příkaz bez `--dry-run`.
+5. Doplň charter (`## Cíl`, `## Scope`, `## Zdroje dat` s konkrétními URL). **Nepoužívej** `workspace:` ani `sources: google-workspace` (GWS globální — [[agenda-system]] §6).
+6. První task(y) přes capture/triage s `project: "[[<HubName>]]"`.
+
 ### 5b. Refresh agent context (po každém zápisu task / hub)
 
 ```bash
@@ -151,5 +168,5 @@ Uzavřen 1 task (RBU13), přidán 1 nový (RBU30, Score 8.4).
 - **Nikdy neupravuj task soubory bez potvrzení**
 - **Výstupy do `02-PROJEKTY/<slug>/` (root projektu); tasky do `tasks/`; materials do `materials/`**
 - **Při nejasném zadání** — polož 1 konkrétní otázku, nezačínej hádat
-- **Mindmapy prioritně jako HTML widget v chatu** — soubor jen pokud user chce archivovat
+- **Provenance:** ve výstupu uveď, které materiály/zdroje jsi použil (wikilink nebo cesta). Pokud klíčový zdroj chyběl v bundlu, explicitně to napiš.
 - **Tone:** `OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`

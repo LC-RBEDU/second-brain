@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Build per-project work-context bundle (.md) for agent execution support.
+"""Build work-context bundles with progressive layering (VC7-7).
 
-Pre-resolves hub charter + tasks + materials (incl. extracted text) + outputs
-+ archive sources referenced by tasks.
-
-Usage:
-  python3 scripts/build_work_context.py rb-universe-development
+Project-scoped (persisted):
+  python3 scripts/build_work_context.py <slug>
   python3 scripts/build_work_context.py --all
-  python3 scripts/build_work_context.py finance --dry-run
+
+Task-scoped (ephemeral stdout):
+  python3 scripts/build_work_context.py --task <ID>
 """
 from __future__ import annotations
 
@@ -16,6 +15,8 @@ import json
 import os
 import re
 import sys
+from collections import deque
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -26,139 +27,65 @@ except ImportError:
     sys.stderr.write("ERROR: pip3 install pyyaml\n")
     sys.exit(1)
 
-# Reuse parsers from build_agent_context
 _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from build_agent_context import (  # noqa: E402
     DEFAULT_VAULT,
-    FRONTMATTER_RE,
     HUB_TITLE_RE,
+    TaskInfo,
     collect_projects,
     collect_tasks,
     parse_frontmatter,
     _list_str,
 )
+from vault_reference import (  # noqa: E402
+    MAX_LAYER_B_CHARS,
+    MAX_LAYER_B_NODES,
+    extract_references_from_material,
+    extract_references_from_task,
+    load_reference_index,
+    material_summary,
+    parse_wikilinks,
+    resolve_path,
+    section_text,
+    strip_wikilink,
+)
 
-SECTION_EXTRACT = "## Extrahovaný text"
-MAX_BODY_CHARS = 120_000
-MAX_MATERIAL_CHARS = 40_000
-
-
-def _truncate(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return text[: limit - 40] + "\n\n… _(zkráceno)_\n"
-
-
-def _section(body: str, heading: str) -> str:
-    pat = re.compile(rf"^{re.escape(heading)}\s*$", re.MULTILINE)
-    m = pat.search(body)
-    if not m:
-        return ""
-    rest = body[m.end() :]
-    nxt = re.search(r"^##\s+\S", rest, re.MULTILINE)
-    block = rest[: nxt.start()] if nxt else rest
-    return block.strip()
+MAX_BODY_CHARS = 500_000  # overall cap for persisted bundles; layer A uncapped per focus task
 
 
-def _resolve_wikilink_path(vault: Path, link: str) -> Path | None:
-    link = link.strip().strip('"').strip("'")
-    if link.startswith("http"):
-        return None
-    bare = link.replace("[[", "").replace("]]", "").split("|")[0].strip()
-    if not bare:
-        return None
-    candidates = [
-        vault / "02-PROJEKTY" / bare,
-        vault / "07-ARCHIV" / bare,
-        vault / "05-RESOURCES" / bare,
-    ]
-    for c in candidates:
-        if c.is_file():
-            return c
-        if c.with_suffix(".md").is_file():
-            return c.with_suffix(".md")
-    for base in (vault / "02-PROJEKTY", vault / "07-ARCHIV", vault / "05-RESOURCES"):
-        if not base.exists():
-            continue
-        for hit in base.rglob(f"{bare}.md"):
-            return hit
-        for hit in base.rglob(bare):
-            if hit.is_file():
-                return hit
+@dataclass
+class GraphNode:
+    key: str
+    rel_path: str | None = None
+    node_type: str = "unknown"
+    layer: str = "B"  # A | B
+    discovered_from: str = ""
+    relevance: float = 0.0
+    summary: str = ""
+    full_body: str = ""
+    error: str = ""
+
+
+@dataclass
+class AssemblyResult:
+    lines: list[str] = field(default_factory=list)
+    layer_a: list[str] = field(default_factory=list)
+    layer_b: list[str] = field(default_factory=list)
+    omitted_budget: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+
+def _task_by_id(vault: Path, task_id: str) -> TaskInfo | None:
+    for t in collect_tasks(vault, archive=False) + collect_tasks(vault, archive=True):
+        if t.id == task_id:
+            return t
     return None
 
 
-def _load_source_archive(vault: Path, source: str) -> str:
-    p = _resolve_wikilink_path(vault, source)
-    if not p or not p.exists():
-        return f"_(source nenalezeno: {source})_"
-    try:
-        _, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-        return _truncate(body.strip(), MAX_MATERIAL_CHARS)
-    except OSError:
-        return f"_(source unreadable: {source})_"
-
-
-def _collect_materials(vault: Path, slug: str, tasks: list) -> list[tuple[str, str]]:
-    out: list[tuple[str, str]] = []
-    seen: set[str] = set()
-
-    mat_dir = vault / "02-PROJEKTY" / slug / "materials"
-    if mat_dir.exists():
-        for md in sorted(mat_dir.rglob("*.md")):
-            rel = str(md.relative_to(vault))
-            if rel in seen:
-                continue
-            seen.add(rel)
-            try:
-                fm, body = parse_frontmatter(md.read_text(encoding="utf-8"))
-            except OSError:
-                continue
-            title = fm.get("title") or md.stem
-            out.append((rel, f"### {title}\n\n{_truncate(body.strip(), MAX_MATERIAL_CHARS)}"))
-
-    for t in tasks:
-        if t.slug != slug:
-            continue
-        for mat in t.materials or []:
-            p = _resolve_wikilink_path(vault, mat)
-            if not p:
-                continue
-            rel = str(p.relative_to(vault)) if p.is_relative_to(vault) else str(p)
-            if rel in seen:
-                continue
-            seen.add(rel)
-            try:
-                fm, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-            except OSError:
-                continue
-            title = fm.get("title") or p.stem
-            out.append((rel, f"### {title}\n\n{_truncate(body.strip(), MAX_MATERIAL_CHARS)}"))
-
-    return out
-
-
-def _collect_outputs(vault: Path, slug: str) -> list[str]:
-    root = vault / "02-PROJEKTY" / slug
-    if not root.exists():
-        return []
-    skip = {"tasks", "materials"}
-    out: list[str] = []
-    for p in sorted(root.iterdir()):
-        if p.name.startswith(".") or p.name in skip:
-            continue
-        if p.is_file() and p.suffix.lower() in (".md", ".mermaid", ".json", ".py", ".ts"):
-            out.append(p.name)
-    return out
-
-
-def build_work_context_md(vault: Path, slug: str) -> str | None:
-    hub_path = None
-    hub_fm: dict[str, Any] = {}
-    hub_body = ""
+def _hub_for_slug(vault: Path, slug: str) -> tuple[Path, dict, str] | None:
     for hub in (vault / "02-PROJEKTY").glob("*.md"):
         try:
             text = hub.read_text(encoding="utf-8")
@@ -168,91 +95,334 @@ def build_work_context_md(vault: Path, slug: str) -> str | None:
         if (fm.get("type") or "").lower() != "project":
             continue
         if (fm.get("slug") or hub.stem) == slug:
-            hub_path = hub
-            hub_fm, hub_body = fm, body
-            break
-    if not hub_path:
-        return None
+            return hub, fm, body
+    return None
 
+
+def _relevance_score(
+    *,
+    same_project: bool,
+    explicit_material: bool,
+    in_body: bool,
+    updated: str | None,
+    task_priority: float,
+    hop: int,
+) -> float:
+    score = 100.0 - hop * 15
+    if same_project:
+        score += 30
+    if explicit_material:
+        score += 25
+    if in_body:
+        score += 10
+    if updated:
+        score += 5
+    score += min(task_priority, 20)
+    return score
+
+
+def _resolve_key_to_path(vault: Path, key: str, ref_index: dict) -> Path | None:
+    key = strip_wikilink(key)
+    nodes = ref_index.get("nodes", {})
+    for nid, meta in nodes.items():
+        if nid == key or Path(meta.get("rel_path", "")).stem == key:
+            p = vault / meta["rel_path"]
+            if p.exists():
+                return p
+    return resolve_path(vault, key)
+
+
+def _expand_graph(
+    vault: Path,
+    *,
+    seeds: list[tuple[str, str, float]],
+    focus_slug: str,
+    focus_task_id: str | None,
+    ref_index: dict,
+    max_hops: int = 6,
+    max_nodes: int = 120,
+) -> dict[str, GraphNode]:
+    graph: dict[str, GraphNode] = {}
+    q: deque[tuple[str, str, int, float]] = deque()
+    enqueued: set[str] = set()
+
+    for key, discovered_from, rel in seeds:
+        k = strip_wikilink(key)
+        if k and k not in enqueued:
+            enqueued.add(k)
+            q.append((k, discovered_from, 0, rel))
+
+    while q and len(graph) < max_nodes:
+        key, discovered_from, hop, rel = q.popleft()
+        if not key or key in graph:
+            continue
+        if hop > max_hops:
+            continue
+
+        path = _resolve_key_to_path(vault, key, ref_index)
+        if not path or not path.exists():
+            graph[key] = GraphNode(
+                key=key,
+                discovered_from=discovered_from,
+                error=f"nerozpoznáno: {key}",
+            )
+            continue
+
+        try:
+            rel_path = str(path.relative_to(vault))
+        except ValueError:
+            rel_path = str(path)
+
+        in_archive = "/07-ARCHIV/" in rel_path
+        if in_archive and hop > 1:
+            continue
+
+        try:
+            raw = path.read_text(encoding="utf-8")
+            fm, body = parse_frontmatter(raw)
+        except (OSError, UnicodeDecodeError) as e:
+            graph[key] = GraphNode(key=key, rel_path=rel_path, error=str(e))
+            continue
+
+        node_type = str(fm.get("type") or "unknown").lower()
+        slug = fm.get("slug") or ""
+        is_focus = focus_task_id and key == focus_task_id
+        is_focus_material = focus_task_id and any(
+            strip_wikilink(m) == key or Path(rel_path).stem == strip_wikilink(m)
+            for t in [focus_task_id]
+            for m in (_task_materials(vault, focus_task_id) or [])
+        )
+
+        layer = "A" if is_focus or (hop == 0 and node_type == "task" and key == focus_task_id) else "B"
+        if node_type == "task" and key == focus_task_id:
+            layer = "A"
+        elif node_type == "material" and focus_task_id:
+            mats = _task_materials(vault, focus_task_id) or []
+            if any(strip_wikilink(m) in (key, Path(rel_path).stem) for m in mats):
+                layer = "A"
+
+        same_project = str(slug) == focus_slug or focus_slug in rel_path
+        node = GraphNode(
+            key=key,
+            rel_path=rel_path,
+            node_type=node_type,
+            layer=layer,
+            discovered_from=discovered_from,
+            relevance=rel,
+            full_body=body,
+            summary=material_summary(body) if node_type in ("material", "attachment") else material_summary(body, 2000),
+        )
+        graph[key] = node
+
+        if node_type == "task":
+            refs = extract_references_from_task(fm, body)
+        elif node_type in ("material", "attachment"):
+            refs = extract_references_from_material(fm, body)
+        else:
+            refs = parse_wikilinks(body)
+
+        for ref in refs:
+            rk = strip_wikilink(ref)
+            if not rk or rk in enqueued:
+                continue
+            enqueued.add(rk)
+            child_rel = _relevance_score(
+                same_project=same_project,
+                explicit_material=rk in _list_str(fm.get("materials")),
+                in_body=rk in body,
+                updated=fm.get("updated"),
+                task_priority=0,
+                hop=hop + 1,
+            )
+            q.append((rk, key, hop + 1, child_rel))
+
+        for back_src in ref_index.get("backlinks", {}).get(key, [])[:20]:
+            bk = strip_wikilink(back_src)
+            if bk and bk not in enqueued:
+                enqueued.add(bk)
+                q.append((bk, f"backlink:{key}", hop + 1, rel - 5))
+
+    return graph
+
+
+def _task_materials(vault: Path, task_id: str) -> list[str] | None:
+    t = _task_by_id(vault, task_id)
+    return t.materials if t else None
+
+
+def assemble_context(
+    vault: Path,
+    *,
+    slug: str,
+    focus_task_id: str | None = None,
+) -> AssemblyResult:
+    result = AssemblyResult()
+    ref_index = load_reference_index(vault)
+    hub_data = _hub_for_slug(vault, slug)
+    if not hub_data:
+        result.errors.append(f"Neznámý slug: {slug}")
+        return result
+
+    hub_path, hub_fm, hub_body = hub_data
     title_m = HUB_TITLE_RE.search(hub_body)
     title = title_m.group(1).strip() if title_m else hub_path.stem
-    active = [t for t in collect_tasks(vault, archive=False) if t.slug == slug and t.status != "Done"]
 
     lines = [
         "---",
         f"slug: {slug}",
+        f"focus_task: {focus_task_id or ''}",
         f"generated_at: {datetime.now().isoformat(timespec='seconds')}",
         "type: work-context",
         "---",
         "",
         f"# Work context — {title}",
         "",
-        f"**Hub:** `02-PROJEKTY/{hub_path.name}`",
-        "",
-        "## Sources (hub frontmatter)",
-        "",
-        f"- sources: {_list_str(hub_fm.get('sources'))}",
-        f"- notebooklm: {_list_str(hub_fm.get('notebooklm'))}",
-        f"- workspace: {json.dumps(hub_fm.get('workspace') or {}, ensure_ascii=False)}",
-        "",
     ]
 
-    for sec in ("## Scope", "## Kontext", "## Zdroje dat", "## Otevřené otázky"):
-        content = _section(hub_body, sec)
+    # Layer A — charter
+    for sec in (
+        "## Cíl",
+        "## Scope",
+        "## Definition of done",
+        "## People",
+        "## Kontext",
+        "## Zdroje dat",
+        "## Otevřené otázky",
+    ):
+        content = section_text(hub_body, sec)
         if content:
             lines.extend([sec, "", content, ""])
+            result.layer_a.append(sec)
 
-    lines.extend(["## Aktivní tasky", ""])
-    for t in sorted(active, key=lambda x: (-x.priority_score, x.id)):
-        lines.append(f"- **{t.id} — {t.title}** ({t.status}, score={t.priority_score})")
-        if t.materials:
-            lines.append(f"  - materials: {', '.join(t.materials)}")
-        if getattr(t, "source", None):
-            lines.append(f"  - source: {t.source}")
-    lines.append("")
+    active = [t for t in collect_tasks(vault, archive=False) if t.slug == slug and t.status != "Done"]
 
-    lines.extend(["## Task těla", ""])
-    for t in sorted(active, key=lambda x: x.id):
-        tp = vault / t.rel_path
-        if not tp.exists():
+    seeds: list[tuple[str, str, float]] = []
+    if focus_task_id:
+        seeds.append((focus_task_id, "focus", 200.0))
+        t = _task_by_id(vault, focus_task_id)
+        if t:
+            for m in t.materials or []:
+                seeds.append((strip_wikilink(m), focus_task_id, 180.0))
+            if t.source:
+                seeds.append((strip_wikilink(str(t.source)), focus_task_id, 170.0))
+    else:
+        for t in active:
+            seeds.append((t.id, "project-active", 50.0 + t.priority_score))
+
+    graph = _expand_graph(
+        vault,
+        seeds=seeds,
+        focus_slug=slug,
+        focus_task_id=focus_task_id,
+        ref_index=ref_index,
+    )
+
+    # Promote focus task + its materials to layer A
+    if focus_task_id:
+        if focus_task_id in graph:
+            graph[focus_task_id].layer = "A"
+        t = _task_by_id(vault, focus_task_id)
+        if t:
+            for m in t.materials or []:
+                mk = strip_wikilink(m)
+                if mk in graph:
+                    graph[mk].layer = "A"
+                for k, n in graph.items():
+                    if n.rel_path and mk in (k, Path(n.rel_path).stem):
+                        n.layer = "A"
+
+    lines.extend(["## Vrstva A — plný kontext", ""])
+
+    if focus_task_id and focus_task_id in graph:
+        n = graph[focus_task_id]
+        if n.full_body:
+            lines.extend([f"### Task {focus_task_id}", "", n.full_body, ""])
+            result.layer_a.append(focus_task_id)
+    elif not focus_task_id:
+        lines.extend(["### Aktivní tasky (těla)", ""])
+        for t in sorted(active, key=lambda x: x.id):
+            tp = vault / t.rel_path
+            if not tp.exists():
+                continue
+            try:
+                _, body = parse_frontmatter(tp.read_text(encoding="utf-8"))
+            except OSError:
+                continue
+            lines.extend([f"#### {t.id} — {t.title}", "", body.strip(), ""])
+            result.layer_a.append(t.id)
+
+    layer_b_nodes = sorted(
+        [n for n in graph.values() if n.layer == "B" and not n.error],
+        key=lambda n: -n.relevance,
+    )
+    b_chars = 0
+    b_count = 0
+    lines.extend(["## Vrstva B — souhrn + pointer", ""])
+    for n in layer_b_nodes:
+        if b_count >= MAX_LAYER_B_NODES:
+            result.omitted_budget.append(n.key)
             continue
-        try:
-            _, body = parse_frontmatter(tp.read_text(encoding="utf-8"))
-        except OSError:
+        block = f"### {n.key}\n\n**Cesta:** `{n.rel_path}`\n**Objeveno z:** {n.discovered_from}\n\n{n.summary}\n"
+        if b_chars + len(block) > MAX_LAYER_B_CHARS:
+            result.omitted_budget.append(n.key)
             continue
-        lines.extend([f"### {t.id} — {t.title}", "", _truncate(body.strip(), 8000), ""])
+        lines.append(block)
+        b_chars += len(block)
+        b_count += 1
+        result.layer_b.append(n.key)
 
-    materials = _collect_materials(vault, slug, active)
-    if materials:
-        lines.extend(["## Materiály", ""])
-        for rel, block in materials:
-            lines.extend([f"<!-- {rel} -->", block, ""])
+    for n in graph.values():
+        if n.error:
+            result.errors.append(f"{n.key}: {n.error}")
 
-    sources_seen: set[str] = set()
-    for t in active:
-        src = getattr(t, "source", None)
-        if not src or src in sources_seen:
-            continue
-        sources_seen.add(src)
-        lines.extend([f"## Archivní zdroj — {src}", "", _load_source_archive(vault, src), ""])
+    lines.extend(["## Inclusion report", ""])
+    lines.append(f"- Vrstva A ({len(result.layer_a)}): {', '.join(result.layer_a[:20])}")
+    lines.append(f"- Vrstva B ({len(result.layer_b)}): {', '.join(result.layer_b[:20])}")
+    if result.omitted_budget:
+        lines.append(f"- Vynecháno (rozpočet): {', '.join(result.omitted_budget[:30])}")
+    if result.errors:
+        lines.extend(["", "## Nevyřešené / chyby", ""])
+        for e in result.errors:
+            lines.append(f"- {e}")
 
-    outputs = _collect_outputs(vault, slug)
-    if outputs:
-        lines.extend(["## Outputs (root projektu)", ""])
-        for o in outputs:
-            lines.append(f"- `{o}`")
-        lines.append("")
+    result.lines = lines
+    return result
 
-    return _truncate("\n".join(lines), MAX_BODY_CHARS)
+
+def build_work_context_md(vault: Path, slug: str) -> str | None:
+    asm = assemble_context(vault, slug=slug, focus_task_id=None)
+    if asm.errors and not asm.lines:
+        return None
+    text = "\n".join(asm.lines)
+    if len(text) > MAX_BODY_CHARS:
+        text = text[: MAX_BODY_CHARS - 40] + "\n\n… _(celkový strop)_\n"
+    return text
+
+
+def build_task_context_md(vault: Path, task_id: str) -> str | None:
+    t = _task_by_id(vault, task_id)
+    if not t:
+        return None
+    asm = assemble_context(vault, slug=t.slug, focus_task_id=task_id)
+    return "\n".join(asm.lines)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("slug", nargs="?", default="")
-    parser.add_argument("--all", action="store_true", help="Build for all active projects")
+    parser.add_argument("--task", metavar="ID", default="", help="Task-scoped ephemeral bundle")
+    parser.add_argument("--all", action="store_true")
     parser.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+
+    if args.task:
+        md = build_task_context_md(args.vault, args.task)
+        if not md:
+            sys.stderr.write(f"ERROR: task not found: {args.task}\n")
+            return 1
+        print(md)
+        return 0
 
     out_dir = args.vault / "00-System" / "Work-Context"
     slugs: list[str] = []
@@ -271,6 +441,9 @@ def main() -> int:
             sys.stderr.write(f"SKIP unknown slug: {slug}\n")
             continue
         out = out_dir / f"{slug}.md"
+        stale = out_dir / f"{slug}.stale"
+        if stale.exists():
+            stale.unlink(missing_ok=True)
         if args.dry_run:
             print(f"DRY {out}: {len(md)} chars")
         else:

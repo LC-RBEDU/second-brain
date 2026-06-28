@@ -60,8 +60,9 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 
 ### 4. Navrhni projekt (slug)
 
-- Projdi `02-PROJEKTY/*.md` (frontmatter `slug` + `aliases`)
+- Projdi `02-PROJEKTY/*.md` (frontmatter `slug` + `aliases`) a [[00-System/Index]]
 - Sembly `Suggested topic:` jako default
+- **Nový slug** (žádný existující projekt): neskákej rovnou na task — navrhni [[00-System/Templates/new-project-workflow|založení projektu]] (`create_project_hub.py` + charter včetně `## Zdroje dat`; bez `workspace:`)
 
 ### 5. Generuj ID a filename
 
@@ -115,6 +116,17 @@ Subtasky musí mít prefix `**<ID>-N**` (1-indexed). Lze je referencovat z chatu
 
 ### 8. Preview PŘED zápisem
 
+**Enforce (blokující — interaktivní capture):** nedokončuj zápis tasku bez:
+- `project:` (wikilink na hub)
+- alespoň jednoho propojeného `materials:` (pokud existuje DEEP zdroj / příloha / transcript — materiál musí existovat jako `type: material` s `material_kind`, `## Shrnutí`, volitelně `source_id`)
+
+**DEEP materializace (interaktivní, MCP v Cursoru):** pokud zdroj obsahuje Google Docs/Sheets/Slides odkaz nebo lokální pdf/docx:
+1. **Fetch** — Workspace MCP (`get_doc_as_markdown`, `read_sheet_values`, `get_presentation`) nebo lokální soubor
+2. **Extract** — `python3 scripts/extract_material_text.py` (pdf/docx/text; xlsx/pptx ne)
+3. **`## Shrnutí`** — LLM krok (3–5 bullet), ulož do materiálu
+4. Materiál: `type: material`, `material_kind`, `source_id`/`source_url`, `materialization: ok|failed|partial`
+5. **Slack URL nelze fetchovat** — pracuj jen s textem z `01-INBOX/slack/…`
+
 ```
 ## Návrh capture (X položek z [zdroj])
 
@@ -133,6 +145,7 @@ OK? (ano / uprav / vyhoď)
 - Vytvoř task soubor v `02-PROJEKTY/<slug>/tasks/`
 - Vytvoř material soubor v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<kategorie>/`
 - **Přílohy z INBOX** (`## Přílohy` sekce): stáhni/zkopíruj binárku do `materials/<téma>/`, vytvoř sidecar `.md` (`type: attachment`, embed `![[]]`), spusť `python3 scripts/extract_material_text.py <binárka>`, propoj v task `materials:`
+- DEEP zdroj (Sembly/Slack capture) → **jediná kopie** jako materiál v `materials/` (`material_kind: sembly|slack-capture|…`), task linkuje přes `materials:`; `source:` jen provenance pointer
 - U Resources: progressive summarization (3–5 bullet výtah nahoře) + `topics:` tagy (PARA: `.cursor/rules/resources-para.mdc`)
 - Po vytvoření **inkrementuj** `open_tasks_count` v hub `.md` frontmatteru
 - Originál z INBOX → `07-ARCHIV/inbox-processed/YYYY/MM/<den>-<filename>`

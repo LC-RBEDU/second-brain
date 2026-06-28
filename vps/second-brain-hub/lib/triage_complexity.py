@@ -116,6 +116,25 @@ def _has_attachments_section(content: str) -> bool:
     return bool(_ATTACHMENT_ITEM_RE.search(block))
 
 
+# 10. Inline odkaz na Google Docs/Sheets/Slides nebo souborový dokument → DEEP.
+_DOC_LINK_RE = re.compile(
+    r"https?://(?:docs\.google\.com/(?:document|spreadsheets|presentation)|drive\.google\.com/file)[^\s)\]>\"']+",
+    re.IGNORECASE,
+)
+_FILE_EXT_LINK_RE = re.compile(
+    r"https?://[^\s)\]>\"']+\.(?:pdf|docx?|xlsx?)(?:\?[^\s)\]>\"']*)?",
+    re.IGNORECASE,
+)
+
+
+def _has_inline_document_links(content: str) -> bool:
+    if _DOC_LINK_RE.search(content):
+        return True
+    if _FILE_EXT_LINK_RE.search(content):
+        return True
+    return False
+
+
 def has_attachments_markers(body: str) -> bool:
     """Public helper — ``## Přílohy`` section in inbox markdown body."""
     content = _strip_frontmatter(body or "")
@@ -183,6 +202,10 @@ def is_complex_source(rel_path: str, body: str) -> tuple[bool, list[str]]:
     # 9. Přílohy — materiál vyžaduje DEEP triáž (sidecar + materiály).
     if _has_attachments_section(content):
         reasons.append("## Přílohy section")
+
+    # 10. Inline document links.
+    if _has_inline_document_links(content):
+        reasons.append("inline document link")
 
     return (len(reasons) > 0), reasons
 

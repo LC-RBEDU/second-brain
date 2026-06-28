@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""One-shot / idempotent patch: sources frontmatter + ## Zdroje dat for project hubs.
+"""Legacy idempotent patch: ensure ## Zdroje dat exists; merge sources frontmatter.
+
+Convention (2026-05): per-project `workspace:` and `sources: google-workspace` are
+deprecated. SSOT for URLs = hub ## Zdroje dat table. GWS is global (bootstrap).
 
 Usage:
   python3 scripts/patch_hub_sources.py
   python3 scripts/patch_hub_sources.py --dry-run
+  python3 scripts/patch_hub_sources.py --strip-workspace   # remove workspace: blocks
 """
 from __future__ import annotations
 
@@ -15,103 +19,59 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 HUBS = REPO / "OBSIDIAN" / "02-PROJEKTY"
 
-# slug -> config (skip allfred + firemni-procesy — already patched manually)
+# slug -> optional sources tags (URLs live in ## Zdroje dat table only)
 HUB_CONFIG: dict[str, dict] = {
     "finance": {
-        "sources": ["rb-mcp", "google-workspace"],
-        "workspace": {"calendar": [], "gmail": ["label:finance"], "drive": []},
-        "zdroje_rows": [
-            ("RB Universe MCP", "`sources: rb-mcp`", "Fakturoid/FIO sync, interní finance data"),
-            ("Google Workspace", "`workspace:` frontmatter", "Mail finance, Drive podklady"),
-        ],
+        "sources": ["rb-mcp", "notebooklm", "allfred", "wise", "revolut"],
     },
     "strategy": {
-        "sources": ["google-workspace"],
-        "workspace": {"calendar": [], "gmail": [], "drive": []},
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Strategické materiály, kalendář"),
-        ],
+        "sources": ["notebooklm"],
     },
     "owners": {
-        "sources": ["google-workspace"],
-        "workspace": {
-            "calendar": ["Owners meetingy"],
-            "gmail": ["label:owners"],
-            "drive": [],
-        },
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Owners meetingy, mail threads"),
-        ],
+        "sources": ["notebooklm"],
     },
     "ma-odyssey": {
-        "sources": ["google-workspace"],
-        "workspace": {"calendar": [], "gmail": ["label:odyssey"], "drive": []},
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Odyssey mail/kalendář"),
-        ],
+        "sources": [],
     },
     "operations": {
-        "sources": ["google-workspace", "procesni-architekt"],
-        "workspace": {"calendar": [], "gmail": [], "drive": []},
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Provozní schůzky, mail"),
-            ("Procesní architekt", "`sources: procesni-architekt`", "Existující firemní procesy (MCP)"),
-        ],
+        "sources": ["procesni-architekt"],
     },
     "sales-a-business-development": {
-        "sources": ["rb-mcp", "google-workspace", "procesni-architekt"],
-        "workspace": {"calendar": [], "gmail": ["label:sales"], "drive": []},
-        "zdroje_rows": [
-            ("RB Universe MCP", "`sources: rb-mcp`", "CRM data, sales org"),
-            ("Google Workspace", "`workspace:` frontmatter", "Obchodní mail, schůzky"),
-            ("Procesní architekt", "`sources: procesni-architekt`", "Sales/delivery procesy"),
-        ],
+        "sources": ["notebooklm", "pipedrive"],
     },
     "exponential-summit": {
-        "sources": ["google-workspace"],
-        "workspace": {"calendar": [], "gmail": [], "drive": []},
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Summit materiály, koordinace"),
-        ],
+        "sources": ["allfred", "tito"],
     },
     "rb-universe-development": {
-        "sources": ["rb-mcp", "procesni-architekt"],
-        "zdroje_rows": [
-            ("RB Universe MCP", "`sources: rb-mcp`", "Dev API, interní moduly"),
-            ("Procesní architekt", "`sources: procesni-architekt`", "Import/export procesů"),
-        ],
+        "sources": ["rb-mcp", "procesni-architect", "github", "hostinger", "google-cloud", "coolify"],
     },
     "pipedrive-a-dalsi-nastroje": {
-        "sources": ["rb-mcp"],
-        "zdroje_rows": [
-            ("RB Universe MCP", "`sources: rb-mcp`", "Pipedrive sync, integrace"),
-        ],
+        "sources": ["rb-mcp", "pipedrive", "make"],
     },
     "vibe-coding": {
-        "sources": ["google-workspace"],
-        "workspace": {"calendar": [], "gmail": [], "drive": []},
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Experimenty, odkazy"),
-        ],
+        "sources": ["github"],
     },
     "osobni": {
-        "sources": [],
-        "zdroje_rows": [],
+        "sources": ["github"],
     },
     "kratky-potlesk": {
-        "sources": [],
-        "zdroje_rows": [],
+        "sources": ["github", "google-cloud", "wedos"],
     },
     "rb-network": {
-        "sources": ["google-workspace"],
-        "workspace": {"calendar": [], "gmail": ["from:@redbutton.cz"], "drive": []},
-        "zdroje_rows": [
-            ("Google Workspace", "`workspace:` frontmatter", "Network mail, koordinace"),
-        ],
+        "sources": [],
     },
 }
 
 ZDROJE_HEADER = "## Zdroje dat"
+WORKSPACE_BLOCK_RE = re.compile(
+    r"^workspace:\n(?:  .*\n)*",
+    re.MULTILINE,
+)
+GWS_TABLE_ROW_RE = re.compile(
+    r"^\| Google Workspace \|.*\|\s*\n"
+    r"|^\| Google Drive \| `workspace:.*\|\s*\n",
+    re.MULTILINE,
+)
 
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, str], str, str]:
@@ -130,34 +90,34 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str, str]:
     return fm, rest, fm_raw
 
 
-def _build_zdroje_section(rows: list[tuple[str, str, str]]) -> str:
-    if not rows:
-        return (
-            f"{ZDROJE_HEADER}\n\n"
-            "_Zatím bez externích zdrojů — doplň `sources:` ve frontmatteru podle potřeby._\n"
-        )
-    lines = [
-        ZDROJE_HEADER,
-        "",
-        "| Zdroj | Pointer | K čemu |",
-        "|-------|---------|--------|",
-    ]
-    for z, p, k in rows:
-        lines.append(f"| {z} | {p} | {k} |")
-    lines.append("")
-    return "\n".join(lines)
+def _strip_workspace_from_fm_raw(fm_raw: str) -> str:
+    out = WORKSPACE_BLOCK_RE.sub("", fm_raw)
+    lines = out.splitlines()
+    cleaned: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("sources:"):
+            cleaned.append(line)
+            i += 1
+            while i < len(lines) and lines[i].startswith("- "):
+                tag = lines[i][2:].strip()
+                if tag != "google-workspace":
+                    cleaned.append(lines[i])
+                i += 1
+            continue
+        cleaned.append(line)
+        i += 1
+    return "\n".join(cleaned).strip()
 
 
-def _render_frontmatter_block(fm_raw: str, slug: str, cfg: dict) -> str:
-    """Insert or replace sources/workspace in frontmatter YAML block."""
-    sources = cfg.get("sources") or []
-    workspace = cfg.get("workspace")
+def _render_frontmatter_block(fm_raw: str, cfg: dict) -> str:
+    sources = [s for s in (cfg.get("sources") or []) if s != "google-workspace"]
+    fm_raw = _strip_workspace_from_fm_raw(fm_raw)
 
     lines = fm_raw.splitlines()
     out: list[str] = []
-    skip_until_next_key = False
     replaced_sources = False
-    replaced_workspace = False
     i = 0
     while i < len(lines):
         line = lines[i]
@@ -173,86 +133,37 @@ def _render_frontmatter_block(fm_raw: str, slug: str, cfg: dict) -> str:
             while i < len(lines) and lines[i].startswith("- "):
                 i += 1
             continue
-        if line.startswith("workspace:"):
-            out.append("workspace:")
-            if workspace:
-                for key, vals in workspace.items():
-                    if vals:
-                        out.append(f"  {key}:")
-                        for v in vals:
-                            out.append(f'  - "{v}"')
-                    else:
-                        out.append(f"  {key}: []")
-            else:
-                out.append("  calendar: []")
-                out.append("  gmail: []")
-                out.append("  drive: []")
-            replaced_workspace = True
-            i += 1
-            while i < len(lines) and (lines[i].startswith("  ") or lines[i].strip() == ""):
-                i += 1
-            continue
         out.append(line)
         i += 1
 
-    if not replaced_sources:
-        # insert before closing --- (after updated: or open_tasks_count)
+    if not replaced_sources and sources:
         insert_at = len(out)
         for j, ln in enumerate(out):
             if ln.startswith("updated:"):
                 insert_at = j + 1
-        src_lines = ["sources:"]
-        if sources:
-            src_lines.extend(f"- {s}" for s in sources)
-        else:
-            src_lines.append("[]")
-        out[insert_at:insert_at] = src_lines
-
-    if workspace is not None and not replaced_workspace:
-        insert_at = len(out)
-        for j, ln in enumerate(out):
-            if ln.startswith("sources:"):
-                insert_at = j + 1
-                while insert_at < len(out) and out[insert_at].startswith("- "):
-                    insert_at += 1
-        ws_lines = ["workspace:"]
-        for key, vals in (workspace or {}).items():
-            if vals:
-                ws_lines.append(f"  {key}:")
-                for v in vals:
-                    ws_lines.append(f'  - "{v}"')
-            else:
-                ws_lines.append(f"  {key}: []")
-        out[insert_at:insert_at] = ws_lines
+        out[insert_at:insert_at] = ["sources:", *[f"- {s}" for s in sources]]
 
     return "\n".join(out)
 
 
-def patch_hub(path: Path, cfg: dict, dry_run: bool) -> bool:
+def _strip_zdroje_gws_rows(body: str) -> str:
+    return GWS_TABLE_ROW_RE.sub("", body)
+
+
+def patch_hub(path: Path, cfg: dict | None, dry_run: bool, strip_workspace: bool) -> bool:
     text = path.read_text(encoding="utf-8")
     fm, body, fm_raw = _parse_frontmatter(text)
     slug = fm.get("slug", "").strip()
     if not slug:
         return False
 
-    if ZDROJE_HEADER in body:
-        has_zdroje = True
-    else:
-        has_zdroje = False
+    new_fm_raw = fm_raw
+    if cfg:
+        new_fm_raw = _render_frontmatter_block(fm_raw, cfg)
+    elif strip_workspace:
+        new_fm_raw = _strip_workspace_from_fm_raw(fm_raw)
 
-    new_fm_raw = _render_frontmatter_block(fm_raw, slug, cfg)
-    zdroje = _build_zdroje_section(cfg.get("zdroje_rows") or [])
-
-    if has_zdroje:
-        new_body = body
-    else:
-        # insert before ## Otevřené otázky or ## Materiály or end
-        for anchor in ("## Otevřené otázky", "## Materiály", "## Výstupy", "## Recently done"):
-            if anchor in body:
-                new_body = body.replace(anchor, zdroje + "\n" + anchor, 1)
-                break
-        else:
-            new_body = body.rstrip() + "\n\n" + zdroje
+    new_body = _strip_zdroje_gws_rows(body) if strip_workspace else body
 
     new_text = f"---\n{new_fm_raw}\n---\n{new_body}"
     if new_text == text:
@@ -268,6 +179,11 @@ def patch_hub(path: Path, cfg: dict, dry_run: bool) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument(
+        "--strip-workspace",
+        action="store_true",
+        help="Remove workspace: + google-workspace from all project hubs",
+    )
     args = ap.parse_args()
     if not HUBS.is_dir():
         print(f"ERROR: {HUBS} missing", file=sys.stderr)
@@ -275,13 +191,14 @@ def main() -> int:
     n = 0
     for hub_path in sorted(HUBS.glob("*.md")):
         text = hub_path.read_text(encoding="utf-8")
+        if not text.startswith("---") or "type: project" not in text.split("---", 2)[1]:
+            continue
         m = re.search(r"^slug:\s*(\S+)", text, re.M)
-        if not m:
+        slug = m.group(1) if m else ""
+        cfg = HUB_CONFIG.get(slug) if slug in HUB_CONFIG else None
+        if not cfg and not args.strip_workspace:
             continue
-        slug = m.group(1)
-        if slug not in HUB_CONFIG:
-            continue
-        if patch_hub(hub_path, HUB_CONFIG[slug], args.dry_run):
+        if patch_hub(hub_path, cfg, args.dry_run, strip_workspace=args.strip_workspace or bool(cfg)):
             n += 1
     print(f"patch_hub_sources: {n} hub(s)")
     return 0

@@ -48,10 +48,11 @@ Symlinky `~/.cursor/skills/agenda-*` → `ŠABLONY/skills/` (jediný SSOT).
 
 ```bash
 python3 scripts/update_hub_state.py          # ## Stav (auto) ve všech hubech
-python3 scripts/patch_hub_sources.py       # jednorázově / idempotentní sources frontmatter
+python3 scripts/patch_hub_sources.py --strip-workspace   # legacy cleanup
+python3 scripts/create_project_hub.py --help # nový projekt (scaffold)
 ```
 
-Charter `sources:` / `notebooklm:` / `workspace:` + sekce `## Zdroje dat` — skills `agenda-work` / `agenda-analyze` je čtou z hubu.
+Charter **`## Zdroje dat`** (konkrétní URL) + frontmatter `sources:` / `notebooklm:` — viz [[00-System/Templates/agenda-system]] §6. Nový projekt: [[00-System/Templates/new-project-workflow]].
 
 ### NotebookLM (vyžaduje jednorázový login)
 

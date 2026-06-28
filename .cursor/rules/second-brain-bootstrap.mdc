@@ -38,6 +38,12 @@ alwaysApply: true
 - **ID**: `<slug-prefix><N>` per projekt, sekvence z `migration-mapping.json`.
 - **CAS write**: každý cron job nese `expect_mtime` přes `DriveVault`, jinak konflikt.
 
+### Zdroje dat (projekty)
+- **`## Zdroje dat`** v hubu = SSOT konkrétních URL, složek Drive, dashboardů, vault cest.
+- **Google Workspace** (Gmail, Calendar, Drive) = **globálně dostupný** u všech projektů — nepiš per-project `workspace:` frontmatter ani gmail labely.
+- **Frontmatter hubu** (jen strojová vrstva): `sources:` = MCP/automation tagy (`rb-mcp`, `pipedrive`, `github`, …); `notebooklm:` = UUID notebooků pro CLI; `context_source:` = volitelně jeden primární doc.
+- **Nový projekt:** `OBSIDIAN/00-System/Templates/new-project-workflow.md` · `python3 scripts/create_project_hub.py`.
+
 ## Dynamický kontext
 
 ### agent-context.json (primary)
@@ -66,7 +72,7 @@ python3 "scripts/build_agent_context.py"
 ### Když potřebuješ něco specifického
 - Konkrétní task — `02-PROJEKTY/<slug>/tasks/<ID>-*.md` (read frontmatter)
 - Konkrétní materiál — `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<category>/`
-- Project charter — `02-PROJEKTY/<Hub>.md` (Scope, **## Stav (auto)**, Kontext, **## Zdroje dat**, frontmatter `sources:` / `notebooklm:` / `workspace:`)
+- Project charter — `02-PROJEKTY/<Hub>.md` (Scope, **## Stav (auto)**, Kontext, **## Zdroje dat**, frontmatter `sources:` / `notebooklm:`)
 
 ## Lifecycle automatika (ví si sám, neptej se)
 - every 2h :00 done_from_checkboxes

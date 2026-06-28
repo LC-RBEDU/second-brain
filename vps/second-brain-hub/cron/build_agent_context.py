@@ -154,6 +154,9 @@ def collect_projects(vault: DriveVault) -> list[dict]:
             "context_source": fm.get("context_source"),
             "charter_scope": _section_excerpt(body, "## Scope"),
             "charter_kontext": _section_excerpt(body, "## Kontext"),
+            "charter_cil": _section_excerpt(body, "## Cíl"),
+            "charter_definition_of_done": _section_excerpt(body, "## Definition of done"),
+            "charter_people": _section_excerpt(body, "## People"),
             "has_zdroje_dat": "## Zdroje dat" in body,
         })
     return out
