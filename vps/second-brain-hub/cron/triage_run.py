@@ -38,6 +38,12 @@ from triage_commitments import (  # noqa: E402
     sent_business_action_proposal,
 )
 from triage_complexity import is_complex_source  # noqa: E402
+from triage_slack_relevance import (  # noqa: E402
+    enrich_proposal_with_slack_meta,
+    evaluate_slack_inbox_relevance,
+    is_slack_inbox,
+    slack_archive_proposal,
+)
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
@@ -426,6 +432,62 @@ def main() -> None:
         title = title_from_file(name, body)
         slug = guess_proj(body, rel)
 
+        if is_slack_inbox(rel):
+            relevance = evaluate_slack_inbox_relevance(
+                rel, body, guess_proj=guess_proj
+            )
+            if relevance:
+                if relevance.route == "archive":
+                    pr = slack_archive_proposal(rel, body, relevance)
+                    pr["id"] = f"p{pid}"
+                    proposals.append(normalize_proposal(pr))
+                    print("slack archive:", rel, "reasons=", relevance.reasons)
+                    continue
+                if relevance.route == "deep":
+                    reasons = list(relevance.reasons)
+                    complex_, complex_reasons = is_complex_source(rel, body)
+                    if complex_:
+                        for r in complex_reasons:
+                            if r not in reasons:
+                                reasons.append(r)
+                    deep = build_deep_proposal(
+                        rel=rel, title=title, slug=slug, reasons=reasons
+                    )
+                    deep = enrich_proposal_with_slack_meta(deep, relevance)
+                    deep["id"] = f"p{pid}"
+                    proposals.append(deep)
+                    print("slack deep:", rel, "reasons=", relevance.reasons)
+                    continue
+                v2_proposal = build_v2_proposal(
+                    vault=vault,
+                    rel=rel,
+                    body=body,
+                    title=title,
+                    slug=slug,
+                    priority="Next",
+                    ice=(7, 6, 5),
+                    source=rel,
+                )
+                normalized = normalize_proposal(
+                    {
+                        "id": f"p{pid}",
+                        "action": "add_task",
+                        "title": title,
+                        "suggestedProj": slug,
+                        "priority": "Next",
+                        "ice": [7, 6, 5],
+                        "notes": "",
+                        "subtasks": [],
+                        "sourceFile": rel,
+                    }
+                )
+                normalized.update(v2_proposal)
+                normalized = enrich_proposal_with_slack_meta(normalized, relevance)
+                normalized["id"] = f"p{pid}"
+                proposals.append(normalized)
+                print("slack batch:", rel, "reasons=", relevance.reasons)
+                continue
+
         complex_, reasons = is_complex_source(rel, body)
         if complex_:
             deep = build_deep_proposal(rel=rel, title=title, slug=slug, reasons=reasons)
@@ -476,14 +538,29 @@ def main() -> None:
     vault.write_json(out_rel, batch)
 
     deep_proposals = [pr for pr in proposals if pr.get("requires_deep_analysis")]
+    slack_archive_proposals = [
+        pr for pr in proposals if pr.get("kind") == "slack_thread_archive"
+    ]
     simple_count = len(proposals) - len(deep_proposals)
 
     summary_rel = f"00-System/Triage-Pending/{batch_id}-summary.md"
     lines = [
         f"# Triage batch {batch_id}\n",
         f"**Počet návrhů:** {len(proposals)} "
-        f"(simple: {simple_count}, DEEP: {len(deep_proposals)})\n",
+        f"(simple: {simple_count}, DEEP: {len(deep_proposals)}, "
+        f"Slack archiv: {len(slack_archive_proposals)})\n",
     ]
+    if slack_archive_proposals:
+        lines.append("## Slack — archiv (bez tasku)\n")
+        lines.append(
+            "Vlákna s Lukášovou interakcí bez actionable commitmentu — "
+            "po schválení jen přesun do HOTOVO.\n"
+        )
+        for pr in slack_archive_proposals:
+            reasons = pr.get("slack_relevance_reasons") or []
+            reasons_s = "; ".join(reasons) if reasons else "—"
+            lines.append(f"- `{pr.get('sourceFile', '')}` — {reasons_s}")
+        lines.append("")
     if deep_proposals:
         lines.append("## DEEP candidates\n")
         lines.append(

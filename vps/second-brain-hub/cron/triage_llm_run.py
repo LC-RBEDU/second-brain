@@ -54,6 +54,12 @@ Rules:
 - Unknown people → add_person; new info about known → update_person
 - Reference-only → save to 05-RESOURCES with topics, not task
 - Responsibility note without action → area_log to matching area ## Log rozhodnutí
+- Slack INBOX (`01-INBOX/slack/`): always evaluate relevance (lib/triage_slack_relevance.py):
+  - thread dumps (`**Vlákno:**`, quoted `> **Name**`) vs n8n capture (`## Komentář`, `**Čas:**`)
+  - archive_only when Lukáš passive/delegates without commitment
+  - add_task (batch) for intentional capture comment or clear Lukáš commitment
+  - deep_analysis for long threads or forward-only captures
+  - set slack_route, slack_source_kind, slack_relevance_reasons on each proposal
 
 Output ONLY JSONL, no markdown fences.
 """

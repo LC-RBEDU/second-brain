@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -16,10 +17,34 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def default_vault() -> Path:
+    return Path(
+        os.environ.get(
+            "SECOND_BRAIN_VAULT",
+            str(Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"),
+        )
+    )
+
+
+def backup_root(vault: Path | None = None) -> Path:
+    """Outside-vault backup root (Obsidian Bases must not index these files).
+
+    Default: ``SECOND_BRAIN/OBSIDIAN_BACKUP`` (Google Drive folder
+    1YW8LVWacvuhb9bI0CpaZBWNWwZ9b6S_1), sibling of ``OBSIDIAN/``.
+    Override with env ``SECOND_BRAIN_BACKUP_ROOT``.
+    """
+    env = os.environ.get("SECOND_BRAIN_BACKUP_ROOT")
+    if env:
+        return Path(env).expanduser()
+    v = vault or default_vault()
+    return v.parent / "OBSIDIAN_BACKUP"
+
+
 def backup_files(paths: list[Path], vault: Path, ts: str | None = None) -> Path:
-    """Copy files to 07-ARCHIV/_backups/<ts>/ preserving relative paths."""
+    """Copy files to ``OBSIDIAN_BACKUP/<ts>/`` preserving paths relative to vault."""
     stamp = ts or datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_root = vault / "07-ARCHIV" / "_backups" / stamp
+    root = backup_root(vault)
+    backup_dir = root / stamp
     for p in paths:
         if not p.exists():
             continue
@@ -27,10 +52,10 @@ def backup_files(paths: list[Path], vault: Path, ts: str | None = None) -> Path:
             rel = p.relative_to(vault)
         except ValueError:
             rel = Path(p.name)
-        dest = backup_root / rel
+        dest = backup_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, dest)
-    return backup_root
+    return backup_dir
 
 
 def safe_write_text(path: Path, new_content: str, *, expected_hash: str | None = None) -> None:

@@ -75,12 +75,13 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 ## Batch
 
 1. Načti `01-INBOX/*/`
-2. Pro každou položku zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
-3. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
-4. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/ASAP/Backlog/Waiting)
-5. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
-6. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura)
-7. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/`
+2. Pro **`01-INBOX/slack/`** nejdřív relevance (`triage_slack_relevance.py`) → archive / batch / deep (viz sekce Slack INBOX níže).
+3. Pro ostatní položky zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
+4. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
+5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/ASAP/Backlog/Waiting)
+6. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
+7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura)
+8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/`
 
 ### Odeslané e-maily (`01-INBOX/email/sent/`)
 
@@ -95,6 +96,27 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 - Souhrn: `00-System/Triage-Pending/YYYY-MM-DD-HHMM-summary.md` — české odrážky po souborech (typ, projekt, archiv po schválení)
 - **`archiveAfterApply`**: default `true` — po schválení `add_task` z odeslaného mailu přesuň zdroj do `07-ARCHIV/inbox-processed/` + `**ZPRACOVÁNO**` v hlavičce
 - PENDING: u commitmentů zkontroluj `notes` (citace) a `confidence`
+
+### Slack INBOX (`01-INBOX/slack/`)
+
+Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (cron i manuální BATCH/DEEP/PENDING):
+
+| Typ | Signály | Typický původ |
+|-----|---------|---------------|
+| **capture_n8n** | `**Čas:**`, `## Komentář`, `## Forwardovaný obsah` | `slack-cowork-inbox-with-attachments.json` (:cowork: / reakce v capture kanálu) |
+| **thread_dump** | `**Vlákno:**`, `**Kanál:**`, citované `> **Jméno**` | export celého vlákna s Lukášovou interakcí (reakce mimo capture kanál) |
+
+**Routing (SSOT:** `vps/second-brain-hub/lib/triage_slack_relevance.py` **, volá `triage_run.py`):**
+
+| Route | Kdy | `proposalType` | Preview label |
+|-------|-----|----------------|---------------|
+| **ARCHIVE** | pasivní účast, omluva/delay, delegace bez Lukášova závazku, vlákno bez Lukáše | `archive_only` (`kind: slack_thread_archive`) | Slack archiv (bez tasku) |
+| **BATCH** | záměrný `## Komentář` nebo krátký Lukášův commitment | `add_task` | Vytažení úkolu |
+| **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku | `deep_analysis` | DEEP analysis required |
+
+**Manuální triáž:** před návrhem tasku zavolej stejnou logiku — `evaluate_slack_inbox_relevance(rel, body)`. Nepředpokládej, že každý slack soubor = úkol. U ARCHIVE apply = jen přesun do `07-ARCHIV/inbox-processed/` (stejně jako `archive_only` u sent mailů).
+
+Pending JSON může nést `slack_route`, `slack_source_kind`, `slack_relevance_reasons` — ukaž je v preview.
 
 ## Deep
 

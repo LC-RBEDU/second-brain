@@ -5,6 +5,7 @@
 | Skill | Kdy |
 |-------|-----|
 | `agenda-capture` | Capture do `02-PROJEKTY` |
+| `agenda-cursor-inbox` | Ulož task/plán/popis z Cursor chatu → `01-INBOX/daily/` + odkaz na konverzaci |
 | `agenda-triage` | INBOX batch/deep |
 | `agenda-co-ted` | Co teď (ICE / dashboard) |
 | `agenda-work` | Práce na projektu + výstupy |

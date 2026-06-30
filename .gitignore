@@ -10,6 +10,9 @@ Icon?
 # - vše se synchronizuje přes Google Drive Desktop mirror, repo drží jen kód
 OBSIDIAN/
 
+# Vault mutation backups (Google Drive OBSIDIAN_BACKUP/, outside Obsidian index)
+OBSIDIAN_BACKUP/
+
 # Generated outputs / Python cache
 vps/second-brain-hub/web/dashboard-data.json
 **/__pycache__/
