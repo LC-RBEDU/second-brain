@@ -19,33 +19,50 @@ LIDE = VAULT / "05-RESOURCES" / "lide"
 
 # canonical name -> plain-text aliases (longest match wins; inflected forms use PIPE_ALIASES)
 ALIASES: dict[str, list[str]] = {
+    "Adéla Ivan Jansová": ["Adéla Ivan Jansová", "Adéla Jansová"],
+    "Alexandra Gallisová": ["Alexandra Gallisová", "Saša Gallisová", "Saša"],
+    "Barbora Zloch": ["Barbora Zloch", "Baru", "Bára Zloch"],
     "Dominik Holíček": ["Dominik Holíček", "Domča"],
-    "Luboš Malý": ["Luboš Malý", "Luboš"],
-    "Martin Ruman": ["Martin Ruman", "Martin R."],
+    "Eva Králová": ["Eva Králová"],
+    "Jan Lokajíček": ["Jan Lokajíček"],
+    "Jan Mašek": ["Jan Mašek", "Honza Mašek", "Honza"],
+    "Jana Kočová": ["Jana Kočová"],
+    "Jarda Fulnek": ["Jarda Fulnek", "Jaromír Fulnek"],
+    "Jakub Heikenwälder": ["Jakub Heikenwälder", "Jakub Heikenwalder", "Kuba"],
+    "Jiří Jirman": ["Jiří Jirman"],
+    "Jindřich Lukes": ["Jindřich Lukes", "Jindra Lukes"],
+    "Kamila Píchová": ["Kamila Píchová"],
+    "Kateřina Bayerová": ["Kateřina Bayerová", "Kateřina Bayer", "Káťa"],
+    "Kateřina Jiřinová": ["Kateřina Jiřinová"],
+    "Kristýna Sehrová": ["Kristýna Sehrová"],
     "Lenka Turečková": ["Lenka Turečková", "Lenka T."],
     "Lenka Vašková": ["Lenka Vašková"],
-    "Martina Mašková": ["Martina Mašková"],
-    "Pavel Kroupa": ["Pavel Kroupa", "Pavel K."],
+    "Luboš Malý": ["Luboš Malý", "Luboš"],
+    "Lukáš Cypra": ["Lukáš Cypra"],
     "Lukáš Dzuroška": ["Lukáš Dzuroška"],
-    "Jan Mašek": ["Jan Mašek", "Honza Mašek", "Honza"],
-    "Jarda Fulnek": ["Jarda Fulnek"],
-    "Michal Šrajer": ["Michal Šrajer"],
+    "Lucie Přibylová": ["Lucie Přibylová", "Lucky", "Lucie", "Luzka"],
+    "Lucie Růžička": ["Lucie Růžička"],
+    "Martin Ruman": ["Martin Ruman", "Martin R."],
+    "Martina Mašková": ["Martina Mašková"],
     "Michaela Valdéz": ["Michaela Valdéz", "Michaela González Valdés"],
-    "Saša Gallisová": ["Saša Gallisová", "Alexandra Gallisová"],
+    "Michal Poppe": ["Michal Poppe"],
+    "Michal Šrajer": ["Michal Šrajer", "Srakyi", "Šraky"],
     "Ondra Suchý": ["Ondra Suchý", "Ondřej Suchý"],
+    "Pavel Kroupa": ["Pavel Kroupa", "Pavel K."],
+    "Radek Gajdušek": ["Radek Gajdušek", "Radek Gajdůšek", "Radek Gajdu"],
+    "Roman Stupka": ["Roman Stupka"],
+    "Soňa Šadibol": ["Soňa Šadibol"],
+    "Veronika Hanzalová": [
+        "Veronika Hanzalová",
+        "Verča H.",
+        "Verči H.",
+    ],
     "Veronika Kuncová": [
         "Veronika Kuncová",
         "Verča Kuncová",
         "Verča K.",
         "VerčaK.",
     ],
-    "Veronika Hanzalová": [
-        "Veronika Hanzalová",
-        "Verča H.",
-        "Verči H.",
-    ],
-    "Kateřina Bayerová": ["Kateřina Bayerová", "Kateřina Bayer"],
-    "Lucie Přibylová": ["Lucie Přibylová", "Lucky", "Lucie", "Luzka"],
 }
 
 # alias -> person; wikilink keeps alias as display ([[Person|alias]])
@@ -66,6 +83,9 @@ PIPE_ALIASES: list[tuple[str, str]] = [
     ("Lubošom", "Luboš Malý"),
     ("Lubošovi", "Luboš Malý"),
     ("Luboša", "Luboš Malý"),
+    ("Jindrovi", "Jindřich Lukes"),
+    ("Janě Kočové", "Jana Kočová"),
+    ("Janou Kočovou", "Jana Kočová"),
 ]
 
 # regex alias -> person (display = matched text)
@@ -81,6 +101,8 @@ BROKEN_REPAIRS: list[tuple[str, str]] = [
     (r"\[\[Veronika Kuncová\]\] Kuncovou", "[[Veronika Kuncová|Verčou Kuncovou]]"),
     (r"\[\[Jan Mašek\]\] Maškem", "[[Jan Mašek|Honzou Maškem]]"),
     (r"\[\[Veronika Hanzalová\]\] komunitu", "[[Veronika Hanzalová|Verča za EC]] komunitu"),
+    (r"\[\[Lucie Přibylová\]\] Růžička", "[[Lucie Růžička]]"),
+    ("Lucie Přibylová Růžička", "[[Lucie Růžička]]"),
 ]
 
 # Extra nicknames stored in person frontmatter (Obsidian aliases)
@@ -88,6 +110,13 @@ NICKNAMES: dict[str, list[str]] = {
     "Jan Mašek": ["Honza"],
     "Veronika Hanzalová": ["Verča"],
     "Lucie Přibylová": ["Lucky", "Lucie"],
+    "Michal Šrajer": ["Srakyi", "Šraky"],
+    "Kateřina Bayerová": ["Káťa"],
+    "Jakub Heikenwälder": ["Kuba"],
+    "Alexandra Gallisová": ["Saša"],
+    "Barbora Zloch": ["Baru"],
+    "Jindřich Lukes": ["Jindra"],
+    "Kamila Píchová": ["Kamča"],
 }
 
 KNOWN_META: dict[str, dict[str, str | list[str]]] = {
@@ -156,8 +185,15 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
     "Lucie Přibylová": {
         "role": "Web / design (Summit web, Figma)",
         "org": "Red Button EDU",
+        "email": "lucie.pribylova@redbuttonedu.cz",
         "slack": "Lucky",
         "projects": ["Exponential Summit"],
+    },
+    "Lucie Růžička": {
+        "role": "Data / reporting — Academy Operations, Universe dashboardy",
+        "org": "Red Button EDU",
+        "email": "lucie.ruzicka@redbuttonedu.cz",
+        "projects": ["Strategy", "RB Universe development", "Firemní procesy"],
     },
     "Lenka Turečková": {
         "role": "Externí finanční konzultant (Rainfellows, ad-hoc)",
@@ -188,6 +224,7 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Dramaturgie eventu / speakers (Exponential Summit)",
         "org": "Red Button EDU",
         "email": "michal.srajer@redbuttonedu.cz",
+        "slack": "Šraky",
         "projects": ["Exponential Summit", "RB Universe development"],
     },
     "Michaela Valdéz": {
@@ -196,11 +233,110 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "email": "michaela@redbuttonedu.cz",
         "projects": ["Exponential Summit"],
     },
-    "Saša Gallisová": {
-        "role": "Allfred support (Alexandra Gallisová, Allfred.io)",
+    "Alexandra Gallisová": {
+        "role": "Allfred support (Allfred.io)",
         "org": "Allfred.io",
         "email": "alex@allfred.io",
+        "slack": "Saša",
         "projects": ["Allfred"],
+    },
+    "Jakub Heikenwälder": {
+        "role": "AI guru & ambassador RB EDU",
+        "org": "Red Button EDU",
+        "projects": ["Vibe coding"],
+    },
+    "Adéla Ivan Jansová": {
+        "role": "Komunitní manažerka Red Button Network",
+        "org": "Red Button EDU",
+        "email": "adela@redbutton.cz",
+        "projects": ["Red Button Network"],
+    },
+    "Barbora Zloch": {
+        "role": "IT / provoz — SW licence, infomail",
+        "org": "Red Button EDU",
+        "email": "barbora.zloch@redbuttonedu.cz",
+        "slack": "Baru",
+        "projects": ["RB Universe development", "Operations"],
+    },
+    "Eva Králová": {
+        "role": "Brand — refresh, Visual Book, manuály",
+        "org": "Red Button EDU",
+        "email": "eva@redbuttonedu.cz",
+        "projects": ["Strategy", "RB Universe development"],
+    },
+    "Jan Lokajíček": {
+        "role": "Právník RB EDU (Harbour Legal) — SPA, M&A",
+        "org": "Harbour Legal",
+        "email": "Lokajicek@harbourlegal.cz",
+        "projects": ["M&A Odyssey"],
+    },
+    "Jana Kočová": {
+        "role": "Externí účetní Happiness (Money S3)",
+        "org": "Happiness EDU",
+        "email": "janakocova9@gmail.com",
+        "projects": ["Finance"],
+    },
+    "Jiří Jirman": {
+        "role": "Externí AI guru, ambassador a průvodce",
+        "org": "jirman.ai",
+        "email": "jiri@jirman.ai",
+        "projects": ["Vibe coding"],
+    },
+    "Jindřich Lukes": {
+        "role": "Spolumajitel / výkonný výbor RBN",
+        "org": "Red Button EDU",
+        "email": "jindrich@redbutton.cz",
+        "slack": "Jindra",
+        "projects": ["Red Button Network", "Owners"],
+    },
+    "Kamila Píchová": {
+        "role": "PM — onboarding, Academy Operations",
+        "org": "Red Button EDU",
+        "email": "kamila@redbuttonedu.cz",
+        "slack": "Kamča",
+        "projects": ["RB Universe development", "Strategy", "Firemní procesy"],
+    },
+    "Kateřina Jiřinová": {
+        "role": "Výkonný výbor Red Button Network",
+        "org": "Red Button Network",
+        "email": "katerina.jirinova@gmail.com",
+        "projects": ["Red Button Network"],
+    },
+    "Kristýna Sehrová": {
+        "role": "RB EDU tým",
+        "org": "Red Button EDU",
+        "email": "kristyna@redbuttonedu.cz",
+        "projects": ["Strategy"],
+    },
+    "Lukáš Cypra": {
+        "role": "Spolumajitel — Finance & Data, architektura, owner projektů",
+        "org": "Red Button EDU",
+        "email": "lukas@redbuttonedu.cz",
+        "slack": "Luky",
+        "projects": ["Owners", "Strategy", "Finance", "Second Brain", "RB Universe development"],
+    },
+    "Michal Poppe": {
+        "role": "Product owner EDUtéka",
+        "org": "Red Button EDU",
+        "projects": ["RB Universe development"],
+    },
+    "Radek Gajdušek": {
+        "role": "Spolumajitel RB EDU (co-owner) — finance",
+        "org": "Red Button EDU",
+        "email": "radek.gajdusek@rainfellows.cz",
+        "projects": ["Owners", "Finance", "M&A Odyssey"],
+    },
+    "Roman Stupka": {
+        "role": "Externí spolupracovník (Pestratex)",
+        "org": "Pestratex",
+        "email": "roman.stupka@pestratex.cz",
+        "projects": ["Red Button Network", "M&A Odyssey", "Vibe coding"],
+    },
+    "Soňa Šadibol": {
+        "role": "RB EDU tým — Academy Operations / data",
+        "org": "Red Button EDU",
+        "email": "sona.sadibol@redbuttonedu.cz",
+        "projects": ["Strategy"],
     },
     "Ondra Suchý": {
         "role": "Externí spolupracovník (Sudety — Equilibrium / Human in AI)",

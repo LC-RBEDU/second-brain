@@ -1,6 +1,6 @@
 ---
 name: agenda-status-update
-description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš, odlož, čekat do, ASAP. Reads 02-PROJEKTY/<slug>/tasks/<ID> — *.md frontmatter (human-readable filename, em-dash U+2014) and patches status/deadline/waitUntil. Subtask reference syntax: `<ID>-N` (např. PD4-3 = 3. checkbox v ## Operativní kroky). ALWAYS preview before write. NEW skill in F4.5 — pre-existing skills (agenda-co-ted, agenda-work) handle bulk operations; this is for one-off taps."
+description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš, odlož, čekat do, ASAP. Reads 02-PROJEKTY/<slug>/tasks/<ID> — *.md frontmatter (human-readable filename, em-dash U+2014) and patches status/deadline/waitUntil. Subtask reference syntax: `<ID>-N` (např. PD4-3 = 3. checkbox v ## Operativní kroky). ALWAYS preview before write. Bulk operace řeší agenda-work / agenda-co-ted / agenda-priority-review; tohle je one-off tap."
 ---
 
 # agenda-status-update (v2)
@@ -61,7 +61,7 @@ Mapping user intent → frontmatter změna:
 ```
 Navrhuju patch:
 
-  02-PROJEKTY/rb-universe-development/tasks/RBU30-...md
+  02-PROJEKTY/rb-universe-development/tasks/RBU30 — Název úkolu.md
   - status: Next → ASAP
   - updated: 2026-05-25
   - body: + "## Poznámky / log\n  - 2026-05-25: Eskalováno na ASAP — deadline 2026-05-30"

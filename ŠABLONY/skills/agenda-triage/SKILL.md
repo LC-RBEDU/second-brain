@@ -75,13 +75,35 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 ## Batch
 
 1. Načti `01-INBOX/*/`
-2. Pro **`01-INBOX/slack/`** nejdřív relevance (`triage_slack_relevance.py`) → archive / batch / deep (viz sekce Slack INBOX níže).
+2. Pro **`01-INBOX/slack/`** nejdřív relevance (`vps/second-brain-hub/lib/triage_slack_relevance.py`) → archive / batch / deep (viz sekce Slack INBOX níže).
 3. Pro ostatní položky zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
 4. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
 5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/ASAP/Backlog/Waiting)
 6. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
 7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura)
-8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/`
+8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` (**včetně co-located příloh** — viz níže)
+
+### Archiv INBOX + přílohy (povinné při apply)
+
+Při každém `archive_only` / DEEP apply / `archiveAfterApply` **nepřesouvej jen `.md`** — vždy zavolej SSOT helper:
+
+```bash
+python3 scripts/archive_inbox_item.py "01-INBOX/<typ>/<soubor>.md"
+# nebo hromadně osiřelé přílohy (`.md` už v archivu):
+python3 scripts/archive_inbox_item.py --orphans
+```
+
+Implementace: `vps/second-brain-hub/lib/inbox_archive.py` · `list_colocated_attachments()`.
+
+| Zdroj | Co-located přílohy (stejná složka INBOX) |
+|-------|------------------------------------------|
+| `email/` · `email/sent/` | `{md_stem}__{název}` (n8n Gmail/sent workflow) |
+| `slack/` capture_n8n | `{YYYY-MM-DD-HHMM}-{slackFileId}-{název}` — sdílený prefix s `.md` capture |
+| `sembly/` · `daily/` | stejná logika jako email (`stem__`) pokud n8n přiloží binárku |
+
+Po apply s materiálem: binárku **volitelně** zkopíruj do `02-PROJEKTY/<slug>/materials/` + sidecar (`agenda-capture` / PARA rule); originál + přílohy stejně patří do `07-ARCHIV/inbox-processed/` vedle `.md`.
+
+**Post-flight:** po batchi spusť `--orphans` — chytí případy, kdy `.md` šel do archivu bez příloh.
 
 ### Odeslané e-maily (`01-INBOX/email/sent/`)
 
@@ -126,7 +148,7 @@ Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z
 2. Shrnutí 3–5 bullety: o čem to je, klíčové entity, decision points.
 3. Návrh **více tasků** + případných **materiálů** + cross-linků (`materials: [[...]]`) — **při extrakci aplikuj Lukáš-only filter (viz níže)**.
 4. Projdi s uživatelem po jednom: OK / uprav / přeskoč / drop.
-5. Zápis task `.md` + materiál `.md` souborů; archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/`.
+5. Zápis task `.md` + materiál `.md` souborů; archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` přes `scripts/archive_inbox_item.py` (`.md` + co-located přílohy).
 
 ## Lukáš-only filter (vault je single-user)
 
@@ -282,10 +304,10 @@ V2 — žádný cron build pro dashboard nepotřebuje. **Bases dashboard** (`OBS
 2. **Vždy spusť** `sync_lide_people` — wikilinky v nových/změněných souborech + rebuild tabulek `05-RESOURCES/lide/*.md`:
 
 ```bash
-python3 scripts/sync_lide_people.py --incremental --paths "<vault-relative cesty, čárkou>"
+python3 scripts/sync_lide_people.py --incremental --paths "<vault-relative cesty oddělené středníkem ;>"
 ```
 
-`--paths` = vše z batchi: nové/aktualizované tasky, materiály, archivované capture (`02-PROJEKTY/...`, `07-ARCHIV/inbox-processed/...`). Více cest odděl **středníkem** (`;`) — čárka v názvu souboru je jinak OK. Přeskoč JSON/summary v `Triage-Pending/`.
+`--paths` = vše z batchi: nové/aktualizované tasky, materiály, archivované capture (`02-PROJEKTY/...`, `07-ARCHIV/inbox-processed/...`). Separátor je **středník** (`;`) — čárka v názvu souboru je OK. Přeskoč JSON/summary v `Triage-Pending/`.
 
 3. **Vždy spusť** `python3 scripts/build_agent_context.py` (vault root) — refresh `00-System/agent-context.json` pro Cursor agenta
 4. V chatu uveď výsledek: `tasks_created=N tasks_updated=M archived=K lide_sync: linkified=L profiles_rebuilt=P agent_context_refreshed=yes`

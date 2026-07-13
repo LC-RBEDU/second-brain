@@ -18,7 +18,7 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat ASAP/
 ## Načti data
 
 1. Všechny `02-PROJEKTY/<slug>/tasks/*.md` aktivní (status != Done) — frontmatter
-2. (Po F8) `OBSIDIAN/00-System/agent-context.json` → top_priority list, overdue, waiting
+2. `OBSIDIAN/00-System/agent-context.json` → top_priority list, overdue, waiting
 3. `00-System/Memory/procesy-mrluc.md` — pravidla Waiting / SSOT
 
 ## Scoring (sjednoceno s `today_priority.py` / agent-context)

@@ -130,7 +130,7 @@ Subtasky musí mít prefix `**<ID>-N**` (1-indexed). Lze je referencovat z chatu
 ```
 ## Návrh capture (X položek z [zdroj])
 
-### → 02-PROJEKTY/rb-universe-development/tasks/RBU30-...md (NEW)
+### → 02-PROJEKTY/rb-universe-development/tasks/RBU30 — Název úkolu.md (NEW)
 - Status: Next | ICE I8 C7 E4 (Score 14.0)
 - Detail: ...
 

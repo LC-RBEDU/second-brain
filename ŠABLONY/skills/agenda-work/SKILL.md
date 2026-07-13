@@ -5,7 +5,7 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 # agenda-work (v2)
 
-> Otevři projekt, zorientuj se, udělej výstup. Hub `02-PROJEKTY/<HubName>.md` (charter), tasky `02-PROJEKTY/<slug>/tasks/<ID>-<slug>.md`, outputs v `02-PROJEKTY/<slug>/`.
+> Otevři projekt, zorientuj se, udělej výstup. Hub `02-PROJEKTY/<HubName>.md` (charter), tasky `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (em-dash U+2014), outputs v `02-PROJEKTY/<slug>/`.
 
 **Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
 
@@ -96,7 +96,8 @@ Návrh změn v 02-PROJEKTY/<slug>/tasks/:
 ✅ Uzavřít → status: Done (cron archive_done_tasks.py přesune do 07-ARCHIV/tasks-done/<slug>/):
   • RBU13 — Onboarding checklist Pavla — všechny subtasky [x]
 
-➕ Přidat (nový file): 02-PROJEKTY/<slug>/tasks/<NEXT_ID>-<slugify(title)>.md
+➕ Přidat (nový file): 02-PROJEKTY/<slug>/tasks/<NEXT_ID> — <sanitize(title)>.md
+  (ID + em-dash U+2014 + titulek s diakritikou — viz filename-normalization.md; ID scan: agenda-capture krok 5)
   • Status: Next | ICE I7 C6 E5 = 8.4
   • Deadline: 2026-05-15 | Source: ...
 
@@ -129,7 +130,7 @@ Proveď zápis až po potvrzení. Vždy preview → confirm → write.
 
 Vždy jako preview, vždy čekej na potvrzení.
 
-### 5c. Nový projekt
+### 6. Nový projekt
 
 Když téma nepatří do existujícího slugu:
 
@@ -147,14 +148,20 @@ python3 scripts/create_project_hub.py \
 5. Doplň charter (`## Cíl`, `## Scope`, `## Zdroje dat` s konkrétními URL). **Nepoužívej** `workspace:` ani `sources: google-workspace` (GWS globální — [[agenda-system]] §6).
 6. První task(y) přes capture/triage s `project: "[[<HubName>]]"`.
 
-### 5b. Refresh agent context (po každém zápisu task / hub)
+### 7. Refresh agent context (po každém zápisu task / hub)
 
 ```bash
 python3 scripts/build_agent_context.py
 python3 scripts/build_work_context.py <slug>
 ```
 
-### 6. Hláška na konci
+Pokud zapsané soubory zmiňují osoby, navíc (cesty odděluj středníkem `;`):
+
+```bash
+python3 scripts/sync_lide_people.py --incremental --paths "<vault-relative cesty>"
+```
+
+### 8. Hláška na konci
 
 ```
 Hotovo. Vytvořen: architektura-rb-universe.md.

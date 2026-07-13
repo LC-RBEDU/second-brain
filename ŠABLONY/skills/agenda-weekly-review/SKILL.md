@@ -25,12 +25,12 @@ description: "Use when user asks for týdenní shrnutí, weekly review, schvál 
 ### 1. Načti draft
 
 - Najdi nejnovější `*-draft.md` v `00-System/weekly/` (nebo konkrétní týden z dotazu)
-- (Po F8) Přečti `00-System/agent-context.json` pro kontext priorit
-- Jinak: scan `02-PROJEKTY/<slug>/tasks/*.md` frontmatterů (file-per-task) a `07-ARCHIV/tasks-done/<slug>/*.md` pro Done tasky tohoto týdne
+- Přečti `00-System/agent-context.json` pro kontext priorit
+- Fallback (context chybí/stale): scan `02-PROJEKTY/<slug>/tasks/*.md` frontmatterů (file-per-task) a `07-ARCHIV/tasks-done/<slug>/*.md` pro Done tasky tohoto týdne
 
 ### 2. Obohať (LLM) — struktura po **Areas** (F6)
 
-Projdi 7 oblastí z `03-AREAS/_index.md`. U každé area krátce:
+Projdi oblasti z `03-AREAS/_index.md` (aktuální seznam ber odtud, ne z paměti). U každé area krátce:
 - **Je standard ohrožen?** (otevřené tasky, blokéry, stale flag z `agent-context.json`)
 - **Má area pohyb?** (nové logy, dokončené tasky v projektech area)
 

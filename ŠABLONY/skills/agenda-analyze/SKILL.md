@@ -161,7 +161,16 @@ Mermaid vždy v fenced bloku ` ```mermaid `. Udržuj diagramy **malé** (≤ 12 
 - U dotčeného tasku: patch frontmatter `materials:` array — přidat `[[<material-filename-bez-pripony>]]`
 - **updated** v hubu (frontmatter) nebo task = dnes
 
-### 5. Chat (max 5 řádků)
+### 5. Post-write sync (povinné)
+
+Po zápisu materiálu + patchi tasku/hubu spusť (repo root `SECOND_BRAIN/`; cesty odděluj středníkem `;`):
+
+```bash
+python3 scripts/sync_lide_people.py --incremental --paths "<vault-relative cesty zapsaných souborů>"
+python3 scripts/build_agent_context.py
+```
+
+### 6. Chat (max 5 řádků)
 
 ```
 Uloženo: [[2026-05-21-analyza-nrb-zaruka|NRB záruka — rozbor]] (material → finance)

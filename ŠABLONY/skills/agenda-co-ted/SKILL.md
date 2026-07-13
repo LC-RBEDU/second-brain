@@ -1,6 +1,6 @@
 ---
 name: agenda-co-ted
-description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit', 'co je urgentní', 'ukaž mi dashboard', 'co mám rozdělaného' v MrLUC Second Brain v2. Reads 02-PROJEKTY/<slug>/tasks/*.md frontmatter (file-per-task) or 00-System/agent-context.json (po F8). ICE scoring (I*C)/E sjednocený s Bases formula. Optional 'ukliď' archivuje Done tasky do 07-ARCHIV/tasks-done/. Never modifies files unless user says ukliď/clean/urgent/odlož."
+description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit', 'co je urgentní', 'ukaž mi dashboard', 'co mám rozdělaného' v MrLUC Second Brain v2. Reads 00-System/agent-context.json (primary) or 02-PROJEKTY/<slug>/tasks/*.md frontmatter (fallback). ICE scoring (I*C)/E sjednocený s Bases formula. Optional 'ukliď' archivuje Done tasky do 07-ARCHIV/tasks-done/. Never modifies files unless user says ukliď/clean/urgent/odlož."
 ---
 
 # agenda-co-ted (v2)
@@ -57,11 +57,11 @@ CO TEĎ — DD/MM/YYYY
 ═══════════════════════════════════════════════
 
 🔥 TOP 3 (z `top_priority_today`, sort today_score)
-  • [slug/ID] název — status=ASAP today_score=… deadline=…
+  • [slug] ID — title (z frontmatter) — status=ASAP today_score=… deadline=…
   ...
 
 ⏸ WAITING (N)
-  • [slug/ID] do YYYY-MM-DD — název
+  • [slug] ID — title — do YYYY-MM-DD
 
 ⚠️ PO TERMÍNU (N)
   ...
