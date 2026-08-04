@@ -6,7 +6,7 @@ REPO=/opt/second-brain-hub
 
 # Daily lifecycle
 0 3 * * *     cd $REPO && python3 cron/lifecycle_done_from_checkboxes.py >> /var/log/sb-lifecycle.log 2>&1
-10 3 * * *    cd $REPO && python3 cron/lifecycle_waiting_to_asap.py >> /var/log/sb-lifecycle.log 2>&1
+10 3 * * *    cd $REPO && python3 cron/lifecycle_waiting_to_next.py >> /var/log/sb-lifecycle.log 2>&1
 20 3 * * *    cd $REPO && python3 cron/lifecycle_overdue_flag.py >> /var/log/sb-lifecycle.log 2>&1
 0 4 * * *     cd $REPO && python3 cron/archive_done_tasks.py >> /var/log/sb-lifecycle.log 2>&1
 30 4 * * *    cd $REPO && python3 cron/lifecycle_recurring.py >> /var/log/sb-lifecycle.log 2>&1

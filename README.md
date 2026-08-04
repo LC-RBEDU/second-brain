@@ -75,14 +75,13 @@ Po inventuře doplň `notebooklm:` v hub frontmatteru (např. Allfred).
 | Skript | Frekvence | Účel |
 |--------|-----------|------|
 | `lifecycle_done_from_checkboxes.py` | every 2h :00 | All checkboxes [x] → status: Done |
-| `lifecycle_waiting_to_asap.py` | every 2h :01 | Waiting + waitUntil ≤ dnes → ASAP (waitUntil smaže) |
+| `lifecycle_waiting_to_next.py` | every 2h :01 | Waiting + waitUntil ≤ dnes → **Next** (waitUntil smaže) |
 | `lifecycle_waiting_default_waituntil.py` | every 2h :02 | Waiting bez waitUntil → doplní dnes + 3 dny |
 | `lifecycle_waituntil_hygiene.py` | every 2h :03 | waitUntil vyčistí u tasků mimo Waiting |
 | `lifecycle_overdue_flag.py` | every 2h :04 | Append OVERDUE log do body |
 | `archive_done_tasks.py` | every 2h :05 | Done > 90 dní → 07-ARCHIV/tasks-done/<slug>/ |
 | `lifecycle_recurring.py` | every 2h :06 | Done + recurring → archive + nová instance |
 | `lifecycle_hub_state.py` | every 2h :07 | `## Stav (auto)` v project hubech + staleness |
-| `lifecycle_asap_backfill.py` | každou hodinu 10:00–02:00 | ASAP < 3 → promote top Next (today_score) |
 | `triage_llm_run.py` | Po-Pa 7/14/20, So-Ne 7 | LLM triáž → Triage-Pending/*.json (`CURSOR_API_KEY` + `cursor-agent`) |
 | `inbox_inventory.py` | Po 6:55 | Log nezpracovaného INBOXu (bez návrhů) |
 | `lifecycle_extra_edu_news.py` | denně 07:10 | OPS2 marker block refresh (top 5 témat) |

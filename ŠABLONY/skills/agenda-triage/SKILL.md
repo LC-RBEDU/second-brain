@@ -78,7 +78,7 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 2. Pro **`01-INBOX/slack/`** nejdřív relevance (`vps/second-brain-hub/lib/triage_slack_relevance.py`) → archive / batch / deep (viz sekce Slack INBOX níže).
 3. Pro ostatní položky zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
 4. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
-5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/ASAP/Backlog/Waiting)
+5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo)
 6. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
 7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura)
 8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` (**včetně co-located příloh** — viz níže)
@@ -318,7 +318,7 @@ Po triage update `00-System/Index.md` — list aktivních projektů (Bases embed
 
 ## Re-prioritizace
 
-"Eisenhower přepočítej" → skill `agenda-priority-review` nebo projdi aktivní task soubory (po termínu, ASAP dnes, Next top 3).
+"Eisenhower přepočítej" → skill `agenda-priority-review` nebo projdi aktivní task soubory (po termínu, fokus tohoto týdne, Next top 3).
 
 ## Kontext před startem
 

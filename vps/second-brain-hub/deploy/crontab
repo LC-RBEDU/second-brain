@@ -5,7 +5,7 @@
 # V2 architecture (since F6/F7):
 # - File-per-task in 02-PROJEKTY/<slug>/tasks/*.md (not H3 in hub anymore)
 # - Bases dashboard reads frontmatter live (no JSON build needed for Obsidian view)
-# - Lifecycle scripts: done_from_checkboxes, waiting_to_asap, overdue_flag, archive_done, recurring
+# - Lifecycle scripts: done_from_checkboxes, waiting_to_next, overdue_flag, archive_done, recurring
 # - Legacy build_dashboard.py + sync_tasks_from_projekty.py kept only for HTML dashboard backwards-compat
 #   (deletion in F9 — keep until F8 agent-context.json is in production)
 SHELL=/bin/sh
@@ -16,8 +16,8 @@ TZ=Europe/Prague
 # === V2 LIFECYCLE (every 2 hours, staggered +0–+6 min) ===
 # :00 — done from checkboxes (auto-flip status: Done if all [x])
 0 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_done_from_checkboxes.py >> /var/log/second-brain/lifecycle.log 2>&1
-# :01 — waiting → asap when waitUntil expired (clears waitUntil)
-1 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_to_asap.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :01 — waiting → Next when waitUntil expired (clears waitUntil)
+1 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_to_next.py >> /var/log/second-brain/lifecycle.log 2>&1
 # :02 — Waiting without waitUntil → default +3 days (reactivation date)
 2 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_waiting_default_waituntil.py >> /var/log/second-brain/lifecycle.log 2>&1
 # :03 — clear stray waitUntil on non-Waiting tasks (manual status edits)
@@ -55,9 +55,10 @@ TZ=Europe/Prague
 # :05 stagger — sources-routing.json drift guard (from Zdroje-katalog.md SSOT)
 5 7-22 * * * /usr/local/bin/python3 /app/cron/build_sources_routing.py >> /var/log/second-brain/agent-context.log 2>&1
 
-# === ASAP BACKFILL (work hours) ===
-# Hourly 10:00–23:00 + 00:00–02:00 — if open ASAP < 3, promote top Next by today_score
-0 10-23,0-2 * * * /usr/local/bin/python3 /app/cron/lifecycle_asap_backfill.py >> /var/log/second-brain/lifecycle.log 2>&1
+# === FOCUS (priority model v2) ===
+# No cron writes `focus` — it is the one field only the human sets.
+# When fewer than 5 tasks carry the current ISO week, build_agent_context.py fills
+# `focus_suggestions[]` with ranked candidates. Suggestions, never promotions.
 
 # === LEGACY (deprecated, will be removed in F9) ===
 # Po-Pa: rebuild +5 min (po triage) — pouze pro stary HTML dashboard

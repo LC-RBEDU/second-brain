@@ -1,6 +1,6 @@
 ---
 name: agenda-priority-review
-description: "Use when user asks revize priorit, přehodnotit ICE, srovnat ASAP/Next/Waiting in MrLUC Second Brain v2. Ad-hoc only. Scans all 02-PROJEKTY/<slug>/tasks/*.md frontmatters, proposes status/ICE/waitUntil changes. ALWAYS preview before write. Optional export to 00-System/Triage-Pending/priority-review-*.json."
+description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus/Next/Waiting in MrLUC Second Brain v2. Ad-hoc only. Scans all 02-PROJEKTY/<slug>/tasks/*.md frontmatters, proposes status/ICE/waitUntil changes. ALWAYS preview before write. Optional export to 00-System/Triage-Pending/priority-review-*.json."
 ---
 
 # agenda-priority-review (v2)
@@ -12,7 +12,7 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat ASAP/
 ## Kdy spouštět
 
 - "Revize priorit" / "přehodnotit priority" / "srovnat ICE"
-- Po velké změně v projektech (reorganizace, nové ASAP vlny)
+- Po velké změně v projektech (reorganizace, project review)
 - **Ne** místo týdenního shrnutí — to je `agenda-weekly-review`
 
 ## Načti data
@@ -28,7 +28,8 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat ASAP/
   - +35 overdue (`deadline < today`)
   - +30 deadline dnes
   - +15 deadline zítra
-- **TOP eligibility:** ASAP vždy; Next jen bez otevřeného ASAP; nikdy Waiting/Backlog
+- **TOP eligibility:** jen `focus` = aktuální ISO týden, max 5; nikdy Waiting/Backlog/Cancelled
+- **Do `focus` nezapisuj sám** — navrhni kandidáty a nech volbu na uživateli
 - **Waiting** — nepatří do TOP; zkontroluj `waitUntil` a smysl
 - **Blocked** — pokud `blocked_by != []`, označ v preview
 
@@ -40,13 +41,13 @@ Každá zmínka tasku v chatu: **`ID — title`** z frontmatter (ne jen ID). Viz
 REVIZE PRIORIT — YYYY-MM-DD
 
 Navrhované změny (N):
-  [finance] F17 — Název úkolu: status Next → ASAP, ICE I7→I10 (důvod: cashflow)
-  [strategy] S8 — Název úkolu: status ASAP → Waiting, waitUntil: 2026-05-31 (důvod: čeká na Lenku)
+  [finance] F17 — Název úkolu: ICE I7→I10, návrh do fokusu W32 (důvod: cashflow)
+  [strategy] S8 — Název úkolu: status Next → Waiting, waitUntil: 2026-05-31 (důvod: čeká na Lenku)
   ...
 
 Beze změny (TOP 5 podle today_score):
   1. [strategy/S2] Hierarchie cílů — Next, today_score 8.3
-  2. [rb-universe-development/RBU30] ... — ASAP, today_score 64
+  2. [rb-universe-development/RBU30] ... — fokus W32, today_score 64
   ...
 
 Watch — Waiting blízko expiraci (≤ 7 dnů):

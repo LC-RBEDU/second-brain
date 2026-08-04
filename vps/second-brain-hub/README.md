@@ -76,13 +76,12 @@ git push origin main
 | Job | Čas | Co dělá |
 |-----|-----|---------|
 | `lifecycle_done_from_checkboxes.py` | every 2h :00 | Všechny `[x]` → `status: Done` |
-| `lifecycle_waiting_to_asap.py` | every 2h :01 | `Waiting` + `waitUntil` ≤ dnes → `ASAP` (smaže `waitUntil`) |
+| `lifecycle_waiting_to_next.py` | every 2h :01 | `Waiting` + `waitUntil` ≤ dnes → `Next` (smaže `waitUntil`) |
 | `lifecycle_waiting_default_waituntil.py` | every 2h :02 | `Waiting` bez `waitUntil` → doplní `dnes + 3 dny` |
 | `lifecycle_waituntil_hygiene.py` | every 2h :03 | `waitUntil` vyčistí u tasků, kde `status != Waiting` |
-| `lifecycle_overdue_flag.py` | every 2h :04 | Append `OVERDUE` log do body |
+| `lifecycle_overdue_flag.py` | every 2h :04 | jeden OVERDUE řádek při prvním překročení, eskalace po 14 dnech |
 | `archive_done_tasks.py` | every 2h :05 | `Done` > 90 dní → `07-ARCHIV/tasks-done/<slug>/` |
 | `lifecycle_recurring.py` | every 2h :06 | Recurring `Done` → archive + nová instance |
-| `lifecycle_asap_backfill.py` | hourly 10:00–02:00 | `ASAP` < 3 → promote top `Next` (`today_score`) |
 | `build_agent_context.py` | každých 15 min v 7-22 | refresh `00-System/agent-context.json` |
 
 ### Triage / EDU news / Weekly
@@ -112,8 +111,11 @@ Logy: `docker logs <container>` nebo `docker exec … tail /var/log/second-brain
 ## Lifecycle pravidla v2
 
 ### Status flow
-`Backlog → Next → ASAP → Done` (happy path)
-`Next → Waiting (waitUntil) → ASAP → Done` (čekání s reaktivací)
+`Backlog → Next → Doing → Done` (happy path)
+`Next → Waiting (waitUntil) → Next → Done` (čekání s reaktivací)
+`* → Cancelled` (zrušeno / pohlceno jiným úkolem — archivuje se, ale nepočítá se do „recently done")
+
+Prioritu nenese status, ale `focus: YYYY-Www` (ISO týden, max 5). Nastavuje ho **jen člověk**; žádný cron do toho pole nezapisuje. `ASAP` zrušeno 4. 8. 2026.
 `Next → Done (cancel reason v body)` (zrušeno bez archivu)
 
 ### Recurring

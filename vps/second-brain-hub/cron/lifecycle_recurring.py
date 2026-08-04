@@ -32,7 +32,8 @@ Workflow per Done recurring task:
    keeps date-suffixed name so multiple instances coexist in history).
 2. Compute next deadline from frequency rule.
 3. Create new instance at the original `task.rel_path` with:
-   - status: Waiting (or ASAP if waitUntil already passed)
+   - status: Waiting (or Next if waitUntil already passed); `focus` is cleared —
+     a ritual does not inherit last cycle's focus week and never competes for it
    - waitUntil = next_deadline - 1 day
    - deadline = next_deadline
    - reset body sections (Operativní kroky, Poznámky / log) cleared, preserved sections kept
@@ -280,11 +281,14 @@ def main() -> None:
 
         # 4. Build new frontmatter
         new_fm = dict(task.frontmatter)
-        new_fm["status"] = "Waiting" if next_wu > today else "ASAP"
+        new_fm["status"] = "Waiting" if next_wu > today else "Next"
         new_fm["deadline"] = next_dl.isoformat()
         new_fm["waitUntil"] = next_wu.isoformat() if new_fm["status"] == "Waiting" else None
         new_fm["updated"] = today_str
         new_fm["created"] = today_str
+        # Rituals never occupy a focus slot — the next instance starts unfocused.
+        if "focus" in new_fm:
+            new_fm["focus"] = None
         new_text = serialize_task(new_fm, new_body)
 
         # 5. Move current → archive, then write new at original path

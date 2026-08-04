@@ -26,17 +26,23 @@ V2 priority pořadí:
 ## TOP priority dnes (SSOT: `top_priority_today`)
 
 **Eligibility** (nikdy porušit):
-- **Nikdy:** `Waiting`, `Backlog`, `Done`
-- **ASAP:** vždy eligible
-- **Next:** jen když v celém vaultu **není žádný** otevřený `ASAP`
+- **Jen `focus` = aktuální ISO týden** (např. `2026-W32`). Nic jiného do TOP dnes nepatří.
+- **Nikdy:** `Waiting`, `Backlog`, `Done`, `Cancelled`
+- **Max 5.** Fokus vybírá **výhradně člověk** — nikdy ho nenastavuj sám.
+
+**Když je fokus prázdný nebo pod pěti:**
+- `agent-context.json` → `focus_suggestions[]` = kandidáti seřazení podle `today_score`.
+- **Nabídni je, nepovyšuj.** Formulace: „Fokus týdne má X z 5. Kandidáti: … Chceš některý přidat?"
 
 **Scoring:**
 - `priority_score = (ice_i * ice_c) / ice_e`
 - `today_score = priority_score + urgency_bonus`:
-  - **+35** overdue (`deadline < dnes`)
   - **+30** deadline dnes
   - **+15** deadline zítra
+  - **+5** overdue (`deadline < dnes`) — jen rozřazovač, ne odměna za hnilobu
 - Sort: `today_score DESC`
+
+**Pole `agent`** — u každé položky zmiň, kdo ji udělá: `solo` (zvládnu sám a můžu se do toho pustit hned), `assist` (připravím podklad, rozhodneš ty), `none` (jen ty).
 
 ## Ostatní klasifikace
 
@@ -57,7 +63,7 @@ CO TEĎ — DD/MM/YYYY
 ═══════════════════════════════════════════════
 
 🔥 TOP 3 (z `top_priority_today`, sort today_score)
-  • [slug] ID — title (z frontmatter) — status=ASAP today_score=… deadline=…
+  • [slug] ID — title (z frontmatter) — focus=2026-W32 agent=solo today_score=… deadline=…
   ...
 
 ⏸ WAITING (N)

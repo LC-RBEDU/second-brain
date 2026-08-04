@@ -15,6 +15,7 @@ from collections import Counter
 from datetime import date, timedelta
 from typing import Any, Protocol
 
+from focus import STATUS_DOING, STATUS_NEXT, is_focus_current, is_terminal
 from today_priority import today_score as calc_today_score
 
 STATE_BEGIN = "<!-- SB:STATE:BEGIN -->"
@@ -86,7 +87,7 @@ def open_tasks_for_slug(all_tasks: list[Any], slug: str) -> list[Any]:
     return [
         t
         for t in tasks_for_slug(all_tasks, slug)
-        if _task_get(t, "status") != "Done"
+        if not is_terminal(_task_get(t, "status"))
     ]
 
 
@@ -128,7 +129,7 @@ def build_state_content(
 
     scored: list[tuple[Any, float]] = []
     for t in open_tasks:
-        if _task_get(t, "status") not in ("ASAP", "Next"):
+        if _task_get(t, "status") not in (STATUS_DOING, STATUS_NEXT):
             continue
         ps = _priority_score(t)
         ts = calc_today_score(ps, _task_get(t, "deadline"), today)
@@ -175,13 +176,22 @@ def build_state_content(
     if generated_at:
         lines.append(f"_Aktualizováno: {generated_at}_")
     lines.append("")
+    focused = [t for t in open_tasks if is_focus_current(_task_get(t, "focus"), today)]
     lines.append(
         f"**Otevřené:** {len(open_tasks)} "
-        f"(ASAP {status_counts.get('ASAP', 0)}, "
+        f"(Doing {status_counts.get('Doing', 0)}, "
         f"Next {status_counts.get('Next', 0)}, "
         f"Waiting {status_counts.get('Waiting', 0)}, "
         f"Backlog {status_counts.get('Backlog', 0)})"
     )
+
+    if focused:
+        lines.append("")
+        lines.append(f"**Ve fokusu tento týden:** {len(focused)}")
+        for t in focused[:5]:
+            tid = _task_get(t, "id") or _task_get(t, "task_id") or "?"
+            title = (_task_get(t, "title") or "")[:55]
+            lines.append(f"- **{tid}** — {title}")
 
     if top3:
         lines.append("")

@@ -79,7 +79,9 @@ title: "<lidsky čitelný titulek bez ID prefixu>"
 project: "[[<HubFilename>]]"
 slug: <slug>
 aliases: [<ID>]
-status: Next | ASAP | Backlog | Waiting | Done
+status: Next | Doing | Backlog | Waiting | Done | Cancelled
+focus:  (prázdné — nastavuje jen člověk)
+agent:  none | assist | solo
 ice_i: <1-10>
 ice_c: <1-10>
 ice_e: <1-10>
@@ -165,12 +167,12 @@ python3 scripts/build_agent_context.py
 
 ### 11. Hláška
 
-Krátká, akční: kolik task souborů, do kterých projektů, top ASAP/Q1 pokud je; `lide_sync: linkified=L profiles_rebuilt=P`.
+Krátká, akční: kolik task souborů, do kterých projektů, top podle today_score pokud je; `lide_sync: linkified=L profiles_rebuilt=P`.
 
 ## Speciální případy
 
 - Nejasný obsah → jedna cílená otázka
-- ASAP s deadline today → explicitně v hlášce
+- deadline dnes → explicitně v hlášce
 - Smalltalk → neukládat
 - Citlivá data → potvrzení před zápisem
 

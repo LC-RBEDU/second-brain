@@ -20,14 +20,31 @@ alwaysApply: true
 - AREA = `03-AREAS/<Name>.md`
 - ARCHIVE = `07-ARCHIV/tasks-done/<slug>/<ID>-*.md`
 
+### Tři osy priority (model v2 od 4. 8. 2026)
+| Otázka | Nositel | Pole |
+|---|---|---|
+| Udělám to vůbec? | člověk | `status` |
+| Kdy to musí být hotové? | svět | `deadline` — **jen reálný externí závazek** |
+| Na co se soustředím teď? | člověk | `focus` — ISO týden, max 5 |
+
 ### Statusy
-`ASAP | Next | Backlog | Waiting | Doing | Done`
+`Doing | Next | Backlog | Waiting | Done | Cancelled`
+- **`ASAP` zrušeno.** Nahrazuje ho `focus: YYYY-Www`.
+- **`Cancelled`** = zrušeno / pohlceno jiným úkolem. Archivuje se jako `Done`, ale nepočítá se do „recently done".
+
+### focus a agent
+- **`focus: 2026-W32`** — ISO týden. **Nastavuje výhradně člověk**; žádný cron do toho pole nesmí zapsat. Vyprší sám přechodem na další týden.
+- Rituály (recurring) o místo ve fokusové pětici nesoutěží.
+- **`agent: none | assist | solo`** — kdo práci udělá. Default `none`. Vyplňuje agent při triáži.
+- **Drobná `solo` práce se nezakládá jako task** — vzniká záznam v `00-System/Agent-Log/YYYY-MM.md` s wikilinkem na projekt (objeví se v backlinks hubu). Pokud se ukáže, že je věc větší nebo na ni někdo čeká, povýší se na task.
 
 ### Priority score
 - `priority_score = (ice_i * ice_c) / ice_e` (Bases formula + agent-context.json)
-- **`today_score`** (TOP dnes): `priority_score` + urgency bonus — overdue +35, deadline dnes +30, zítra +15
-- **`top_priority_today`** (SSOT, max 5): jen `ASAP`; `Next` jen když v vaultu není žádný otevřený `ASAP`; nikdy `Waiting` / `Backlog`
-- **`top_priority`** (max 15): stejná eligibility + sort `today_score DESC`
+- **`today_score`**: `priority_score` + urgency bonus — deadline dnes +30, zítra +15, **overdue jen +5**
+  (dřív +35, což znamenalo, že čím déle věc hnila, tím výš lezla)
+- **`top_priority_today`** (SSOT, max 5): jen úkoly s `focus` = aktuální ISO týden; nikdy `Waiting` / `Backlog` / `Cancelled`
+- **`focus_suggestions`**: když je fokus pod 5, `build_agent_context.py` nabídne kandidáty — **návrhy, ne povýšení**
+- **`top_priority`** (max 15): fokus + `Doing` + `Next`, sort `today_score DESC`
 
 ### Konvence — vždy zachovej
 - **Chat o konkrétním tasku:** vždy `**ID — title**` z frontmatter (ne jen `SBD4`) — viz `task-mention-convention.mdc`.
@@ -64,6 +81,15 @@ Snapshot obsahuje:
 
 **Refresh policy: every-write** (local trigger po každém zápisu do `02-PROJEKTY/` nebo `07-ARCHIV/tasks-done/`).
 
+### Zastaralé chartery — reaguj na `stale_hubs`
+
+Když je ve snapshotu **víc než 3** položky v `stale_hubs`, **sám nabídni refresh** — nečekej, až si o něj uživatel řekne. Konkrétně: vyjmenuj huby (název + datum charteru) a navrhni přepsat `## Kontext`.
+
+- Ruční je jen **narativ**: `## Kontext`, `## Otevřené otázky`, případně `## Definition of done`. Sekce `## Stav (auto)` se generuje cronem — **nikdy ji nepiš ručně**.
+- Refresh = přečti otevřené tasky projektu a přepiš narativ podle **skutečné** fronty; odstraň zmínky o hotových úkolech.
+- Po zápisu bump `updated:` ve frontmatteru hubu, jinak zůstane hub ve `stale_hubs` napořád.
+- **Neexistuje** skript, který by narativ generoval automaticky. Pokud narazíš na něco, co to slibuje, ověř, jestli nejde o starý one-off s natvrdo zapsaným textem.
+
 Pokud snapshot chybí nebo je `generated_at` starší než 24 h, spusť:
 ```bash
 python3 "scripts/build_agent_context.py"
@@ -76,13 +102,12 @@ python3 "scripts/build_agent_context.py"
 
 ## Lifecycle automatika (ví si sám, neptej se)
 - every 2h :00 done_from_checkboxes
-- every 2h :01 waiting_to_asap (waitUntil ≤ dnes → ASAP, waitUntil smaže)
+- every 2h :01 waiting_to_next (waitUntil ≤ dnes → **Next**, waitUntil smaže — probuzení není priorita)
 - every 2h :02 waiting_default_waituntil (Waiting bez data → waitUntil = dnes + 3 dny)
 - every 2h :03 waituntil_hygiene (waitUntil jen u Waiting; u ostatních statusů vyčistí)
-- every 2h :04 overdue_flag (append OVERDUE log)
-- every 2h :05 archive_done_tasks (>90 dní v Done)
+- every 2h :04 overdue_flag (**jeden** řádek při prvním překročení, pak ticho; eskalace po 14 dnech)
+- every 2h :05 archive_done_tasks (>90 dní v Done nebo Cancelled)
 - every 2h :06 lifecycle_recurring (Done + recurring → archive + nová instance)
-- každou hodinu 10:00–02:00 asap_backfill (ASAP < 3 → promote top Next podle today_score)
 - every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech)
 - Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
 - Po 6:55 inbox_inventory (log only)
@@ -108,6 +133,8 @@ python3 "scripts/build_agent_context.py"
 - **NE** dělej HTML dashboard — Obsidian Bases je live source.
 - **NE** edituj `vps/second-brain-hub/cron/build_dashboard.py` ani `vps/web/` (deprecated, F9 cleanup).
 - **NE** zapisuj do `OBSIDIAN/00-System/dashboard-data.json` (legacy v1, nahrazeno `agent-context.json`).
+- **NE** nastavuj `focus` sám — nabídni kandidáty a nech volbu na uživateli.
+- **NE** označuj zrušený úkol jako `Done` — od 4. 8. 2026 je na to `Cancelled`.
 - **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
 
 ## Související

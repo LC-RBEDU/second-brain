@@ -9,7 +9,7 @@
 | `agenda-triage` | INBOX batch/deep/pending |
 | `agenda-co-ted` | Co teď (TOP priority / dashboard) |
 | `agenda-work` | Práce na projektu + výstupy |
-| `agenda-status-update` | Single-task status flip (hotovo / odlož / ASAP / zruš) |
+| `agenda-status-update` | Single-task status flip (hotovo / odlož / do fokusu / zruš) |
 | `agenda-analyze` | Rozbor materiálů → strukturovaný material `.md` |
 | `agenda-proces` | Firemní procesy pro RB Universe Procesní architekt |
 | `agenda-weekly-review` | Neděle: schválení weekly draftu |

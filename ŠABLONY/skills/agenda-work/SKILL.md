@@ -54,7 +54,7 @@ Status: <active/paused> | Area: <area>
   • ...
 
 📋 AKTIVNÍ ÚKOLY (<N>)
-  • [ASAP, Score=18.0] RBU30 — Název úkolu — deadline 2026-05-30
+  • [fokus W32, Score=18.0, agent=assist] RBU30 — Název úkolu — deadline 2026-05-30
   • [Next, Score=14.0] RBU15 — Filtrace pohledů
   ...
 
@@ -102,7 +102,7 @@ Návrh změn v 02-PROJEKTY/<slug>/tasks/:
   • Deadline: 2026-05-15 | Source: ...
 
 ✏️ Update existujícího:
-  • RBU15 — status: Next → ASAP (důvod: deadline 2026-05-29)
+  • RBU15 — focus: → 2026-W32 (důvod: deadline 2026-05-29)
   • RBU6 — waitUntil: → 2026-06-30 (Káťa potvrdila timing)
 
 OK? (ano / uprav)

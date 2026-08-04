@@ -18,9 +18,9 @@ def test_waiting_keeps_wait_until():
 
 
 def test_asap_clears_wait_until():
-    assert should_clear_wait_until("ASAP", "2026-06-01") is True
-    assert should_clear_wait_until("ASAP", None) is False
-    assert should_clear_wait_until("ASAP", "") is False
+    assert should_clear_wait_until("Next", "2026-06-01") is True
+    assert should_clear_wait_until("Next", None) is False
+    assert should_clear_wait_until("Next", "") is False
 
 
 def test_other_statuses_clear_when_set():

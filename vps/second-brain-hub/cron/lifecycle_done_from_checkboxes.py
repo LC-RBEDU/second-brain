@@ -2,7 +2,8 @@
 """F6.1: Auto-flip task status → Done when all checkboxes are [x].
 
 Scans 02-PROJEKTY/<slug>/tasks/*.md, parses frontmatter + body, finds tasks where:
-- status != Done
+- status not in (Done, Cancelled) — a cancelled task stays cancelled even
+  when its checkboxes are all ticked
 - body has ≥1 checkbox in `## Operativní kroky` and all are checked
 
 Patches frontmatter status: Done + updated: today, appends log line.
@@ -40,7 +41,7 @@ def main() -> None:
     skipped = 0
 
     for task in iter_active_tasks(vault):
-        if task.is_done:
+        if task.is_terminal:
             continue
         if not all_checkboxes_done(task.body):
             continue

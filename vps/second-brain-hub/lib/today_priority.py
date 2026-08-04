@@ -1,34 +1,49 @@
 """TOP priority dnes — eligibility + today_score (SSOT for agent-context.json).
 
-Rules:
-- Never: Waiting, Backlog, Done
-- ASAP always eligible when status == ASAP
-- Next eligible only when no open ASAP exists in vault
-- Sort: today_score DESC (ICE base + urgency bonuses)
+Priority model v2 — "what now" is answered by the focus week, not by a status:
+
+- ``top_priority_today`` — tasks whose ``focus`` is the current ISO week (max 5).
+  Nothing else qualifies, and no cron may add to it: focus is a human choice.
+- ``top_priority`` — the wider queue (focus + Doing + Next), sorted the same way.
 
 Urgency bonuses (on top of priority_score = (I*C)/E):
-- overdue (deadline < today): +35
 - deadline today: +30
 - deadline tomorrow: +15
+- overdue (deadline < today): +5
+
+The overdue bonus used to be +35, which made a task climb the list the longer it
+rotted. It now only breaks ties, so an expired deadline is visible without
+outranking work that is actually due.
 """
 from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Any
 
-URGENCY_BONUS_OVERDUE = 35
+from focus import (
+    FOCUS_INELIGIBLE_STATUSES,
+    FOCUS_LIMIT,
+    STATUS_DOING,
+    STATUS_NEXT,
+    is_focus_current,
+)
+
+URGENCY_BONUS_OVERDUE = 5
 URGENCY_BONUS_TODAY = 30
 URGENCY_BONUS_TOMORROW = 15
 
-TOP_PRIORITY_TODAY_LIMIT = 3
+TOP_PRIORITY_TODAY_LIMIT = FOCUS_LIMIT
 TOP_PRIORITY_LIMIT = 15
 
-EXCLUDED_STATUSES = frozenset({"Done", "Waiting", "Backlog"})
+QUEUE_STATUSES = frozenset({STATUS_DOING, STATUS_NEXT})
 
 
 def _task_get(task: Any, key: str, default=None):
     if isinstance(task, dict):
         return task.get(key, default)
+    fm = getattr(task, "frontmatter", None)
+    if isinstance(fm, dict) and key in fm and not hasattr(task, key):
+        return fm.get(key, default)
     return getattr(task, key, default)
 
 
@@ -58,29 +73,48 @@ def today_score(priority_score: float, deadline: str | None, today: date) -> flo
     return round(float(priority_score) + urgency_bonus(deadline, today), 2)
 
 
-def has_any_asap(open_tasks: list[Any]) -> bool:
-    return any(_task_get(t, "status") == "ASAP" for t in open_tasks)
-
-
-def is_top_eligible(status: str, any_asap: bool) -> bool:
-    if status in EXCLUDED_STATUSES:
+def is_focus_eligible(task: Any, today: date) -> bool:
+    """True when the task carries the current focus week and is actionable."""
+    if _task_get(task, "status") in FOCUS_INELIGIBLE_STATUSES:
         return False
-    if status == "ASAP":
+    return is_focus_current(_task_get(task, "focus"), today)
+
+
+def is_queue_eligible(task: Any, today: date) -> bool:
+    """True for the wider list: focused work plus everything queued as Doing/Next."""
+    if is_focus_eligible(task, today):
         return True
-    if status == "Next":
-        return not any_asap
-    return False
+    return _task_get(task, "status") in QUEUE_STATUSES
+
+
+def _priority_score(task: Any) -> float:
+    ps = _task_get(task, "priority_score")
+    if ps is not None:
+        return float(ps)
+    ice_i = _task_get(task, "ice_i", 5) or 5
+    ice_c = _task_get(task, "ice_c", 5) or 5
+    ice_e = max(_task_get(task, "ice_e", 5) or 1, 1)
+    return round((ice_i * ice_c) / ice_e, 2)
 
 
 def enrich_task_dict(task_dict: dict, today: date) -> dict:
     ps = float(task_dict.get("priority_score") or 0)
     dl = task_dict.get("deadline")
-    ub = urgency_bonus(dl, today)
-    ts = today_score(ps, dl, today)
     out = dict(task_dict)
-    out["urgency_bonus"] = ub
-    out["today_score"] = ts
+    out["urgency_bonus"] = urgency_bonus(dl, today)
+    out["today_score"] = today_score(ps, dl, today)
     return out
+
+
+def _to_enriched(task: Any, ts: float, today: date) -> dict:
+    if isinstance(task, dict):
+        base = dict(task)
+        base.setdefault("priority_score", _priority_score(task))
+    else:
+        base = task.to_dict() if hasattr(task, "to_dict") else dict(task.frontmatter)
+    base["today_score"] = ts
+    base["urgency_bonus"] = urgency_bonus(base.get("deadline"), today)
+    return base
 
 
 def select_top_priority(
@@ -90,38 +124,24 @@ def select_top_priority(
     today_limit: int = TOP_PRIORITY_TODAY_LIMIT,
     general_limit: int = TOP_PRIORITY_LIMIT,
 ) -> tuple[list[dict], list[dict]]:
-    """Return (top_priority_today, top_priority) as enriched dicts."""
-    any_asap = has_any_asap(open_tasks)
-    eligible = [t for t in open_tasks if is_top_eligible(_task_get(t, "status"), any_asap)]
+    """Return (top_priority_today, top_priority) as enriched dicts.
 
-    scored: list[tuple[Any, float]] = []
-    for t in eligible:
-        ps = _task_get(t, "priority_score")
-        if ps is None:
-            ice_i = _task_get(t, "ice_i", 5)
-            ice_c = _task_get(t, "ice_c", 5)
-            ice_e = max(_task_get(t, "ice_e", 5) or 1, 1)
-            ps = round((ice_i * ice_c) / ice_e, 2)
-        dl = _task_get(t, "deadline")
-        scored.append((t, today_score(ps, dl, today)))
+    ``top_priority_today`` holds only tasks focused on the current ISO week.
+    When nothing is focused it stays empty on purpose — the suggester
+    (``lifecycle_focus_suggest``) offers candidates instead of promoting them.
+    """
 
-    scored.sort(key=lambda pair: -pair[1])
+    def scored(tasks: list[Any]) -> list[tuple[Any, float]]:
+        pairs = [
+            (t, today_score(_priority_score(t), _task_get(t, "deadline"), today))
+            for t in tasks
+        ]
+        pairs.sort(key=lambda pair: -pair[1])
+        return pairs
 
-    def to_enriched(task: Any, ts: float) -> dict:
-        if isinstance(task, dict):
-            base = dict(task)
-            if "priority_score" not in base:
-                base["priority_score"] = round(
-                    (_task_get(task, "ice_i", 5) * _task_get(task, "ice_c", 5))
-                    / max(_task_get(task, "ice_e", 5) or 1, 1),
-                    2,
-                )
-        else:
-            base = task.to_dict()
-        base["today_score"] = ts
-        base["urgency_bonus"] = urgency_bonus(base.get("deadline"), today)
-        return base
+    focused = scored([t for t in open_tasks if is_focus_eligible(t, today)])
+    queued = scored([t for t in open_tasks if is_queue_eligible(t, today)])
 
-    top_today = [to_enriched(t, ts) for t, ts in scored[:today_limit]]
-    top_general = [to_enriched(t, ts) for t, ts in scored[:general_limit]]
+    top_today = [_to_enriched(t, ts, today) for t, ts in focused[:today_limit]]
+    top_general = [_to_enriched(t, ts, today) for t, ts in queued[:general_limit]]
     return top_today, top_general

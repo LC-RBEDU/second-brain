@@ -281,7 +281,7 @@ def llm_extract(
         "  action (add_task | add_note_to_task | commitment_watch),\n"
         "  title (stručný název úkolu v češtině),\n"
         "  suggestedProj (slug tématu, např. finance, rb-universe-development),\n"
-        "  priority (ASAP|Next|Backlog|Waiting),\n"
+        "  priority (Next|Backlog|Waiting),\n"
         "  ice ([I,C,E] 1-10),\n"
         "  notes (1 věta s citací z e-mailu),\n"
         "  confidence (0.0-1.0).\n"

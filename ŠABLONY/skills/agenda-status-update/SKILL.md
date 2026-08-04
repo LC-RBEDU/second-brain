@@ -1,6 +1,6 @@
 ---
 name: agenda-status-update
-description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš, odlož, čekat do, ASAP. Reads 02-PROJEKTY/<slug>/tasks/<ID> — *.md frontmatter (human-readable filename, em-dash U+2014) and patches status/deadline/waitUntil. Subtask reference syntax: `<ID>-N` (např. PD4-3 = 3. checkbox v ## Operativní kroky). ALWAYS preview before write. Bulk operace řeší agenda-work / agenda-co-ted / agenda-priority-review; tohle je one-off tap."
+description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš (Cancelled), odlož, čekat do, do fokusu týdne. Reads 02-PROJEKTY/<slug>/tasks/<ID> — *.md frontmatter (human-readable filename, em-dash U+2014) and patches status/deadline/waitUntil. Subtask reference syntax: `<ID>-N` (např. PD4-3 = 3. checkbox v ## Operativní kroky). ALWAYS preview before write. Bulk operace řeší agenda-work / agenda-co-ted / agenda-priority-review; tohle je one-off tap."
 ---
 
 # agenda-status-update (v2)
@@ -13,7 +13,7 @@ description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš, o
 
 - "Hotovo <ID>" / "Done <ID>" / "Uzavři <ID>"
 - "Odlož <ID> do YYYY-MM-DD" / "Čekat <ID>"
-- "ASAP <ID>" / "Urgent <ID>"
+- "do fokusu <ID>" / "tenhle týden <ID>"
 - "Zruš <ID>" / "Cancel <ID>"
 
 ## Workflow
@@ -47,11 +47,13 @@ Mapping user intent → frontmatter změna:
 |-------------|-------|
 | "hotovo" / "done" | `status: Done`, `waitUntil:` prázdné, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>` |
 | "hotovo PD4-3" | flip checkbox `**PD4-3**` v `## Operativní kroky` na `[x]` (single subtask) |
-| "ASAP" / "urgent" | `status: ASAP`, `waitUntil:` prázdné, `updated: <today>` |
+| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. **Nejdřív zkontroluj, kolik úkolů už fokus má** — limit je 5; při překročení se zeptej, co vypadne. |
+| "pryč z fokusu" | `focus:` prázdné, `updated: <today>` |
 | "odlož do YYYY-MM-DD" | `status: Waiting`, `waitUntil: <date>`, `updated: <today>` |
 | "ztím čekat" (bez data) | `status: Waiting`, `waitUntil: <today + 3 dny>`, `updated: <today>` |
 | kanban / ruční Waiting bez data | cron `lifecycle_waiting_default_waituntil` (every 2h :02) doplní `waitUntil: dnes + 3` |
-| "zruš" / "cancel" | Confirm s userem; pak smazat soubor (NE archive) |
+| "zruš" / "cancel" | `status: Cancelled`, `waitUntil:` prázdné, `updated: <today>`, body append `- <today>: **ZRUŠENO** — <důvod>`. **Nemaž soubor** — cron ho archivuje jako Done a `Cancelled` drží rozdíl mezi splněným a odepsaným. |
+| "sloučeno do X" | totéž jako zruš, v logu wikilink na cílový úkol |
 | "deadline YYYY-MM-DD" | `deadline: <date>`, `updated: <today>` |
 | "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` |
 | status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`) |
@@ -62,9 +64,9 @@ Mapping user intent → frontmatter změna:
 Navrhuju patch:
 
   02-PROJEKTY/rb-universe-development/tasks/RBU30 — Název úkolu.md
-  - status: Next → ASAP
+  - focus: (prázdné) → 2026-W32
   - updated: 2026-05-25
-  - body: + "## Poznámky / log\n  - 2026-05-25: Eskalováno na ASAP — deadline 2026-05-30"
+  - body: + "## Poznámky / log\n  - 2026-05-25: Do fokusu týdne 32 — deadline 2026-05-30"
 
 OK? (ano / uprav / cancel)
 ```
@@ -78,7 +80,7 @@ OK? (ano / uprav / cancel)
 
 ### 5b. Hub narativ (volitelně, preview)
 
-Po status flipu s dopadem na projekt (Done významného tasku, nový ASAP, změna deadline u klíčového tasku) **nabídn** 1–2 větný patch `## Kontext` v hubu + bump `updated:`. Sekci `## Stav (auto)` needituj.
+Po status flipu s dopadem na projekt (Done významného tasku, nový fokus, změna deadline u klíčového tasku) **nabídn** 1–2 větný patch `## Kontext` v hubu + bump `updated:`. Sekci `## Stav (auto)` needituj.
 
 ### 6. Refresh agent context
 
@@ -90,14 +92,16 @@ python3 scripts/build_agent_context.py
 ### 7. Hláška
 
 ```
-✅ Patch aplikován: RBU30 status Next → ASAP. Updated 2026-05-25. Agent context refreshed.
+✅ Patch aplikován: RBU30 focus → 2026-W32. Updated 2026-05-25. Agent context refreshed.
 ```
 
 ## Pravidla
 
 - Pouze single-task ops; bulk přes `agenda-work` / `agenda-co-ted` / `agenda-priority-review`
-- **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na ASAP / Next / Backlog / Doing / Done vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (every 2h :03) vyčistí opomenutí z manuálních editací. Cron `lifecycle_waiting_default_waituntil.py` (every 2h :02) doplní `waitUntil = dnes + 3 dny`, pokud je Waiting bez data.
-- **`ASAP` backfill:** cron `lifecycle_asap_backfill.py` (hourly 10:00–02:00) — pokud je v vaultu méně než 3 otevřené ASAP, promote nejvyšší `Next` podle `today_score` (stejná logika jako dashboard TOP 3).
+- **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na Next / Backlog / Doing / Done / Cancelled vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (every 2h :03) vyčistí opomenutí z manuálních editací. Cron `lifecycle_waiting_default_waituntil.py` (every 2h :02) doplní `waitUntil = dnes + 3 dny`, pokud je Waiting bez data.
+- **Do `focus` nikdy nesahá cron.** Je to jediné pole ve vaultu, které je čistě lidským rozhodnutím. Když je fokus pod pěti, `build_agent_context.py` naplní `focus_suggestions[]` — ty je smíš **nabídnout**, ne aplikovat.
+- **Limit fokusu je 5.** Před přidáním spočítej aktuální stav; při překročení se zeptej, co z fokusu vypadne.
+- **Zrušený úkol není `Done`.** Používej `Cancelled` — jinak „recently done" tvrdí, že jsi udělal práci, kterou jsi odepsal.
 - Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej
 - "Zruš" → potvrď s userem (mazání je destruktivní)
 - Recurring tasky (`recurring:` blok ve frontmatteru) — Done flip spustí cron `lifecycle_recurring.py` (vytvoří next instance) — ne dělej manuálně

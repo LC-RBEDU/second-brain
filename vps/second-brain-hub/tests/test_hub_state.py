@@ -28,6 +28,7 @@ def _task(
     ice_i=7,
     ice_c=8,
     ice_e=5,
+    focus=None,
 ):
     return {
         "id": tid,
@@ -37,6 +38,7 @@ def _task(
         "deadline": deadline,
         "updated": updated,
         "blocked_by": blocked_by or [],
+        "focus": focus,
         "ice_i": ice_i,
         "ice_c": ice_c,
         "ice_e": ice_e,
@@ -45,18 +47,32 @@ def _task(
 
 def test_build_state_content_counts():
     tasks = [
-        _task("F1", status="ASAP", ice_i=10, ice_c=10, ice_e=2),
+        _task("F1", status="Doing", ice_i=10, ice_c=10, ice_e=2),
         _task("F2", status="Next"),
         _task("F3", status="Waiting"),
+        _task("F4", status="Cancelled"),
     ]
     inner, stale = build_state_content(
         "finance", tasks, [], date(2026, 6, 12),
         hub_updated="2026-05-01",
     )
+    # Cancelled is closed for good and must not inflate the open count.
     assert "Otevřené:** 3" in inner
-    assert "ASAP 1" in inner
+    assert "Doing 1" in inner
+    assert "ASAP" not in inner
     assert "**F1**" in inner
     assert stale is True
+
+
+def test_build_state_content_lists_focus_of_current_week():
+    today = date(2026, 6, 12)  # 2026-W24
+    tasks = [
+        _task("F1", status="Next", focus="2026-W24"),
+        _task("F2", status="Next", focus="2026-W23"),
+        _task("F3", status="Next"),
+    ]
+    inner, _ = build_state_content("finance", tasks, [], today, hub_updated="2026-06-11")
+    assert "Ve fokusu tento týden:** 1" in inner
 
 
 def test_stale_when_hub_old():

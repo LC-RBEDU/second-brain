@@ -31,9 +31,15 @@ def main() -> int:
         f"- open tasks: {stats.get('total_open_tasks', '?')}",
         f"- upcoming 7d: {stats.get('upcoming_deadlines_7d', '?')}",
     ]
-    if stale:
-        lines.append(f"- stale hubs: {len(stale)}")
     lines.append("")
+    if stale:
+        lines.append(f"**Zastaralé chartery ({len(stale)}):**")
+        for h in sorted(stale, key=lambda x: str(x.get("hub_updated") or "")):
+            lines.append(
+                f"- {h.get('hub_filename', h.get('slug'))} — charter {h.get('hub_updated')}, "
+                f"tasky {h.get('last_task_activity')}, otevřených {h.get('open_tasks_count')}"
+            )
+        lines.append("")
     lines.append("**TOP dnes:**")
     for t in top[:5]:
         src_hint = ""

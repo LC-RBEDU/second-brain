@@ -80,8 +80,9 @@ def ice_score(t: dict, today: date) -> float:
     ice = t.get("ice") or {}
     i, c, e = ice.get("i", 5), ice.get("c", 5), max(ice.get("e", 5), 1)
     s = (i * c) / e
-    if t.get("p") == "ASAP":
-        s += 50
+    # ASAP as a status is gone (priority model v2). This job still reads the
+    # legacy v1 task source, which carries no `focus`, so ranking falls back to
+    # ICE + deadline urgency only. Rewiring it onto agent-context.json is SB2.
     dl = t.get("dl")
     if dl:
         try:

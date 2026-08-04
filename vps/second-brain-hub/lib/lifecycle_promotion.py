@@ -1,13 +1,18 @@
-"""Shared helpers for lifecycle cron jobs (ASAP backfill, Waiting defaults)."""
+"""Shared helpers for lifecycle cron jobs (focus suggestions, Waiting defaults).
+
+Nothing here writes to ``focus``. The suggester ranks candidates and hands them
+to agent-context; picking the week's focus stays a human decision.
+"""
 from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Any
 
-from today_priority import TOP_PRIORITY_TODAY_LIMIT, today_score
+from focus import FOCUS_LIMIT, is_focus_current
+from today_priority import today_score
 
 DEFAULT_WAIT_UNTIL_DAYS = 3
-TARGET_ASAP_COUNT = TOP_PRIORITY_TODAY_LIMIT
+FOCUS_TARGET = FOCUS_LIMIT
 
 
 def priority_score_from_frontmatter(fm: dict[str, Any]) -> float:
@@ -43,21 +48,29 @@ def default_wait_until(today: date, *, days: int = DEFAULT_WAIT_UNTIL_DAYS) -> d
     return today + timedelta(days=days)
 
 
-def select_next_for_asap_promotion(
-    next_tasks: list[Any],
+def _frontmatter(task: Any) -> dict[str, Any]:
+    return task.frontmatter if hasattr(task, "frontmatter") else task
+
+
+def count_focused(tasks: list[Any], today: date) -> int:
+    return sum(1 for t in tasks if is_focus_current(_frontmatter(t).get("focus"), today))
+
+
+def select_focus_suggestions(
+    candidates: list[Any],
     *,
     today: date,
-    current_asap_count: int,
-    target_asap: int = TARGET_ASAP_COUNT,
+    current_focus_count: int,
+    target: int = FOCUS_TARGET,
 ) -> list[Any]:
-    """Pick Next tasks to promote so open ASAP count reaches target (max target)."""
-    need = max(0, target_asap - current_asap_count)
-    if need <= 0 or not next_tasks:
+    """Rank candidates to fill the remaining focus slots. Never mutates tasks."""
+    need = max(0, target - current_focus_count)
+    if need <= 0 or not candidates:
         return []
 
-    def score_key(task: Any) -> float:
-        fm = task.frontmatter if hasattr(task, "frontmatter") else task
-        return task_today_score(fm, today)
-
-    ranked = sorted(next_tasks, key=score_key, reverse=True)
+    ranked = sorted(
+        candidates,
+        key=lambda t: task_today_score(_frontmatter(t), today),
+        reverse=True,
+    )
     return ranked[:need]

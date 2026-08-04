@@ -2,7 +2,7 @@
 """Scan 01-INBOX (Drive) and write Triage-Pending batch JSON (semi-auto;
 approve in Cursor).
 
-Waiting tasks with expired waitUntil are auto-reactivated to ASAP in hub
+Waiting tasks with expired waitUntil are auto-reactivated to Next in hub
 markdown by build_dashboard.py (then re-synced to dashboard JSON).
 Approve in Cursor via agenda-triage PENDING mode — not processed by
 this script.

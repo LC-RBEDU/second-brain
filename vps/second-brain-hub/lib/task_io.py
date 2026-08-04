@@ -50,6 +50,11 @@ class ParsedTask:
     def is_done(self) -> bool:
         return self.status == "Done"
 
+    @property
+    def is_terminal(self) -> bool:
+        """Done or Cancelled — closed for good, out of every open-task count."""
+        return self.status in ("Done", "Cancelled")
+
 
 def parse_task_text(text: str, rel_path: str = "", meta: FileMeta | None = None) -> ParsedTask:
     """Parse task .md → frontmatter dict + body str."""

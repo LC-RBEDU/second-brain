@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """F6.4: Archive Done tasks from 02-PROJEKTY/<slug>/tasks/ → 07-ARCHIV/tasks-done/<slug>/.
 
-For each `status: Done` task .md:
+For each `status: Done` or `status: Cancelled` task .md:
 1. Move file from `02-PROJEKTY/<slug>/tasks/<filename>` to `07-ARCHIV/tasks-done/<slug>/<filename>`
 2. Skip if archive target already exists (idempotent)
 
@@ -38,7 +38,7 @@ def main() -> None:
         "--keep-days",
         type=int,
         default=0,
-        help="Skip Done tasks updated within N days (default 0 = archive immediately)",
+        help="Skip closed tasks updated within N days (default 0 = archive immediately)",
     )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -55,7 +55,7 @@ def main() -> None:
     skipped = 0
 
     for task in iter_active_tasks(vault):
-        if not task.is_done:
+        if not task.is_terminal:
             continue
         # Skip recurring tasks (they're rotated by lifecycle_recurring, not archived here)
         if task.frontmatter.get("recurring"):

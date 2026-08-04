@@ -2,12 +2,12 @@
 """Set default waitUntil on Waiting tasks that have no reactivation date.
 
 When status is Waiting but waitUntil is empty, the task would never auto-flip
-to ASAP (lifecycle_waiting_to_asap requires waitUntil <= today).
+to Next (lifecycle_waiting_to_next requires waitUntil <= today).
 
 Default: today + 3 days (same as agenda-status-update „ztím čekat").
 CAS-aware. Idempotent once waitUntil is set.
 
-Schedule: every 2 hours at :02 (after waiting_to_asap, before waituntil_hygiene).
+Schedule: every 2 hours at :02 (after waiting_to_next, before waituntil_hygiene).
 """
 from __future__ import annotations
 

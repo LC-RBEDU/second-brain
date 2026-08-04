@@ -45,7 +45,24 @@ if str(_LIB) not in sys.path:
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from today_priority import select_top_priority  # noqa: E402
+from focus import (  # noqa: E402
+    FOCUS_LIMIT,
+    STATUS_CANCELLED,
+    STATUS_DONE,
+    current_focus_week,
+    is_focus_current,
+    is_terminal,
+    normalise_agent,
+    parse_focus,
+)
+from lifecycle_promotion import select_focus_suggestions  # noqa: E402
+from today_priority import (  # noqa: E402
+    URGENCY_BONUS_OVERDUE,
+    URGENCY_BONUS_TODAY,
+    URGENCY_BONUS_TOMORROW,
+    is_queue_eligible,
+    select_top_priority,
+)
 from hub_state import (  # noqa: E402
     STALE_AREA_WEEKS,
     STALE_NARRATIVE_DAYS,
@@ -81,6 +98,8 @@ class TaskInfo:
     ice_e: int = 5
     deadline: str | None = None
     waitUntil: str | None = None
+    focus: str | None = None
+    agent: str = "none"
     updated: str | None = None
     materials: list[str] = None
     blocked_by: list[str] = None
@@ -106,6 +125,8 @@ class TaskInfo:
             "priority_score": self.priority_score,
             "deadline": self.deadline,
             "waitUntil": self.waitUntil,
+            "focus": self.focus,
+            "agent": self.agent,
             "updated": self.updated,
             "materials": self.materials or [],
             "blocked_by": self.blocked_by or [],
@@ -305,6 +326,8 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
                 ice_e=_to_int(fm.get("ice_e"), 5),
                 deadline=_date_str(fm.get("deadline")),
                 waitUntil=_date_str(fm.get("waitUntil")),
+                focus=parse_focus(fm.get("focus")),
+                agent=normalise_agent(fm.get("agent")),
                 updated=_date_str(fm.get("updated")),
                 materials=_list_str(fm.get("materials")),
                 blocked_by=_list_str(fm.get("blocked_by")),
@@ -355,7 +378,7 @@ def compute_stale_areas(
     for area in areas:
         slugs = set(area.get("projects") or [])
         area_tasks = [t for t in active_tasks if t.slug in slugs]
-        open_in_area = [t for t in area_tasks if t.status != "Done"]
+        open_in_area = [t for t in area_tasks if not is_terminal(t.status)]
         last_act = compute_last_task_activity(area_tasks)
         if not open_in_area and not last_act:
             continue
@@ -384,18 +407,40 @@ def build_snapshot(vault: Path) -> dict:
 
     open_count_by_slug: dict[str, int] = {}
     for t in active_tasks:
-        if t.status != "Done":
+        if not is_terminal(t.status):
             open_count_by_slug[t.slug] = open_count_by_slug.get(t.slug, 0) + 1
     for p in projects:
         p.open_tasks_count = open_count_by_slug.get(p.slug, 0)
 
-    open_tasks = [t for t in active_tasks if t.status != "Done"]
+    open_tasks = [t for t in active_tasks if not is_terminal(t.status)]
     top_priority_today, top_priority = select_top_priority(open_tasks, today)
+
+    focus_week = current_focus_week(today)
+    focused = [t for t in open_tasks if is_focus_current(t.focus, today)]
+    suggestion_pool = [
+        t
+        for t in open_tasks
+        if not is_focus_current(t.focus, today) and is_queue_eligible(t, today)
+    ]
+    focus_suggestions = select_focus_suggestions(
+        suggestion_pool,
+        today=today,
+        current_focus_count=len(focused),
+    )
 
     week_ago = today - timedelta(days=7)
     recently_done = []
+    recently_cancelled = []
     for t in archived + active_tasks:
-        if t.status != "Done":
+        if t.status == STATUS_CANCELLED:
+            if t.updated:
+                try:
+                    if date.fromisoformat(t.updated[:10]) >= today - timedelta(days=7):
+                        recently_cancelled.append(t)
+                except ValueError:
+                    pass
+            continue
+        if t.status != STATUS_DONE:
             continue
         if not t.updated:
             continue
@@ -406,6 +451,7 @@ def build_snapshot(vault: Path) -> dict:
         if d >= week_ago:
             recently_done.append(t)
     recently_done.sort(key=lambda t: t.updated or "", reverse=True)
+    recently_cancelled.sort(key=lambda t: t.updated or "", reverse=True)
 
     upcoming = []
     soon = today + timedelta(days=7)
@@ -420,7 +466,7 @@ def build_snapshot(vault: Path) -> dict:
             upcoming.append(t)
     upcoming.sort(key=lambda t: t.deadline or "")
 
-    recurring_done = [t for t in active_tasks if t.is_recurring and t.status == "Done"]
+    recurring_done = [t for t in active_tasks if t.is_recurring and t.status == STATUS_DONE]
     blocked = {t.id: t.blocked_by for t in active_tasks if t.blocked_by}
 
     stale_hubs: list[dict] = []
@@ -465,25 +511,37 @@ def build_snapshot(vault: Path) -> dict:
             "active_projects": sum(1 for p in projects if p.status in ("active", "")),
             "total_open_tasks": len(open_tasks),
             "recently_done_7d": len(recently_done),
+            "recently_cancelled_7d": len(recently_cancelled),
+            "focus_week": focus_week,
+            "focus_count": len(focused),
+            "focus_limit": FOCUS_LIMIT,
             "upcoming_deadlines_7d": len(upcoming),
             "recurring_pending_rotation": len(recurring_done),
         },
         "projects": [p.to_dict() for p in projects],
         "areas": areas,
         "priority_rules": {
+            "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
             "base": "priority_score = (ice_i * ice_c) / ice_e",
             "today_score": "priority_score + urgency_bonus(deadline)",
             "urgency_bonus": {
-                "overdue": 35,
-                "deadline_today": 30,
-                "deadline_tomorrow": 15,
+                "overdue": URGENCY_BONUS_OVERDUE,
+                "deadline_today": URGENCY_BONUS_TODAY,
+                "deadline_tomorrow": URGENCY_BONUS_TOMORROW,
             },
-            "top_eligible": "ASAP always; Next only when no open ASAP; never Waiting/Backlog",
+            "top_eligible": (
+                f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
+                "nikdy Waiting/Backlog/Done/Cancelled"
+            ),
+            "focus_owner": "člověk — žádný cron nesmí zapisovat do focus",
             "sort": "today_score DESC",
         },
+        "focus_week": focus_week,
+        "focus_suggestions": [t.to_dict() for t in focus_suggestions],
         "top_priority_today": top_priority_today,
         "top_priority": top_priority,
         "recently_done": [t.to_dict() for t in recently_done[:25]],
+        "recently_cancelled": [t.to_dict() for t in recently_cancelled[:25]],
         "upcoming_deadlines": [t.to_dict() for t in upcoming],
         "recurring_pending": [t.to_dict() for t in recurring_done],
         "blocked_by_graph": blocked,

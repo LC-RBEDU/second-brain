@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""F6.2: Auto-flip task status Waiting → ASAP when waitUntil <= today.
+"""Auto-flip task status Waiting → Next when waitUntil <= today.
 
 Scans 02-PROJEKTY/<slug>/tasks/*.md for `status: Waiting` && `waitUntil <= today`.
-Patches frontmatter: status → ASAP, waitUntil → empty, updated → today; appends log.
+Patches frontmatter: status → Next, waitUntil → empty, updated → today; appends log.
 CAS-aware.
+
+A woken task returns to the queue, not to the top of it — waking up is not the
+same as being a priority. Whether it belongs in this week's work is decided by
+`focus`, which no cron may write.
 
 waitUntil is only valid for status Waiting; see lifecycle_waituntil_hygiene.py for
 tasks flipped manually without clearing the field.
 
-Idempotent.
+Idempotent. Was `lifecycle_waiting_to_asap.py` before the priority model v2.
 """
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from focus import STATUS_NEXT, STATUS_WAITING  # noqa: E402
 from task_io import iter_active_tasks, update_task, parse_iso_date  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -41,31 +46,31 @@ def main() -> None:
     skipped = 0
 
     for task in iter_active_tasks(vault):
-        if task.status != "Waiting":
+        if task.status != STATUS_WAITING:
             continue
         wu = parse_iso_date(task.frontmatter.get("waitUntil"))
         if wu is None or wu > today:
             continue
 
         log = (
-            f"- {today_str}: Waiting → ASAP (waitUntil={wu.isoformat()} expired, "
-            f"waitUntil cleared). [lifecycle_waiting_to_asap]\n"
+            f"- {today_str}: Waiting → {STATUS_NEXT} (waitUntil={wu.isoformat()} expired, "
+            f"waitUntil cleared). [lifecycle_waiting_to_next]\n"
         )
         ok = update_task(
             vault,
             task,
-            new_status="ASAP",
+            new_status=STATUS_NEXT,
             new_frontmatter={"waitUntil": None},
             today_str=today_str,
             body_append=log,
         )
         if ok:
             flipped += 1
-            print(f"  ✓ {task.rel_path} Waiting → ASAP (was waiting until {wu.isoformat()})")
+            print(f"  ✓ {task.rel_path} Waiting → {STATUS_NEXT} (waited until {wu.isoformat()})")
         else:
             skipped += 1
 
-    print(f"lifecycle_waiting_to_asap: flipped={flipped}, conflicts/skipped={skipped}")
+    print(f"lifecycle_waiting_to_next: flipped={flipped}, conflicts/skipped={skipped}")
 
 
 if __name__ == "__main__":
