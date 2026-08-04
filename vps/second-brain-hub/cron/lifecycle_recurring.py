@@ -15,6 +15,7 @@ Frontmatter:
       interval: 42                     # for every-n-days
       weekday: thursday                # for weekly | weekday | last-weekday-before-day
       day: 15                          # for last-weekday-before-day (cutoff day of month)
+      lead_days: 15                    # optional, default 1 — wake this many days before deadline
       reset_body_sections: ["## Operativní kroky", "## Poznámky / log"]
       preserve_body_sections: ["## Kontext"]
     extra_module: edu_news             # optional, calls lifecycle_extra_<module>.py clear
@@ -26,6 +27,11 @@ which is held on the 15th of every month). The next deadline is the
 largest date in the next month where that anchor has not yet passed,
 restricted to (a) the configured weekday and (b) day-of-month ≤ (day - 1).
 
+`lead_days` covers rituals where doing the thing takes longer than a day —
+booking a dental hygienist takes weeks, so waking the task the day before the
+deadline guarantees it slips. The default of 1 keeps the old behaviour for
+rituals that are a single action (upload the newsletter, issue the invoice).
+
 Workflow per Done recurring task:
 1. Move current file (e.g. `<ID> — <Title>.md`) to
    `07-ARCHIV/tasks-done/<slug>/<ID>-<YYYY-MM-DD>.md` (rotation archive
@@ -34,7 +40,7 @@ Workflow per Done recurring task:
 3. Create new instance at the original `task.rel_path` with:
    - status: Waiting (or Next if waitUntil already passed); `focus` is cleared —
      a ritual does not inherit last cycle's focus week and never competes for it
-   - waitUntil = next_deadline - 1 day
+   - waitUntil = next_deadline - lead_days (default 1)
    - deadline = next_deadline
    - reset body sections (Operativní kroky, Poznámky / log) cleared, preserved sections kept
    - frontmatter `created` updated, `updated` = today
@@ -78,6 +84,21 @@ WEEKDAY_MAP = {
     "saturday": 5, "sat": 5,
     "sunday": 6, "sun": 6,
 }
+
+
+def resolve_lead_days(rec: dict) -> int:
+    """How many days before the deadline the ritual should wake up.
+
+    Defaults to 1 — the old behaviour, right for rituals that are a single
+    action. Anything that needs booking or a reply from someone else should
+    set `lead_days` explicitly, otherwise the reminder arrives too late to
+    act on and the cycle drifts.
+    """
+    try:
+        lead = int(rec.get("lead_days") or 1)
+    except (ValueError, TypeError):
+        return 1
+    return max(lead, 1)
 
 
 def compute_next_deadline(rec: dict, last_deadline: Optional[date], today: date) -> date:
@@ -269,7 +290,7 @@ def main() -> None:
         # 2. Compute next deadline
         last_dl = parse_iso_date(task.frontmatter.get("deadline"))
         next_dl = compute_next_deadline(rec, last_dl, today)
-        next_wu = next_dl - timedelta(days=1)
+        next_wu = next_dl - timedelta(days=resolve_lead_days(rec))
 
         # 3. Reset body
         reset_sections = rec.get("reset_body_sections") or [

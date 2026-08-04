@@ -157,3 +157,41 @@ def test_last_weekday_before_day_in_month_returns_none_for_day_lte_1():
     """day must be ≥ 2 (else cutoff < 1 — no valid date)."""
     assert mod._last_weekday_before_day_in_month(2026, 6, 1, 4) is None
     assert mod._last_weekday_before_day_in_month(2026, 6, 0, 4) is None
+
+
+# ---------------------------------------------------------------------------
+# lead_days — how far ahead the ritual wakes up
+# ---------------------------------------------------------------------------
+
+
+def test_lead_days_defaults_to_one():
+    """Rituals that are a single action keep the original behaviour."""
+    assert mod.resolve_lead_days({"frequency": "monthly"}) == 1
+    assert mod.resolve_lead_days({}) == 1
+
+
+def test_lead_days_honours_explicit_value():
+    assert mod.resolve_lead_days({"lead_days": 15}) == 15
+    assert mod.resolve_lead_days({"lead_days": "15"}) == 15
+
+
+def test_lead_days_rejects_nonsense():
+    """Zero or negative would put waitUntil at or after the deadline, so the
+    task would wake up already late. Garbage falls back to the default."""
+    assert mod.resolve_lead_days({"lead_days": 0}) == 1
+    assert mod.resolve_lead_days({"lead_days": -5}) == 1
+    assert mod.resolve_lead_days({"lead_days": "brzy"}) == 1
+    assert mod.resolve_lead_days({"lead_days": None}) == 1
+
+
+def test_lead_days_gives_room_to_book():
+    """OS6 (dental hygiene): visit 15. 6., next due 15. 12., booking takes
+    weeks — so the reminder has to land at the end of November, not on the 14th."""
+    from datetime import timedelta
+
+    rec = {"frequency": "every-n-days", "interval": 182, "lead_days": 15}
+    visit = date(2026, 6, 15)
+    next_dl = mod.compute_next_deadline(rec, last_deadline=visit, today=visit)
+    wait_until = next_dl - timedelta(days=mod.resolve_lead_days(rec))
+    assert next_dl == date(2026, 12, 14)
+    assert wait_until == date(2026, 11, 29)
