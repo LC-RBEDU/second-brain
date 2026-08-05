@@ -45,7 +45,19 @@ Detaily: vault `00-System/Templates/agenda-system.md`.
 | Větev | **`main`** |
 | Base directory | `vps/second-brain-hub` |
 | Host | **coolify-dev** |
+| GitHub App (source) | **`second-brain-mrluc`** (App ID 4494540, účet LC-RBEDU) — ne `rb-universe-development` |
 | Veřejná doména | **žádná** (cron-only) |
+
+Push do `main` spouští deploy přes webhook této App. Ověření po pushi:
+
+```bash
+# poslední deploy — musí být is_webhook=t a commit = HEAD
+ssh coolify-dev 'docker exec coolify-db psql -U coolify -t -A -F"|" -c \
+  "select created_at, status, is_webhook, left(commit,8) from application_deployment_queues where application_id='\''11'\'' order by created_at desc limit 1"'
+
+# běžící image tag = commit SHA
+ssh coolify-dev 'docker ps --filter name=140b40c7afe90d0827d8489a --format "{{.Image}}"'
+```
 
 ```bash
 git add vps/second-brain-hub/

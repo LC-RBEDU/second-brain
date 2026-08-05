@@ -49,11 +49,16 @@ def default_wait_until(today: date, *, days: int = DEFAULT_WAIT_UNTIL_DAYS) -> d
 
 
 def _frontmatter(task: Any) -> dict[str, Any]:
-    return task.frontmatter if hasattr(task, "frontmatter") else task
+    if hasattr(task, "to_dict"):
+        return task.to_dict()
+    fm = task.frontmatter if hasattr(task, "frontmatter") else task
+    return fm if isinstance(fm, dict) else {}
 
 
 def count_focused(tasks: list[Any], today: date) -> int:
-    return sum(1 for t in tasks if is_focus_current(_frontmatter(t).get("focus"), today))
+    return sum(
+        1 for t in tasks if is_focus_current(_frontmatter(t).get("focus"), today)
+    )
 
 
 def select_focus_suggestions(
