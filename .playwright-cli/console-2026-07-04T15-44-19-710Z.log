@@ -1,0 +1,1 @@
+[    2774ms] [WARNING] [tiptap warn]: Duplicate extension names found: ['paragraph', 'tableCell']. This can lead to issues. @ https://web-static.plaud.ai/web3/js/vendors-initial~sentry~core~10~5~0-node.ClHXK2Iw.chunk.js:16

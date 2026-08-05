@@ -63,6 +63,7 @@ from today_priority import (  # noqa: E402
     is_queue_eligible,
     select_top_priority,
 )
+from task_identity import check_task_identity  # noqa: E402
 from hub_state import (  # noqa: E402
     STALE_AREA_WEEKS,
     STALE_NARRATIVE_DAYS,
@@ -485,6 +486,8 @@ def build_snapshot(vault: Path) -> dict:
 
     stale_areas = compute_stale_areas(areas, active_tasks, today)
 
+    identity_issues = check_task_identity(active_tasks + archived)
+
     charter_warnings: list[str] = []
     for hub in sorted((vault / "02-PROJEKTY").glob("*.md")):
         if hub.name.startswith("_"):
@@ -554,6 +557,8 @@ def build_snapshot(vault: Path) -> dict:
             "stale_areas_count": len(stale_areas),
             "charter_warnings": charter_warnings,
             "charter_warnings_count": len(charter_warnings),
+            "task_identity_issues": identity_issues,
+            "task_identity_issues_count": len(identity_issues),
         },
         "_reference_index": ref_index,
     }

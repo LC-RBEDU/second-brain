@@ -44,6 +44,7 @@ from today_priority import (  # noqa: E402
     is_queue_eligible,
     select_top_priority,
 )
+from task_identity import check_task_identity  # noqa: E402
 from hub_state import (  # noqa: E402
     STALE_AREA_WEEKS,
     STALE_NARRATIVE_DAYS,

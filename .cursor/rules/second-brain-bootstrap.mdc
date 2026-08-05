@@ -52,7 +52,8 @@ alwaysApply: true
 - **Wikilink na hub charter v body**: vždy `[[<HubFilename>]]` (např. `[[M&A Odyssey]]`, `[[RB Universe]]`). Display = lidský název, target = charter. Bare `[[<slug>]]` v body NEPOUŽÍVAT — kolize s folderem `02-PROJEKTY/<slug>/`. Frontmatter (`project:`, `materials:`) bare alias zůstává — Bases query si poradí.
 - **Pravidlo**: pokud existuje dokument zastřešující oblast (hub, area, memory note), odkazuj na něj, **ne na folder** se zdroji.
 - **Filename normalization**: `<ID>-<slugify(title)>.md` pro běžné tasky, `<ID>.md` (bez suffix) pro recurring.
-- **ID**: `<slug-prefix><N>` per projekt, sekvence z `migration-mapping.json`.
+- **ID**: `<slug-prefix><N>` per projekt, prefix z `migration-mapping.json`. **Nové ID nikdy nehádej — `python3 scripts/next_task_id.py <slug>`.** Ruční odhad vyrobil osm ID, pod kterými byly dva různé úkoly.
+- **Úkol se ruší, ne maže**: `status: Cancelled` + archiv. Smazaný soubor své ID neubrání a `max+1` ho přidělí znovu.
 - **CAS write**: každý cron job nese `expect_mtime` přes `DriveVault`, jinak konflikt.
 
 ### Zdroje dat (projekty)
