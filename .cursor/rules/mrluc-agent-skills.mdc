@@ -15,4 +15,4 @@ Když jde o **Agent Skills** pro MrLUC / Second Brain (nový skill, úprava SKIL
   ```
 - **Nepoužívat:** `.cursor/skills/` v repu (zrušeno), `~/.claude/skills/` (Claude se nepoužívá), ruční trojcestný sync.
 
-Související skills: `agenda-capture`, `agenda-triage`, `agenda-co-ted`, `agenda-work`, `agenda-analyze`, `agenda-proces`, `agenda-weekly-review`, `agenda-priority-review`, `agenda-retro`, `agenda-status-update`.
+Související skills: `agenda-capture`, `agenda-cursor-inbox`, `agenda-triage`, `agenda-co-ted`, `agenda-work`, `agenda-analyze`, `agenda-proces`, `agenda-edu-news`, `agenda-weekly-review`, `agenda-priority-review`, `agenda-lessons`, `agenda-status-update`.

@@ -94,17 +94,20 @@ def ceiling_for_prefix(prefix: str) -> tuple[int, str]:
             if m and m.group(1) == prefix:
                 consider(int(m.group(2)), f"frontmatter {path.name}")
 
-    # Mentions anywhere — catches IDs whose task file was deleted. Deliberately
-    # broad: skipping a number costs nothing (IDs are opaque), handing out a
-    # number that still means something else costs an afternoon of link repair.
-    mention_re = re.compile(rf"\b{re.escape(prefix)}(\d+)\b")
+    # Wikilink targets only — catches IDs whose task file was deleted without
+    # treating bare prose (e.g. n8n workflow "ES2027 Ti.to") as a task ID.
+    # Skipping a number costs nothing; inventing from a year-slug costs an
+    # afternoon of link repair the other way.
+    mention_re = re.compile(
+        rf"\[\[{re.escape(prefix)}(\d+)(?:[\s|\]—-]|\s+[—-])"
+    )
     for path in VAULT.rglob("*.md"):
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
         for m in mention_re.finditer(text):
-            consider(int(m.group(1)), f"zmínka v {path.relative_to(VAULT)}")
+            consider(int(m.group(1)), f"wikilink v {path.relative_to(VAULT)}")
 
     pending = VAULT / PENDING_REL
     if pending.is_dir():

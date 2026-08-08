@@ -102,15 +102,19 @@ git push origin main
 |-----|-------|-------|
 | `triage_llm_run.py` | 7:00, 14:00, 20:00 | 7:00 |
 | `inbox_inventory.py` | Po 6:55 | — |
-| `lifecycle_extra_edu_news.py` | 7:10 | 7:10 |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
-| `retro_draft.py` | — | Ne 20:10 |
+
+EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.
 
 ### Schválení triáže
 
 V Cursoru: `schval pending triáž` / `apply batch` (skill `agenda-triage`, mode PENDING).
 
-### Manuální EDU news reset (po nahrání videa)
+### EDU news (OPS2)
+
+1. V Cursoru: „připrav EDU news“ → skill `agenda-edu-news` (návrh → schválit → zápis do OPS2).
+2. Nahrát video.
+3. Volitelně vyčistit marker:
 
 ```bash
 GOOGLE_DRIVE_OAUTH_JSON="$(cat ~/.config/mrluc/oauth_creds.json)" \
@@ -134,7 +138,7 @@ Prioritu nenese status, ale `focus: YYYY-Www` (ISO týden, max 5). Nastavuje ho 
 - Filename `<ID>.md` (bez slugify suffix), 1 aktivní instance
 - `recurring:` blok ve frontmatteru (frequency, weekday/interval, reset_body_sections)
 - Po `Done` → `lifecycle_recurring.py` archivuje + vytvoří next instance
-- `extra_module: edu_news` — volá `lifecycle_extra_edu_news.py` při refresh / reset
+- `extra_module: edu_news` — marker helper `lifecycle_extra_edu_news.py --reset` (návrh témat = skill `agenda-edu-news`)
 
 ### CAS (compare-and-swap)
 Každý zápis nese `expect_mtime`. Pokud user mezitím upravil v Obsidianu, cron se přeskočí (warning v logu).

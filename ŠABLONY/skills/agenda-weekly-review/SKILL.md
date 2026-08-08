@@ -11,7 +11,7 @@ description: "Use when user asks for týdenní shrnutí, weekly review, schvál 
 
 - "Týdenní shrnutí" / "weekly review" / "schval weekly draft"
 - Po cronu: soubor `OBSIDIAN/00-System/weekly/YYYY-Www-draft.md` existuje
-- Neděle večer — hned po otevření draftu (před nebo po `agenda-retro`)
+- Neděle večer — hned po otevření draftu
 
 ## Cesty (vault, v2)
 

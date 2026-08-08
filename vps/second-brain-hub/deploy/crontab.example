@@ -15,12 +15,11 @@ REPO=/opt/second-brain-hub
 0 7,14,20 * * 1-5  cd $REPO && python3 cron/triage_run.py >> /var/log/sb-triage.log 2>&1
 0 7 * * 0,6        cd $REPO && python3 cron/triage_run.py >> /var/log/sb-triage.log 2>&1
 
-# EDU news (every workday)
-10 7 * * *    cd $REPO && python3 cron/lifecycle_extra_edu_news.py >> /var/log/sb-edu.log 2>&1
+# EDU news — topics via Cursor skill `agenda-edu-news` (not cron)
+# Optional: cd $REPO && python3 cron/lifecycle_extra_edu_news.py --reset
 
-# Sunday weekly
+# Sunday weekly (retro_draft removed 2026-08-08 → agenda-lessons)
 0 20 * * 0    cd $REPO && python3 cron/weekly_summary_draft.py >> /var/log/sb-weekly.log 2>&1
-10 20 * * 0   cd $REPO && python3 cron/retro_draft.py >> /var/log/sb-retro.log 2>&1
 
 # Agent context (every 15 min during workhours)
 */15 7-22 * * *   cd $REPO && python3 cron/build_agent_context.py >> /var/log/sb-agent-context.log 2>&1

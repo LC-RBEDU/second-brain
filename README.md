@@ -84,9 +84,9 @@ Po inventuře doplň `notebooklm:` v hub frontmatteru (např. Allfred).
 | `lifecycle_hub_state.py` | every 2h :07 | `## Stav (auto)` v project hubech + staleness |
 | `triage_llm_run.py` | Po-Pa 7/14/20, So-Ne 7 | LLM triáž → Triage-Pending/*.json (`CURSOR_API_KEY` + `cursor-agent`) |
 | `inbox_inventory.py` | Po 6:55 | Log nezpracovaného INBOXu (bez návrhů) |
-| `lifecycle_extra_edu_news.py` | denně 07:10 | OPS2 marker block refresh (top 5 témat) |
+| `lifecycle_extra_edu_news.py` | on-demand `--reset` | OPS2 marker clear (návrh témat = skill `agenda-edu-news`) |
 | `build_agent_context.py` (VPS) | každých 15 min v workhours | agent-context.json refresh |
-| `weekly_summary_draft.py` + `retro_draft.py` | Ne 20:00 | týdenní + retro draft |
+| `weekly_summary_draft.py` | Ne 20:00 | týdenní draft (retro zrušeno → `agenda-lessons`) |
 
 **Deploy LLM triáže:** nastav Coolify secret `CURSOR_API_KEY` + nainstaluj `cursor-agent` CLI v cron kontejneru. Bez klíče cron jen zaloguje inbox a triáž běží manuálně (`projeď inbox`).
 

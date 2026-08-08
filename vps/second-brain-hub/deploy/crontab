@@ -39,15 +39,13 @@ TZ=Europe/Prague
 # Fallback inventory (Po 6:55 — log only, no proposals)
 55 6 * * 1-5 /usr/local/bin/python3 /app/cron/inbox_inventory.py >> /var/log/second-brain/triage.log 2>&1
 
-# === EDU NEWS (recurring extra) ===
-# Po-Pa: edu news 7:10 (top kandidáti tématu pro OPS2 recurring task)
-10 7 * * 1-5 /usr/local/bin/python3 /app/cron/lifecycle_extra_edu_news.py >> /var/log/second-brain/edu.log 2>&1
-# So-Ne: jen ranní běh
-10 7 * * 0,6 /usr/local/bin/python3 /app/cron/lifecycle_extra_edu_news.py >> /var/log/second-brain/edu.log 2>&1
+# === EDU NEWS ===
+# Témata připravuje Cursor skill `agenda-edu-news` on-demand (ne cron).
+# Volitelný reset markeru po nahrání: python3 cron/lifecycle_extra_edu_news.py --reset
+# (denní 7:10 job zrušen 2026-08-06)
 
-# === WEEKLY / RETRO (Sunday evening) ===
+# === WEEKLY (Sunday evening) — retro_draft zrušen 2026-08-08 (→ agenda-lessons) ===
 0 20 * * 0 /usr/local/bin/python3 /app/cron/weekly_summary_draft.py >> /var/log/second-brain/weekly.log 2>&1
-10 20 * * 0 /usr/local/bin/python3 /app/cron/retro_draft.py >> /var/log/second-brain/retro.log 2>&1
 
 # === AGENT CONTEXT (F8) ===
 # Every 15 min during workday — refresh agent-context.json

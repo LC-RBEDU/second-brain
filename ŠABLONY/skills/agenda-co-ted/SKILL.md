@@ -22,6 +22,7 @@ V2 priority pořadí:
 1. **`OBSIDIAN/00-System/agent-context.json`** (PRIMARY) — `top_priority_today` (TOP dnes, max 5), `top_priority` (max 15), `recently_done`, `upcoming_deadlines`, `recurring_pending`, `blocked_by_graph`, `priority_rules`. Pokud `generated_at` je starší než 24 h, spusť `python3 scripts/build_agent_context.py` před analýzou.
 2. Fallback: parsuj všechny `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md` frontmattery + aplikuj stejná pravidla jako `vps/second-brain-hub/lib/today_priority.py`
 3. Backup: `OBSIDIAN/Dashboard.md` Bases embedy (aproximace — SSOT je agent-context)
+4. **Lessons pending:** pokud `00-System/Lessons-Pending/*.md` (ne `.gitkeep`) není prázdný → v dashboardu řádek `Lessons ke schválení: N` (+ **stale** pokud mtime > 7 dní). Příkaz: „schval lessons“ → skill `agenda-lessons`.
 
 ## TOP priority dnes (SSOT: `top_priority_today`)
 
@@ -76,7 +77,9 @@ CO TEĎ — DD/MM/YYYY
   ...
 
 ═══════════════════════════════════════════════
-Příkazy: ukliď | detail <slug> | revize priorit
+📝 Lessons ke schválení: N (nebo vynech řádek) — „schval lessons“
+═══════════════════════════════════════════════
+Příkazy: ukliď | detail <slug> | revize priorit | schval lessons
 ```
 
 ## Subcommands

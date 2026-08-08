@@ -18,7 +18,7 @@ Frontmatter:
       lead_days: 15                    # optional, default 1 — wake this many days before deadline
       reset_body_sections: ["## Operativní kroky", "## Poznámky / log"]
       preserve_body_sections: ["## Kontext"]
-    extra_module: edu_news             # optional, calls lifecycle_extra_<module>.py clear
+      extra_module: edu_news             # optional — OPS2: --reset only; topics = skill agenda-edu-news
 
 The `last-weekday-before-day` frequency is useful for monthly rituals that
 must land on a specific weekday before a fixed monthly anchor (e.g. CFO

@@ -9,6 +9,29 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 CTX = REPO / "OBSIDIAN" / "00-System" / "agent-context.json"
+LESSONS_PENDING = REPO / "OBSIDIAN" / "00-System" / "Lessons-Pending"
+_STALE_PENDING_DAYS = 7
+
+
+def _lessons_pending_line() -> str | None:
+    if not LESSONS_PENDING.is_dir():
+        return None
+    batches = [
+        p
+        for p in LESSONS_PENDING.iterdir()
+        if p.is_file() and p.suffix == ".md" and p.name != ".gitkeep"
+    ]
+    if not batches:
+        return None
+    import time
+
+    now = time.time()
+    stale = any((now - p.stat().st_mtime) > _STALE_PENDING_DAYS * 86400 for p in batches)
+    flag = " **stale**" if stale else ""
+    return (
+        f"- Lessons ke schválení: **{len(batches)}**{flag} "
+        f"(řekni „schval lessons“)"
+    )
 
 
 def main() -> int:
@@ -31,6 +54,9 @@ def main() -> int:
         f"- open tasks: {stats.get('total_open_tasks', '?')}",
         f"- upcoming 7d: {stats.get('upcoming_deadlines_7d', '?')}",
     ]
+    lp = _lessons_pending_line()
+    if lp:
+        lines.append(lp)
     lines.append("")
     if stale:
         lines.append(f"**Zastaralé chartery ({len(stale)}):**")

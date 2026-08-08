@@ -29,6 +29,7 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 5. Tasky `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md`
 6. Outputs + Materials (sidecar `type: attachment` s `## Extrahovaný text`)
 7. **MCP enrichment (povinný):** `python3 scripts/build_sources_routing.py --check` → regeneruj pokud stale; načti `sources-routing.json`; pro každý hub `sources:` tag volej MCP/CLI dle routes
+8. **Lessons recall (max 3):** načti Active `00-System/Lessons/LL-*.md` s `agent_recall: true`, kde `projects` obsahuje hub projektu NEBO `topics` overlap s tématem. Stručně cituj v briefingu (Situace 1 řádek + Důsledek). Skill detail: `agenda-lessons`.
 
 Pokud slug není jasný → zobraz seznam aktivních projektů z `00-System/Index.md` (Bases embed) a ptej se.
 
@@ -63,6 +64,9 @@ Status: <active/paused> | Area: <area>
   • architektura-rb-universe.md (2026-04-20)
 
 💡 BACKLOG: <N> tasků se status: Backlog
+
+📚 LESSONS (max 3, z 00-System/Lessons/)
+  • [tech] LL-… — title — příště: …
 ═══════════════════════════════════════════════
 Co chceš dělat?
   [N] Nový výstup

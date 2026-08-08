@@ -1,0 +1,41 @@
+---
+description: Lessons learned — OHIO assist nabídka + recall; ne weekly ritual
+alwaysApply: true
+---
+
+# Lessons learned (assist)
+
+Atomická poučení žijí v `OBSIDIAN/00-System/Lessons/`. Skill: `agenda-lessons`.
+
+## Session-end nabídka (povinná při relevantní práci)
+
+Na konci turnu nabídni **1–3** kandidáty (ne full file), když nastalo alespoň jedno z:
+
+- oprava bugu / incident / root cause
+- korekce od uživatele („tohle ne, dělej X“)
+- architektonické rozhodnutí s trvalým dopadem
+- změna konvence / skillu / n8n / Bases / triage
+
+Formát:
+
+```
+**Lessons? (assist)** — odpověz `ulož 1,3` / `uprav 2: …` / `drop`
+1. `[tech]` … → příště: …
+```
+
+- Bez odpovědi **nezapisuj**.
+- Max 1 nabídka na session, pokud user už `drop`.
+- Explicitní triggery: „ulož lessons“, „schval lessons“, „co jsme se naučili“.
+
+## Pending dluh
+
+Otevřené `00-System/Lessons-Pending/*` připomínej přes session_start snapshot a při „co teď“ (`agenda-co-ted`).
+
+## Recall
+
+Při práci na projektu (`agenda-work`): načti max 3 Active lessons (`agent_recall: true`) matching `projects` / `topics`.
+
+## Co nedělat
+
+- Weekly lessons cron / tiché drafty bez push (past weekly retro — zrušeno).
+- Lesson po každé drobné editaci.

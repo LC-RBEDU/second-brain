@@ -112,7 +112,7 @@ python3 "scripts/build_agent_context.py"
 - every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech)
 - Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
 - Po 6:55 inbox_inventory (log only)
-- 7:10 lifecycle_extra_edu_news (OPS2 marker block refresh)
+- EDU news: skill `agenda-edu-news` on-demand (cron auto-refresh zrušen; `--reset` volitelně)
 
 ## Skills
 
@@ -126,7 +126,7 @@ python3 "scripts/build_agent_context.py"
 | `agenda-priority-review` | "přehodnoť ICE", "revize priorit" |
 | `agenda-analyze` | "analyzuj", "rozbor materiálů" |
 | `agenda-weekly-review` | "weekly review", "schvál draft" |
-| `agenda-retro` | "retro", "spolupráce" |
+| `agenda-lessons` | "ulož lessons", "schval lessons", "co jsme se naučili" |
 | `agenda-proces` | "proces", "procesní mapa" |
 
 ## Co (ne)dělat
@@ -136,6 +136,7 @@ python3 "scripts/build_agent_context.py"
 - **NE** zapisuj do `OBSIDIAN/00-System/dashboard-data.json` (legacy v1, nahrazeno `agent-context.json`).
 - **NE** nastavuj `focus` sám — nabídni kandidáty a nech volbu na uživateli.
 - **NE** označuj zrušený úkol jako `Done` — od 4. 8. 2026 je na to `Cancelled`.
+- **NE** používej **dev RB Universe** (`dev-universe`, `api.dev-universe`) pro pracovní data — jen produkce + MCP `user-rb-universe`; viz `rb-universe-production-data.mdc`.
 - **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
 
 ## Související

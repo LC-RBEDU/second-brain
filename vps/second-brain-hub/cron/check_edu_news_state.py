@@ -5,8 +5,9 @@ Detects:
 1. Legacy marker block `<!-- edu-news-topics:start -->` still in Operations.md hub
    (should have been removed in F7.4 migration).
 2. Multiple OPS2 instances in active or archive (recurring rotation invariant violated).
-3. OPS2 task body missing `<!-- edu-news-topics:start -->` marker (refresh would
-   silently append at end on each run).
+3. Active OPS2 task body missing `<!-- edu-news-topics:start -->` marker.
+
+Topic generation lives in Cursor skill `agenda-edu-news` (not cron refresh).
 
 Exits non-zero when drift detected (so cron logs it as failure).
 """
@@ -22,11 +23,19 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+from task_io import iter_active_tasks  # noqa: E402
 
-OPS2_PATH = "02-PROJEKTY/operations/tasks/OPS2.md"
+OPS2_ID = "OPS2"
 OPS2_ARCHIVE_DIR = "07-ARCHIV/tasks-done/operations"
 OPERATIONS_HUB = "02-PROJEKTY/Operations.md"
 MARKER_RE = re.compile(r"<!-- edu-news-topics:start -->", re.DOTALL)
+
+
+def find_ops2_path(vault: DriveVault) -> str | None:
+    for task in iter_active_tasks(vault):
+        if task.task_id == OPS2_ID and task.slug == "operations":
+            return task.rel_path
+    return None
 
 
 def main() -> int:
@@ -45,14 +54,19 @@ def main() -> int:
     except DriveNotFoundError:
         pass
 
-    try:
-        ops2_text, _ = vault.read_text(OPS2_PATH)
-        if not MARKER_RE.search(ops2_text):
-            print(f"DRIFT: {OPS2_PATH} missing edu-news marker block — refresh will append on each run")
-            issues += 1
-    except DriveNotFoundError:
-        print(f"DRIFT: {OPS2_PATH} not found — F7.4 migration incomplete or task archived")
+    path = find_ops2_path(vault)
+    if not path:
+        print(f"DRIFT: active {OPS2_ID} not found — F7.4 migration incomplete or task archived")
         issues += 1
+    else:
+        try:
+            ops2_text, _ = vault.read_text(path)
+            if not MARKER_RE.search(ops2_text):
+                print(f"DRIFT: {path} missing edu-news marker block")
+                issues += 1
+        except DriveNotFoundError:
+            print(f"DRIFT: {path} not found")
+            issues += 1
 
     try:
         archive_files = vault.list_dir(OPS2_ARCHIVE_DIR, pattern="OPS2-*.md")

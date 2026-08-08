@@ -14,7 +14,7 @@
 | `agenda-proces` | Firemní procesy pro RB Universe Procesní architekt |
 | `agenda-weekly-review` | Neděle: schválení weekly draftu |
 | `agenda-priority-review` | Ad-hoc revize priorit / ICE |
-| `agenda-retro` | Neděle: meta retro systému |
+| `agenda-lessons` | Atomická poučení (assist) → `00-System/Lessons/` |
 
 ## Instalace (agent dělá sám)
 
@@ -38,6 +38,6 @@ Skript zároveň odstraní deprecated kopie v `~/.claude/skills/`.
 - *"Analyzuj tento PDF"* → `agenda-analyze`
 - *"Týdenní shrnutí"* → `agenda-weekly-review`
 - *"Revize priorit"* → `agenda-priority-review`
-- *"Retro"* → `agenda-retro`
+- *"Ulož lessons"* / *"schval lessons"* → `agenda-lessons`
 
 Pravidlo v repu: `.cursor/rules/mrluc-agent-skills.mdc` — úpravy a sync skills vždy dělá agent.
