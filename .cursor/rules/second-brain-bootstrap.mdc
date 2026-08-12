@@ -55,6 +55,8 @@ alwaysApply: true
 - **ID**: `<slug-prefix><N>` per projekt, prefix z `migration-mapping.json`. **Nové ID nikdy nehádej — `python3 scripts/next_task_id.py <slug>`.** Ruční odhad vyrobil osm ID, pod kterými byly dva různé úkoly.
 - **Úkol se ruší, ne maže**: `status: Cancelled` + archiv. Smazaný soubor své ID neubrání a `max+1` ho přidělí znovu.
 - **CAS write**: každý cron job nese `expect_mtime` přes `DriveVault`, jinak konflikt.
+- **Řazení `## Operativní kroky`**: nesplněné první, vzestupně podle čísla podkroku, pak splněné taktéž. `### ` podnadpisy uvnitř sekce jsou hranice — položky se přes ně nepřesouvají. Hlídá cron `lifecycle_sort_steps`; ručně `python3 scripts/sort_operational_steps.py`.
+- **Materiál ↔ task je obousměrný**: task nese `materials:`, materiál `related_tasks:` s **plným** názvem task souboru (`[[<ID> — <Title>]]`). Apostrof v názvu se v YAML zdvojuje (`''`), jinak rozbije frontmatter. Backfill: `python3 scripts/backfill_material_related_tasks.py`.
 
 ### Zdroje dat (projekty)
 - **`## Zdroje dat`** v hubu = SSOT konkrétních URL, složek Drive, dashboardů, vault cest.
@@ -109,7 +111,8 @@ python3 "scripts/build_agent_context.py"
 - every 2h :04 overdue_flag (**jeden** řádek při prvním překročení, pak ticho; eskalace po 14 dnech)
 - every 2h :05 archive_done_tasks (>90 dní v Done nebo Cancelled)
 - every 2h :06 lifecycle_recurring (Done + recurring → archive + nová instance)
-- every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech)
+- every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech — wikilinky + tabulky, markery `%%SB:STATE:…%%` Obsidian schová)
+- every 2h :08 lifecycle_sort_steps (řazení `## Operativní kroky`)
 - Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
 - Po 6:55 inbox_inventory (log only)
 - EDU news: skill `agenda-edu-news` on-demand (cron auto-refresh zrušen; `--reset` volitelně)

@@ -70,6 +70,8 @@ material_kind: clanek          # clanek | smlouva | schuzka | technicky | data |
 url: ""                        # pokud je externí URL primární
 projects:
   - "[[<slug>]]"               # bare alias, M:N
+related_tasks:
+  - "[[<ID> — <Title>]]"       # PLNÝ název task souboru; apostrof v názvu zdvoj ('')
 areas:
   - "[[03-AREAS/<oblast>]]"    # path-style, area mimo PROJEKTY
 title: "Analýza — <téma>"

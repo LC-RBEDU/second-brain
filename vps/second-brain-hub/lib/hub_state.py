@@ -1,9 +1,19 @@
 """Generate ## Stav (auto) marker blocks for project hub charters.
 
-Marker delimiters:
-  <!-- SB:STATE:BEGIN -->
+Marker delimiters use Obsidian comment syntax, which Obsidian hides in both
+Reading and Live Preview mode (unlike HTML comments, which stay visible while
+editing):
+
+  %%SB:STATE:BEGIN%%
   ...
-  <!-- SB:STATE:END -->
+  %%SB:STATE:END%%
+
+The markers are load-bearing — they tell the cron which slice of the charter it
+may overwrite. Legacy `<!-- SB:STATE:BEGIN -->` blocks are still recognised so
+old hubs get migrated on the next run.
+
+Task references are emitted as `[[<ID>]]` wikilinks; every task carries its ID
+in `aliases`, so the bare ID resolves to the task file.
 
 Staleness: hub frontmatter `updated` older than last task activity by
 STALE_NARRATIVE_DAYS → warning in block + entry in stale_hubs[].
@@ -18,18 +28,61 @@ from typing import Any, Protocol
 from focus import STATUS_DOING, STATUS_NEXT, is_focus_current, is_terminal
 from today_priority import today_score as calc_today_score
 
-STATE_BEGIN = "<!-- SB:STATE:BEGIN -->"
-STATE_END = "<!-- SB:STATE:END -->"
+STATE_BEGIN = "%%SB:STATE:BEGIN%%"
+STATE_END = "%%SB:STATE:END%%"
+LEGACY_STATE_BEGIN = "<!-- SB:STATE:BEGIN -->"
+LEGACY_STATE_END = "<!-- SB:STATE:END -->"
 STATE_SECTION = "## Stav (auto)"
 STALE_NARRATIVE_DAYS = 14
 STALE_AREA_WEEKS = 3
 
+_ANY_BEGIN = rf"(?:{re.escape(STATE_BEGIN)}|{re.escape(LEGACY_STATE_BEGIN)})"
+_ANY_END = rf"(?:{re.escape(STATE_END)}|{re.escape(LEGACY_STATE_END)})"
+
 STATE_BLOCK_RE = re.compile(
-    rf"({re.escape(STATE_SECTION)}\s*\n{re.escape(STATE_BEGIN)}\s*\n)"
+    rf"({re.escape(STATE_SECTION)}\s*\n){_ANY_BEGIN}\s*\n"
     rf"(.*?)"
-    rf"(\n{re.escape(STATE_END)})",
+    rf"\n{_ANY_END}",
     re.DOTALL,
 )
+
+
+def _task_stem(task: Any) -> str:
+    """Filename without extension, when the task carries its path.
+
+    `rel_path` is an attribute on ParsedTask, not a frontmatter key, so it is
+    read directly instead of through `_task_get`.
+    """
+    if isinstance(task, dict):
+        rel = task.get("rel_path") or ""
+    else:
+        rel = getattr(task, "rel_path", "") or ""
+    if not rel:
+        return ""
+    return str(rel).rsplit("/", 1)[-1].removesuffix(".md")
+
+
+def _task_link(task: Any, task_id: str) -> str:
+    """Wikilink to a task, displayed as the bare ID.
+
+    The link always targets the full filename, never the bare `[[ID]]`. An ID
+    alias is not unique enough: archived instances of recurring tasks keep the
+    base ID in their `aliases`, and any stray note called `S23.md` anywhere in
+    the vault outranks the alias, so `[[S23]]` silently lands on the wrong file.
+
+    The `|` is escaped because these links sit inside markdown tables.
+    """
+    if not task_id or task_id == "?":
+        return "—"
+    stem = _task_stem(task)
+    if stem and stem != task_id:
+        return f"[[{stem}\\|{task_id}]]"
+    return f"[[{task_id}]]"
+
+
+def _cell(text: str) -> str:
+    """Escape a value so it survives inside a markdown table cell."""
+    return str(text).replace("|", r"\|").strip()
 
 
 class TaskLike(Protocol):
@@ -172,70 +225,86 @@ def build_state_content(
     last_activity = compute_last_task_activity(all_slug_tasks)
     stale = is_narrative_stale(hub_updated, last_activity)
 
-    lines: list[str] = []
-    if generated_at:
-        lines.append(f"_Aktualizováno: {generated_at}_")
-    lines.append("")
     focused = [t for t in open_tasks if is_focus_current(_task_get(t, "focus"), today)]
+
+    lines: list[str] = []
+
+    # Header callout — counts plus the two dates worth seeing at a glance.
     lines.append(
-        f"**Otevřené:** {len(open_tasks)} "
-        f"(Doing {status_counts.get('Doing', 0)}, "
-        f"Next {status_counts.get('Next', 0)}, "
-        f"Waiting {status_counts.get('Waiting', 0)}, "
-        f"Backlog {status_counts.get('Backlog', 0)})"
+        f"> [!abstract] Otevřené: {len(open_tasks)} — "
+        f"Doing {status_counts.get('Doing', 0)} · "
+        f"Next {status_counts.get('Next', 0)} · "
+        f"Waiting {status_counts.get('Waiting', 0)} · "
+        f"Backlog {status_counts.get('Backlog', 0)}"
     )
-
-    if focused:
-        lines.append("")
-        lines.append(f"**Ve fokusu tento týden:** {len(focused)}")
-        for t in focused[:5]:
-            tid = _task_get(t, "id") or _task_get(t, "task_id") or "?"
-            title = (_task_get(t, "title") or "")[:55]
-            lines.append(f"- **{tid}** — {title}")
-
-    if top3:
-        lines.append("")
-        lines.append("**TOP 3 (score):**")
-        for t, ts in top3:
-            tid = _task_get(t, "id") or _task_get(t, "task_id") or "?"
-            title = (_task_get(t, "title") or "")[:55]
-            lines.append(f"- **{tid}** — {title} (score {ts})")
-
+    meta: list[str] = []
+    if last_activity:
+        meta.append(f"Poslední aktivita tasku **{last_activity.isoformat()}**")
     if nearest:
         dl, t = nearest
-        tid = _task_get(t, "id") or "?"
-        title = (_task_get(t, "title") or "")[:50]
-        lines.append("")
-        lines.append(f"**Nejbližší deadline:** {dl.isoformat()} — **{tid}** — {title}")
-
-    if blocked:
-        lines.append("")
-        lines.append(f"**Blokované ({len(blocked)}):**")
-        for t in blocked[:5]:
-            tid = _task_get(t, "id") or "?"
-            bb = _task_get(t, "blocked_by") or []
-            bb_s = ", ".join(str(x) for x in bb[:3])
-            lines.append(f"- **{tid}** ← {bb_s}")
-
-    if done_recent:
-        lines.append("")
-        lines.append(f"**Recently done (7 dní):** {len(done_recent)}")
-        for t in done_recent[:3]:
-            tid = _task_get(t, "id") or "?"
-            title = (_task_get(t, "title") or "")[:50]
-            lines.append(f"- **{tid}** — {title}")
-
-    if last_activity:
-        lines.append("")
-        lines.append(f"**Poslední aktivita tasku:** {last_activity.isoformat()}")
-
-    if stale:
-        lines.append("")
-        lines.append(
-            "⚠ **Kontext může být zastaralý** — "
-            f"hub `updated` je starší než poslední pohyb tasků "
-            f"(>{STALE_NARRATIVE_DAYS} dní)."
+        meta.append(
+            f"nejbližší deadline **{dl.isoformat()}** "
+            f"({_task_link(t, _task_get(t, 'id') or '?')})"
         )
+    if meta:
+        lines.append("> " + " · ".join(meta))
+    if stale:
+        lines.append(
+            "> ⚠ **Kontext může být zastaralý** — hub `updated` je starší "
+            f"než poslední pohyb tasků (>{STALE_NARRATIVE_DAYS} dní)."
+        )
+
+    def table(header: str, cols: list[str], rows: list[list[str]]) -> None:
+        if not rows:
+            return
+        lines.append("")
+        lines.append(f"**{header}**")
+        lines.append("")
+        lines.append("| " + " | ".join(cols) + " |")
+        lines.append("|" + "|".join(["---"] * len(cols)) + "|")
+        for row in rows:
+            lines.append("| " + " | ".join(row) + " |")
+
+    def id_title(t: Any) -> tuple[str, str]:
+        tid = _task_get(t, "id") or _task_get(t, "task_id") or "?"
+        return _task_link(t, tid), _cell(_task_get(t, "title") or "")
+
+    table(
+        "Ve fokusu tento týden",
+        ["ID", "Název", "Stav"],
+        [[*id_title(t), _cell(_task_get(t, "status") or "")] for t in focused[:5]],
+    )
+
+    table(
+        "TOP 3 podle skóre",
+        ["ID", "Název", "Skóre"],
+        [[*id_title(t), str(ts)] for t, ts in top3],
+    )
+
+    table(
+        "Blokované",
+        ["ID", "Název", "Čeká na"],
+        [
+            [
+                *id_title(t),
+                _cell(", ".join(str(x) for x in (_task_get(t, "blocked_by") or [])[:3])),
+            ]
+            for t in blocked[:5]
+        ],
+    )
+
+    table(
+        "Hotovo za posledních 7 dní",
+        ["ID", "Název", "Datum"],
+        [
+            [*id_title(t), _cell(str(_task_get(t, "updated") or "")[:10])]
+            for t in done_recent[:3]
+        ],
+    )
+
+    if generated_at:
+        lines.append("")
+        lines.append(f"_Aktualizováno {generated_at.replace('T', ' ')}_")
 
     return "\n".join(lines), stale
 
@@ -244,14 +313,22 @@ def wrap_state_block(inner: str) -> str:
     return f"{STATE_SECTION}\n{STATE_BEGIN}\n{inner}\n{STATE_END}"
 
 
+def has_state_block(body: str) -> bool:
+    """True for both the current `%%` markers and the legacy HTML comments."""
+    return bool(STATE_BLOCK_RE.search(body))
+
+
 def upsert_state_in_hub_body(body: str, inner: str) -> str:
     block = wrap_state_block(inner)
-    if STATE_BEGIN in body and STATE_END in body:
-        return STATE_BLOCK_RE.sub(
-            rf"\1{inner}\3",
-            body,
-            count=1,
-        )
+    match = STATE_BLOCK_RE.search(body)
+    if match:
+        # Drop every existing block, then put one back where the first one was.
+        # A charter can end up with duplicates when an older build of this
+        # module — which only recognised the HTML markers — runs against a hub
+        # that has already been migrated to `%%`.
+        head = body[: match.start()]
+        tail = STATE_BLOCK_RE.sub("", body[match.start():]).lstrip("\n")
+        return f"{head}{block}\n\n{tail}" if tail else f"{head}{block}\n"
     # Insert after first heading block (after # Title)
     m = re.search(r"^(#\s+.+\n\n)", body, re.MULTILINE)
     if m:
@@ -261,6 +338,6 @@ def upsert_state_in_hub_body(body: str, inner: str) -> str:
 
 
 def ensure_state_section_exists(body: str) -> str:
-    if STATE_BEGIN in body:
+    if has_state_block(body):
         return body
     return upsert_state_in_hub_body(body, "_Generuje cron — první běh pending._")

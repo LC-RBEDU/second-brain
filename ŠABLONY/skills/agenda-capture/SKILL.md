@@ -121,6 +121,7 @@ Subtasky musí mít prefix `**<ID>-N**` (1-indexed). Lze je referencovat z chatu
 **Enforce (blokující — interaktivní capture):** nedokončuj zápis tasku bez:
 - `project:` (wikilink na hub)
 - alespoň jednoho propojeného `materials:` (pokud existuje DEEP zdroj / příloha / transcript — materiál musí existovat jako `type: material` s `material_kind`, `## Shrnutí`, volitelně `source_id`)
+- **zpětného odkazu** — materiál dostane `related_tasks: ["[[<ID> — <Title>]]"]` (plný název task souboru). Link je obousměrný; bez toho není z otevřeného materiálu vidět, ke kterému úkolu patří. Apostrof v názvu tasku v YAML zdvoj (`''`).
 
 **DEEP materializace (interaktivní, MCP v Cursoru):** pokud zdroj obsahuje Google Docs/Sheets/Slides odkaz nebo lokální pdf/docx:
 1. **Fetch** — Workspace MCP (`get_doc_as_markdown`, `read_sheet_values`, `get_presentation`) nebo lokální soubor
