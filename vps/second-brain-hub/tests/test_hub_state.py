@@ -10,10 +10,7 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from hub_state import (  # noqa: E402
-    LEGACY_STATE_BEGIN,
-    LEGACY_STATE_END,
-    STATE_BEGIN,
-    STATE_END,
+    LEGACY_MARKERS,
     build_state_content,
     has_state_block,
     is_narrative_stale,
@@ -121,27 +118,57 @@ def test_stale_when_hub_old():
 def test_upsert_state_in_body():
     body = "# Téma: Finance\n\n## Scope\n\nFoo.\n"
     out = upsert_state_in_hub_body(body, "line one")
-    assert STATE_BEGIN in out
-    assert "line one" in out
+    assert "## Stav (auto)\nline one" in out
     out2 = upsert_state_in_hub_body(out, "line two")
     assert "line two" in out2
     assert "line one" not in out2
+    assert "## Scope" in out2 and "Foo." in out2
 
 
-def test_legacy_html_markers_are_migrated():
+def test_no_markers_are_emitted():
+    out = upsert_state_in_hub_body("# T\n\n## Scope\n\nFoo.\n", "obsah")
+    for marker in LEGACY_MARKERS:
+        assert marker not in out
+    assert "SB:STATE" not in out
+
+
+def test_legacy_markers_are_stripped():
+    for begin, end in (
+        ("<!-- SB:STATE:BEGIN -->", "<!-- SB:STATE:END -->"),
+        ("%%SB:STATE:BEGIN%%", "%%SB:STATE:END%%"),
+    ):
+        body = (
+            "# Téma: Finance\n\n"
+            f"## Stav (auto)\n{begin}\nstaré\n{end}\n\n"
+            "## Scope\n\nFoo.\n"
+        )
+        assert has_state_block(body)
+        out = upsert_state_in_hub_body(body, "nové")
+        assert "SB:STATE" not in out
+        assert "nové" in out and "staré" not in out
+        # the rest of the charter survives untouched
+        assert "## Scope" in out and "Foo." in out
+
+
+def test_section_never_swallows_the_next_heading():
     body = (
-        "# Téma: Finance\n\n"
-        f"## Stav (auto)\n{LEGACY_STATE_BEGIN}\nstaré\n{LEGACY_STATE_END}\n\n"
-        "## Scope\n\nFoo.\n"
+        "# Téma: Strategy\n\n"
+        "## Stav (auto)\nstaré\n\n"
+        "## Aktivní úkoly\n\n![[All-tasks.base]]\n\n"
+        "## Cíl\n\nNěco.\n"
     )
-    assert has_state_block(body)
     out = upsert_state_in_hub_body(body, "nové")
-    assert LEGACY_STATE_BEGIN not in out
-    assert LEGACY_STATE_END not in out
-    assert STATE_BEGIN in out and STATE_END in out
+    assert "## Aktivní úkoly" in out
+    assert "![[All-tasks.base]]" in out
+    assert "## Cíl" in out and "Něco." in out
+    assert "staré" not in out
+
+
+def test_section_at_end_of_file():
+    body = "# T\n\n## Stav (auto)\nstaré\n"
+    out = upsert_state_in_hub_body(body, "nové")
+    assert out.count("## Stav (auto)") == 1
     assert "nové" in out and "staré" not in out
-    # the rest of the charter survives untouched
-    assert "## Scope" in out and "Foo." in out
 
 
 def test_generated_at_drops_timezone_offset():
@@ -153,19 +180,18 @@ def test_generated_at_drops_timezone_offset():
         assert "_Aktualizováno 2026-08-13 00:07_" in inner
 
 
-def test_duplicate_blocks_collapse_to_one():
-    # An older build that only knew the HTML markers appends its own block
-    # next to the migrated one. The next run must clean that up.
+def test_duplicate_sections_collapse_to_one():
+    # An older build that did not recognise the current format appends its own
+    # section next to the existing one. The next run must clean that up.
     body = (
         "# Téma: Strategy\n\n"
-        f"## Stav (auto)\n{LEGACY_STATE_BEGIN}\nstarý blok\n{LEGACY_STATE_END}\n\n"
-        f"## Stav (auto)\n{STATE_BEGIN}\nnový blok\n{STATE_END}\n\n"
+        "## Stav (auto)\n<!-- SB:STATE:BEGIN -->\nstarý blok\n<!-- SB:STATE:END -->\n\n"
+        "## Stav (auto)\nnový blok\n\n"
         "## Cíl\n\nNěco.\n"
     )
     out = upsert_state_in_hub_body(body, "jediný blok")
     assert out.count("## Stav (auto)") == 1
-    assert out.count(STATE_BEGIN) == 1
-    assert LEGACY_STATE_BEGIN not in out
+    assert "SB:STATE" not in out
     assert "starý blok" not in out and "nový blok" not in out
     assert "jediný blok" in out
     assert "## Cíl" in out and "Něco." in out
@@ -181,6 +207,7 @@ def test_upsert_preserves_backslash_escapes():
 
 def test_wrap_state_block():
     block = wrap_state_block("x")
-    assert "## Stav (auto)" in block
-    assert STATE_END in block
+    assert block.startswith("## Stav (auto)\n")
+    assert "x" in block
+    assert "SB:STATE" not in block
     assert "<!--" not in block

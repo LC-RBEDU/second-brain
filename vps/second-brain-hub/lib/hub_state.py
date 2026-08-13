@@ -1,19 +1,16 @@
-"""Generate ## Stav (auto) marker blocks for project hub charters.
+"""Generate the ## Stav (auto) section of project hub charters.
 
-Marker delimiters use Obsidian comment syntax, which Obsidian hides in both
-Reading and Live Preview mode (unlike HTML comments, which stay visible while
-editing):
+The section carries no delimiter markers. Its boundaries are the heading
+itself and the next `## ` heading (or end of file) — everything in between
+belongs to the cron and is rewritten on each run.
 
-  %%SB:STATE:BEGIN%%
-  ...
-  %%SB:STATE:END%%
+Earlier versions wrapped the content in `<!-- SB:STATE:BEGIN -->` and later
+`%%SB:STATE:BEGIN%%`. Neither is invisible where it matters: Obsidian only
+hides comments in Reading view, so both kept showing up while editing. They
+are still recognised here purely so old charters get cleaned up.
 
-The markers are load-bearing — they tell the cron which slice of the charter it
-may overwrite. Legacy `<!-- SB:STATE:BEGIN -->` blocks are still recognised so
-old hubs get migrated on the next run.
-
-Task references are emitted as `[[<ID>]]` wikilinks; every task carries its ID
-in `aliases`, so the bare ID resolves to the task file.
+Task references link the full task filename. A bare `[[S23]]` relies on the
+task's alias, and an alias loses to any file literally named `S23.md`.
 
 Staleness: hub frontmatter `updated` older than last task activity by
 STALE_NARRATIVE_DAYS → warning in block + entry in stale_hubs[].
@@ -28,22 +25,24 @@ from typing import Any, Protocol
 from focus import STATUS_DOING, STATUS_NEXT, is_focus_current, is_terminal
 from today_priority import today_score as calc_today_score
 
-STATE_BEGIN = "%%SB:STATE:BEGIN%%"
-STATE_END = "%%SB:STATE:END%%"
-LEGACY_STATE_BEGIN = "<!-- SB:STATE:BEGIN -->"
-LEGACY_STATE_END = "<!-- SB:STATE:END -->"
+LEGACY_MARKERS = (
+    "<!-- SB:STATE:BEGIN -->",
+    "<!-- SB:STATE:END -->",
+    "%%SB:STATE:BEGIN%%",
+    "%%SB:STATE:END%%",
+)
 STATE_SECTION = "## Stav (auto)"
 STALE_NARRATIVE_DAYS = 14
 STALE_AREA_WEEKS = 3
 
-_ANY_BEGIN = rf"(?:{re.escape(STATE_BEGIN)}|{re.escape(LEGACY_STATE_BEGIN)})"
-_ANY_END = rf"(?:{re.escape(STATE_END)}|{re.escape(LEGACY_STATE_END)})"
-
-STATE_BLOCK_RE = re.compile(
-    rf"({re.escape(STATE_SECTION)}\s*\n){_ANY_BEGIN}\s*\n"
-    rf"(.*?)"
-    rf"\n{_ANY_END}",
-    re.DOTALL,
+# The section runs from its heading to the next `## ` heading (or EOF).
+STATE_SECTION_RE = re.compile(
+    rf"^{re.escape(STATE_SECTION)}[ \t]*\n(?:(?!^##\s).*\n?)*",
+    re.MULTILINE,
+)
+_LEGACY_MARKER_RE = re.compile(
+    r"^[ \t]*(?:" + "|".join(re.escape(m) for m in LEGACY_MARKERS) + r")[ \t]*\n?",
+    re.MULTILINE,
 )
 
 
@@ -313,31 +312,35 @@ def build_state_content(
 
 
 def wrap_state_block(inner: str) -> str:
-    return f"{STATE_SECTION}\n{STATE_BEGIN}\n{inner}\n{STATE_END}"
+    return f"{STATE_SECTION}\n{inner}\n"
 
 
 def has_state_block(body: str) -> bool:
-    """True for both the current `%%` markers and the legacy HTML comments."""
-    return bool(STATE_BLOCK_RE.search(body))
+    return bool(STATE_SECTION_RE.search(body))
+
+
+def strip_legacy_markers(body: str) -> str:
+    """Remove leftover BEGIN/END marker lines from earlier versions."""
+    return _LEGACY_MARKER_RE.sub("", body)
 
 
 def upsert_state_in_hub_body(body: str, inner: str) -> str:
+    body = strip_legacy_markers(body)
     block = wrap_state_block(inner)
-    match = STATE_BLOCK_RE.search(body)
+    match = STATE_SECTION_RE.search(body)
     if match:
-        # Drop every existing block, then put one back where the first one was.
-        # A charter can end up with duplicates when an older build of this
-        # module — which only recognised the HTML markers — runs against a hub
-        # that has already been migrated to `%%`.
+        # Drop every existing section, then put one back where the first one
+        # was. A charter can collect duplicates when an older build of this
+        # module rewrites a hub it no longer recognises.
         head = body[: match.start()]
-        tail = STATE_BLOCK_RE.sub("", body[match.start():]).lstrip("\n")
-        return f"{head}{block}\n\n{tail}" if tail else f"{head}{block}\n"
+        tail = STATE_SECTION_RE.sub("", body[match.start():]).lstrip("\n")
+        return f"{head}{block}\n{tail}" if tail else f"{head}{block}"
     # Insert after first heading block (after # Title)
     m = re.search(r"^(#\s+.+\n\n)", body, re.MULTILINE)
     if m:
         pos = m.end()
-        return body[:pos] + block + "\n\n" + body[pos:]
-    return block + "\n\n" + body
+        return body[:pos] + block + "\n" + body[pos:]
+    return block + "\n" + body
 
 
 def ensure_state_section_exists(body: str) -> str:

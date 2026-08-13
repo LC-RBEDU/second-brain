@@ -111,7 +111,7 @@ python3 "scripts/build_agent_context.py"
 - every 2h :04 overdue_flag (**jeden** řádek při prvním překročení, pak ticho; eskalace po 14 dnech)
 - every 2h :05 archive_done_tasks (>90 dní v Done nebo Cancelled)
 - every 2h :06 lifecycle_recurring (Done + recurring → archive + nová instance)
-- every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech — wikilinky + tabulky, markery `%%SB:STATE:…%%` Obsidian schová)
+- every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech — wikilinky + tabulky; sekce nemá markery, hranicí je nadpis a další `## `, takže do ní nepiš ručně)
 - every 2h :08 lifecycle_sort_steps (řazení `## Operativní kroky`)
 - Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
 - Po 6:55 inbox_inventory (log only)
