@@ -144,6 +144,15 @@ def test_legacy_html_markers_are_migrated():
     assert "## Scope" in out and "Foo." in out
 
 
+def test_generated_at_drops_timezone_offset():
+    tasks = [_task("F1", status="Next")]
+    for stamp in ("2026-08-13T00:07+02:00", "2026-08-13T00:07", "2026-08-13T00:07Z"):
+        inner, _ = build_state_content(
+            "finance", tasks, [], date(2026, 8, 13), generated_at=stamp
+        )
+        assert "_Aktualizováno 2026-08-13 00:07_" in inner
+
+
 def test_duplicate_blocks_collapse_to_one():
     # An older build that only knew the HTML markers appends its own block
     # next to the migrated one. The next run must clean that up.

@@ -57,6 +57,54 @@ def link_target(value: str) -> str | None:
     return m.group("target").strip() if m else None
 
 
+BARE_ID_RE = re.compile(r"^[A-Z]{1,4}\d+$")
+
+
+def normalize_bare_links(fm_yaml: str, by_id: dict[str, str]) -> tuple[str, list[str]]:
+    """Rewrite `related_tasks: ['[[F30]]']` to the full task filename.
+
+    A bare ID relies on the task's alias, and an alias loses to any file
+    literally named `F30.md` — an archived inbox tombstone was hijacking the
+    link. Unknown IDs are left alone rather than guessed at.
+    """
+    out: list[str] = []
+    changed: list[str] = []
+    inside = False
+    for line in fm_yaml.split("\n"):
+        if re.match(r"^related_tasks:", line):
+            inside = True
+            out.append(line)
+            continue
+        # YAML lists appear both indented and at zero indent in this vault.
+        if inside and not re.match(r"^\s*-\s", line):
+            inside = False
+        if inside:
+            m = re.match(r"^(\s*-\s+)'?\[\[([^\]|#]+)\]\]'?\s*$", line)
+            if m and BARE_ID_RE.fullmatch(m.group(2).strip()):
+                stem = by_id.get(m.group(2).strip())
+                if stem:
+                    line = f"{m.group(1)}{yaml_single_quoted(f'[[{stem}]]')}"
+                    changed.append(m.group(2).strip())
+        out.append(line)
+    return "\n".join(out), changed
+
+
+def tasks_by_id(vault: Path) -> dict[str, str]:
+    """ID → filename stem, only for IDs owned by exactly one file."""
+    seen: dict[str, list[str]] = {}
+    for tf in task_files(vault):
+        parsed = parse(tf.read_text(encoding="utf-8"))
+        if not parsed:
+            continue
+        fm, _, _ = parsed
+        if (fm.get("type") or "") != "task":
+            continue
+        tid = str(fm.get("id") or "")
+        if tid:
+            seen.setdefault(tid, []).append(tf.stem)
+    return {tid: stems[0] for tid, stems in seen.items() if len(stems) == 1}
+
+
 def task_files(vault: Path) -> list[Path]:
     return sorted((vault / "02-PROJEKTY").glob("*/tasks/*.md")) + sorted(
         (vault / "07-ARCHIV" / "tasks-done").glob("*/*.md")
@@ -115,9 +163,12 @@ def main() -> int:
             if target and target in material_stems and tf.stem not in backlinks[target]:
                 backlinks[target].append(tf.stem)
 
+    by_id = tasks_by_id(args.vault)
+
     patched = 0
     already = 0
     orphans = 0
+    normalized = 0
     for stem, path in material_stems.items():
         parsed = parse(path.read_text(encoding="utf-8"))
         if not parsed:
@@ -127,6 +178,14 @@ def main() -> int:
         # end up duplicated in the frontmatter.
         if "related_tasks" in fm or re.search(r"^related_tasks:", fm_yaml, re.MULTILINE):
             already += 1
+            new_fm, changed = normalize_bare_links(fm_yaml, by_id)
+            if changed:
+                normalized += 1
+                rel = path.relative_to(args.vault)
+                verb = "would normalize" if args.dry_run else "normalized"
+                print(f"{verb}: {rel} → {', '.join(changed)}")
+                if not args.dry_run:
+                    path.write_text(f"---\n{new_fm}---\n{body}", encoding="utf-8")
             continue
         tasks = backlinks.get(stem)
         if not tasks:
@@ -140,7 +199,7 @@ def main() -> int:
             path.write_text(f"---\n{new_fm}---\n{body}", encoding="utf-8")
 
     print(
-        f"materials={len(material_stems)} patched={patched} "
+        f"materials={len(material_stems)} patched={patched} normalized={normalized} "
         f"already_linked={already} no_task_reference={orphans} dry_run={args.dry_run}"
     )
     return 0

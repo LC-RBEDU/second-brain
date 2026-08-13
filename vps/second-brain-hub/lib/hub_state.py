@@ -304,7 +304,10 @@ def build_state_content(
 
     if generated_at:
         lines.append("")
-        lines.append(f"_Aktualizováno {generated_at.replace('T', ' ')}_")
+        # Callers pass an ISO timestamp; the cron's carries a `+02:00` offset
+        # that is only noise in a charter.
+        stamp = re.sub(r"(Z|[+-]\d{2}:?\d{2})$", "", generated_at.replace("T", " "))
+        lines.append(f"_Aktualizováno {stamp.strip()}_")
 
     return "\n".join(lines), stale
 
