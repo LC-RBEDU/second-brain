@@ -51,6 +51,12 @@ Ukaž finální markdown celý. Zeptej se: schválit / upravit sekci X.
 - Volitelně: do `## Progress` u 2–3 hubů přidej 1 odrážku s datem (nesmaž staré bez potvrzení)
 - Draft ponech nebo přejmenuj na `_archived` — dle preference uživatele
 
+## Neschválené drafty (restart rituálu)
+
+- Staré `*-draft.md`, které nebudou finalizovány, přesuň do `00-System/weekly/_archived/` (ne maž).
+- Finální `YYYY-Www.md` existuje jen pro schválené týdny; po restartu se nedohánějí mezery zpětně.
+- Rozhodnutí o archivaci batchi = task **SB2** (nebo explicitní „archivuj weekly W22–W31“ v chatu).
+
 ## Pravidla
 
 - Markdown hubů je SSOT pro úkoly — weekly soubor je SSOT pro týdenní narrative

@@ -1,6 +1,6 @@
 ---
 name: agenda-triage
-description: "INBOX triage in MrLUC Second Brain v2 vault, pending batch approval from cron, or re-priority. Triggers: projeď inbox, schval pending triáž, apply batch, udělejme triage. Modes: BATCH, DEEP, PENDING (read 00-System/Triage-Pending/*.json with v2 schema). Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (human-readable filename, em-dash U+2014; subtasks číslované **<ID>-N**), archives to 07-ARCHIV/inbox-processed/. ALWAYS preview before write."
+description: "INBOX triage in MrLUC Second Brain v2 vault, pending batch approval from cron, or re-priority. Triggers: projeď inbox, schval pending triáž, apply batch, udělejme triage. Modes: BATCH, DEEP, PENDING (read 00-System/Triage-Pending/*.json with v2 schema). Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (human-readable filename, em-dash U+2014; subtasks číslované **<ID>-N**), archives to 07-ARCHIV/inbox-processed/. Spotify/podcast link or show title in Slack/email/inbox → queue via MCP spotify (not a vault task). ALWAYS preview before write."
 ---
 
 # agenda-triage (v2)
@@ -36,8 +36,30 @@ Default: B (nebo P pokud uživatel žádá pending).
 | Zodpovědnostní postřeh bez akce | `area_log` → `03-AREAS/<area>.md` sekce `## Log rozhodnutí` |
 | Neznámá osoba ve zdroji | `add_person` → `05-RESOURCES/lide/<Jméno>.md` ze `_ŠABLONA-person.md` |
 | Nová info o známé osobě | `update_person` → patch frontmatter/sekcí person souboru |
+| Spotify odkaz / název podcastu, pořadu, epizody | **fronta** přes MCP `spotify` — ne task (viz níže) |
 
 Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy: co-located binárka + sidecar `.md` v `materials/<téma>/` (viz PARA rule); parsuj `## Přílohy` z INBOX `.md`; po apply spusť `extract_material_text.py`.
+
+## Spotify / podcasty — do fronty, ne do vaultu
+
+Spotify **nemá oficiální MCP**. V Cursoru je community server `spotify` (`@xavifabregat/spotify-mcp` v `~/.cursor/mcp.json`). Tokeny: `~/.spotify-mcp/`. Premium + běžící Spotify app (telefon/desktop) — jinak API frontu odmítne.
+
+**Kdy:** v Slacku, e-mailu, Sembly, Clippings, daily i pending JSONu je
+- URL `open.spotify.com/…` nebo URI `spotify:episode:` / `spotify:show:` / `spotify:playlist:`
+- holý název podcastu / pořadu / epizody (doporučení, „poslechni“, „mrkni na“)
+
+**Postup (BATCH i DEEP i PENDING — vedle běžného routingu):**
+1. Najdi cílovou **epizodu** (ne jen show, pokud jde o konkrétní díl). MCP `search` umí track/album/artist/playlist — **show/episode ne**. Hledej `GET https://api.spotify.com/v1/search?type=show,episode` s access tokenem z `~/.spotify-mcp/tokens.json`, nebo queue rovnou z URI v odkazu.
+2. Přidej do fronty: MCP `queue` (URI), případně `PUT /v1/me/player/queue?uri=…`.
+3. 0 devices / 404 player → v preview „fronta přeskočena — otevři Spotify“; **neblokuj** zbytek triáže.
+4. MCP/token chybí → řekni to jednou; dál triáž bez fronty.
+
+**Není to task.** Poslech ≠ Lukášův operativní krok. Nezakládej `add_task` „Poslechnout X“.
+- Zdroj je **jen** poslech/doporučení → queue + `archive_only`.
+- Zdroj má **i** závazek → queue **a** běžný task routing zbytku.
+- V preview vždy uveď, co šlo do fronty (název + URI), nebo proč ne.
+
+Ad-hoc mimo INBOX („hoď to do fronty“) = stejný postup, bez zápisu do vaultu.
 
 ## Lidé — automatická detekce (každý zdroj)
 
@@ -136,7 +158,15 @@ Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (cro
 | **BATCH** | záměrný `## Komentář` nebo krátký Lukášův commitment | `add_task` | Vytažení úkolu |
 | **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku | `deep_analysis` | DEEP analysis required |
 
-**Manuální triáž:** před návrhem tasku zavolej stejnou logiku — `evaluate_slack_inbox_relevance(rel, body)`. Nepředpokládej, že každý slack soubor = úkol. U ARCHIVE apply = jen přesun do `07-ARCHIV/inbox-processed/` (stejně jako `archive_only` u sent mailů).
+**Verze vlákna (povinné — nejdřív tohle, teprve pak relevance):**
+n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí **jen nejvyšší `_vN`**. Nižší verze = `archive_only`, **nesmíš z nich tahat závazky** (zastaralý snapshot — 25. 8. 2026: Leadspicker / Poppe hotel vypadaly otevřené, v aktuální verzi už byly hotové).
+
+1. Seskup `01-INBOX/slack/*.md` podle Thread TS (`**Thread TS:**` v body, fallback filename `_<ts>_vN.md`).
+2. Pro každý thread vezmi **jen max `_vN`**. V těle hledáš `← AKTUÁLNÍ`.
+3. Až na té aktuální verzi volej `evaluate_slack_inbox_relevance(..., stale_rels=…)`.
+4. Helper: `stale_slack_rel_paths` / `stale_slack_rel_paths_from_items` v `triage_slack_relevance.py` (cron `triage_run.py` to už předává).
+
+**Manuální triáž:** před návrhem tasku zavolej stejnou logiku — `evaluate_slack_inbox_relevance(rel, body, stale_rels=…)`. Nepředpokládej, že každý slack soubor = úkol. U ARCHIVE apply = jen přesun do `07-ARCHIV/inbox-processed/` (stejně jako `archive_only` u sent mailů).
 
 Pending JSON může nést `slack_route`, `slack_source_kind`, `slack_relevance_reasons` — ukaž je v preview.
 

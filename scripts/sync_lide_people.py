@@ -34,6 +34,7 @@ ALIASES: dict[str, list[str]] = {
     "Kamila Píchová": ["Kamila Píchová"],
     "Kateřina Bayerová": ["Kateřina Bayerová", "Kateřina Bayer", "Káťa"],
     "Kateřina Jiřinová": ["Kateřina Jiřinová"],
+    "Kateřina Šrámková": ["Kateřina Šrámková", "Katy Šrámková"],
     "Kristýna Sehrová": ["Kristýna Sehrová"],
     "Lenka Turečková": ["Lenka Turečková", "Lenka T."],
     "Lenka Vašková": ["Lenka Vašková"],
@@ -43,15 +44,20 @@ ALIASES: dict[str, list[str]] = {
     "Lucie Přibylová": ["Lucie Přibylová", "Lucky", "Lucie", "Luzka"],
     "Lucie Růžička": ["Lucie Růžička"],
     "Martin Ruman": ["Martin Ruman", "Martin R."],
+    "Martin Vranek": ["Martin Vranek"],
     "Martina Mašková": ["Martina Mašková"],
     "Michaela Valdéz": ["Michaela Valdéz", "Michaela González Valdés"],
+    "Mária Falterová": ["Mária Falterová", "Maria Falterová", "Maru Falterová", "Maru"],
     "Michal Poppe": ["Michal Poppe"],
     "Michal Šrajer": ["Michal Šrajer", "Srakyi", "Šraky"],
     "Ondra Suchý": ["Ondra Suchý", "Ondřej Suchý"],
     "Pavel Kroupa": ["Pavel Kroupa", "Pavel K."],
+    "Pavel Pumprla": ["Pavel Pumprla"],
+    "Petr Šídlo": ["Petr Šídlo", "Petr Sidlo"],
     "Radek Gajdušek": ["Radek Gajdušek", "Radek Gajdůšek", "Radek Gajdu"],
     "Roman Stupka": ["Roman Stupka"],
     "Soňa Šadibol": ["Soňa Šadibol"],
+    "Tomáš Blaťák": ["Tomáš Blaťák", "Tomas Blatak"],
     "Veronika Hanzalová": [
         "Veronika Hanzalová",
         "Verča H.",
@@ -86,6 +92,7 @@ PIPE_ALIASES: list[tuple[str, str]] = [
     ("Jindrovi", "Jindřich Lukes"),
     ("Janě Kočové", "Jana Kočová"),
     ("Janou Kočovou", "Jana Kočová"),
+    ("Maru Falterovou", "Mária Falterová"),
 ]
 
 # regex alias -> person (display = matched text)
@@ -117,6 +124,7 @@ NICKNAMES: dict[str, list[str]] = {
     "Barbora Zloch": ["Baru"],
     "Jindřich Lukes": ["Jindra"],
     "Kamila Píchová": ["Kamča"],
+    "Mária Falterová": ["Maru"],
 }
 
 KNOWN_META: dict[str, dict[str, str | list[str]]] = {
@@ -232,6 +240,19 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "org": "Red Button EDU",
         "email": "michaela@redbuttonedu.cz",
         "projects": ["Exponential Summit"],
+    },
+    "Mária Falterová": {
+        "role": "Operations & People lead",
+        "org": "Red Button EDU",
+        "email": "maria.falterova@redbuttonedu.cz",
+        "slack": "Maru",
+        "projects": ["Strategy", "Provoz a procesy"],
+    },
+    "Pavel Pumprla": {
+        "role": "Senior Consultant (Akademie & programy)",
+        "org": "RB Associates s.r.o.",
+        "email": "pavel.pumprla@redbuttonedu.cz",
+        "projects": ["Strategy"],
     },
     "Alexandra Gallisová": {
         "role": "Allfred support (Allfred.io)",

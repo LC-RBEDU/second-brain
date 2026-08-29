@@ -26,6 +26,8 @@ Uživatel výslovně chce uložit do Second Brain / Obsidian / INBOX:
 
 **Nespouštět** místo `agenda-capture`, pokud uživatel chce rovnou **soubor-per-task** v `02-PROJEKTY/<slug>/tasks/` — tam použij `agenda-capture`.
 
+**Spotify / podcast:** „hoď do fronty“ / jen odkaz na epizodu → **neINBOX**. Queue přes MCP `spotify` (viz `agenda-triage` / `agenda-capture`). Do `01-INBOX/daily/` ukládej jen když je u toho i kontext k pozdější triáži; URL `open.spotify.com` v textu zachovej.
+
 ## Workflow
 
 ### 1. Identifikuj konverzaci

@@ -1,6 +1,6 @@
 ---
 name: agenda-capture
-description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new files in OBSIDIAN/01-INBOX/. Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (file-per-task + frontmatter, em-dash U+2014, human-readable filename), archives source to 07-ARCHIV/inbox-processed/. Triggers: capture, zapiš si, INBOX. ALWAYS preview before write. Preserve subtask checklisty (číslované **<ID>-N**) + source links."
+description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new files in OBSIDIAN/01-INBOX/. Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (file-per-task + frontmatter, em-dash U+2014, human-readable filename), archives source to 07-ARCHIV/inbox-processed/. Triggers: capture, zapiš si, INBOX. Spotify/podcast URL or show title → queue via MCP spotify (not a listen-task). ALWAYS preview before write. Preserve subtask checklisty (číslované **<ID>-N**) + source links."
 ---
 
 # agenda-capture (v2)
@@ -44,6 +44,7 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 - **INBOX/email/sent/** → odeslané z Workspace (`source: sent`); hledej Lukášovy sliby/úkoly
 - **INBOX/Clippings/** → Web Clipper / uložené stránky (články, docs)
 - **INBOX/daily/** → ruční / mobilní zápisky
+- **Spotify / podcast** → odkaz `open.spotify.com` / `spotify:` URI nebo holý název pořadu: **fronta**, ne task (viz Speciální případy)
 
 ### 3. Rozsekej na položky
 
@@ -176,6 +177,13 @@ Krátká, akční: kolik task souborů, do kterých projektů, top podle today_s
 - deadline dnes → explicitně v hlášce
 - Smalltalk → neukládat
 - Citlivá data → potvrzení před zápisem
+- **Spotify / podcast / pořad** (ad-hoc paste i INBOX):
+  - MCP `spotify` (`~/.cursor/mcp.json`), tokeny `~/.spotify-mcp/`. Oficiální Spotify MCP není.
+  - Trigger: URL, URI, nebo jen název („poslechni X“, doporučení z mailu/Slacku).
+  - Najdi epizodu → `queue` / `PUT /v1/me/player/queue`. MCP `search` **nemá** show/episode — použij Web API `search?type=show,episode` nebo URI z odkazu.
+  - **Není vault task.** Jen poslech → queue, žádný `add_task`. Poslech + akce → queue a zbytek capture jako obvykle.
+  - Spotify musí běžet na zařízení. 0 devices → řekni „otevři Spotify“, zbytek capture neblokuj.
+  - Detail a výjimky: skill `agenda-triage` sekce Spotify.
 
 ## Tone
 

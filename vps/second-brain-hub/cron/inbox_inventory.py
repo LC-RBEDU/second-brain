@@ -18,7 +18,11 @@ if str(_CRON) not in sys.path:
 from drive_io import DriveVault, credentials_from_env  # noqa: E402
 from triage_complexity import has_attachments_markers  # noqa: E402
 from triage_commitments import purge_dropped_sent_inbox  # noqa: E402
-from triage_slack_relevance import evaluate_slack_inbox_relevance, is_slack_inbox  # noqa: E402
+from triage_slack_relevance import (  # noqa: E402
+    evaluate_slack_inbox_relevance,
+    is_slack_inbox,
+    stale_slack_rel_paths_from_items,
+)
 from triage_run import iter_inbox_items, _open_pending_source_files  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -43,6 +47,7 @@ def main() -> None:
         return
 
     print(f"inbox_inventory: {len(items)} files ({now})")
+    stale_slack = stale_slack_rel_paths_from_items(items)
     with_attachments = 0
     for rel, body in items[:20]:
         extras: list[str] = []
@@ -50,7 +55,9 @@ def main() -> None:
             extras.append("attachments→DEEP")
             with_attachments += 1
         if is_slack_inbox(rel):
-            rel_result = evaluate_slack_inbox_relevance(rel, body)
+            rel_result = evaluate_slack_inbox_relevance(
+                rel, body, stale_rels=stale_slack
+            )
             if rel_result:
                 extras.append(f"slack→{rel_result.route.upper()}")
         flag = f" [{', '.join(extras)}]" if extras else ""

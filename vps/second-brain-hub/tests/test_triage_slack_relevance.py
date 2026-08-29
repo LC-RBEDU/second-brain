@@ -122,3 +122,24 @@ def test_archive_proposal_shape():
 
 def test_non_slack_returns_none():
     assert mod.evaluate_slack_inbox_relevance("01-INBOX/email/in.md", "body") is None
+
+
+def test_stale_thread_version_archives_without_reading_commitment():
+    v1 = "01-INBOX/slack/2026-08-24_dm-x_1787226196.980259_v1.md"
+    v3 = "01-INBOX/slack/2026-08-24_dm-x_1787226196.980259_v3.md"
+    body_v1 = "**Thread TS:** 1787226196.980259\n\n> **Lukáš** 10:00\n> musím připravit podklady"
+    body_v3 = "**Thread TS:** 1787226196.980259\n\n> **Lukáš** 19:00\n> hotovo, už to funguje"
+    stale = mod.stale_slack_rel_paths_from_items([(v1, body_v1), (v3, body_v3)])
+    assert v1 in stale
+    assert v3 not in stale
+    old = mod.evaluate_slack_inbox_relevance(v1, body_v1, stale_rels=stale)
+    new = mod.evaluate_slack_inbox_relevance(v3, body_v3, stale_rels=stale)
+    assert old.route == "archive"
+    assert "zastaralá verze" in old.reasons[0]
+    assert new.route == "archive"  # "hotovo" is not a commitment — latest wins
+
+
+def test_thread_version_key_strips_duplicate_filename_noise():
+    name = "2026-08-20_dm-x_1787226196 (1).980259_v1.md"
+    key = mod.slack_thread_version_key(name, "")
+    assert key == ("1787226196.980259", 1)

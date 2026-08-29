@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, Literal
 
 SlackRoute = Literal["archive", "batch", "deep"]
@@ -58,6 +59,12 @@ _THREAD_DUMP_FILENAME_RE = re.compile(
 _CAPTURE_N8N_FILENAME_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}-\d{4}-",
 )
+# thread dumps: 2026-08-24_dm-x_1787226196.980259_v3.md
+# messy duplicate: 2026-08-20_dm-x_1787226196 (1).980259_v1.md
+_THREAD_VERSION_FILENAME_RE = re.compile(
+    r"_(\d+)(?:\s*\(\d+\))?\.(\d+)_v(\d+)\.md$",
+)
+_THREAD_TS_BODY_RE = re.compile(r"\*\*Thread TS:\*\*\s*(\d+\.\d+)")
 
 _LUKAS_SPEAKER_RE = re.compile(r"\*\*Lukáš(?:\s+Cypra)?\*\*", re.IGNORECASE)
 _QUOTED_MESSAGE_RE = re.compile(r"^>\s*\*\*[^*]+\*\*", re.MULTILINE)
@@ -76,6 +83,58 @@ class SlackRelevanceResult:
 
 def is_slack_inbox(rel_path: str) -> bool:
     return rel_path.startswith("01-INBOX/slack/") and rel_path.endswith(".md")
+
+
+def slack_thread_version_key(filename: str, body: str = "") -> tuple[str, int] | None:
+    """Return (thread_ts, version) for a versioned thread dump, else None."""
+    m = _THREAD_TS_BODY_RE.search(body or "")
+    thread_ts = m.group(1) if m else None
+    vm = _THREAD_VERSION_FILENAME_RE.search(filename)
+    if vm:
+        ts = thread_ts or f"{vm.group(1)}.{vm.group(2)}"
+        return ts, int(vm.group(3))
+    if thread_ts:
+        return thread_ts, 1
+    return None
+
+
+def stale_slack_rel_paths_from_items(
+    items: list[tuple[str, str]],
+) -> set[str]:
+    """Rel paths of thread dumps superseded by a higher ``_vN`` sibling."""
+    groups: dict[str, list[tuple[int, str]]] = {}
+    for rel, body in items:
+        if not is_slack_inbox(rel):
+            continue
+        name = rel.rsplit("/", 1)[-1]
+        key = slack_thread_version_key(name, body[:2000] if body else "")
+        if not key:
+            continue
+        thread_ts, ver = key
+        groups.setdefault(thread_ts, []).append((ver, rel))
+    stale: set[str] = set()
+    for versions in groups.values():
+        if len(versions) < 2:
+            continue
+        max_ver = max(v for v, _ in versions)
+        for ver, rel in versions:
+            if ver < max_ver:
+                stale.add(rel)
+    return stale
+
+
+def stale_slack_rel_paths(slack_dir: Path) -> set[str]:
+    """Local-dir wrapper around ``stale_slack_rel_paths_from_items``."""
+    if not slack_dir.is_dir():
+        return set()
+    items: list[tuple[str, str]] = []
+    for p in slack_dir.glob("*.md"):
+        try:
+            body = p.read_text(encoding="utf-8", errors="replace")[:2000]
+        except OSError:
+            body = ""
+        items.append((f"01-INBOX/slack/{p.name}", body))
+    return stale_slack_rel_paths_from_items(items)
 
 
 def classify_slack_source(rel_path: str, body: str) -> SlackSourceKind:
@@ -144,10 +203,23 @@ def evaluate_slack_inbox_relevance(
     body: str,
     *,
     guess_proj: Callable[[str, str], str] | None = None,
+    stale_rels: set[str] | frozenset[str] | None = None,
 ) -> SlackRelevanceResult | None:
-    """Return routing decision for slack INBOX item, or None if not slack."""
+    """Return routing decision for slack INBOX item, or None if not slack.
+
+    ``stale_rels`` = superseded thread dumps (lower ``_vN``). Always archive
+    those — never extract commitments from an outdated snapshot.
+    """
     if not is_slack_inbox(rel_path):
         return None
+
+    if stale_rels and rel_path in stale_rels:
+        return SlackRelevanceResult(
+            route="archive",
+            source_kind=classify_slack_source(rel_path, body),
+            confidence=0.99,
+            reasons=["zastaralá verze vlákna — existuje vyšší _vN (ignorovat)"],
+        )
 
     kind = classify_slack_source(rel_path, body)
     reasons: list[str] = []

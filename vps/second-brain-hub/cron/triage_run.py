@@ -43,6 +43,7 @@ from triage_slack_relevance import (  # noqa: E402
     evaluate_slack_inbox_relevance,
     is_slack_inbox,
     slack_archive_proposal,
+    stale_slack_rel_paths_from_items,
 )
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -397,6 +398,9 @@ def main() -> None:
         return
 
     items.sort(key=lambda it: it[0])
+    stale_slack = stale_slack_rel_paths_from_items(items)
+    if stale_slack:
+        print("slack stale versions (archive only):", len(stale_slack))
 
     now = datetime.now(TZ)
     batch_id = now.strftime("%Y-%m-%d-%H%M")
@@ -434,7 +438,7 @@ def main() -> None:
 
         if is_slack_inbox(rel):
             relevance = evaluate_slack_inbox_relevance(
-                rel, body, guess_proj=guess_proj
+                rel, body, guess_proj=guess_proj, stale_rels=stale_slack
             )
             if relevance:
                 if relevance.route == "archive":
