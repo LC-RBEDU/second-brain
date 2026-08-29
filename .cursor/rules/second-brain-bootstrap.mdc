@@ -130,6 +130,7 @@ python3 "scripts/build_agent_context.py"
 | `agenda-analyze` | "analyzuj", "rozbor materiálů" |
 | `agenda-weekly-review` | "weekly review", "schvál draft" |
 | `agenda-lessons` | "ulož lessons", "schval lessons", "co jsme se naučili" |
+| `agenda-remind` | "připomeň mi", "remind me", Slack připomínka v … |
 | `agenda-proces` | "proces", "procesní mapa" |
 
 ## Co (ne)dělat

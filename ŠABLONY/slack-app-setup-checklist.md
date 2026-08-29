@@ -33,6 +33,12 @@
 - `files:read` — stažení příloh ze zpráv i z **forwardovaných unfurlů** (`url_private_download`)
 - `im:history` — načtení vlákna z **DM forwardů** (`conversations.replies`)
 
+**Pro Slack připomínky** (skill `agenda-remind`, cron `reminders_dispatch.py`) navíc:
+
+- `chat:write` — odeslat DM / zprávu
+- `im:write` — otevřít DM kanál
+- `users:read.email` — lookup uživatele podle emailu (`SLACK_REMINDER_USER_EMAIL`)
+
 Volitelné (už ne pro tento workflow nutné): `reactions:read` — jen pokud chceš appku používat i jinde.
 
 > Po přidání nového scope vždy **Install App → Reinstall to Workspace**, jinak Slack token nový scope nezná.

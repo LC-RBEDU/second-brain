@@ -55,6 +55,10 @@ TZ=Europe/Prague
 # :05 stagger — sources-routing.json drift guard (from Zdroje-katalog.md SSOT)
 5 7-22 * * * /usr/local/bin/python3 /app/cron/build_sources_routing.py >> /var/log/second-brain/agent-context.log 2>&1
 
+# === REMINDERS (Slack DM — agent-scheduled) ===
+# Every 2 min — dispatch due items from 00-System/Reminders-Pending/
+*/2 * * * * /usr/local/bin/python3 /app/cron/reminders_dispatch.py >> /var/log/second-brain/reminders.log 2>&1
+
 # === FOCUS (priority model v2) ===
 # No cron writes `focus` — it is the one field only the human sets.
 # When fewer than 5 tasks carry the current ISO week, build_agent_context.py fills
