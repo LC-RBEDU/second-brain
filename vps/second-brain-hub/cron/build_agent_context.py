@@ -51,6 +51,11 @@ from hub_state import (  # noqa: E402
     compute_last_task_activity,
     is_narrative_stale,
 )
+from hierarchy import (  # noqa: E402
+    TYPE_EPIC,
+    normalise_work_type,
+    parse_parent_id,
+)
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 OUTPUT_REL = "00-System/agent-context.json"
@@ -114,12 +119,16 @@ def task_to_dict(task) -> dict:
     i = _to_int(fm.get("ice_i"))
     c = _to_int(fm.get("ice_c"))
     e = max(_to_int(fm.get("ice_e")), 1)
+    work_type = normalise_work_type(fm.get("type"))
+    parent = parse_parent_id(fm.get("parent"))
     return {
         "id": tid,
         "slug": str(fm.get("slug") or ""),
         "status": str(fm.get("status") or "Next"),
         "title": title or tid,
         "rel_path": task.rel_path,
+        "type": work_type,
+        "parent": parent,
         "ice_i": i, "ice_c": c, "ice_e": e,
         "priority_score": round((i * c) / e, 2),
         "deadline": _date_str(fm.get("deadline")),
@@ -178,6 +187,11 @@ def collect_projects(vault: DriveVault) -> list[dict]:
             "charter_definition_of_done": _section_excerpt(body, "## Definition of done"),
             "charter_people": _section_excerpt(body, "## People"),
             "has_zdroje_dat": "## Zdroje dat" in body,
+            "hierarchy": bool(
+                fm.get("hierarchy") is True
+                or str(fm.get("hierarchy") or "").lower() in {"true", "1", "yes"}
+                or (fm.get("slug") or "") == "rb-universe-development"
+            ),
         })
     return out
 
@@ -228,14 +242,21 @@ def main() -> None:
     archive_dicts = [task_to_dict(t) for t in iter_archive_tasks(vault)]
 
     open_count: dict[str, int] = {}
+    epic_count: dict[str, int] = {}
     for t in active_dicts:
-        if not is_terminal(t["status"]):
-            open_count[t["slug"]] = open_count.get(t["slug"], 0) + 1
+        if is_terminal(t["status"]):
+            continue
+        open_count[t["slug"]] = open_count.get(t["slug"], 0) + 1
+        if t.get("type") == TYPE_EPIC:
+            epic_count[t["slug"]] = epic_count.get(t["slug"], 0) + 1
     for p in projects:
         p["open_tasks_count"] = open_count.get(p["slug"], 0)
+        p["open_epics_count"] = epic_count.get(p["slug"], 0)
 
     open_tasks = [t for t in active_dicts if not is_terminal(t["status"])]
+    # Epics stay in open_tasks for charter counts; select_top_priority excludes them.
     top_priority_today, top_priority = select_top_priority(open_tasks, today)
+    open_epics = [t for t in open_tasks if t.get("type") == TYPE_EPIC]
 
     focus_week = current_focus_week(today)
     focused = [t for t in open_tasks if is_focus_current(t.get("focus"), today)]
@@ -400,6 +421,7 @@ def main() -> None:
         "focus_suggestions": focus_suggestions,
         "top_priority_today": top_priority_today,
         "top_priority": top_priority,
+        "open_epics": open_epics,
         "recently_done": recently_done[:25],
         "recently_cancelled": recently_cancelled[:25],
         "upcoming_deadlines": upcoming,

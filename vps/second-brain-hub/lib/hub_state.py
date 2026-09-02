@@ -23,6 +23,7 @@ from datetime import date, timedelta
 from typing import Any, Protocol
 
 from focus import STATUS_DOING, STATUS_NEXT, is_focus_current, is_terminal
+from hierarchy import is_epic
 from today_priority import today_score as calc_today_score
 
 LEGACY_MARKERS = (
@@ -178,9 +179,13 @@ def build_state_content(
     """Return (markdown inner content, is_stale)."""
     open_tasks = open_tasks_for_slug(all_tasks, slug)
     status_counts = Counter(_task_get(t, "status") for t in open_tasks)
+    epic_n = sum(1 for t in open_tasks if is_epic(t))
+    story_n = len(open_tasks) - epic_n
 
     scored: list[tuple[Any, float]] = []
     for t in open_tasks:
+        if is_epic(t):
+            continue
         if _task_get(t, "status") not in (STATUS_DOING, STATUS_NEXT):
             continue
         ps = _priority_score(t)
@@ -235,6 +240,7 @@ def build_state_content(
         f"Next {status_counts.get('Next', 0)} · "
         f"Waiting {status_counts.get('Waiting', 0)} · "
         f"Backlog {status_counts.get('Backlog', 0)}"
+        + (f" · Epics {epic_n} · Stories/tasks {story_n}" if epic_n else "")
     )
     meta: list[str] = []
     if last_activity:

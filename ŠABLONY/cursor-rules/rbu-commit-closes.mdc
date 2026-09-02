@@ -1,0 +1,43 @@
+---
+description: Commity a PR do RB Universe musí jmenovat kryté RBU story/task a Closes RBU* — jinak Second Brain cron nemá signál pro auto-Done.
+alwaysApply: true
+---
+
+# RBU commit → Second Brain Closes
+
+Toto repo (`RB-Universe`) je zdroj signálu pro vault Second Brain (`rb-universe-development`).
+VPS cron čte **merged / pushed práci na větev `dev`** a hledá `Closes RBU…`. Bez toho v message **nic ve vaultu nezavře**.
+
+## Povinné při `git commit` / PR (merge do `dev`)
+
+1. Zjisti, kterou **story** nebo **krok** změna plní (branch, chat, vault / `agent-context`, když je SECOND_BRAIN dostupný). **Neuhodni ID** — zeptej se.
+2. Do commit message (nebo PR title/body při merge do `dev`) dej:
+   - `Closes RBU<N>-<krok>` pro checkbox, **nebo**
+   - `Closes RBU<N>` pro celou story (jen když opravdu zavíráš celou story a kroky jsou hotové / žádné otevřené)
+3. Vedle ID **vždy lidský název** ve stylu vaultu:
+   - Story: `Closes RBU62 — MCP Procesní architekt + návod pro PM`
+   - Krok: `Closes RBU62-1 — Přidat MCP tools` (+ v body zmínit parent story)
+4. Holé `RBU62` bez `Closes` a bez názvu = nedokončený commit. Doplň message; nepushuj „tiché“ RBU změny.
+5. **Epic se commitem nezavírá** — `Closes` jen story nebo `ID-N`.
+6. Hotfix mimo vault (typo, infra bez RBU) — `Closes` vynech; cron nic nezavře.
+
+## Příklady
+
+```
+feat(mcp): procesní architekt tools
+
+Closes RBU62-1 — Přidat MCP tools pro Procesního architekta
+```
+
+```
+fix(pm): filtrace pohledů delivery
+
+Closes RBU16 — Filtrace pohledů v delivery
+```
+
+## Co se stane ve vaultu
+
+- `Closes RBU62-1` → checkbox `[x]` v story souboru; když zbývající kroky jsou hotové → story `Done`
+- `Closes RBU62` → story `Done` jen pokud nejsou otevřené checkboxy; jinak cron logne skip
+
+SSOT pro agenta je tato rule. Lidská jedna věta: `CONTRIBUTING` / commit convention (viz `rbu-commit-closes-CONTRIBUTING.md` ve Second Brain `ŠABLONY/cursor-rules/`).

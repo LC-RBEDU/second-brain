@@ -193,8 +193,9 @@ def _expand_graph(
             for m in (_task_materials(vault, focus_task_id) or [])
         )
 
-        layer = "A" if is_focus or (hop == 0 and node_type == "task" and key == focus_task_id) else "B"
-        if node_type == "task" and key == focus_task_id:
+        is_work_item = node_type in {"task", "story", "epic"}
+        layer = "A" if is_focus or (hop == 0 and is_work_item and key == focus_task_id) else "B"
+        if is_work_item and key == focus_task_id:
             layer = "A"
         elif node_type == "material" and focus_task_id:
             mats = _task_materials(vault, focus_task_id) or []
@@ -295,6 +296,32 @@ def assemble_context(
             result.layer_a.append(sec)
 
     active = [t for t in collect_tasks(vault, archive=False) if t.slug == slug and t.status != "Done"]
+    epics = [t for t in active if t.type == "epic"]
+    stories = [t for t in active if t.type == "story"]
+    flat = [t for t in active if t.type not in {"epic", "story"}]
+    hierarchy_on = bool(hub_fm.get("hierarchy")) or slug == "rb-universe-development" or bool(epics)
+
+    if hierarchy_on:
+        lines.extend(["## Hierarchie (Epic → Story)", ""])
+        if epics:
+            by_parent: dict[str, list] = {}
+            for s in stories:
+                by_parent.setdefault(s.parent or "_standalone", []).append(s)
+            for epic in sorted(epics, key=lambda x: x.id):
+                lines.append(f"- **Epic {epic.id} — {epic.title}** (`{epic.status}`)")
+                for s in sorted(by_parent.get(epic.id, []), key=lambda x: x.id):
+                    lines.append(f"  - Story {s.id} — {s.title} (`{s.status}`)")
+            standalone = by_parent.get("_standalone") or []
+            if standalone:
+                lines.append("- **Standalone stories**")
+                for s in sorted(standalone, key=lambda x: x.id):
+                    lines.append(f"  - {s.id} — {s.title} (`{s.status}`)")
+            lines.append("")
+        elif stories:
+            lines.append("- Stories (bez epicu):")
+            for s in sorted(stories, key=lambda x: x.id):
+                lines.append(f"  - {s.id} — {s.title} (`{s.status}`)")
+            lines.append("")
 
     seeds: list[tuple[str, str, float]] = []
     if focus_task_id:
@@ -305,9 +332,14 @@ def assemble_context(
                 seeds.append((strip_wikilink(m), focus_task_id, 180.0))
             if t.source:
                 seeds.append((strip_wikilink(str(t.source)), focus_task_id, 170.0))
+            if t.parent:
+                seeds.append((t.parent, focus_task_id, 160.0))
     else:
-        for t in active:
+        # Prefer stories / flat tasks for graph seeds; epics are roadmap context
+        for t in stories + flat:
             seeds.append((t.id, "project-active", 50.0 + t.priority_score))
+        for t in epics:
+            seeds.append((t.id, "project-epic", 20.0))
 
     graph = _expand_graph(
         vault,
@@ -336,11 +368,14 @@ def assemble_context(
     if focus_task_id and focus_task_id in graph:
         n = graph[focus_task_id]
         if n.full_body:
-            lines.extend([f"### Task {focus_task_id}", "", n.full_body, ""])
+            focus_t = _task_by_id(vault, focus_task_id)
+            label = (focus_t.type.capitalize() if focus_t else "Task")
+            lines.extend([f"### {label} {focus_task_id}", "", n.full_body, ""])
             result.layer_a.append(focus_task_id)
     elif not focus_task_id:
-        lines.extend(["### Aktivní tasky (těla)", ""])
-        for t in sorted(active, key=lambda x: x.id):
+        lines.extend(["### Aktivní work items (těla)", ""])
+        ordered = sorted(stories + flat + epics, key=lambda x: (0 if x.type == "story" else 1 if x.type == "task" else 2, x.id))
+        for t in ordered:
             tp = vault / t.rel_path
             if not tp.exists():
                 continue
@@ -348,7 +383,9 @@ def assemble_context(
                 _, body = parse_frontmatter(tp.read_text(encoding="utf-8"))
             except OSError:
                 continue
-            lines.extend([f"#### {t.id} — {t.title}", "", body.strip(), ""])
+            type_tag = f" [{t.type}]" if hierarchy_on else ""
+            parent_tag = f" ← {t.parent}" if t.parent else ""
+            lines.extend([f"#### {t.id} — {t.title}{type_tag}{parent_tag}", "", body.strip(), ""])
             result.layer_a.append(t.id)
 
     layer_b_nodes = sorted(

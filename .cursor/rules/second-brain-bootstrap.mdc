@@ -14,11 +14,19 @@ alwaysApply: true
 - `OBSIDIAN/` je **git-ignored** — verzování řeší Google Drive native versioning
 
 ### Datový model (file-per-task)
-- TASK = `02-PROJEKTY/<slug>/tasks/<ID>-<slug>.md` (single file, YAML frontmatter SSOT)
+- TASK / STORY / EPIC = `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (single file, YAML frontmatter SSOT)
 - PROJECT = `02-PROJEKTY/<Hub>.md` (charter + Bases embed). Vault je single-user — owner = vždy Lukáš (nesepisujeme).
 - MATERIAL = `02-PROJEKTY/<slug>/materials/<file>.md` (project-specific) nebo `05-RESOURCES/<category>/<file>.md` (cross-project)
 - AREA = `03-AREAS/<Name>.md`
 - ARCHIVE = `07-ARCHIV/tasks-done/<slug>/<ID>-*.md`
+
+### Hierarchie Epic → Story → Task (opt-in; RBU vždy)
+- **RB Universe** (`rb-universe-development`) vždy; jinde `hierarchy: true` v hubu nebo presence `type: epic` v `tasks/`.
+- **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, **ne** ICE/focus; **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
+- **Story** (`type: story`) — doručitelná hodnota. ICE / `focus` / `agent` / `status` žijí tady. `parent: '[[RBU23 — …]]'` → epic. Checkboxy `**ID-N**` v `## Operativní kroky` = listové tasky.
+- **Task** (`type: task`) — legacy / flat (default mimo hierarchii). Osamocený tech kus bez epicu = `story` bez `parent` (např. Traefik).
+- Epic i story berou další volné `RBU<N>` přes `next_task_id.py` — žádné `RBU-E`.
+- Verzované šablony: `ŠABLONY/obsidian-templates/` (vault kopie v `00-System/Templates/`).
 
 ### Tři osy priority (model v2 od 4. 8. 2026)
 | Otázka | Nositel | Pole |
@@ -73,9 +81,10 @@ alwaysApply: true
 - recently done, upcoming deadlines, blocked tasks
 
 Snapshot obsahuje:
-- `projects[]` — všechny project huby (slug, hub_filename, status, area, owner, open_tasks_count)
-- `top_priority_today[]` — TOP dnes (max 5, eligibility + today_score) — **primární pro „co teď“**
+- `projects[]` — všechny project huby (slug, hub_filename, status, area, owner, open_tasks_count, `hierarchy`, `open_epics_count`)
+- `top_priority_today[]` — TOP dnes (max 5, eligibility + today_score) — **primární pro „co teď“**; epicy vyloučeny
 - `top_priority[]` — širší seznam (max 15, stejná pravidla)
+- `open_epics[]` — otevřené `type: epic` (roadmap; ne fokus)
 - `recently_done[]` — last 7 days
 - `upcoming_deadlines[]` — next 7 days
 - `recurring_pending[]` — recurring tasky čekající na rotaci
@@ -113,6 +122,7 @@ python3 "scripts/build_agent_context.py"
 - every 2h :06 lifecycle_recurring (Done + recurring → archive + nová instance)
 - every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech — wikilinky + tabulky; sekce nemá markery, hranicí je nadpis a další `## `, takže do ní nepiš ručně)
 - every 2h :08 lifecycle_sort_steps (řazení `## Operativní kroky`)
+- every 2h :09 lifecycle_github_rbu_closes (`Closes RBU*` z GitHub větve `dev` → odškrtnutí / story Done; epic nikdy)
 - Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
 - Po 6:55 inbox_inventory (log only)
 - EDU news: skill `agenda-edu-news` on-demand (cron auto-refresh zrušen; `--reset` volitelně)

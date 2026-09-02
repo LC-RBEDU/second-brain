@@ -32,6 +32,8 @@ TZ=Europe/Prague
 7 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_hub_state.py >> /var/log/second-brain/lifecycle.log 2>&1
 # :08 — sort ## Operativní kroky (open first, ascending by subtask number)
 8 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_sort_steps.py >> /var/log/second-brain/lifecycle.log 2>&1
+# :09 — GitHub Closes RBU* on branch dev → vault checkbox / story Done (needs GITHUB_TOKEN)
+9 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_github_rbu_closes.py >> /var/log/second-brain/lifecycle.log 2>&1
 
 # === TRIAGE (LLM via cursor-agent CLI; manual fallback if CLI missing) ===
 # Po-Pa: 7:00, 14:00, 20:00

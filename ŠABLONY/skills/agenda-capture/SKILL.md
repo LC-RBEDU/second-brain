@@ -75,15 +75,16 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 ```yaml
 ---
 id: <ID>
-type: task
+type: task   # RBU / hierarchy: story (nebo epic — viz epic-template); legacy flat = task
 title: "<lidsky čitelný titulek bez ID prefixu>"
 project: "[[<HubFilename>]]"
 slug: <slug>
 aliases: [<ID>]
 status: Next | Doing | Backlog | Waiting | Done | Cancelled
-focus:  (prázdné — nastavuje jen člověk)
+parent:  # jen story → "[[RBU23 — …]]"; epic/standalone prázdné
+focus:  (prázdné — nastavuje jen člověk; **ne** u epic)
 agent:  none | assist | solo
-ice_i: <1-10>
+ice_i: <1-10>   # u epic vynech
 ice_c: <1-10>
 ice_e: <1-10>
 deadline: <YYYY-MM-DD or empty>
@@ -98,6 +99,8 @@ blocked_by: []
 ```
 
 `aliases: [<ID>]` zajišťuje, že `[[<ID>]]` z body resolvuje na soubor i po případné změně titulu.
+
+**RBU:** default nové doručení = `type: story` (+ `parent` pokud patří pod epic). Roadmap kontejner = `type: epic` ze `ŠABLONY/obsidian-templates/epic-template.md`. Konvence: `ŠABLONY/obsidian-templates/task-convention.md`.
 
 ### 7. Body šablony
 

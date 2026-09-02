@@ -35,10 +35,12 @@ Pokud slug není jasný → zobraz seznam aktivních projektů z `00-System/Inde
 
 ### 2. Ukaž orientační přehled
 
+U hierarchy projektů (`hierarchy: true` / RBU / `open_epics` v snapshotu) odděl **Epicy** od **Stories** — epicy nesoutěží o fokus ani `top_priority`.
+
 ```
 ═══════════════════════════════════════════════
 PROJEKT: <HubName> [<slug>]
-Status: <active/paused> | Area: <area>
+Status: <active/paused> | Area: <area> | hierarchy: <yes/no>
 ═══════════════════════════════════════════════
 
 🎯 CÍL: <z agent-context.json charter_cil nebo ## Cíl>
@@ -54,16 +56,19 @@ Status: <active/paused> | Area: <area>
 ❓ OTEVŘENÉ OTÁZKY: <count>
   • ...
 
-📋 AKTIVNÍ ÚKOLY (<N>)
-  • [fokus W32, Score=18.0, agent=assist] RBU30 — Název úkolu — deadline 2026-05-30
-  • [Next, Score=14.0] RBU15 — Filtrace pohledů
+🗺 EPICS (<N z open_epics[]>)
+  • RBU23 — MVP karet… (Next) ← children: RBU61, RBU21…
+  …
+
+📋 AKTIVNÍ STORIES / TASKY (<N>)
+  • [fokus W32, Score=18.0, agent=assist] RBU62 — Název — parent —
+  • [Next, Score=14.0] RBU61 — … — parent RBU23
   ...
 
 📁 EXISTUJÍCÍ VÝSTUPY (mimo tasks/, materials/)
   • report-q1-2026.docx (2026-04-15)
-  • architektura-rb-universe.md (2026-04-20)
 
-💡 BACKLOG: <N> tasků se status: Backlog
+💡 BACKLOG: <N> stories se status: Backlog
 
 📚 LESSONS (max 3, z 00-System/Lessons/)
   • [tech] LL-… — title — příště: …
@@ -71,8 +76,8 @@ Status: <active/paused> | Area: <area>
 Co chceš dělat?
   [N] Nový výstup
   [U] Aktualizovat existující výstup
-  [T] Upravit úkoly (přidat / uzavřít / změnit metadata / status flip)
-  [D] Detail tématu (celý hub + jeden task)
+  [T] Upravit úkoly (přidat story/epic / uzavřít / metadata)
+  [D] Detail tématu (celý hub + jedna story)
 ```
 
 Pokud uživatel zadal konkrétní instrukci hned, přeskoč výběr a jdi rovnou na krok 3.
@@ -181,3 +186,5 @@ Uzavřen 1 task (RBU13), přidán 1 nový (RBU30, Score 8.4).
 - **Při nejasném zadání** — polož 1 konkrétní otázku, nezačínej hádat
 - **Provenance:** ve výstupu uveď, které materiály/zdroje jsi použil (wikilink nebo cesta). Pokud klíčový zdroj chyběl v bundlu, explicitně to napiš.
 - **Tone:** `OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`
+- **RBU hierarchy:** epic vs story vs checkbox — viz `ŠABLONY/obsidian-templates/task-convention.md`. Nový epic = `epic-template.md`; nová story = `task-template.md` s `type: story` + `parent`. Epic **neoznačuj Done** automaticky.
+- **Implementace v Universe:** commity musí nést `Closes RBU…` dle rule v RB-Universe (zdroj `ŠABLONY/cursor-rules/rbu-commit-closes.mdc`). Skills v tomto vaultu to jen připomínají — zápis do Universe repo je mimo SECOND_BRAIN.

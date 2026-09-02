@@ -27,6 +27,7 @@ from focus import (
     STATUS_NEXT,
     is_focus_current,
 )
+from hierarchy import is_focusable
 
 URGENCY_BONUS_OVERDUE = 5
 URGENCY_BONUS_TODAY = 30
@@ -74,14 +75,24 @@ def today_score(priority_score: float, deadline: str | None, today: date) -> flo
 
 
 def is_focus_eligible(task: Any, today: date) -> bool:
-    """True when the task carries the current focus week and is actionable."""
+    """True when the task carries the current focus week and is actionable.
+
+    Epics never qualify — focus belongs on stories (or flat tasks).
+    """
+    if not is_focusable(task):
+        return False
     if _task_get(task, "status") in FOCUS_INELIGIBLE_STATUSES:
         return False
     return is_focus_current(_task_get(task, "focus"), today)
 
 
 def is_queue_eligible(task: Any, today: date) -> bool:
-    """True for the wider list: focused work plus everything queued as Doing/Next."""
+    """True for the wider list: focused work plus everything queued as Doing/Next.
+
+    Epics stay out of ``top_priority`` — they are roadmap containers, not queue items.
+    """
+    if not is_focusable(task):
+        return False
     if is_focus_eligible(task, today):
         return True
     return _task_get(task, "status") in QUEUE_STATUSES

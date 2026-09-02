@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""F6.1: Auto-flip task status → Done when all checkboxes are [x].
+"""F6.1: Auto-flip task/story status → Done when all checkboxes are [x].
 
 Scans 02-PROJEKTY/<slug>/tasks/*.md, parses frontmatter + body, finds tasks where:
 - status not in (Done, Cancelled) — a cancelled task stays cancelled even
   when its checkboxes are all ticked
+- ``type`` is not ``epic`` — epics are closed only by a human
 - body has ≥1 checkbox in `## Operativní kroky` and all are checked
 
 Patches frontmatter status: Done + updated: today, appends log line.
@@ -24,6 +25,7 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from hierarchy import is_epic  # noqa: E402
 from task_io import iter_active_tasks, update_task, all_checkboxes_done  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -39,9 +41,15 @@ def main() -> None:
     today = datetime.now(TZ).date().isoformat()
     flipped = 0
     skipped = 0
+    skipped_epic = 0
 
     for task in iter_active_tasks(vault):
         if task.is_terminal:
+            continue
+        if is_epic(task):
+            # Epics never auto-close from checkbox state.
+            if all_checkboxes_done(task.body):
+                skipped_epic += 1
             continue
         if not all_checkboxes_done(task.body):
             continue
@@ -60,7 +68,10 @@ def main() -> None:
         else:
             skipped += 1
 
-    print(f"lifecycle_done_from_checkboxes: flipped={flipped}, conflicts/skipped={skipped}")
+    print(
+        f"lifecycle_done_from_checkboxes: flipped={flipped}, "
+        f"conflicts/skipped={skipped}, epic_skipped={skipped_epic}"
+    )
 
 
 if __name__ == "__main__":

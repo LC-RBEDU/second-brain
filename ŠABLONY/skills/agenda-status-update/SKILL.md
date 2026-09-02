@@ -45,9 +45,9 @@ Mapping user intent → frontmatter změna:
 
 | User intent | Patch |
 |-------------|-------|
-| "hotovo" / "done" | `status: Done`, `waitUntil:` prázdné, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>` |
-| "hotovo PD4-3" | flip checkbox `**PD4-3**` v `## Operativní kroky` na `[x]` (single subtask) |
-| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. **Nejdřív zkontroluj, kolik úkolů už fokus má** — limit je 5; při překročení se zeptej, co vypadne. |
+| "hotovo" / "done" | `status: Done`, `waitUntil:` prázdné, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>`. **U `type: epic` potvrď výslovně** — epic se z checkboxů / GitHubu neauto-Done. |
+| "hotovo PD4-3" / "hotovo RBU62-1" | flip checkbox `**ID-N**` v `## Operativní kroky` na `[x]` (single subtask); v chatu uveď parent **ID — title** + text kroku |
+| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. **Odmítni u epic.** Nejdřív spočítej fokus (limit 5). |
 | "pryč z fokusu" | `focus:` prázdné, `updated: <today>` |
 | "odlož do YYYY-MM-DD" | `status: Waiting`, `waitUntil: <date>`, `updated: <today>` |
 | "ztím čekat" (bez data) | `status: Waiting`, `waitUntil: <today + 3 dny>`, `updated: <today>` |
@@ -55,7 +55,7 @@ Mapping user intent → frontmatter změna:
 | "zruš" / "cancel" | `status: Cancelled`, `waitUntil:` prázdné, `updated: <today>`, body append `- <today>: **ZRUŠENO** — <důvod>`. **Nemaž soubor** — cron ho archivuje jako Done a `Cancelled` drží rozdíl mezi splněným a odepsaným. |
 | "sloučeno do X" | totéž jako zruš, v logu wikilink na cílový úkol |
 | "deadline YYYY-MM-DD" | `deadline: <date>`, `updated: <today>` |
-| "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` |
+| "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` (ne u epic) |
 | status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`) |
 
 ### 4. Preview (povinné)
@@ -105,3 +105,5 @@ python3 scripts/build_agent_context.py
 - Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej
 - "Zruš" → potvrď s userem (mazání je destruktivní)
 - Recurring tasky (`recurring:` blok ve frontmatteru) — Done flip spustí cron `lifecycle_recurring.py` (vytvoří next instance) — ne dělej manuálně
+- **Epic** (`type: epic`): status Done jen ručně po tvé explicitní vůli; focus/ICE na epic nepatří. Auto z GitHubu / checkboxů epic nezavře.
+- **RBU GitHub:** odškrtnutí `ID-N` z `Closes` na `dev` dělá cron — manuálně duplikuj jen když cron nestihl / konflikt CAS.

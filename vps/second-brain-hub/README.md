@@ -93,7 +93,8 @@ git push origin main
 | `lifecycle_waituntil_hygiene.py` | every 2h :03 | `waitUntil` vyčistí u tasků, kde `status != Waiting` |
 | `lifecycle_overdue_flag.py` | every 2h :04 | jeden OVERDUE řádek při prvním překročení, eskalace po 14 dnech |
 | `archive_done_tasks.py` | every 2h :05 | `Done` > 90 dní → `07-ARCHIV/tasks-done/<slug>/` |
-| `lifecycle_recurring.py` | every 2h :06 | Recurring `Done` → archive + nová instance |
+| `lifecycle_sort_steps.py` | every 2h :08 | Řazení `## Operativní kroky` |
+| `lifecycle_github_rbu_closes.py` | every 2h :09 | `Closes RBU*` z GitHub `dev` → checkbox / story Done |
 | `build_agent_context.py` | každých 15 min v 7-22 | refresh `00-System/agent-context.json` |
 
 ### Triage / EDU news / Weekly

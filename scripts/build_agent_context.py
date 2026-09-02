@@ -55,6 +55,7 @@ from focus import (  # noqa: E402
     normalise_agent,
     parse_focus,
 )
+from hierarchy import parse_parent_id  # noqa: E402
 from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
@@ -87,6 +88,9 @@ FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)
 HUB_TITLE_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 
 
+WORK_ITEM_TYPES = frozenset({"task", "story", "epic"})
+
+
 @dataclass
 class TaskInfo:
     id: str
@@ -107,6 +111,8 @@ class TaskInfo:
     source: str | None = None
     is_recurring: bool = False
     extra_module: str | None = None
+    type: str = "task"
+    parent: str | None = None
 
     @property
     def priority_score(self) -> float:
@@ -120,6 +126,8 @@ class TaskInfo:
             "status": self.status,
             "title": self.title,
             "rel_path": self.rel_path,
+            "type": self.type,
+            "parent": self.parent,
             "ice_i": self.ice_i,
             "ice_c": self.ice_c,
             "ice_e": self.ice_e,
@@ -146,6 +154,8 @@ class ProjectInfo:
     aliases: list[str]
     area: str | None = None
     open_tasks_count: int = 0
+    open_epics_count: int = 0
+    hierarchy: bool = False
     updated: str | None = None
     sources: list[str] = None
     notebooklm: list[str] = None
@@ -167,6 +177,8 @@ class ProjectInfo:
             "aliases": self.aliases,
             "area": self.area,
             "open_tasks_count": self.open_tasks_count,
+            "open_epics_count": self.open_epics_count,
+            "hierarchy": self.hierarchy,
             "updated": self.updated,
             "sources": self.sources or [],
             "notebooklm": self.notebooklm or [],
@@ -259,6 +271,11 @@ def collect_projects(vault: Path) -> list[ProjectInfo]:
             continue
         slug = fm.get("slug") or hub.stem.lower().replace(" ", "-")
         title = (HUB_TITLE_RE.search(body) or [None, fm.get("title") or hub.stem])[1] if HUB_TITLE_RE.search(body) else (fm.get("title") or hub.stem)
+        hierarchy = bool(
+            fm.get("hierarchy") is True
+            or str(fm.get("hierarchy") or "").lower() in {"true", "1", "yes"}
+            or slug == "rb-universe-development"
+        )
         out.append(ProjectInfo(
             slug=slug,
             hub_filename=hub.name,
@@ -266,6 +283,7 @@ def collect_projects(vault: Path) -> list[ProjectInfo]:
             status=str(fm.get("status") or "active"),
             aliases=_list_str(fm.get("aliases")),
             area=fm.get("area"),
+            hierarchy=hierarchy,
             updated=_date_str(fm.get("updated")),
             sources=_list_str(fm.get("sources")),
             notebooklm=_list_str(fm.get("notebooklm")),
@@ -302,7 +320,8 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
             except OSError:
                 continue
             fm, body = parse_frontmatter(text)
-            if (fm.get("type") or "task").lower() != "task":
+            work_type = str(fm.get("type") or "task").strip().lower()
+            if work_type not in WORK_ITEM_TYPES:
                 continue
             tid = str(fm.get("id") or "")
             if not tid:
@@ -316,6 +335,8 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
                 rel_path = str(task_file.relative_to(vault))
             except ValueError:
                 rel_path = str(task_file)
+            parent_raw = fm.get("parent")
+            parent_id = parse_parent_id(parent_raw) if parent_raw else None
             out.append(TaskInfo(
                 id=tid,
                 slug=str(fm.get("slug") or slug),
@@ -335,6 +356,8 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
                 source=fm.get("source"),
                 is_recurring=bool(fm.get("recurring")),
                 extra_module=fm.get("extra_module"),
+                type=work_type,
+                parent=parent_id,
             ))
     return out
 
@@ -407,13 +430,20 @@ def build_snapshot(vault: Path) -> dict:
     archived = collect_tasks(vault, archive=True)
 
     open_count_by_slug: dict[str, int] = {}
+    epic_count_by_slug: dict[str, int] = {}
     for t in active_tasks:
         if not is_terminal(t.status):
             open_count_by_slug[t.slug] = open_count_by_slug.get(t.slug, 0) + 1
+            if t.type == "epic":
+                epic_count_by_slug[t.slug] = epic_count_by_slug.get(t.slug, 0) + 1
     for p in projects:
         p.open_tasks_count = open_count_by_slug.get(p.slug, 0)
+        p.open_epics_count = epic_count_by_slug.get(p.slug, 0)
+        if epic_count_by_slug.get(p.slug, 0) > 0:
+            p.hierarchy = True
 
     open_tasks = [t for t in active_tasks if not is_terminal(t.status)]
+    open_epics = [t for t in open_tasks if t.type == "epic"]
     top_priority_today, top_priority = select_top_priority(open_tasks, today)
 
     focus_week = current_focus_week(today)
@@ -543,6 +573,7 @@ def build_snapshot(vault: Path) -> dict:
         "focus_suggestions": [t.to_dict() for t in focus_suggestions],
         "top_priority_today": top_priority_today,
         "top_priority": top_priority,
+        "open_epics": [t.to_dict() for t in open_epics],
         "recently_done": [t.to_dict() for t in recently_done[:25]],
         "recently_cancelled": [t.to_dict() for t in recently_cancelled[:25]],
         "upcoming_deadlines": [t.to_dict() for t in upcoming],

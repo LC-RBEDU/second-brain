@@ -181,6 +181,15 @@ def all_checkboxes_done(body: str) -> bool:
     return all(b.lower() == "x" for b in boxes)
 
 
+def open_checkbox_count(body: str) -> int:
+    """Count unchecked ``- [ ]`` lines in body."""
+    return len(re.findall(r"^-\s+\[\s\]\s+", body or "", re.MULTILINE))
+
+
+def has_any_checkbox(body: str) -> bool:
+    return bool(re.search(r"^-\s+\[[ xX]\]\s+", body or "", re.MULTILINE))
+
+
 def parse_iso_date(value: Any) -> date | None:
     """Robust ISO date parser (handles datetime.date, datetime.datetime, str)."""
     if value is None:
