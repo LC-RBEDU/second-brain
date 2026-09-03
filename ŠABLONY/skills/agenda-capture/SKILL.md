@@ -102,6 +102,13 @@ blocked_by: []
 
 **RBU:** default nové doručení = `type: story` (+ `parent` pokud patří pod epic). Roadmap kontejner = `type: epic` ze `ŠABLONY/obsidian-templates/epic-template.md`. Konvence: `ŠABLONY/obsidian-templates/task-convention.md`.
 
+**`agent` — vyplň podle toho, kdo práci udělá (ne slepý default `none`):**
+- `none` — Lukáš, agent nepomáhá
+- `assist` — Lukáš + agent (draft, rozbor)
+- `solo` — agent sám (lookup Allfred / Universe, ověřit fakt)
+
+Drobná `solo` (jedno ověření): **nezakládej task s podtasky**. V preview se zeptej „řešit rovnou?“. Ano → udělej + `00-System/Agent-Log/YYYY-MM.md`. Ne / větší / někdo čeká → teprve pak slim task bez vymyšlené struktury kroků. Viz `agenda-triage` sekce Agent.
+
 ### 7. Body šablony
 
 ```markdown
@@ -118,7 +125,7 @@ blocked_by: []
 - <YYYY-MM-DD>: <poznámka>
 ```
 
-Subtasky musí mít prefix `**<ID>-N**` (1-indexed). Lze je referencovat z chatu / jiných tasků jako `<ID>-N` (např. „viz PD4-3").
+Subtasky musí mít prefix `**<ID>-N**` (1-indexed). Lze je referencovat z chatu / jiných tasků jako `<ID>-N` (např. „viz PD4-3"). **Nevymýšlej** dva kroky „ověřit + odepsat“, když je to jedno `solo` ověření — to patří do otázky „řešit rovnou?“, ne do checklistu.
 
 ### 8. Preview PŘED zápisem
 
