@@ -4,6 +4,7 @@ Toto SECOND_BRAIN repo **nemá** write přístup do `RedButtonEDU/RB-Universe`. 
 
 - Zdroj: [`ŠABLONY/cursor-rules/rbu-commit-closes.mdc`](../ŠABLONY/cursor-rules/rbu-commit-closes.mdc)
 - Lidská věta: [`ŠABLONY/cursor-rules/rbu-commit-closes-CONTRIBUTING.md`](../ŠABLONY/cursor-rules/rbu-commit-closes-CONTRIBUTING.md)
+- Zákaz `/init` AGENTS.md: [`ŠABLONY/cursor-rules/no-agents-md-init.mdc`](../ŠABLONY/cursor-rules/no-agents-md-init.mdc) — v lokálním klonu Universe už zkopírováno (4. 9. 2026); commit/push v RB-Universe zvlášť.
 
 ## Kroky (v klonu RB-Universe)
 

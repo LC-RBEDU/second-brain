@@ -65,6 +65,10 @@ python3 scripts/notebooklm_query.py ask "Allfred" "…"
 
 Po inventuře doplň `notebooklm:` v hub frontmatteru (např. Allfred).
 
+### Context files (`AGENTS.md`)
+
+**Nespouštěj `/init`.** LLM-generovaný `AGENTS.md` / `CLAUDE.md` nezvedá úspěšnost a zvedá cenu (~+20 %, arXiv 2602.11988). Pravidlo: `.cursor/rules/no-agents-md-init.mdc` (zdroj `ŠABLONY/cursor-rules/`).
+
 ### Cursor hooks (repo `.cursor/hooks.json`)
 
 - `afterFileEdit` → debounced `build_agent_context.py`

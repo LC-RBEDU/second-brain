@@ -1,0 +1,24 @@
+---
+description: Zákaz /init a LLM-generovaných AGENTS.md / CLAUDE.md — lidský context file jen pro non-obvious pasti
+alwaysApply: true
+---
+
+# Žádné /init AGENTS.md
+
+Nespouštěj Cursor / Claude Code / Codex **`/init`** ani analog, který **vygeneruje nebo přepíše** `AGENTS.md` / `CLAUDE.md`.
+
+Důvod: [arXiv 2602.11988v2](https://arxiv.org/abs/2602.11988) — LLM context files nezvedají success rate, **+20 %** cost. Overview repa agenta k relevantnímu souboru nedostane dřív. Instrukce ale dodrží (víc testů = dražší běh).
+
+## Zakázáno
+
+- `/init`, „vygeneruj AGENTS.md“, „doplň overview složek“
+- kopírovat README / charter / strom `frontend/ backend/ docs/` do context file
+- mazat existující **lidský** AGENTS.md proto, že paper říká „context files nefungují“
+
+## Povoleno
+
+- krátká lidská úprava existujícího souboru: pasti, které **nejsou** v README ani v `.cursor/rules/`
+- odkaz na rules / skills místo dumpování jejich obsahu
+- nová always-on rule jen když platí věta: „tohle agent z kódu/README neuhodne“
+
+`n8nac` vendor blok v `AGENTS.md` (Allfred invoices / n8n-as-code) **není** Cursor `/init` — ten nesahej.

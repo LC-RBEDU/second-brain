@@ -43,8 +43,8 @@ alwaysApply: true
 ### focus a agent
 - **`focus: 2026-W32`** — ISO týden. **Nastavuje výhradně člověk**; žádný cron do toho pole nesmí zapsat. Vyprší sám přechodem na další týden.
 - Rituály (recurring) o místo ve fokusové pětici nesoutěží.
-- **`agent: none | assist | solo`** — kdo práci udělá. Default `none`. Vyplňuje agent při triáži.
-- **Drobná `solo` práce se nezakládá jako task** — vzniká záznam v `00-System/Agent-Log/YYYY-MM.md` s wikilinkem na projekt (objeví se v backlinks hubu). Pokud se ukáže, že je věc větší nebo na ni někdo čeká, povýší se na task.
+- **`agent: none | assist | solo`** — kdo práci udělá. Default `none`. Vyplňuje agent při triáži (`none` = Lukáš, `assist` = Lukáš + agent, `solo` = agent sám — lookup Allfred/Universe, ověřit fakt).
+- **Drobná `solo` práce se nezakládá jako task** — v preview se zeptej „řešit rovnou?“, ne navrhuj strukturu podtasků. Ano → udělej + záznam v `00-System/Agent-Log/YYYY-MM.md` s wikilinkem na projekt (backlinks hubu). Ne / větší / někdo čeká → teprve pak slim task.
 
 ### Priority score
 - `priority_score = (ice_i * ice_c) / ice_e` (Bases formula + agent-context.json)
@@ -112,20 +112,15 @@ python3 "scripts/build_agent_context.py"
 - Konkrétní materiál — `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<category>/`
 - Project charter — `02-PROJEKTY/<Hub>.md` (Scope, **## Stav (auto)**, Kontext, **## Zdroje dat**, frontmatter `sources:` / `notebooklm:`)
 
-## Lifecycle automatika (ví si sám, neptej se)
-- every 2h :00 done_from_checkboxes
-- every 2h :01 waiting_to_next (waitUntil ≤ dnes → **Next**, waitUntil smaže — probuzení není priorita)
-- every 2h :02 waiting_default_waituntil (Waiting bez data → waitUntil = dnes + 3 dny)
-- every 2h :03 waituntil_hygiene (waitUntil jen u Waiting; u ostatních statusů vyčistí)
-- every 2h :04 overdue_flag (**jeden** řádek při prvním překročení, pak ticho; eskalace po 14 dnech)
-- every 2h :05 archive_done_tasks (>90 dní v Done nebo Cancelled)
-- every 2h :06 lifecycle_recurring (Done + recurring → archive + nová instance)
-- every 2h :07 lifecycle_hub_state (`## Stav (auto)` v hubech — wikilinky + tabulky; sekce nemá markery, hranicí je nadpis a další `## `, takže do ní nepiš ručně)
-- every 2h :08 lifecycle_sort_steps (řazení `## Operativní kroky`)
-- every 2h :09 lifecycle_github_rbu_closes (`Closes RBU*` z GitHub větve `dev` → odškrtnutí / story Done; epic nikdy)
-- Po–Pá 7:00/14:00/20:00 (+ víkend 7:00) `triage_llm_run.py` → `00-System/Triage-Pending/*.json` (LLM; fallback = manuální triáž)
-- Po 6:55 inbox_inventory (log only)
-- EDU news: skill `agenda-edu-news` on-demand (cron auto-refresh zrušen; `--reset` volitelně)
+## Lifecycle automatika
+Cron tabulka (minuty, názvy skriptů) = **README.md** + `vps/second-brain-hub/deploy/crontab`. Agent se na běh neptá.
+
+Z toho plyne (v README není):
+- `## Stav (auto)` **nikdy nepiš** — generuje cron; hranice je nadpis a další `## `
+- `waitUntil` jen u Waiting; po datu → Next (probuzení ≠ priorita)
+- `Closes RBU*` na větvi `dev` odškrtne krok / story; **epic nikdy**
+- `focus` cron nezapisuje
+- EDU news = skill `agenda-edu-news` (cron auto-refresh zrušen)
 
 ## Skills
 
@@ -151,6 +146,7 @@ python3 "scripts/build_agent_context.py"
 - **NE** nastavuj `focus` sám — nabídni kandidáty a nech volbu na uživateli.
 - **NE** označuj zrušený úkol jako `Done` — od 4. 8. 2026 je na to `Cancelled`.
 - **NE** používej **dev RB Universe** (`dev-universe`, `api.dev-universe`) pro pracovní data — jen produkce + MCP `user-rb-universe`; viz `rb-universe-production-data.mdc`.
+- **NE** spouštěj `/init` ani negeneruj `AGENTS.md` / `CLAUDE.md` — viz `no-agents-md-init.mdc`.
 - **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
 
 ## Související
