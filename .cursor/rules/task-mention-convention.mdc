@@ -1,0 +1,46 @@
+---
+description: Při zmínce konkrétního tasku v chatu vždy ID + lidský název (Lukáš si nepamatuje zkratky).
+alwaysApply: true
+---
+
+# Task ID — vždy s názvem v chatu
+
+**Vždy když uvádíš kód úkolu, rovnou napiš, čeho se týká.** Bez výjimky — i v krátké větě, follow-upu nebo otázce.
+
+Platí pro **každý kanál, kterým se ke mně dostane text**: triáž, TOP, status, ICE, deadline, preview, shrnutí batchi, odpověď „co je X?“, kandidáty do fokusu, **talking points, briefy, follow-upy**.
+
+**Včetně interaktivních prvků** — text otázky, popisky voleb v nabídce (AskQuestion), položky todo listu, commit message, nadpisy sekcí, shrnutí na konci turnu. Nabídka voleb je ten nejhorší možný moment na holý kód: rozhoduju se podle popisku a bez názvu se musím doptávat.
+
+## Formát (povinný)
+
+- **Každá zmínka tasku:** `**<ID> — <title z frontmatter>`**  
+  Příklad: **S16 — Anti-Švarc — struktura témat a DoD do offsite**
+- **Podúkol `<ID>-N`** (např. S12-9, AF15-6): **nikdy samotný kód** — vždy parent + smysl kroku z checkboxu v `## Operativní kroky`:
+  - Formát: `**<ID>-N — <parent title zkráceně> — <text kroku z checkboxu>`**
+  - Příklad: **S12-9 — H2 rozpočty a forecast — promítnout Maru Falterová 80k do H2 matice a Universe**
+  - U otázky „co je S12-9?“ nejdřív parent **S12 — …**, pak co krok znamená.
+- **Tabulky:** sloupec ID + sloupec Název (ne jen `SBD4` / `RBU9` / `S12-9`)
+- **Seznamy priorit / triáže:** každá položka = ID + em dash + title (zkrácený max ~60 znaků jen pokud je extrémně dlouhý)
+- **První výskyt v odstavci** nese plný název; další opakování v tom samém odstavci smí zkrátit title (~40 znaků), ale ID samotné nikdy.
+
+## Co nedělat
+
+- **Nikdy samotné ID** (`S16`, `SBD4`, `MO11`, `AF15`, **`S12-9`**, **`AF14-13`**) — ani v závorkách, ani v tabulce bez sloupce Název, ani v talking points / briefu, ani **v popisku volby nebo v textu otázky**.
+- **Nikdy výčet kódů jako zkratka** typu „AF22, SBD6, ES13 na Waiting“. Když je položek moc na jednu větu, udělej seznam s názvy — radši delší odpověď než nutnost se doptat.
+
+## Sebekontrola před odesláním
+
+Projdi si vlastní text a najdi každý řetězec ve tvaru `<PREFIX><číslo>`. U každého ověř, že hned za ním stojí em dash a název. Když nestojí, **nedopisuj to odhadem** — načti `title:` z task souboru. Tohle platí i pro text, který jde do nabídky voleb, ne jen do zprávy.
+- Nemíchat „SBD4“ a „task pro ČS“ — vždy oficiální `title` z task souboru / `agent-context.json`.
+
+## Odkud brát title
+
+1. `title:` ve frontmatter task `.md`
+2. `agent-context.json` → `top_priority_today[]` / `projects` task list
+3. **Podúkol:** načti parent task → `## Operativní kroky` → text u `**ID-N**`
+4. Pokud title neznáš — načti soubor, nehádej
+
+## Vault vs. chat
+
+- Ve vaultu zůstává `[[RBU9]]` / filename `RBU9 — Procesní architect.md` dle konvence.
+- V chatu pro uživatele vždy **ID — lidský název**.

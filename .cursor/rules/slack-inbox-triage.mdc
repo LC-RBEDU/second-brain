@@ -1,0 +1,34 @@
+---
+description: Slack INBOX triage — dva zdroje ve 01-INBOX/slack/, relevance routing archive/batch/deep
+globs:
+  - OBSIDIAN/01-INBOX/slack/**
+  - vps/second-brain-hub/lib/triage_slack_relevance.py
+  - vps/second-brain-hub/cron/triage_run.py
+alwaysApply: false
+---
+
+# Slack INBOX — relevance triáž
+
+`01-INBOX/slack/` není jen n8n capture — přibývají i **thread dumpy** (celá vlákna s Lukášovou interakcí). Ne každé vlákno = task.
+
+## Dva typy souborů
+
+1. **capture_n8n** — `slack-cowork-inbox-with-attachments.json`  
+   Signály: `**Čas:**`, `## Komentář`, `## Forwardovaný obsah`  
+   Filename: `YYYY-MM-DD-HHMM-_claude-capture-...md`
+
+2. **thread_dump** — export vlákna (reakce :cowork: apod.)  
+   Signály: `**Vlákno:**`, `**Kanál:**`, `> **Jméno**`  
+   Filename: `YYYY-MM-DD_<kanál>_<ts>.md`
+
+## Routing (před default add_task)
+
+SSOT: `vps/second-brain-hub/lib/triage_slack_relevance.py` — volá `triage_run.py`, skill `agenda-triage` při manuální triáži.
+
+| Route | Význam | proposalType |
+|-------|--------|--------------|
+| **archive** | kontext bez Lukášova actionable kroku | `archive_only` |
+| **batch** | jasný Lukášův krok nebo záměrný capture komentář | `add_task` |
+| **deep** | dlouhé vlákno / forward bez komentáře | `deep_analysis` |
+
+Cron summary: sekce **Slack — archiv (bez tasku)** v `Triage-Pending/*-summary.md`.

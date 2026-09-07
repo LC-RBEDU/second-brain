@@ -1,0 +1,30 @@
+---
+description: RB Universe — produkční data pro práci; dev jen pro UI/deploy QA
+alwaysApply: true
+---
+
+# RB Universe — produkce pro pracovní data
+
+## Pracovní / obchodní data = vždy produkce
+
+Pro **jakákoliv pracovní rozhodnutí, reporty, budgety, P&C odměny, CRM, Allfred sync, finance** používej **jen produkční RB Universe** a produkční zdroje dat napojené na něj.
+
+| Použít | Nepoužívat pro data |
+|--------|---------------------|
+| `https://universe.redbuttonedu.cz` | `https://dev-universe.redbuttonedu.cz` |
+| `https://api.universe.redbuttonedu.cz` | `https://api.dev-universe.redbuttonedu.cz` |
+| MCP **`user-rb-universe`** (read tools) | `auth/dev-login` na dev API pro export zaměstnanců, dealů, faktur |
+| Allfred / Fakturoid / GS — produkční účty | Dev DB snapshot s neúplnými `compensation_amount` |
+
+**Dev API ani dev DB nejsou SSOT** — chybějící pole (např. odměny) nejsou „realita firmy“, jen neaktualizované dev prostředí.
+
+## Výjimka — jen UI a deploy QA
+
+Pravidla **`ui-qa-playwright`**, **`testing-environment`**, **`coolify-deploy`** dál platí: **Playwright, smoke po pushi, reprodukce bugů v UI** může běžet na **dev** (`dev-universe.redbuttonedu.cz`), pokud jde výhradně o frontend/backend chování, ne o export finálních čísel pro Lukáše / Strategy / Finance.
+
+## Agent workflow
+
+1. Interní data RB → **`user-rb-universe` MCP** nebo produkční REST (session / service token), ne curl na dev.
+2. **P&C mzdy / `compensation_amount`:** MCP je nemá — dotaz na **prod Postgres** přes SSH `coolify-prod` (tabulka `employee_profiles`, viz skill **coolify-deploy**). Repo **Red Button Universe** na disku = lokální `.env` (Allfred, …), ne dev DB.
+3. Když ani to nestačí → explicitně říct, co chybí; **nehádat dev jako náhradu**.
+4. Ve shrnutí uvést zdroj: „produkční RB Universe / Allfred / …“.

@@ -1,0 +1,12 @@
+---
+description: Exponential Summit — Ti.to terminologie (STT chyba Tyto)
+globs: OBSIDIAN/02-PROJEKTY/exponential-summit/**,OBSIDIAN/07-ARCHIV/**/exponential-summit/**
+alwaysApply: false
+---
+
+# Summit: „Tyto“ = Ti.to
+
+V kontextu **Exponential Summit** (Sembly přepisy, Slack, tasky ES*) je slovo **„Tyto“** téměř vždy **speech-to-text chyba** pro ticketing nástroj **[Ti.to](https://ti.to)** (dříve ES2 „Fakturovátko a Ti.to“).
+
+- V nových taskech, materiálech a logu piš **Ti.to**, ne Tyto.
+- V citacích z přepisu může zůstat „Tyto“ s poznámkou `(Ti.to)`.
