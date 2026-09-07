@@ -102,8 +102,19 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 4. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
 5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
 6. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
-7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura)
+7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura).
+   **Nad ~10 položek předkládej po blocích** — viz níže.
 8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` (**včetně co-located příloh** — viz níže)
+
+### Předkládání po blocích
+
+Analýzu si udělej celou dopředu, ale **nepředkládej ji jako jeden souvislý report**. Nad ~10
+položek se k tomu nedá vyjádřit — uživatel musí odpovídat na patnáct věcí naráz a odpoví na dvě.
+
+- Jeden blok = **jedno téma nebo jeden zdroj**. Konec bloku = otázka „takhle, nebo jinak?“.
+- Pokračuj až po odpovědi na předchozí blok.
+- Na začátku jedna věta, **kolik bloků celkem bude** — ať uživatel ví, do čeho jde.
+- Výjimka: čistý `archive_only` / `drop` shrň hromadně počtem, tam se po jednom nic nezískává.
 
 ### Archiv INBOX + přílohy (povinné při apply)
 
@@ -157,6 +168,18 @@ Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (cro
 | **ARCHIVE** | pasivní účast, omluva/delay, delegace bez Lukášova závazku, vlákno bez Lukáše | `archive_only` (`kind: slack_thread_archive`) | Slack archiv (bez tasku) |
 | **BATCH** | záměrný `## Komentář` nebo krátký Lukášův commitment | `add_task` | Vytažení úkolu |
 | **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku | `deep_analysis` | DEEP analysis required |
+
+**Sweep s vétovacím seznamem (povinné u ARCHIVE dávky):**
+
+Heuristika označí archivem skoro všechno a občas se plete — 10. 8. 2026 jich takhle propadlo šest
+z 24, včetně neodpovězeného DM o upgradu Traefiku, na který ve vaultu nebyl žádný task. Tichý
+hromadný archiv slackových vláken bez pročtení proto nedělej.
+
+- **Vypiš jedním řádkem** každé vlákno, kde je neodpovězená otázka, termín, nebo změna dotýkající
+  se existujícího tasku. Zbytek shrň jen počtem.
+- Logika je obrácená oproti schvalování: **mlčení = archiv**, uživatel jen vypíchne, co nesedí.
+- Zvlášť pozorně u **DM a group DM** — kanály (`#edu-team`, `#strategicky-tym`) jsou většinou
+  opravdu jen šum, DM skoro nikdy.
 
 **Verze vlákna (povinné — nejdřív tohle, teprve pak relevance):**
 n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí **jen nejvyšší `_vN`**. Nižší verze = `archive_only`, **nesmíš z nich tahat závazky** (zastaralý snapshot — 25. 8. 2026: Leadspicker / Poppe hotel vypadaly otevřené, v aktuální verzi už byly hotové).

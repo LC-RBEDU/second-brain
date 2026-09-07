@@ -35,11 +35,35 @@ _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _SUBJECT_PREFIX_RE = re.compile(r"^(Re:|Fwd:|FW:|RE:|FWD:)\s*", re.IGNORECASE)
 
 # Odeslané e-maily matching (to + subject) — neukládat do INBOX (n8n) + smazat z INBOX (cron).
-_SENT_INBOX_DROP_RULES: tuple[dict[str, str], ...] = (
+#
+# Klíče pravidla (SSOT — zrcadlo v ŠABLONY/n8n/workspace-sent-format-markdown.js):
+#   to               konkrétní adresa, nebo "*" pro libovolného příjemce
+#   subject          přesná shoda po odříznutí Re:/Fwd: prefixů
+#   subject_contains podřetězec (case-insensitive) — pro předměty s proměnnou částí
+#                    (datum týdne, timestamp běhu, prefix [oprava] / [force test])
+#   drop_replies     smazat i odpověď ve vlákně. Default False: jakmile je v předmětu
+#                    Re:/Fwd:, psal to člověk a mazat mu to pod rukama nechceme.
+_SENT_INBOX_DROP_RULES: tuple[dict[str, object], ...] = (
     {
         "to": "finance@redbutton.cz",
         "subject": "Fakturace dealu",
+        "drop_replies": True,
         "reason": "rutinní fakturace dealu na finance — mimo Second Brain INBOX",
+    },
+    {
+        "to": "*",
+        "subject_contains": "Narozeniny a výročí",
+        "reason": "týdenní narozeninový digest z RB Universe — vlastní automatika",
+    },
+    {
+        "to": "*",
+        "subject_contains": "[Audits]",
+        "reason": "report Red Button Audits (noční běh / měsíční metodiky) — vlastní automatika",
+    },
+    {
+        "to": "*",
+        "subject": "Podklady pro fakturaci",
+        "reason": "notifikace podkladů k fakturaci — vlastní automatika, měnící se příjemce",
     },
 )
 
@@ -84,6 +108,7 @@ def parse_sent_email_headers(body: str) -> dict[str, str]:
     return {
         "to": _extract_email_address(to_raw),
         "subject": _normalize_subject(subject),
+        "subject_raw": (subject or "").strip(),
     }
 
 
@@ -92,12 +117,22 @@ def should_drop_sent_email_from_inbox(rel_path: str, body: str) -> tuple[bool, s
     if not is_sent_email(rel_path, body):
         return False, ""
     meta = parse_sent_email_headers(body)
+    is_reply = bool(_SUBJECT_PREFIX_RE.match(meta["subject_raw"]))
+    subject = meta["subject"].lower()
     for rule in _SENT_INBOX_DROP_RULES:
-        rule_to = rule["to"].strip().lower()
-        rule_subj = _normalize_subject(rule["subject"])
-        if meta["to"] == rule_to and meta["subject"].lower() == rule_subj.lower():
-            reason = rule.get("reason") or f"drop to={rule_to!r} subject={rule_subj!r}"
-            return True, reason
+        rule_to = str(rule["to"]).strip().lower()
+        if rule_to != "*" and meta["to"] != rule_to:
+            continue
+        if "subject_contains" in rule:
+            needle = str(rule["subject_contains"]).lower()
+            if needle not in subject:
+                continue
+        else:
+            if subject != _normalize_subject(str(rule["subject"])).lower():
+                continue
+        if is_reply and not rule.get("drop_replies"):
+            continue
+        return True, str(rule.get("reason") or f"drop to={rule_to!r}")
     return False, ""
 
 

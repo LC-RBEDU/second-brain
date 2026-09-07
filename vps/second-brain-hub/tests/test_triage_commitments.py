@@ -135,6 +135,54 @@ def test_should_not_ignore_other_sent_to_finance():
     assert skip is False
 
 
+def _sent(to: str, subject: str) -> str:
+    return (
+        f"---\nsource: sent\nmessageId: x\nto: {to}\nsubject: {subject}\n"
+        f"date: 2026-09-07T10:00:00+02:00\nfrom: lukas@redbuttonedu.cz\n---\n\n"
+        f"# Email: {subject}\n\n**Source**: sent\n**To**: {to}\n\n## Tělo\n\nstrojový obsah.\n"
+    )
+
+
+def test_drops_own_automation_regardless_of_recipient():
+    """Podklady pro fakturaci chodí na deset různých adres — pravidlo je na subject."""
+    for to in ("lubos@redbuttonedu.cz", "veronika.kuncova@redbuttonedu.cz", "jan@redbutton.cz"):
+        drop, _ = mod.should_drop_sent_email_from_inbox(
+            "01-INBOX/email/sent/x.md", _sent(to, "Podklady pro fakturaci")
+        )
+        assert drop is True, to
+
+
+def test_keeps_human_reply_in_automation_thread():
+    """Re: znamená, že do vlákna psal člověk — to se mazat nesmí."""
+    drop, _ = mod.should_drop_sent_email_from_inbox(
+        "01-INBOX/email/sent/x.md",
+        _sent("martin.ruman@redbuttonedu.cz", "Re: Podklady pro fakturaci"),
+    )
+    assert drop is False
+
+
+def test_drops_digest_variants_with_changing_subject():
+    """Datum týdne i prefixy [oprava] / [force test] musí spadnout pod stejné pravidlo."""
+    for subj in (
+        "Narozeniny a výročí týden 01.06.2026 – 07.06.2026",
+        "[oprava] Narozeniny a výročí týden 08.06.2026 – 14.06.2026",
+        "[force test] Narozeniny a výročí týden 15.06.2026 – 21.06.2026",
+        "[Audits] Plánovaný běh dokončen 2026-06-13T02-00Z",
+        "[Audits] Měsíční metodiky 2026-09 — drift 5",
+    ):
+        drop, _ = mod.should_drop_sent_email_from_inbox(
+            "01-INBOX/email/sent/x.md", _sent("katerina@redbuttonedu.cz", subj)
+        )
+        assert drop is True, subj
+
+
+def test_keeps_unrelated_sent_mail():
+    drop, _ = mod.should_drop_sent_email_from_inbox(
+        "01-INBOX/email/sent/x.md", _sent("lubos@redbuttonedu.cz", "Podklady na pondělní sync")
+    )
+    assert drop is False
+
+
 def test_should_not_ignore_incoming_finance_deal():
     incoming = """---
 source: email

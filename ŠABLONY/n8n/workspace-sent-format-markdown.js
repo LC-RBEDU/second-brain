@@ -1,8 +1,14 @@
 // SSOT for workspace-sent-to-inbox Format node (+ mirror in triage_commitments.py)
 const TZ = 'Europe/Prague';
 
+// to: konkrétní adresa nebo '*' | subject: přesná shoda | subjectContains: podřetězec
+// (pro předměty s proměnnou částí — datum týdne, timestamp, prefix [oprava] / [force test])
+// dropReplies: default false — Re:/Fwd: znamená, že do vlákna psal člověk
 const SENT_INBOX_DROP_RULES = [
-  { to: 'finance@redbutton.cz', subject: 'Fakturace dealu' },
+  { to: 'finance@redbutton.cz', subject: 'Fakturace dealu', dropReplies: true },
+  { to: '*', subjectContains: 'Narozeniny a výročí' },
+  { to: '*', subjectContains: '[Audits]' },
+  { to: '*', subject: 'Podklady pro fakturaci' },
 ];
 
 function extractEmail(raw) {
@@ -23,9 +29,14 @@ function normalizeSubject(subject) {
 function shouldDropSentFromInbox(toText, subject) {
   const to = extractEmail(toText);
   const subj = normalizeSubject(subject).toLowerCase();
-  return SENT_INBOX_DROP_RULES.some(
-    (r) => to === r.to.toLowerCase() && subj === r.subject.toLowerCase(),
-  );
+  const isReply = /^(Re:|Fwd:|FW:|RE:|FWD:)\s*/i.test(String(subject || '').trim());
+  return SENT_INBOX_DROP_RULES.some((r) => {
+    if (r.to !== '*' && to !== r.to.toLowerCase()) return false;
+    if (r.subjectContains) {
+      if (!subj.includes(r.subjectContains.toLowerCase())) return false;
+    } else if (subj !== r.subject.toLowerCase()) return false;
+    return !isReply || !!r.dropReplies;
+  });
 }
 
 function slug(s, maxLen) {
