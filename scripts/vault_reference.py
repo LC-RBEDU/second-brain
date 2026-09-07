@@ -26,6 +26,7 @@ CANONICAL_HUB_SECTIONS = (
 ALLOWED_EXTRA_HUB_SECTIONS = (
     "## Stav (auto)",
     "## Aktivní úkoly",
+    "## Aktivní práce (Epic → Story → Task)",
     "## Materiály",
     "## Výstupy",
     "## Recently done",

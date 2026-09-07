@@ -20,8 +20,11 @@ alwaysApply: true
 - AREA = `03-AREAS/<Name>.md`
 - ARCHIVE = `07-ARCHIV/tasks-done/<slug>/<ID>-*.md`
 
-### Hierarchie Epic → Story → Task (opt-in; RBU vždy)
-- **RB Universe** (`rb-universe-development`) vždy; jinde `hierarchy: true` v hubu nebo presence `type: epic` v `tasks/`.
+### Hierarchie Epic → Story → Task (opt-in)
+- **Zapnuto:** `rb-universe-development`, `vibe-coding`, `firemni-procesy`, `finance`. Jinde `hierarchy: true` v hubu nebo presence `type: epic` v `tasks/`.
+- **V hierarchickém projektu `type: task` nepoužívej** — na hub page není vidět. Flat `All-tasks.base` má root filtr `type == "task"`, hierarchy views filtrují `story` / `epic`, takže plochý task propadne oběma. Osamocený kus = `story` bez `parent`.
+- **Hub embeduje `All-tasks-hierarchy.base`**, ne `All-tasks.base` — včetně `ProjectRecentDone`. Sekce se jmenuje `## Aktivní práce (Epic → Story → Task)`.
+- **Přesun tasku mezi projekty:** nový ID v cílovém projektu, původní `Cancelled` s ukazatelem — smazané ID by `max+1` přidělil znovu.
 - **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, **ne** ICE/focus; **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
 - **Story** (`type: story`) — doručitelná hodnota. ICE / `focus` / `agent` / `status` žijí tady. `parent: '[[RBU23 — …]]'` → epic. Checkboxy `**ID-N**` v `## Operativní kroky` = listové tasky.
 - **Task** (`type: task`) — legacy / flat (default mimo hierarchii). Osamocený tech kus bez epicu = `story` bez `parent` (např. Traefik).

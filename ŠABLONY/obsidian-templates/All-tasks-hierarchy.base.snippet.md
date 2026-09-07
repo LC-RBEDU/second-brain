@@ -1,19 +1,37 @@
-# Bases — hierarchy views (RBU)
+# Bases — hierarchy views
 
-`OBSIDIAN/00-System/Bases/All-tasks.base` je v Drive (git-ignored). Po migraci přidej view / filtr:
+SSOT: `ŠABLONY/obsidian-templates/All-tasks-hierarchy.base`  
+Vault: `OBSIDIAN/00-System/Bases/All-tasks-hierarchy.base` (Drive)
 
-## Doporučené view „RBU hierarchy“
+## Proč ne `All-tasks.base`
 
-- Filter: `slug == "rb-universe-development"` AND `status` not in Done/Cancelled
-- Group by: `type` (epic / story / task) **nebo** `parent`
-- Columns: `id`, `title`, `status`, `type`, `parent`, `focus`, `priority_score`, `deadline`
+Flat base má root filtr `type == "task"` — **stories a epicy se neukážou**. Hierarchy projekty (`hierarchy: true`) embedují views z tohoto souboru.
 
-## Hub embed
+## Views
 
-V `RB Universe development.md` (vedle stávajícího All-tasks embedu):
+| View | Účel |
+|------|------|
+| `ProjectEpics` | Tabulka otevřených epiců |
+| `ProjectStoriesKanban` | Kanban stories (Doing / Next / Waiting / Backlog) |
+| `ProjectStoriesByParent` | Stories seskupené podle `parent` (epic) |
+| `ProjectStandaloneStories` | Stories bez `parent` |
+| `ProjectStoriesFocus` | Max 5 stories ve fokusu týdne |
+| `ProjectRecentDone` | Nedávno hotové stories |
+
+## Hub embed (RB Universe)
 
 ```markdown
-![[All-tasks.base#RBU hierarchy]]
+![[All-tasks-hierarchy.base#ProjectStoriesKanban]]
+![[All-tasks-hierarchy.base#ProjectEpics]]
+![[All-tasks-hierarchy.base#ProjectStoriesByParent]]
 ```
 
-Epicy se v TOP / fokus frontách neobjevují — jen v tomto groupBy pohledu a v `agent-context.json` → `open_epics[]`.
+Viz `RB Universe development.md` — sekce **Aktivní práce (Epic → Story → Task)**.
+
+## Nový hierarchy projekt
+
+1. Hub frontmatter: `hierarchy: true`
+2. Zkopíruj `All-tasks-hierarchy.base` do `00-System/Bases/` (nebo symlink — stejný globální soubor pro všechny hierarchy projekty)
+3. Embed views s `project == this.file.asLink()` fungují z libovolného hub charteru
+
+Epicy **ne** do fokusu / TOP — jen v `ProjectEpics` a `agent-context.json` → `open_epics[]`.

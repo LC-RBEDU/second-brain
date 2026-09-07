@@ -100,7 +100,7 @@ Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `p
 2. Pro **`01-INBOX/slack/`** nejdřív relevance (`vps/second-brain-hub/lib/triage_slack_relevance.py`) → archive / batch / deep (viz sekce Slack INBOX níže).
 3. Pro ostatní položky zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
 4. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
-5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo)
+5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
 6. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
 7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura)
 8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` (**včetně co-located příloh** — viz níže)
@@ -210,6 +210,28 @@ Vault patří **jednomu uživateli (Lukáš)**. Tasky v `02-PROJEKTY/<slug>/task
 - User pak může explicitně říct "i tenhle uložit jako Waiting" — apply pouze po konfirmaci.
 
 **Zmínka tasku v chatu (povinné):** vždy **`ID — title`** z frontmatter, ne samotné ID (`SBD4` bez názvu = špatně). Tabulky: sloupce ID + Název. Viz `.cursor/rules/task-mention-convention.mdc`.
+
+## Agent (none / assist / solo) — gate před add_task
+
+`agent` vyplň u každého návrhu. Není to dekorace.
+
+| Hodnota | Kdo | Typicky |
+|---------|-----|---------|
+| `none` | Lukáš, agent nepomáhá | rozhodnutí, call, fyzická věc |
+| `assist` | Lukáš + agent | draft, rozbor, příprava podkladů |
+| `solo` | agent sám | lookup v Allfredu / Universe / Gmail / Drive, „sedí PE?“, „je faktura?“ |
+
+**Drobná `solo` = otázka, ne task.** Bootstrap: taková práce se nezakládá jako task — záznam v `00-System/Agent-Log/YYYY-MM.md`.
+
+Když je položka `solo` a jde o ověření / lookup / jednu odpověď (Slack „nevíš, jestli se to propsalo?“):
+
+1. **Nezakládej** `add_task` s `## Operativní kroky` typu „ověřit X“ + „odepsat Y“.
+2. V preview **jedna otázka:** „Tohle umím ověřit sám (Allfred / Universe / …). Řešit rovnou?“
+3. `ano` → udělej v session, výsledek do Agent-Log + wikilink na projekt, zdroj `archive_only`. Task jen když je to větší nebo na to někdo čeká (pak slim, bez vymyšlených podkroků).
+4. `ne` / později → `archive_only` + log, nebo Waiting jen když user chce evidenci.
+
+Špatně (AF26, 31. 8.): Kamila — SLSP PE přes Work → task s **AF26-1 — ověřit PE** + **AF26-2 — odepsat** (`assist`).
+Správně: „PE v Allfredu umím ověřit. Řešit rovnou?“
 
 ## PENDING (cron)
 

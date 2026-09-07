@@ -5,7 +5,11 @@ Vault kopie: `OBSIDIAN/00-System/Templates/task-convention.md` (Drive).
 
 ## Tři vrstvy (opt-in)
 
-Zapnuto vždy u **`rb-universe-development`**. Jinde: hub `hierarchy: true` nebo presence alespoň jednoho `type: epic` v `tasks/`.
+Zapnuto u **`rb-universe-development`**, **`vibe-coding`**, **`firemni-procesy`**, **`finance`**.
+Jinde: hub `hierarchy: true` nebo presence alespoň jednoho `type: epic` v `tasks/`.
+
+> **Past:** v hierarchickém projektu se `type: task` neukáže **nikde** na hub page — flat `All-tasks.base`
+> má root filtr `type == "task"`, hierarchy views filtrují `story` / `epic`. Osamocený kus = `story` bez `parent`.
 
 | Vrstva | `type` | Soubor | ICE / focus | Auto-Done |
 |--------|--------|--------|-------------|-----------|
@@ -43,6 +47,30 @@ ice_e: …
 ```yaml
 type: task
 ```
+
+## Hub page
+
+Hierarchický hub embeduje `All-tasks-hierarchy.base` (**ne** flat `All-tasks.base`, a to i u `ProjectRecentDone`):
+
+```markdown
+## Aktivní práce (Epic → Story → Task)
+
+![[All-tasks-hierarchy.base#ProjectStoriesFocus]]
+![[All-tasks-hierarchy.base#ProjectEpics]]
+![[All-tasks-hierarchy.base#ProjectStoriesKanban]]
+![[All-tasks-hierarchy.base#ProjectStoriesByParent]]
+![[All-tasks-hierarchy.base#ProjectStandaloneStories]]
+```
+
+Views filtrují `project == this.file.asLink()` — `project:` v tasku proto musí mířit na **název hub souboru**,
+ne na alias. `[[Vibe coding]]` místo `[[AI & Vibe coding]]` znamená prázdný view.
+
+Sekce je ve whitelistu validátoru (`ALLOWED_EXTRA_HUB_SECTIONS` v `scripts/vault_reference.py`).
+
+## Přesun tasku mezi projekty
+
+Nové ID v cílovém projektu, původní soubor `status: Cancelled` s ukazatelem na nový.
+Smazané ID by `next_task_id.py` přes `max+1` přidělil znovu někomu jinému.
 
 ## ID
 
