@@ -363,7 +363,7 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
 
 
 LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
-LESSONS_LIMIT = 30
+LESSONS_LIMIT = 80
 
 
 def _lesson_takeaway(body: str) -> str:

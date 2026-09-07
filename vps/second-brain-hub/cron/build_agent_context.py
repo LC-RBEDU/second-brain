@@ -39,7 +39,7 @@ from focus import (  # noqa: E402
 from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 
 LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
-LESSONS_LIMIT = 30
+LESSONS_LIMIT = 80
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
     URGENCY_BONUS_TODAY,
