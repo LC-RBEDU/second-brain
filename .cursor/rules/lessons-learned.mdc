@@ -33,7 +33,9 @@ Otevřené `00-System/Lessons-Pending/*` připomínej přes session_start snapsh
 
 ## Recall
 
-Při práci na projektu (`agenda-work`): načti max 3 Active lessons (`agent_recall: true`) matching `projects` / `topics`.
+Active lessons s `agent_recall: true` jsou v `agent-context.json` → **`lessons[]`** (max 30, `takeaway` = první „Příště udělej"). Při práci na projektu (`agenda-work`) vyber max 3 matching `projects` / `topics`; celý soubor otevři, jen když `takeaway` nestačí.
+
+**Konvence platná vždy patří do `.cursor/rules/`, ne (jen) do Lessons** — rules se načítají při každé session, lessons se dotahují cíleně.
 
 ## Co nedělat
 

@@ -93,6 +93,7 @@ Snapshot obsahuje:
 - `recurring_pending[]` — recurring tasky čekající na rotaci
 - `stale_hubs[]` — chartery se zastaralým narativem (>14 dní od poslední task aktivity)
 - `stale_areas[]`, `areas[]` — area health (F6)
+- `lessons[]` — Active lessons s `agent_recall: true` (max 30): `title`, `domain`, `projects`, `topics`, `takeaway`, `path`
 
 **Refresh policy: every-write** (local trigger po každém zápisu do `02-PROJEKTY/` nebo `07-ARCHIV/tasks-done/`).
 

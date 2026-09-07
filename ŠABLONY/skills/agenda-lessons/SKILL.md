@@ -66,6 +66,30 @@ Na konci turnu nabídni 1–3 kandidáty (formát výše), když nastalo:
 - architektonické rozhodnutí s trvalým dopadem
 - změna konvence / skillu / n8n / Bases / triage
 
+## Kam poučení patří — Lessons vs. rules
+
+**Nejdřív se zeptej, kdy má zjištění platit.** Podle toho se rozhoduje umístění, ne podle toho, jak
+zajímavě znělo.
+
+| Kdy platí | Kam | Proč |
+|---|---|---|
+| Vázané na projekt, nástroj, doménu | `00-System/Lessons/` | Recall je cílený — vytáhne se, až se na tom dělá |
+| **Vždycky, napříč vším** (konvence, formát, styl) | `.cursor/rules/*.mdc` | Rules se načítají při každé session, lessons ne |
+| Stabilní fakt o firmě / vaultu | `00-System/Memory/` nebo bootstrap rule | Není to poučení z chyby, ale kontext |
+
+**U konvence je zápis do rules výchozí volba, ne bonus.** Konvence uložená jen jako lesson je
+prakticky mrtvá — vytáhne ji leda `agenda-work` nad tím správným projektem, takže při běžné práci
+podle ní nikdo nepojede. Když pravidlo v rules už existuje a chyba ukázala díru, **zpřísni ho**
+(uprav sekci, přidej sebekontrolu) a lesson napiš jako záznam, proč to pravidlo tak vypadá.
+
+Zápis do `.cursor/rules/` schvaluje uživatel stejně jako lesson — nabídni obojí naráz.
+
 ## Recall (pro jiné skills)
 
-Při `agenda-work`: po Work-Context načti max **3** Active lessons z `00-System/Lessons/` kde `agent_recall: true` a (`projects` obsahuje hub projektu NEBO `topics` overlap s tématem práce). Stručně cituj v briefingu.
+Active lessons s `agent_recall: true` se propisují do **`00-System/agent-context.json` → `lessons[]`**
+(max 30, nejnovější první). Každá položka nese `title`, `domain`, `projects`, `topics`, `path`
+a `takeaway` — první „Příště **udělej:**" větu. Snapshot je tedy index: podle `projects` / `topics`
+poznáš, co je relevantní, a teprve pak otevřeš soubor.
+
+Při `agenda-work`: po Work-Context vyber max **3** lessons ze `lessons[]`, kde `projects` obsahuje hub
+projektu NEBO `topics` overlap s tématem práce. Stručně cituj v briefingu (`takeaway` stačí).

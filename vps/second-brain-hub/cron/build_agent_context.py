@@ -37,6 +37,9 @@ from focus import (  # noqa: E402
     parse_focus,
 )
 from lifecycle_promotion import select_focus_suggestions  # noqa: E402
+
+LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
+LESSONS_LIMIT = 30
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
     URGENCY_BONUS_TODAY,
@@ -196,6 +199,66 @@ def collect_projects(vault: DriveVault) -> list[dict]:
     return out
 
 
+def _lesson_takeaway(body: str) -> str:
+    """První 'Příště udělej' odrážka jako jedna věta.
+
+    Odrážky v lessons bývají zalomené přes víc řádků, takže se pokračovací
+    řádky přilepí — konec je prázdný řádek, další odrážka nebo nadpis.
+    """
+    m = LESSON_TAKEAWAY_RE.search(body)
+    if not m:
+        return ""
+    parts = [m.group(1)]
+    for line in body[m.end():].splitlines()[1:]:
+        if not line.strip() or line.lstrip().startswith(("-", "#", "*")):
+            break
+        parts.append(line)
+    text = " ".join(" ".join(parts).split())
+    return text if len(text) <= 220 else text[:217].rstrip() + "…"
+
+
+def collect_lessons(vault: DriveVault) -> list[dict]:
+    """Active lessons s agent_recall: true — index pro recall mimo agenda-work.
+
+    Vrací metadata + jednu actionable větu, ne celé tělo. Agent podle projects /
+    topics pozná, jestli má soubor otevřít.
+    """
+    out: list[dict] = []
+    try:
+        files = vault.list_dir("00-System/Lessons", pattern="LL-*.md")
+    except DriveNotFoundError:
+        return out
+    for meta in files:
+        try:
+            text, _ = vault.read_text(meta.rel_path)
+        except DriveNotFoundError:
+            continue
+        parsed = parse_task_text(text, rel_path=meta.rel_path)
+        fm = parsed.frontmatter
+        if (fm.get("status") or "").lower() != "active":
+            continue
+        if not fm.get("agent_recall"):
+            continue
+        projects = fm.get("projects") or []
+        if isinstance(projects, str):
+            projects = [projects]
+        topics = fm.get("topics") or []
+        if isinstance(topics, str):
+            topics = [topics]
+        out.append({
+            "id": meta.name.removesuffix(".md"),
+            "title": fm.get("title") or meta.name.removesuffix(".md"),
+            "domain": fm.get("domain") or "other",
+            "projects": [str(p).strip("[]") for p in projects],
+            "topics": [str(t) for t in topics],
+            "takeaway": _lesson_takeaway(parsed.body),
+            "path": meta.rel_path,
+            "created": _date_str(fm.get("created")),
+        })
+    out.sort(key=lambda x: x["created"] or "", reverse=True)
+    return out[:LESSONS_LIMIT]
+
+
 def collect_areas(vault: DriveVault) -> list[dict]:
     out = []
     try:
@@ -238,6 +301,7 @@ def main() -> None:
 
     projects = collect_projects(vault)
     areas = collect_areas(vault)
+    lessons = collect_lessons(vault)
     active_dicts = [task_to_dict(t) for t in iter_active_tasks(vault)]
     archive_dicts = [task_to_dict(t) for t in iter_archive_tasks(vault)]
 
@@ -401,6 +465,7 @@ def main() -> None:
         },
         "projects": projects,
         "areas": areas,
+        "lessons": lessons,
         "priority_rules": {
             "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
             "base": "priority_score = (ice_i * ice_c) / ice_e",

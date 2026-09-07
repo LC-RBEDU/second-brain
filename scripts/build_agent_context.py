@@ -362,6 +362,67 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
     return out
 
 
+LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
+LESSONS_LIMIT = 30
+
+
+def _lesson_takeaway(body: str) -> str:
+    """První 'Příště udělej' odrážka jako jedna věta.
+
+    Odrážky v lessons bývají zalomené přes víc řádků, takže se pokračovací
+    řádky přilepí — konec je prázdný řádek, další odrážka nebo nadpis.
+    """
+    m = LESSON_TAKEAWAY_RE.search(body)
+    if not m:
+        return ""
+    parts = [m.group(1)]
+    for line in body[m.end():].splitlines()[1:]:
+        if not line.strip() or line.lstrip().startswith(("-", "#", "*")):
+            break
+        parts.append(line)
+    text = " ".join(" ".join(parts).split())
+    return text if len(text) <= 220 else text[:217].rstrip() + "…"
+
+
+def collect_lessons(vault: Path) -> list[dict]:
+    """Active lessons s agent_recall: true — index pro recall mimo agenda-work.
+
+    Vrací metadata + jednu actionable větu, ne celé tělo. Agent podle projects /
+    topics pozná, jestli má soubor otevřít.
+    """
+    lessons_dir = vault / "00-System" / "Lessons"
+    if not lessons_dir.exists():
+        return []
+    out: list[dict] = []
+    for f in sorted(lessons_dir.glob("LL-*.md")):
+        try:
+            fm, body = parse_frontmatter(f.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if (fm.get("status") or "").lower() != "active":
+            continue
+        if not fm.get("agent_recall"):
+            continue
+        projects = fm.get("projects") or []
+        if isinstance(projects, str):
+            projects = [projects]
+        topics = fm.get("topics") or []
+        if isinstance(topics, str):
+            topics = [topics]
+        out.append({
+            "id": f.stem,
+            "title": fm.get("title") or f.stem,
+            "domain": fm.get("domain") or "other",
+            "projects": [str(p).strip("[]") for p in projects],
+            "topics": [str(t) for t in topics],
+            "takeaway": _lesson_takeaway(body),
+            "path": f"00-System/Lessons/{f.name}",
+            "created": _date_str(fm.get("created")),
+        })
+    out.sort(key=lambda x: x["created"] or "", reverse=True)
+    return out[:LESSONS_LIMIT]
+
+
 def collect_areas(vault: Path) -> list[dict]:
     areas_dir = vault / "03-AREAS"
     if not areas_dir.exists():
@@ -426,6 +487,7 @@ def build_snapshot(vault: Path) -> dict:
     today_str = today.isoformat()
     projects = collect_projects(vault)
     areas = collect_areas(vault)
+    lessons = collect_lessons(vault)
     active_tasks = collect_tasks(vault, archive=False)
     archived = collect_tasks(vault, archive=True)
 
@@ -553,6 +615,7 @@ def build_snapshot(vault: Path) -> dict:
         },
         "projects": [p.to_dict() for p in projects],
         "areas": areas,
+        "lessons": lessons,
         "priority_rules": {
             "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
             "base": "priority_score = (ice_i * ice_c) / ice_e",
