@@ -5,7 +5,7 @@ title: "{{Title}}"
 project: "[[{{HubFilename}}]]"
 slug: {{slug}}
 aliases: [{{ID}}]
-status: Next
+status: Next  # Doing | Next | Backlog | Waiting | Done | Cancelled
 parent:  # "[[RBU23 — …]]" nebo prázdné (standalone / flat projekty: type task)
 focus:
 agent: none
@@ -20,6 +20,9 @@ materials: []
 source: manual
 blocked_by: []
 ---
+
+<!-- Cancelled = už není potřeba / převzal to někdo jiný. Ne Done, a soubor nemazat —
+     cron ho archivuje sám a ID zůstane obsazené. Detail: task-convention.md -->
 
 # {{ID}} — {{Title}}
 

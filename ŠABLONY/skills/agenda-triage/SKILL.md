@@ -378,3 +378,15 @@ Po triage update `00-System/Index.md` — list aktivních projektů (Bases embed
 - `00-System/Index.md`
 - `00-System/Templates/konvence-a-slovnik.md`
 - `00-System/Templates/task-convention.md`
+
+## Zrušení místo zavření
+
+Když z inboxu vyplyne, že **existující** task už není potřeba — vyřešil ho nebo převzal někdo jiný,
+rozhodnutí padlo jinak, věc se pohltila jiným úkolem — navrhni `status: Cancelled`, ne `Done`.
+
+- Do logu tasku napiš **důvod a kdo to teď drží** (`řeší [[Dominik Holíček|Dominik]]`).
+- `Done` znamená „udělal jsem to". Zrušené úkoly v „recently done" nafukují statistiku o práci,
+  která se nestala.
+- **Soubor nemaž.** Cron `archive_done_tasks.py` ho přesune do `07-ARCHIV/tasks-done/<slug>/`
+  a ID tím zůstane obsazené — smazané ID by `next_task_id.py` přes `max+1` přidělil někomu jinému.
+- Platí i pro přesun mezi projekty: nový ID v cíli, původní `Cancelled` s ukazatelem.

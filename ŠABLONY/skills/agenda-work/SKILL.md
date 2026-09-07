@@ -105,6 +105,9 @@ Návrh změn v 02-PROJEKTY/<slug>/tasks/:
 ✅ Uzavřít → status: Done (cron archive_done_tasks.py přesune do 07-ARCHIV/tasks-done/<slug>/):
   • RBU13 — Onboarding checklist Pavla — všechny subtasky [x]
 
+🚫 Zrušit → status: Cancelled (už není potřeba / převzal to někdo jiný):
+  • RBU41 — Export dealů do sheetu — řeší Dominik přes Universe, není na mně
+
 ➕ Přidat (nový file): 02-PROJEKTY/<slug>/tasks/<NEXT_ID> — <sanitize(title)>.md
   (ID + em-dash U+2014 + titulek s diakritikou — viz filename-normalization.md; ID scan: agenda-capture krok 5)
   • Status: Next | ICE I7 C6 E5 = 8.4
@@ -129,6 +132,10 @@ Proveď zápis až po potvrzení. Vždy preview → confirm → write.
 ### 5. Aktualizuj task soubory + hub (narativní vrstva)
 
 - Uzavřené tasky → status `Done` ve frontmatteru (cron archivuje)
+- **Odepsané tasky → `Cancelled`, ne `Done`.** Použij, když úkol už není potřeba, vyřešil nebo
+  převzal ho někdo jiný a nechceš na tom mít pozornost. Do logu důvod + kdo to má. Archivuje se
+  stejně jako Done, ale nepočítá se do „recently done" — jinak statistika tvrdí, že jsi udělal
+  práci, kterou jsi odepsal. **Soubor nemazat** — smazané ID by `next_task_id.py` přidělil znovu.
 - Nové tasky → vytvoř nové `.md` soubory v `tasks/`
 - Update `open_tasks_count` v hub frontmatteru
 - **`updated:` v hub frontmatteru** → dnešní datum po schváleném zápisu do hubu
