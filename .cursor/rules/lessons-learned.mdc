@@ -35,6 +35,10 @@ Otevřené `00-System/Lessons-Pending/*` připomínej přes session_start snapsh
 
 Active lessons s `agent_recall: true` jsou v `agent-context.json` → **`lessons[]`** (max 30, `takeaway` = první „Příště udělej"). Při práci na projektu (`agenda-work`) vyber max 3 matching `projects` / `topics`; celý soubor otevři, jen když `takeaway` nestačí.
 
+**Před novou lesson zkontroluj `lessons[]` na překryv** (`topics` / `domain`) — když kandidát zpřesňuje starou, navrhni ji na `Superseded` s `superseded_by`. Dvě lessons o tomtéž = recall vytáhne tu horší.
+
+Statusy: `Active` (v recallu) · `Superseded` (nahradila ji jiná lesson nebo rule) · `Archived` (vyčerpaná, nástupce není). Soubor se nemaže. Detail: `00-System/Lessons/README.md`.
+
 **Konvence platná vždy patří do `.cursor/rules/`, ne (jen) do Lessons** — rules se načítají při každé session, lessons se dotahují cíleně.
 
 ## Co nedělat

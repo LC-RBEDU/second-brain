@@ -27,22 +27,34 @@ description: "Capture atomická lessons learned (assist): návrh ze session → 
 ## Workflow — návrh (assist)
 
 1. Z session vyber **1–5** kandidátů (ne 20). Prázdné = „Nic k uložení.“
-2. Preview v chatu (povinný formát):
+2. **Zkontroluj překryv se stávajícími** (povinné, před preview). Projdi `lessons[]`
+   v `agent-context.json` a najdi Active lessons se shodou v `topics` nebo `domain`.
+   U každého kandidáta rozhodni:
+   - **Nová věc** → normální návrh.
+   - **Zpřesňuje starou** → napiš novou a navrhni starou na `Superseded` s `superseded_by`.
+     Nikdy nenech vedle sebe dvě lessons o tomtéž — recall vytáhne tu horší.
+   - **Jen jinými slovy totéž** → nezakládej, nabídni úpravu stávající (`uprav LL-…`).
+   - **Konvence platná vždy** → primárně do `.cursor/rules/` (viz sekce níže), lesson jen jako záznam.
+3. Preview v chatu (povinný formát):
 
 ```
 **Lessons? (assist)** — odpověz `ulož 1,3` / `uprav 2: …` / `drop`
 
 1. `[tech]` krátký title → příště: …
 2. `[process]` …
+
+Nahrazuje: LL-2026-08-12-… → Superseded (přesnější znění v bodu 1)
 ```
 
-3. **Bez odpovědi nic nezapisuj.**
-4. Po `ulož …` / `schval`:
+Návrh na `Superseded` / `Archived` schvaluješ stejně jako nový zápis — bez odpovědi se nic nemění.
+
+4. **Bez odpovědi nic nezapisuj.**
+5. Po `ulož …` / `schval`:
    - Zapiš Active lesson(s) do `00-System/Lessons/LL-YYYY-MM-DD-<slugify-title>.md`
    - Frontmatter dle šablony (`status: Active`, `agent_recall: true`, …)
    - Tělo: Situace / Poučení / Důsledek pro agenta (max ~25 řádků)
    - Volitelně: krátký odkaz v `00-System/Agent-Log/YYYY-MM.md`
-5. Pending batch (pokud user chce odložit): `00-System/Lessons-Pending/YYYY-MM-DD-HHMM-batch.md`
+6. Pending batch (pokud user chce odložit): `00-System/Lessons-Pending/YYYY-MM-DD-HHMM-batch.md`
 
 ## Workflow — schval pending
 
@@ -65,6 +77,20 @@ Na konci turnu nabídni 1–3 kandidáty (formát výše), když nastalo:
 - korekce od uživatele („tohle ne, dělej X“)
 - architektonické rozhodnutí s trvalým dopadem
 - změna konvence / skillu / n8n / Bases / triage
+
+## Vyřazení lesson
+
+`Active` není doživotí. Recall bere jen Active, takže vyčerpaná lekce ubírá místo živým.
+
+| Situace | Status | Co vyplnit |
+|---|---|---|
+| Nahradila ji novější lesson | `Superseded` | `superseded_by: '[[LL-…]]'` |
+| Obsah povýšen do `.cursor/rules/` | `Superseded` | `superseded_by: '.cursor/rules/<soubor>.mdc'` |
+| Nástroj / proces zmizel, nástupce není | `Archived` | — |
+
+**Soubor nikdy nemaž** a `agent_recall` nech být — filtruje se podle `status`. Do těla připiš
+řádek proč a kdy. Vyřazení navrhni, když na lekci narazíš při práci a je zjevně mrtvá; nedělej
+plošné čistky bez vyzvání.
 
 ## Kam poučení patří — Lessons vs. rules
 
