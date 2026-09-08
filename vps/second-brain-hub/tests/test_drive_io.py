@@ -599,3 +599,23 @@ def test_filemeta_isfolder():
         size=None, parent_id=None, rel_path="f",
     )
     assert m.is_folder is True
+
+
+def test_matches_pattern_handles_interior_wildcard():
+    """'LL-*.md' used to collapse to a literal substring and match nothing."""
+    from drive_io import _glob_to_substr, _matches_pattern
+
+    needle = _glob_to_substr("LL-*.md")
+    assert _matches_pattern("LL-2026-09-08-neco.md", needle) is True
+    assert _matches_pattern("Icon", needle) is False
+    assert _matches_pattern("2026-09-08-jiny.md", needle) is False
+
+    ops2 = _glob_to_substr("OPS2-*.md")
+    assert _matches_pattern("OPS2-2026-W36.md", ops2) is True
+
+    # beze změny: krajní hvězdička i pattern bez wildcardu
+    assert _matches_pattern("hub.md", _glob_to_substr("*.md")) is True
+    assert _matches_pattern("hub.md.bak", _glob_to_substr("*.md")) is False
+    assert _matches_pattern("x-batch.json", _glob_to_substr("*-batch.json")) is True
+    assert _matches_pattern("waiting-42.json", _glob_to_substr("waiting-")) is True
+    assert _matches_pattern("cokoliv.md", None) is True

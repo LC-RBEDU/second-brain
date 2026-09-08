@@ -46,6 +46,7 @@ Typical usage:
 """
 from __future__ import annotations
 
+import fnmatch
 import io
 import json
 import logging
@@ -187,27 +188,31 @@ def _split_rel(rel: str) -> list[str]:
 
 
 def _glob_to_substr(pattern: str | None) -> str | None:
-    """Translate a simple '*.md' glob into a case-insensitive substring match.
+    """Normalize a client-side filename filter to lowercase.
 
-    Drive query language doesn't support globbing; we fetch the directory and
-    filter client-side. Only the trailing extension or substring is used.
-    Returns lowercase substring or None.
+    Drive query language doesn't support globbing, so the directory is fetched
+    and filtered locally by `_matches_pattern`.
     """
     if not pattern:
         return None
-    p = pattern.strip().lower()
-    # strip surrounding wildcards
-    while p.startswith("*"):
-        p = p[1:]
-    while p.endswith("*") and not p.endswith("\\*"):
-        p = p[:-1]
-    return p or None
+    return pattern.strip().lower() or None
 
 
 def _matches_pattern(name: str, needle: str | None) -> bool:
+    """Match a filename against a glob, or a substring when there is no wildcard.
+
+    Patterns with a wildcard go through fnmatch, so an interior '*' works:
+    'LL-*.md' used to be reduced to the literal substring 'll-*.md', which
+    matches no real filename and made whole directories look empty without
+    raising anything. Wildcard-free patterns keep the substring behaviour that
+    callers pass prefixes like 'waiting-' for.
+    """
     if needle is None:
         return True
-    return needle in name.lower()
+    low = name.lower()
+    if any(ch in needle for ch in "*?["):
+        return fnmatch.fnmatchcase(low, needle)
+    return needle in low
 
 
 _RETRYABLE_HTTP_STATUSES = {408, 429, 500, 502, 503, 504}
