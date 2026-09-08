@@ -18,8 +18,19 @@ alwaysApply: false
    Filename: `YYYY-MM-DD-HHMM-_claude-capture-...md`
 
 2. **thread_dump** — export vlákna (reakce :cowork: apod.)  
-   Signály: `**Vlákno:**`, `**Kanál:**`, `> **Jméno**`  
-   Filename: `YYYY-MM-DD_<kanál>_<ts>.md`
+   Signály: `**Vlákno:**`, `**Kanál:**`, `> **Jméno**` nebo `**Jméno** HH:MM`  
+   Filename: `YYYY-MM-DD_<kanál>_<ts>_vN.md`
+
+## Inbound požadavky (nikdy nearchivovat)
+
+Když Lukáš **nereagoval**, ale vlákno je pro něj:
+
+- `**Důvod zálohy:** adresováno mně`
+- `@Lukáš` / `@lukas` od kolegy
+- spec / `.md` příloha + backend/API zadání
+- fráze typu „backend changes“, „tvému Cursorovi“
+
+→ route **DEEP** (`deep_analysis`), ne `archive_only`. Incident: Sales Feed GDM 4. 9. 2026.
 
 ## Routing (před default add_task)
 
@@ -27,8 +38,8 @@ SSOT: `vps/second-brain-hub/lib/triage_slack_relevance.py` — volá `triage_run
 
 | Route | Význam | proposalType |
 |-------|--------|--------------|
-| **archive** | kontext bez Lukášova actionable kroku | `archive_only` |
+| **archive** | kontext bez Lukášova actionable kroku **a bez inbound signálu** | `archive_only` |
 | **batch** | jasný Lukášův krok nebo záměrný capture komentář | `add_task` |
-| **deep** | dlouhé vlákno / forward bez komentáře | `deep_analysis` |
+| **deep** | dlouhé vlákno / forward bez komentáře / **inbound @Lukáš bez odpovědi** | `deep_analysis` |
 
 Cron summary: sekce **Slack — archiv (bez tasku)** v `Triage-Pending/*-summary.md`.
