@@ -146,8 +146,8 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "projects": [],
     },
     "Pavla Vaňková": {
-        # v Universe bez current_position; interní spolupráce na IČO od 5. 5. 2026
-        "role": "Interní spolupracovnice (IČO, částečný úvazek)",
+        # v Universe bez current_position; roli potvrdil Lukáš 8. 9. 2026
+        "role": "Marketing specialist",
         "org": "Red Button EDU",
         "email": "pavla.vankova@redbuttonedu.cz",
         "projects": [],
