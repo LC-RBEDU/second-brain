@@ -111,9 +111,9 @@ def build_frontmatter(
         if nick not in aliases:
             aliases.append(nick)
 
-    role = existing.get("role") or known_meta.get("role") or "—"
-    if role in ("—", "-", ""):
-        role = known_meta.get("role") or "—"
+    # KNOWN_META je kurátorovaný SSOT ve verzované repo části; person soubor je generovaný.
+    # Kdyby vyhrával soubor, oprava role v KNOWN_META by se do vaultu nikdy nedostala.
+    role = known_meta.get("role") or existing.get("role") or "—"
 
     # org / adresy jsou kurátorované v KNOWN_META (sync_lide_people.py) — ty vyhrávají nad
     # obsahem souboru. Jinak by šlo špatnou hodnotu ve vygenerovaném souboru opravit jen ručně
