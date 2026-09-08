@@ -115,8 +115,21 @@ def build_frontmatter(
     if role in ("—", "-", ""):
         role = known_meta.get("role") or "—"
 
-    org = existing.get("org") or known_meta.get("org") or "Red Button EDU"
-    email = existing.get("email") or known_meta.get("email") or "—"
+    # org / adresy jsou kurátorované v KNOWN_META (sync_lide_people.py) — ty vyhrávají nad
+    # obsahem souboru. Jinak by šlo špatnou hodnotu ve vygenerovaném souboru opravit jen ručně
+    # a sync by ji při každém běhu vrátil zpátky.
+    org = known_meta.get("org") or existing.get("org") or "Red Button EDU"
+    external_for = known_meta.get("external_for") or existing.get("external_for") or ""
+    email = known_meta.get("email") or existing.get("email") or "—"
+
+    # emails = všechny adresy téže osoby, primární (email) první. Jedna osoba mívá firemní
+    # i domovskou adresu a matching zmínek musí trefit obě.
+    emails = known_meta.get("emails") or existing.get("emails") or []
+    if isinstance(emails, str):
+        emails = [emails]
+    emails = [e for e in emails if e and e != "—"]
+    if email and email != "—" and email not in emails:
+        emails.insert(0, email)
     phone = existing.get("phone") if existing.get("phone") is not None else '""'
     if phone == "":
         phone = '""'
@@ -152,12 +165,18 @@ def build_frontmatter(
     updated = existing.get("updated") or today
 
     alias_lines = "\n".join(f"- {a}" for a in aliases)
+    external_line = f"external_for: {external_for}\n" if external_for else ""
+    emails_block = ""
+    if len(emails) > 1:
+        emails_block = "emails:\n" + "".join(f"- {e}\n" for e in emails)
     return (
         f"type: person\n"
         f"aliases:\n{alias_lines}\n"
         f"role: {role}\n"
         f"org: {org}\n"
+        f"{external_line}"
         f"email: {email}\n"
+        f"{emails_block}"
         f"phone: {phone}\n"
         f"slack: {slack}\n"
         f"birthday: {birthday}\n"

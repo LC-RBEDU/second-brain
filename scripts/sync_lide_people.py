@@ -206,7 +206,10 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
     "Lenka Turečková": {
         "role": "Externí finanční konzultant (Rainfellows, ad-hoc)",
         "org": "Rainfellows",
+        "external_for": "Red Button EDU",
         "email": "lenka.tureckova@rainfellows.cz",
+        # EDU účet — kalendářové pozvánky, přístup do RB Universe (Sembly 8. 9. 2026)
+        "emails": ["lenka.tureckova@rainfellows.cz", "lenka.tureckova@redbuttonedu.cz"],
         "projects": ["Finance"],
     },
     "Lenka Vašková": {
@@ -232,6 +235,8 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Dramaturgie eventu / speakers (Exponential Summit)",
         "org": "Red Button EDU",
         "email": "michal.srajer@redbuttonedu.cz",
+        # michal@redbutton.cz = Šrajer (10 hlaviček). michal@redbuttonedu.cz je Michal Poppe.
+        "emails": ["michal.srajer@redbuttonedu.cz", "michal@redbutton.cz"],
         "slack": "Šraky",
         "projects": ["Exponential Summit", "RB Universe development"],
     },
@@ -339,6 +344,8 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
     "Michal Poppe": {
         "role": "Product owner EDUtéka",
         "org": "Red Button EDU",
+        # doloženo hlavičkami mailů — nezaměňovat s Michalem Šrajerem (michal@redbutton.cz)
+        "email": "michal@redbuttonedu.cz",
         "projects": ["RB Universe development"],
     },
     "Radek Gajdušek": {
@@ -583,10 +590,30 @@ def linkify_vault(dry_run: bool, *, paths: list[Path] | None = None) -> int:
     return modified
 
 
+def match_aliases() -> dict[str, list[str]]:
+    """ALIASES + e-mailové adresy z KNOWN_META.
+
+    Sembly zápisy a hlavičky mailů uvádějí účastníky často jen adresou, bez jména —
+    bez tohohle by se taková zmínka k člověku nepřiřadila. Adresy jdou jen do matchingu,
+    ne do ``aliases:`` ve frontmatteru; tam patří jména, ne kontakty.
+    """
+    out: dict[str, list[str]] = {}
+    for person, aliases in ALIASES.items():
+        extra = KNOWN_META.get(person, {}).get("emails") or []
+        if isinstance(extra, str):
+            extra = [extra]
+        primary = KNOWN_META.get(person, {}).get("email")
+        if primary and primary not in extra:
+            extra = [primary, *extra]
+        out[person] = list(aliases) + [e for e in extra if e]
+    return out
+
+
 def rebuild_person_files(dry_run: bool) -> dict[str, int]:
     sys.path.insert(0, str(REPO / "scripts"))
     from lide_person_template import build_person_document, normalize_person_file  # noqa: E402
 
+    match_map = match_aliases()
     mentions: dict[str, dict[str, dict]] = {p: {} for p in ALIASES}
     for fpath in VAULT.rglob("*.md"):
         rel = fpath.relative_to(VAULT).as_posix()
@@ -594,7 +621,7 @@ def rebuild_person_files(dry_run: bool) -> dict[str, int]:
             continue
         text = fpath.read_text(encoding="utf-8")
         link = f"[[{fpath.stem}]]"
-        for person, aliases in ALIASES.items():
+        for person, aliases in match_map.items():
             hit = f"[[{person}]]" in text or f"[[{person}|" in text
             if not hit:
                 hit = any(a in text for a in aliases)

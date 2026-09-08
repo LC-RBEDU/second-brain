@@ -45,6 +45,7 @@ if str(_LIB) not in sys.path:
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
+from strategy_meeting import collect_strategy_meeting_from_path  # noqa: E402
 from focus import (  # noqa: E402
     FOCUS_LIMIT,
     STATUS_CANCELLED,
@@ -488,6 +489,9 @@ def build_snapshot(vault: Path) -> dict:
     projects = collect_projects(vault)
     areas = collect_areas(vault)
     lessons = collect_lessons(vault)
+    strategy_meeting = collect_strategy_meeting_from_path(
+        vault, parse_frontmatter=parse_frontmatter
+    )
     active_tasks = collect_tasks(vault, archive=False)
     archived = collect_tasks(vault, archive=True)
 
@@ -616,6 +620,8 @@ def build_snapshot(vault: Path) -> dict:
         "projects": [p.to_dict() for p in projects],
         "areas": areas,
         "lessons": lessons,
+        "strategy_meeting": strategy_meeting,
+        "strategy_meeting_themes": strategy_meeting.get("themes", []),
         "priority_rules": {
             "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
             "base": "priority_score = (ice_i * ice_c) / ice_e",
