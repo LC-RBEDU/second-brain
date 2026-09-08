@@ -22,11 +22,13 @@ ALIASES: dict[str, list[str]] = {
     "Adéla Ivan Jansová": ["Adéla Ivan Jansová", "Adéla Jansová"],
     "Alexandra Gallisová": ["Alexandra Gallisová", "Saša Gallisová", "Saša"],
     "Barbora Zloch": ["Barbora Zloch", "Baru", "Bára Zloch"],
+    "Denisa Mášová": ["Denisa Mášová"],
     "Dominik Holíček": ["Dominik Holíček", "Domča"],
     "Eva Králová": ["Eva Králová"],
     "Jan Lokajíček": ["Jan Lokajíček"],
     "Jan Mašek": ["Jan Mašek", "Honza Mašek", "Honza"],
     "Jana Kočová": ["Jana Kočová"],
+    "Martin Chmelař": ["Martin Chmelař"],
     "Jarda Fulnek": ["Jarda Fulnek", "Jaromír Fulnek"],
     "Jakub Heikenwälder": ["Jakub Heikenwälder", "Jakub Heikenwalder", "Kuba"],
     "Jiří Jirman": ["Jiří Jirman"],
@@ -48,11 +50,13 @@ ALIASES: dict[str, list[str]] = {
     "Martina Mašková": ["Martina Mašková"],
     "Michaela Valdéz": ["Michaela Valdéz", "Michaela González Valdés"],
     "Mária Falterová": ["Mária Falterová", "Maria Falterová", "Maru Falterová", "Maru"],
+    "Michaela Kosinerová": ["Michaela Kosinerová", "Míša Kosinerová"],
     "Michal Poppe": ["Michal Poppe"],
     "Michal Šrajer": ["Michal Šrajer", "Srakyi", "Šraky"],
     "Ondra Suchý": ["Ondra Suchý", "Ondřej Suchý"],
     "Pavel Kroupa": ["Pavel Kroupa", "Pavel K."],
     "Pavel Pumprla": ["Pavel Pumprla"],
+    "Pavla Vaňková": ["Pavla Vaňková"],
     "Petr Šídlo": ["Petr Šídlo", "Petr Sidlo"],
     "Radek Gajdušek": ["Radek Gajdušek", "Radek Gajdůšek", "Radek Gajdu"],
     "Roman Stupka": ["Roman Stupka"],
@@ -128,6 +132,32 @@ NICKNAMES: dict[str, list[str]] = {
 }
 
 KNOWN_META: dict[str, dict[str, str | list[str]]] = {
+    # --- role z produkční RB Universe (employee_profiles.current_position, 8. 9. 2026) ---
+    "Denisa Mášová": {
+        "role": "Projektová manažerka",
+        "org": "Red Button EDU",
+        "email": "denisa.masova@redbuttonedu.cz",
+        "projects": [],
+    },
+    "Michaela Kosinerová": {
+        "role": "Digital Adoption & Acceleration Programs Lead",
+        "org": "Red Button EDU",
+        "email": "michaela.kosinerova@redbuttonedu.cz",
+        "projects": [],
+    },
+    "Pavla Vaňková": {
+        # v Universe bez current_position; interní spolupráce na IČO od 5. 5. 2026
+        "role": "Interní spolupracovnice (IČO, částečný úvazek)",
+        "org": "Red Button EDU",
+        "email": "pavla.vankova@redbuttonedu.cz",
+        "projects": [],
+    },
+    "Martin Chmelař": {
+        "role": "Rainfellows — partner na straně Tatra banky (TBSK)",
+        "org": "Rainfellows",
+        "email": "martin.chmelar@rainfellows.cz",
+        "projects": ["Sales a business development"],
+    },
     "Luboš Malý": {
         "role": "Co-strategist / CEO, principal Learning Designer",
         "org": "Red Button EDU",
@@ -166,6 +196,8 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Growth (Strategy tým)",
         "org": "Red Button EDU",
         "email": "jan@redbutton.cz",
+        # jan@redbuttonedu.cz potvrdil Lukáš 8. 9. 2026 (v hlavičkách mailů jen jan@redbutton.cz)
+        "emails": ["jan@redbutton.cz", "jan@redbuttonedu.cz"],
         "slack": "Honza",
         "projects": ["Strategy", "M&A Odyssey"],
     },
