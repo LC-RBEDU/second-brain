@@ -65,6 +65,18 @@ CAPTURE_FORWARD_ONLY = """**Čas:** 2026-06-30 11:00
 ## Forwardovaný obsah
 """ + ("> **Someone** line\n" * 30)
 
+SALES_FEED_INBOUND = """# Group DM "RB Sales Feed" – 2026-09-04
+
+**Vlákno:** https://rb-edu.slack.com/archives/C0AMFR8P3B3/p1788519183530579
+**Kanál:** Group DM RB Sales Feed
+**Thread TS:** 1788519183.530579
+**Důvod zálohy:** adresováno mně
+
+**Michal Šrajer** 13:00
+@Lukáš a tady zase vzkas od mého Clauda tvému Cursorovi (backend changes)
+_(příloha: Sales Feed - backend-requests-2026-08-21.md, 21.0 KB)_
+"""
+
 
 def test_classify_thread_dump():
     rel = "01-INBOX/slack/2026-06-30_team-it-support_1781818693.549869.md"
@@ -143,3 +155,17 @@ def test_thread_version_key_strips_duplicate_filename_noise():
     name = "2026-08-20_dm-x_1787226196 (1).980259_v1.md"
     key = mod.slack_thread_version_key(name, "")
     assert key == ("1787226196.980259", 1)
+
+
+def test_inbound_sales_feed_thread_routes_deep_not_archive():
+    rel = (
+        "01-INBOX/slack/"
+        "2026-09-04_gdm-jan-masek-michal-srajer-lukas-dzuroska-veronika-kuncova_"
+        "1788519183.530579_v1.md"
+    )
+    result = mod.evaluate_slack_inbox_relevance(rel, SALES_FEED_INBOUND, guess_proj=_guess_proj)
+    assert result is not None
+    assert result.route == "deep"
+    assert result.source_kind == "thread_dump"
+    assert any("@Lukáš" in r for r in result.reasons)
+    assert not mod.extract_lukas_messages(SALES_FEED_INBOUND).strip()

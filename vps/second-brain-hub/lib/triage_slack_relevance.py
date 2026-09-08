@@ -68,6 +68,29 @@ _THREAD_TS_BODY_RE = re.compile(r"\*\*Thread TS:\*\*\s*(\d+\.\d+)")
 
 _LUKAS_SPEAKER_RE = re.compile(r"\*\*Lukáš(?:\s+Cypra)?\*\*", re.IGNORECASE)
 _QUOTED_MESSAGE_RE = re.compile(r"^>\s*\*\*[^*]+\*\*", re.MULTILINE)
+# thread_dump v2: ``**Jméno** 12:53`` (export bez blockquote)
+_SPEAKER_LINE_RE = re.compile(
+    r"^\*\*[^*]+\*\*\s+\d{1,2}:\d{2}",
+    re.MULTILINE,
+)
+# Incoming work for Lukáš when he did not post in the thread (DM / @mention / capture reason).
+_ADDRESSED_TO_LUKAS_HEADER_RE = re.compile(
+    r"\*\*Důvod\s+zálohy:\*\*\s*adresováno\s+mně",
+    re.IGNORECASE,
+)
+_MENTION_LUKAS_RE = re.compile(r"@Lukáš\b|@lukas\b", re.IGNORECASE)
+_INBOUND_WORK_RE = re.compile(
+    r"\bbackend\s+changes\b|"
+    r"tvému\s+Cursorovi|"
+    r"\bpro\s+Lukáše\b|"
+    r"\bLukáš\s+posílá\b|"
+    r"\bLukáš\s+Cypra\b",
+    re.IGNORECASE,
+)
+_ATTACHMENT_SPEC_RE = re.compile(
+    r"příloha:\s*.+\.md",
+    re.IGNORECASE,
+)
 
 _SECTION_RE = re.compile(r"^(#{1,3})\s+(.+)$", re.MULTILINE)
 
@@ -195,7 +218,23 @@ def extract_lukas_messages(body: str) -> str:
 
 
 def _count_quoted_messages(body: str) -> int:
-    return len(_QUOTED_MESSAGE_RE.findall(body))
+    return len(_QUOTED_MESSAGE_RE.findall(body)) + len(_SPEAKER_LINE_RE.findall(body))
+
+
+def detect_inbound_work_for_lukas(body: str, lukas_text: str = "") -> tuple[bool, list[str]]:
+    """True when the thread assigns work to Lukáš but he did not speak."""
+    if lukas_text.strip():
+        return False, []
+    reasons: list[str] = []
+    if _ADDRESSED_TO_LUKAS_HEADER_RE.search(body):
+        reasons.append("Důvod zálohy: adresováno mně")
+    if _MENTION_LUKAS_RE.search(body):
+        reasons.append("@Lukáš ve vlákně")
+    if _INBOUND_WORK_RE.search(body):
+        reasons.append("požadavek směřovaný na Lukáše / backend")
+    if _ATTACHMENT_SPEC_RE.search(body):
+        reasons.append("příloha se specifikací (.md)")
+    return bool(reasons), reasons
 
 
 def evaluate_slack_inbox_relevance(
@@ -274,6 +313,17 @@ def evaluate_slack_inbox_relevance(
     if kind == "thread_dump":
         lukas_text = extract_lukas_messages(body)
         msg_count = _count_quoted_messages(body)
+        inbound, inbound_reasons = detect_inbound_work_for_lukas(body, lukas_text)
+        if inbound:
+            reasons.extend(inbound_reasons)
+            reasons.append("inbound požadavek bez Lukášovy odpovědi — DEEP, ne archiv")
+            return SlackRelevanceResult(
+                route="deep",
+                source_kind=kind,
+                confidence=0.9,
+                reasons=reasons,
+                lukas_text=lukas_text,
+            )
         if not lukas_text.strip():
             reasons.append("vlákno bez zprávy od Lukáše")
             return SlackRelevanceResult(

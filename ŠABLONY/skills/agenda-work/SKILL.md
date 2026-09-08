@@ -57,12 +57,12 @@ Status: <active/paused> | Area: <area> | hierarchy: <yes/no>
   • ...
 
 🗺 EPICS (<N z open_epics[]>)
-  • RBU23 — MVP karet… (Next) ← children: RBU61, RBU21…
+  • RBU-E23 — MVP karet… (Next) ← children: RBU-S61, RBU-S21…
   …
 
 📋 AKTIVNÍ STORIES / TASKY (<N>)
   • [fokus W32, Score=18.0, agent=assist] RBU62 — Název — parent —
-  • [Next, Score=14.0] RBU61 — … — parent RBU23
+  • [Next, Score=14.0] RBU-S61 — … — parent RBU-E23
   ...
 
 📁 EXISTUJÍCÍ VÝSTUPY (mimo tasks/, materials/)
@@ -115,7 +115,7 @@ Návrh změn v 02-PROJEKTY/<slug>/tasks/:
 
 ✏️ Update existujícího:
   • RBU15 — focus: → 2026-W32 (důvod: deadline 2026-05-29)
-  • RBU6 — waitUntil: → 2026-06-30 (Káťa potvrdila timing)
+  • RBU-S6 — waitUntil: → 2026-06-30 (Káťa potvrdila timing)
 
 OK? (ano / uprav)
 ```

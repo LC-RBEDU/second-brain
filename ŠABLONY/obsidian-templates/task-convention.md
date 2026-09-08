@@ -34,7 +34,7 @@ parent:   # vždy prázdné / null
 
 ```yaml
 type: story
-parent: "[[RBU23 — MVP karet externistů]]"  # wikilink na epic; null = standalone
+parent: "[[RBU-E23 — MVP karet externistů]]"  # wikilink na epic; null = standalone
 focus:   # jen člověk, ISO týden
 agent: none | assist | solo
 ice_i: …
@@ -74,19 +74,21 @@ Smazané ID by `next_task_id.py` přes `max+1` přidělil znovu někomu jinému.
 
 ## ID
 
-- Prefix projektu (`RBU`, …) + `python3 scripts/next_task_id.py <slug>`.
-- Epic i story berou další volné `RBU<N>` — **žádné** `RBU-E`.
-- Listové kroky: `**RBU62-1**`, `**RBU62-2**` v body story.
+- Prefix projektu (`RBU`, …) + `python3 scripts/next_task_id.py <slug> --type epic|story|task`.
+- **Úroveň je součástí ID:** `RBU-E69` epic, `RBU-S70` story, `RBU-T12` task.
+- **Jeden čítač na projekt, ne per úroveň** — povýšení story na epic mění písmeno, číslo zůstává, takže se žádné neuvolní k recyklaci.
+- Listové kroky: `**RBU-S70-1**`, `**RBU-S70-2**` v body story — číslo kroku je vždy za poslední pomlčkou.
+- Ploché projekty a archiv mají dál `<PREFIX><N>` (`S12`, `AF14`); parsery zvládají obojí.
 
 ## GitHub → vault (jen RBU)
 
 Commity / merged PR do větve **`dev`** v `RedButtonEDU/RB-Universe`:
 
-- `Closes RBU62-1` — odškrtne checkbox
-- `Closes RBU62` — story `Done` jen když nezůstane otevřený krok
+- `Closes RBU-S70-1` — odškrtne checkbox
+- `Closes RBU-S70` — story `Done` jen když nezůstane otevřený krok
 
 Cron: `lifecycle_github_rbu_closes.py`. Agent v Universe musí ID zapsat — viz `.cursor/rules/rbu-commit-closes.mdc` v repu RB-Universe (zdroj: `ŠABLONY/cursor-rules/`).
 
 ## Chat
 
-Vždy **`ID — title`**. U kroku: parent story + text checkboxu (`RBU62-1` pod **RBU62 — …**).
+Vždy **`ID — title`**. U kroku: parent story + text checkboxu (`RBU-S70-1` pod **RBU-S70 — …**).

@@ -81,7 +81,7 @@ project: "[[<HubFilename>]]"
 slug: <slug>
 aliases: [<ID>]
 status: Next | Doing | Backlog | Waiting | Done | Cancelled
-parent:  # jen story → "[[RBU23 — …]]"; epic/standalone prázdné
+parent:  # jen story → "[[RBU-E23 — …]]"; epic/standalone prázdné
 focus:  (prázdné — nastavuje jen člověk; **ne** u epic)
 agent:  none | assist | solo
 ice_i: <1-10>   # u epic vynech
@@ -160,6 +160,7 @@ OK? (ano / uprav / vyhoď)
 - Vytvoř material soubor v `02-PROJEKTY/<slug>/materials/` nebo `05-RESOURCES/<kategorie>/`
 - **Přílohy z INBOX** (`## Přílohy` sekce): stáhni/zkopíruj binárku do `materials/<téma>/`, vytvoř sidecar `.md` (`type: attachment`, embed `![[]]`), spusť `python3 scripts/extract_material_text.py <binárka>`, propoj v task `materials:`
 - DEEP zdroj (Sembly/Slack capture) → **jediná kopie** jako materiál v `materials/` (`material_kind: sembly|slack-capture|…`), task linkuje přes `materials:`; `source:` jen provenance pointer
+- **`layer:`** na materiálu — `strategic` (Strategy meeting Sembly, vibe brief, org/H2 rozhodnutí) vs. `operational` (Finance sync, PD chase, fakturace). U triáže Sembly: název/účastníci obsahují „strategická schůzka“ / Strategy tým → `layer: strategic`; jinak default `operational` pokud jde o provozní call.
 - U Resources: progressive summarization (3–5 bullet výtah nahoře) + `topics:` tagy (PARA: `.cursor/rules/resources-para.mdc`)
 - Po vytvoření **inkrementuj** `open_tasks_count` v hub `.md` frontmatteru
 - Originál z INBOX → `07-ARCHIV/inbox-processed/YYYY/MM/<den>-<filename>`

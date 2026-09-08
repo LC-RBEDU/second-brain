@@ -13,7 +13,13 @@ import re
 import sys
 from datetime import datetime, timedelta, date
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
+
+try:
+    import yaml
+except ImportError:
+    yaml = None  # type: ignore[assignment]
 
 _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
@@ -40,6 +46,7 @@ from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 
 LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
 LESSONS_LIMIT = 80
+from strategy_meeting import collect_strategy_meeting_from_drive  # noqa: E402
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
     URGENCY_BONUS_TODAY,
@@ -63,6 +70,20 @@ from hierarchy import (  # noqa: E402
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 OUTPUT_REL = "00-System/agent-context.json"
 HUB_TITLE_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
+FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)
+
+
+def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    m = FRONTMATTER_RE.match(text)
+    if not m or yaml is None:
+        return {}, text
+    try:
+        fm = yaml.safe_load(m.group(1)) or {}
+        if not isinstance(fm, dict):
+            fm = {}
+    except yaml.YAMLError:
+        fm = {}
+    return fm, m.group(2)
 
 
 def _to_int(v, default=5):
@@ -302,6 +323,9 @@ def main() -> None:
     projects = collect_projects(vault)
     areas = collect_areas(vault)
     lessons = collect_lessons(vault)
+    strategy_meeting = collect_strategy_meeting_from_drive(
+        vault, parse_frontmatter=parse_frontmatter
+    )
     active_dicts = [task_to_dict(t) for t in iter_active_tasks(vault)]
     archive_dicts = [task_to_dict(t) for t in iter_archive_tasks(vault)]
 
@@ -466,6 +490,8 @@ def main() -> None:
         "projects": projects,
         "areas": areas,
         "lessons": lessons,
+        "strategy_meeting": strategy_meeting,
+        "strategy_meeting_themes": strategy_meeting.get("themes", []),
         "priority_rules": {
             "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
             "base": "priority_score = (ice_i * ice_c) / ice_e",

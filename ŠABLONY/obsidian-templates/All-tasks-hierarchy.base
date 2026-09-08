@@ -51,6 +51,48 @@ views:
         direction: ASC
     columnSize:
       formula.task_title: 620
+  - type: table
+    name: EpicStories
+    filters:
+      and:
+        - parent == this.file.asLink()
+        - status != "Done"
+        - status != "Cancelled"
+    order:
+      - id
+      - formula.task_title
+      - status
+      - formula.priority_score
+      - focus
+      - agent
+      - deadline
+    sort:
+      - property: formula.priority_score
+        direction: DESC
+    summaries:
+      formula.task_title: Count
+    columnSize:
+      formula.task_title: 520
+  - type: table
+    name: EpicStoriesDone
+    filters:
+      and:
+        - parent == this.file.asLink()
+        - or:
+            - status == "Done"
+            - status == "Cancelled"
+    order:
+      - id
+      - formula.task_title
+      - status
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+    summaries:
+      formula.task_title: Count
+    columnSize:
+      formula.task_title: 520
   - type: kanban
     name: ProjectStoriesKanban
     filters:

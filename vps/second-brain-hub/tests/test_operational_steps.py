@@ -31,9 +31,9 @@ def test_sort_key_numeric_not_lexicographic():
 
 
 def test_sort_key_letter_suffix_follows_base():
-    base = subtask_sort_key(False, "**F41-3** x", 0)
-    suffix = subtask_sort_key(False, "**F41-3b** x", 1)
-    later = subtask_sort_key(False, "**F41-4** x", 2)
+    base = subtask_sort_key(False, "**F-S41-3** x", 0)
+    suffix = subtask_sort_key(False, "**F-S41-3b** x", 1)
+    later = subtask_sort_key(False, "**F-S41-4** x", 2)
     assert base < suffix < later
 
 
@@ -104,18 +104,18 @@ def test_h3_subheadings_are_boundaries():
 def test_continuation_lines_travel_with_item():
     body = "\n".join([
         "## Operativní kroky",
-        "- [x] **FP27-2** done",
-        "- [ ] **FP27-1** open",
+        "- [x] **FP-S27-2** done",
+        "- [ ] **FP-S27-1** open",
         "  - Mapovat PD sales vs. realizace",
         "  - **Pipedrive fáze 5**",
         "",
     ])
     new, _ = sort_operational_steps(body)
     lines = [l for l in new.split("\n") if l.strip()]
-    assert lines[1] == "- [ ] **FP27-1** open"
+    assert lines[1] == "- [ ] **FP-S27-1** open"
     assert lines[2].startswith("  - Mapovat")
     assert lines[3].startswith("  - **Pipedrive")
-    assert lines[4] == "- [x] **FP27-2** done"
+    assert lines[4] == "- [x] **FP-S27-2** done"
 
 
 def test_no_operational_section_is_untouched():
@@ -156,3 +156,13 @@ if __name__ == "__main__":
                 print(f"FAIL {name}")
                 traceback.print_exc()
     raise SystemExit(1 if fails else 0)
+
+
+def test_subtask_sort_key_with_level_letter():
+    """Řazení kroků musí číslo najít i za pomlčkou v základu ID."""
+    assert subtask_sort_key(False, "**RBU-S70-4** x", 0) < subtask_sort_key(
+        False, "**RBU-S70-14** x", 1
+    )
+    assert subtask_sort_key(False, "**RBU-S70-9** x", 0) < subtask_sort_key(
+        True, "**RBU-S70-1** x", 1
+    )

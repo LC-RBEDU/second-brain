@@ -4,7 +4,7 @@ Ordering rule (vault convention):
 
 1. open steps first (`- [ ]`), then completed ones (`- [x]`),
 2. within each group ascending by subtask number (`**S12-4**` before `**S12-14**`),
-3. letter suffixes stay next to their base number (`F41-3` then `F41-3b`).
+3. letter suffixes stay next to their base number (`F-S41-3` then `F-S41-3b`).
 
 `### ` subheadings inside the section act as boundaries — items are sorted
 within each block, never moved across a subheading, because the grouping
@@ -25,7 +25,11 @@ __all__ = [
 ]
 
 _CHECKBOX_RE = re.compile(r"^-\s+\[([ xX])\]\s?(.*)$")
-_SUBTASK_ID_RE = re.compile(r"^\*\*(?P<base>[A-Za-z]+\d+)-(?P<num>\d+)(?P<suffix>[A-Za-z]*)\*\*")
+# Level-tagged IDs (RBU-S70) put a hyphen inside the base, so the step number is
+# whatever follows the last hyphen: RBU-S70-1 is base RBU-S70, step 1.
+_SUBTASK_ID_RE = re.compile(
+    r"^\*\*(?P<base>[A-Za-z]+(?:-[EST])?\d+)-(?P<num>\d+)(?P<suffix>[A-Za-z]*)\*\*"
+)
 
 # Items we cannot parse keep their relative order but sink below numbered ones.
 _UNPARSED_NUM = 10**6

@@ -67,5 +67,5 @@ Watch — Waiting blízko expiraci (≤ 7 dnů):
 
 - Nikdy neměň `id`, `slug`, `created`
 - Duplicitní ID napříč projekty — flagni, nespojuj automaticky (ID je per-slug; AF1 ≠ S1, ale F1 v finance vs F1 v firemni-procesy je collision warning)
-- Propojené tasky (F13 ↔ F19) — navrhni stejný wait/deadline jen pokud dává smysl
+- Propojené tasky (F13 ↔ F-S19) — navrhni stejný wait/deadline jen pokud dává smysl
 - Recurring tasky — review jen ICE/status; `recurring:` blok ne menit (řídí cron)

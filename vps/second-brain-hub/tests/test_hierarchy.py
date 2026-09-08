@@ -38,10 +38,10 @@ def test_normalise_work_type():
 
 
 def test_parse_parent_id():
-    assert parse_parent_id("[[RBU23 — MVP karet]]") == "RBU23"
-    assert parse_parent_id("[[RBU23]]") == "RBU23"
-    assert parse_parent_id("RBU23") == "RBU23"
-    assert parse_parent_id("RBU23 — Title") == "RBU23"
+    assert parse_parent_id("[[RBU-E23 — MVP karet]]") == "RBU-E23"
+    assert parse_parent_id("[[RBU-E23]]") == "RBU-E23"
+    assert parse_parent_id("RBU-E23") == "RBU-E23"
+    assert parse_parent_id("RBU-E23 — Title") == "RBU-E23"
     assert parse_parent_id(None) is None
 
 
@@ -53,8 +53,8 @@ def test_project_uses_hierarchy():
 
 
 def test_closes_refs():
-    text = "feat: MCP tools\n\nCloses RBU62-1\nAlso fixes RBU62-2 and Resolves RBU61"
-    assert parse_closes_refs(text) == ["RBU62-1", "RBU62-2", "RBU61"]
+    text = "feat: MCP tools\n\nCloses RBU62-1\nAlso fixes RBU62-2 and Resolves RBU-S61"
+    assert parse_closes_refs(text) == ["RBU62-1", "RBU62-2", "RBU-S61"]
 
 
 def test_split_and_classify():
@@ -78,7 +78,7 @@ def test_mark_checkbox_done():
 
 def test_epic_excluded_from_priority():
     epic = {
-        "id": "RBU23",
+        "id": "RBU-E23",
         "type": "epic",
         "status": "Next",
         "focus": "2026-W36",
@@ -105,8 +105,8 @@ def test_epic_excluded_from_priority():
     ids_today = [t["id"] for t in today_list]
     ids_gen = [t["id"] for t in general]
     assert "RBU62" in ids_today
-    assert "RBU23" not in ids_today
-    assert "RBU23" not in ids_gen
+    assert "RBU-E23" not in ids_today
+    assert "RBU-E23" not in ids_gen
 
 
 def test_extract_actions_ignores_non_rbu():
@@ -169,3 +169,25 @@ def test_apply_close_epic_blocked():
     result, _ = apply_close_action(vault, task, action, today_str="2026-09-02")
     assert result == "epic_blocked"
     assert not vault.writes
+
+
+def test_parse_parent_id_with_level_letter():
+    """RBU-E69 must parse as one ID, not as prefix 'RBU' plus junk."""
+    assert parse_parent_id("[[RBU-E69 — Sales Feed]]") == "RBU-E69"
+    assert parse_parent_id("[[RBU-E69]]") == "RBU-E69"
+    assert parse_parent_id("RBU-E69") == "RBU-E69"
+    assert parse_parent_id("RBU-E69 — Title") == "RBU-E69"
+    assert parse_parent_id("[[FP-S27 — Procesní architekt]]") == "FP-S27"
+
+
+def test_subtask_ref_splits_on_the_last_hyphen():
+    """RBU-S70-1 is step 1 of story RBU-S70, not step 70 of 'RBU'."""
+    from hierarchy import SUBTASK_REF_RE
+
+    m = SUBTASK_REF_RE.match("RBU-S70-1")
+    assert m is not None
+    assert m.group("id") == "RBU-S70"
+    assert m.group("num") == "1"
+
+    m2 = SUBTASK_REF_RE.match("S12-9")  # starý tvar musí fungovat dál
+    assert m2 is not None and m2.group("id") == "S12" and m2.group("num") == "9"

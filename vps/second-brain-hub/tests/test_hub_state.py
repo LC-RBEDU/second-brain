@@ -104,10 +104,10 @@ def test_link_always_targets_the_full_filename():
 
 
 def test_deadline_task_is_linked_in_callout():
-    tasks = [_task("F9", status="Next", deadline="2026-06-20")]
+    tasks = [_task("F-S9", status="Next", deadline="2026-06-20")]
     inner, _ = build_state_content("finance", tasks, [], date(2026, 6, 12))
     assert "> [!abstract]" in inner
-    assert "nejbližší deadline **2026-06-20** ([[F9]])" in inner
+    assert "nejbližší deadline **2026-06-20** ([[F-S9]])" in inner
 
 
 def test_stale_when_hub_old():

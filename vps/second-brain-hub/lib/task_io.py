@@ -24,7 +24,7 @@ PROJEKTY_DIR = "02-PROJEKTY"
 ARCHIV_DIR = "07-ARCHIV/tasks-done"
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)
-ID_RE = re.compile(r"^([A-Z]+\d+[a-z]?)")
+ID_RE = re.compile(r"^([A-Z]+(?:-[EST])?\d+[a-z]?)")
 
 
 @dataclass

@@ -6,7 +6,7 @@ project: "[[{{HubFilename}}]]"
 slug: {{slug}}
 aliases: [{{ID}}]
 status: Next  # Doing | Next | Backlog | Waiting | Done | Cancelled
-parent:  # "[[RBU23 — …]]" nebo prázdné (standalone / flat projekty: type task)
+parent:  # "[[RBU-E23 — …]]" nebo prázdné (standalone / flat projekty: type task)
 focus:
 agent: none
 ice_i: 5

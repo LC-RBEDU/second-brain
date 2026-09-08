@@ -81,7 +81,7 @@ PERSON_PROFILES: dict[str, dict] = {
         "topics": [
             "Úzká spolupráce s Martinou Maškovou — mzdy, DPFO, DPPO",
             "Pondělní finance meetingy (od 5. 5. 2026)",
-            "Daňová témata — ubytování externistů (F33)",
+            "Daňová témata — ubytování externistů (F-S33)",
         ],
         "projekty": "- [[Finance]] — externí konzultant (Rainfellows)",
     },

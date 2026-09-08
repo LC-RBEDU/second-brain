@@ -159,15 +159,15 @@ Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (cro
 | Typ | Signály | Typický původ |
 |-----|---------|---------------|
 | **capture_n8n** | `**Čas:**`, `## Komentář`, `## Forwardovaný obsah` | `slack-cowork-inbox-with-attachments.json` (:cowork: / reakce v capture kanálu) |
-| **thread_dump** | `**Vlákno:**`, `**Kanál:**`, citované `> **Jméno**` | export celého vlákna s Lukášovou interakcí (reakce mimo capture kanál) |
+| **thread_dump** | `**Vlákno:**`, `**Kanál:**`, citované `> **Jméno**` nebo `**Jméno** HH:MM` | export celého vlákna s Lukášovou interakcí (reakce mimo capture kanál) |
 
 **Routing (SSOT:** `vps/second-brain-hub/lib/triage_slack_relevance.py` **, volá `triage_run.py`):**
 
 | Route | Kdy | `proposalType` | Preview label |
 |-------|-----|----------------|---------------|
-| **ARCHIVE** | pasivní účast, omluva/delay, delegace bez Lukášova závazku, vlákno bez Lukáše | `archive_only` (`kind: slack_thread_archive`) | Slack archiv (bez tasku) |
+| **ARCHIVE** | pasivní účast, omluva/delay, delegace bez Lukášova závazku, vlákno bez Lukáše **a bez inbound signálu** | `archive_only` (`kind: slack_thread_archive`) | Slack archiv (bez tasku) |
 | **BATCH** | záměrný `## Komentář` nebo krátký Lukášův commitment | `add_task` | Vytažení úkolu |
-| **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku | `deep_analysis` | DEEP analysis required |
+| **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku, **`@Lukáš` / `Důvod zálohy: adresováno mně` / spec příloha (.md) bez Lukášovy odpovědi** | `deep_analysis` | DEEP analysis required |
 
 **Sweep s vétovacím seznamem (povinné u ARCHIVE dávky):**
 

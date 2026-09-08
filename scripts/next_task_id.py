@@ -38,7 +38,9 @@ TASK_DIRS = ("02-PROJEKTY", "07-ARCHIV")
 MAPPING_REL = "00-System/migration-mapping.json"
 PENDING_REL = "00-System/Triage-Pending"
 
-ID_RE = re.compile(r"^([A-Z]+)(\d+)[a-z]?$")
+# The level letter is not part of the counter: RBU-E69 and RBU-S70 share one
+# sequence, so promoting a story to an epic never frees a number for reuse.
+ID_RE = re.compile(r"^([A-Z]+)(?:-[EST])?(\d+)[a-z]?$")
 
 
 def _frontmatter(path: Path) -> dict:
@@ -154,11 +156,31 @@ def find_duplicates() -> dict[str, list[Path]]:
     return out
 
 
+LEVEL_LETTER = {"epic": "E", "story": "S", "task": "T"}
+
+
+def with_level(task_id: str, level: str) -> str:
+    """Insert the hierarchy level into an ID: RBU73 + story -> RBU-S73.
+
+    The number is not re-derived per level; one counter serves all three, so a
+    story promoted to an epic keeps its number and frees nothing for reuse.
+    """
+    m = re.match(r"^([A-Z]+)(?:-[EST])?(\d+)$", task_id)
+    if not m:
+        return task_id
+    return f"{m.group(1)}-{LEVEL_LETTER[level]}{m.group(2)}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("slug", nargs="?", help="project slug, e.g. finance")
     ap.add_argument("--why", action="store_true", help="show where the ceiling came from")
     ap.add_argument("--check", action="store_true", help="report duplicate IDs and exit 1 if any")
+    ap.add_argument(
+        "--type",
+        choices=("epic", "story", "task"),
+        help="hierarchy level; adds the level letter (RBU-E73 / RBU-S73 / RBU-T73)",
+    )
     args = ap.parse_args()
 
     if args.check:
@@ -177,6 +199,8 @@ def main() -> int:
         ap.error("chybí slug (nebo použij --check)")
 
     new_id, where = next_id(args.slug)
+    if args.type:
+        new_id = with_level(new_id, args.type)
     print(new_id if not args.why else f"{new_id}   (strop podle: {where})")
     return 0
 

@@ -19,13 +19,18 @@ blocked_by: []
 # {{ID}} — {{Title}}
 
 **Z:** roadmap / charter
-**Detail:** Výsledek na měsíce — ne doručení v jednom sprintu. Děti = `type: story` s `parent: '[[{{ID}} — {{Title}}]]'`.
+**Detail:** Výsledek na měsíce — ne doručení v jednom sprintu. Děti = `type: story` s `parent: '[[{{ID}} — {{Title}}]]'`. ID epicu má tvar `<PREFIX>-E<N>`, story `<PREFIX>-S<N>`.
 
 ## Definition of done (epic)
 - [ ] …
 
-## Stories (mapa)
-- [[…]] — …
+## Stories
+
+![[All-tasks-hierarchy.base#EpicStories]]
+
+### Uzavřené
+
+![[All-tasks-hierarchy.base#EpicStoriesDone]]
 
 ## Poznámky / log
 - {{date}}: Založen epic.

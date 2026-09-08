@@ -7,7 +7,7 @@ or presence of at least one ``type: epic`` in that slug's tasks/):
 - ``type: story`` — deliverable user value; owns ICE / focus / status; children = checkbox ``ID-N``
 - ``type: task``  — legacy / flat work item (default when type missing)
 
-Parent link: story frontmatter ``parent: '[[RBU23 — Title]]'`` (wikilink to epic file).
+Parent link: story frontmatter ``parent: '[[RBU-E23 — Title]]'`` (wikilink to epic file).
 """
 from __future__ import annotations
 
@@ -23,14 +23,19 @@ HIERARCHY_TYPES = frozenset({TYPE_EPIC, TYPE_STORY, TYPE_TASK})
 # Slugs that always use hierarchy (even before first epic exists).
 DEFAULT_HIERARCHY_SLUGS = frozenset({"rb-universe-development"})
 
+# An ID carries its hierarchy level: RBU-E69 epic, RBU-S70 story, RBU-T12 task.
+# The level part is optional so IDs written before the change still parse.
+ID_CORE = r"[A-Za-z]+(?:-[EST])?\d+[a-z]?"
+
 PARENT_ID_RE = re.compile(
-    r"\[\[(?P<id>[A-Za-z]+\d+[a-z]?)(?:\s*[—–-].*?)?\]\]"
+    rf"\[\[(?P<id>{ID_CORE})(?:\s*[—–-].*?)?\]\]"
 )
-BARE_ID_RE = re.compile(r"^([A-Za-z]+\d+[a-z]?)$")
+BARE_ID_RE = re.compile(rf"^({ID_CORE})$")
 CLOSES_RE = re.compile(
-    r"(?i)\b(?:closes|fixes|resolves)\s+(?P<ref>RBU\d+(?:-\d+[a-z]?)?)\b"
+    r"(?i)\b(?:closes|fixes|resolves)\s+(?P<ref>RBU(?:-[EST])?\d+(?:-\d+[a-z]?)?)\b"
 )
-SUBTASK_REF_RE = re.compile(r"^(?P<id>[A-Za-z]+\d+[a-z]?)-(?P<num>\d+)(?P<suffix>[A-Za-z]*)?$")
+# Greedy core would swallow the step number, so the tail is pinned to the end.
+SUBTASK_REF_RE = re.compile(rf"^(?P<id>{ID_CORE})-(?P<num>\d+)(?P<suffix>[A-Za-z]*)?$")
 
 
 def _task_get(task: Any, key: str, default=None):
@@ -86,8 +91,8 @@ def parse_parent_id(value: Any) -> str | None:
     m = BARE_ID_RE.match(s)
     if m:
         return m.group(1)
-    # Filename-style "RBU23 — Title"
-    m = re.match(r"^([A-Za-z]+\d+[a-z]?)\s*[—–-]", s)
+    # Filename-style "RBU-E23 — Title"
+    m = re.match(rf"^({ID_CORE})\s*[—–-]", s)
     if m:
         return m.group(1)
     return None
@@ -130,7 +135,7 @@ def parse_closes_refs(text: str) -> list[str]:
         else:
             key = ref.upper()
             # RBU62 from closes — keep canonical casing RBU…
-            m2 = re.match(r"^([A-Za-z]+)(\d+[a-z]?)$", ref)
+            m2 = re.match(r"^([A-Za-z]+(?:-[EST])?)(\d+[a-z]?)$", ref)
             if m2:
                 key = f"{m2.group(1).upper()}{m2.group(2)}"
         if key not in seen:
