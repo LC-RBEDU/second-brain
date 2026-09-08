@@ -155,7 +155,10 @@ def _task_filename(task_id: str, title: str) -> str:
 
 def next_id_for_slug(vault: DriveVault, slug: str, prefix: str) -> str:
     """Scan tasks/ + 07-ARCHIV/tasks-done/<slug>/ for max ID with prefix, return prefix+(max+1)."""
-    pattern = re.compile(rf"^{re.escape(prefix)}(\d+)[a-z]?")
+    # Both spellings share one counter: RBU63 and RBU-S63 are the same number,
+    # and find_duplicates() compares whole strings, so a collision here would not
+    # even be reported.
+    pattern = re.compile(rf"^{re.escape(prefix)}(?:-[EST])?(\d+)[a-z]?")
     max_n = 0
     for rel in (
         f"02-PROJEKTY/{slug}/tasks",

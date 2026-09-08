@@ -20,7 +20,7 @@ description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš (C
 
 ### 1. Najdi task soubor
 
-1. ID syntax: `[A-Z]+\d+[a-z]?` (S2, AF7, RBU29, OPS2 atd.)
+1. ID syntax: `[A-Z]+(-[EST])?\d+[a-z]?` — s úrovní `RBU-E69`, `RBU-S70` (hierarchické projekty), bez ní `S2`, `AF7`, `OPS2` (ploché projekty a archiv)
 2. Hledej (filename po F-fundamental refactoru = `<ID> — <Title>.md`, em-dash U+2014):
    - `OBSIDIAN/02-PROJEKTY/*/tasks/<ID> — *.md` (nebo `<ID>.md` jako fallback) — pokud match, použij
    - `OBSIDIAN/07-ARCHIV/tasks-done/*/<ID> — *.md` — pokud archived, varuj a ptej se zda zpět aktivovat

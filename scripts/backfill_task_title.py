@@ -30,7 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VAULT_DEFAULT = REPO_ROOT / "OBSIDIAN"
 
 # Task ID prefix used in H1 headings (e.g. "S2 — ...", "RBU13 — ...").
-ID_RE = re.compile(r"^[A-Z]{1,5}\d+$")
+ID_RE = re.compile(r"^[A-Z]{1,5}(?:-[EST])?\d+$")
 # Acceptable separators between ID and title in H1 (em dash, en dash, hyphen).
 SEP_RE = re.compile(r"\s+[—–-]\s+")
 

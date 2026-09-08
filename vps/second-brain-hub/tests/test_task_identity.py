@@ -141,3 +141,12 @@ def test_check_returns_serialisable_dicts():
     out = check_task_identity([task("F36", "A"), task("F36", "B")])
     assert out and out[0]["kind"] == "duplicate_id"
     assert out[0]["id"] == "F36" and isinstance(out[0]["paths"], list)
+
+
+def test_rotation_re_accepts_level_tagged_id():
+    """RBU-S70-2026-09-08.md je rotace recurring tasku, ne drift názvu."""
+    from task_identity import ROTATION_RE
+
+    assert ROTATION_RE.match("RBU-S70-2026-09-08")
+    assert ROTATION_RE.match("OPS2-2026-06-01")  # starý tvar dál platí
+    assert not ROTATION_RE.match("RBU-S70 — Title")

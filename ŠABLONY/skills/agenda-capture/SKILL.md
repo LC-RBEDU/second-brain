@@ -67,7 +67,7 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 
 ### 5. Generuj ID a filename
 
-- **ID:** nikdy neurčuj od oka — spusť `python3 scripts/next_task_id.py <slug>`. Skript kouká na živé úkoly, archiv i na zmínky o ID smazaných úkolů, takže nerecykluje. Algoritmus: `00-System/Templates/id-generation-spec.md`.
+- **ID:** nikdy neurčuj od oka — spusť `python3 scripts/next_task_id.py <slug> --type epic|story|task` (bez `--type` vrátí ID bez písmene úrovně). Skript kouká na živé úkoly, archiv i na zmínky o ID smazaných úkolů, takže nerecykluje. Algoritmus: `00-System/Templates/id-generation-spec.md`.
 - **Filename:** `<ID> — <sanitize(title)>.md` (em-dash U+2014 obklopený mezerou; diakritika + emoji zachovány; FS-hostile chars sanitizovány — viz `filename-normalization.md`). Příklady: `S2 — Hierarchie cílů obrat vs. ziskovost vs. dopad.md`, `OPS2 — Nahrát EDU news ♻️ weekly (čtvrtek).md`.
 
 ### 6. Frontmatter (povinný)

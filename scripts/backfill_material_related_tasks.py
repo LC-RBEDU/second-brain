@@ -57,7 +57,7 @@ def link_target(value: str) -> str | None:
     return m.group("target").strip() if m else None
 
 
-BARE_ID_RE = re.compile(r"^[A-Z]{1,4}\d+$")
+BARE_ID_RE = re.compile(r"^[A-Z]{1,4}(?:-[EST])?\d+$")
 
 
 def normalize_bare_links(fm_yaml: str, by_id: dict[str, str]) -> tuple[str, list[str]]:

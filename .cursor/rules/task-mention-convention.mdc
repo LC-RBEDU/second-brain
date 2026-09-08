@@ -30,7 +30,7 @@ Platí pro **každý kanál, kterým se ke mně dostane text**: triáž, TOP, st
 
 ## Sebekontrola před odesláním
 
-Projdi si vlastní text a najdi každý řetězec ve tvaru `<PREFIX><číslo>`. U každého ověř, že hned za ním stojí em dash a název. Když nestojí, **nedopisuj to odhadem** — načti `title:` z task souboru. Tohle platí i pro text, který jde do nabídky voleb, ne jen do zprávy.
+Projdi si vlastní text a najdi každý řetězec ve tvaru `<PREFIX><číslo>` **nebo `<PREFIX>-<E|S|T><číslo>`** (`RBU-E69`, `RBU-S70`). U každého ověř, že hned za ním stojí em dash a název. Když nestojí, **nedopisuj to odhadem** — načti `title:` z task souboru. Tohle platí i pro text, který jde do nabídky voleb, ne jen do zprávy.
 - Nemíchat „SBD4“ a „task pro ČS“ — vždy oficiální `title` z task souboru / `agent-context.json`.
 
 ## Odkud brát title

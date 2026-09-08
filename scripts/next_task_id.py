@@ -79,7 +79,9 @@ def ceiling_for_prefix(prefix: str) -> tuple[int, str]:
     survives even when its file is gone.
     """
     best, where = 0, "(nic nenalezeno)"
-    exact = re.compile(rf"\b{re.escape(prefix)}(\d+)\b")
+    # (?:-[EST])? — strop musí zahrnout i RBU-S70, jinak by se jeho číslo
+    # po smazání souboru přidělilo znovu, což je přesně to, čemu tenhle scan brání.
+    exact = re.compile(rf"\b{re.escape(prefix)}(?:-[EST])?(\d+)\b")
 
     def consider(n: int, src: str) -> None:
         nonlocal best, where
@@ -101,7 +103,7 @@ def ceiling_for_prefix(prefix: str) -> tuple[int, str]:
     # Skipping a number costs nothing; inventing from a year-slug costs an
     # afternoon of link repair the other way.
     mention_re = re.compile(
-        rf"\[\[{re.escape(prefix)}(\d+)(?:[\s|\]—-]|\s+[—-])"
+        rf"\[\[{re.escape(prefix)}(?:-[EST])?(\d+)(?:[\s|\]—-]|\s+[—-])"
     )
     for path in VAULT.rglob("*.md"):
         try:
@@ -136,7 +138,7 @@ def find_duplicates() -> dict[str, list[Path]]:
     Rotated rituals legitimately share an ID across archived instances
     (`<ID>-YYYY-MM-DD.md`), so at most one non-rotation file may claim it.
     """
-    rotation = re.compile(r"^[A-Z]+\d+-\d{4}-\d{2}-\d{2}\.md$")
+    rotation = re.compile(r"^[A-Z]+(?:-[EST])?\d+-\d{4}-\d{2}-\d{2}\.md$")
     claims: dict[str, list[Path]] = defaultdict(list)
     for top in TASK_DIRS:
         for path in (VAULT / top).rglob("*.md"):

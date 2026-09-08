@@ -25,7 +25,7 @@ from dataclasses import dataclass
 SEPARATOR = " — "  # em dash U+2014
 
 # Filenames rotated by lifecycle_recurring: <ID>-YYYY-MM-DD.md
-ROTATION_RE = re.compile(r"^[A-Z]+\d+-\d{4}-\d{2}-\d{2}$")
+ROTATION_RE = re.compile(r"^[A-Z]+(?:-[EST])?\d+-\d{4}-\d{2}-\d{2}$")
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]")
 
 
