@@ -38,6 +38,8 @@ Default: B (nebo P pokud uživatel žádá pending).
 | Nová info o známé osobě | `update_person` → patch frontmatter/sekcí person souboru |
 | Spotify odkaz / název podcastu, pořadu, epizody | **fronta** přes MCP `spotify` — ne task (viz níže) |
 
+**„Kandidát na projekt" = vlastník procesu, ne téma.** Skoro každý úkol jde popsat jako proces. Rozhoduje, kdo agendu reálně vlastní a tahá za nitky (např. karty / dobíjení / platby → Finance). Firemní procesy = sepsání návodu až jako druhý krok. Detail dřív: `LL-2026-09-07-kandidat-na-projekt-uri-vlastnik-procesu` (Superseded → tento skill).
+
 Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy: co-located binárka + sidecar `.md` v `materials/<téma>/` (viz PARA rule); parsuj `## Přílohy` z INBOX `.md`; po apply spusť `extract_material_text.py`.
 
 ## Spotify / podcasty — do fronty, ne do vaultu
@@ -165,21 +167,35 @@ Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (cro
 
 | Route | Kdy | `proposalType` | Preview label |
 |-------|-----|----------------|---------------|
-| **ARCHIVE** | pasivní účast, omluva/delay, delegace bez Lukášova závazku, vlákno bez Lukáše **a bez inbound signálu** | `archive_only` (`kind: slack_thread_archive`) | Slack archiv (bez tasku) |
+| **ARCHIVE** | pasivní účast / uzavřený kontext; **inbound bez odpovědi sem nesmí** (to je DEEP). Inbound s odpovědí smí, ale preview = 1 řádek (viz sweep) | `archive_only` (`kind: slack_thread_archive`) | Slack archiv (bez tasku) |
 | **BATCH** | záměrný `## Komentář` nebo krátký Lukášův commitment | `add_task` | Vytažení úkolu |
-| **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku, **`@Lukáš` / `Důvod zálohy: adresováno mně` / spec příloha (.md) bez Lukášovy odpovědi** | `deep_analysis` | DEEP analysis required |
+| **DEEP** | dlouhé vlákno, forward-only capture, víc stran bez jednoho tasku, **inbound (`@Lukáš` / `adresováno mně` / `@zmínka` / spec) bez Lukášovy odpovědi** | `deep_analysis` | DEEP analysis required |
 
-**Sweep s vétovacím seznamem (povinné u ARCHIVE dávky):**
+**Sweep ARCHIVE dávky (povinné — v souladu s `.cursor/rules/slack-inbox-triage.mdc`):**
 
 Heuristika označí archivem skoro všechno a občas se plete — 10. 8. 2026 jich takhle propadlo šest
-z 24, včetně neodpovězeného DM o upgradu Traefiku, na který ve vaultu nebyl žádný task. Tichý
-hromadný archiv slackových vláken bez pročtení proto nedělej.
+z 24, včetně neodpovězeného DM o upgradu Traefiku. Tichý hromadný archiv bez rozlišení inboundu
+nedělej.
 
-- **Vypiš jedním řádkem** každé vlákno, kde je neodpovězená otázka, termín, nebo změna dotýkající
-  se existujícího tasku. Zbytek shrň jen počtem.
-- Logika je obrácená oproti schvalování: **mlčení = archiv**, uživatel jen vypíchne, co nesedí.
-- Zvlášť pozorně u **DM a group DM** — kanály (`#edu-team`, `#strategicky-tym`) jsou většinou
-  opravdu jen šum, DM skoro nikdy.
+Čtyři vrstvy preview (v tomto pořadí):
+
+1. **Inbound řádky (vždy):** každé archive vlákno s `adresováno mně` / `@zmínka` / `@Lukáš` /
+   `@lukas` / spec přílohou = **1 řádek** (kdo, o čem, odpověděl jsi?, zbývá míček?).
+   Tagovaný / adresovaný uživatel to musí vidět i po své odpovědi. **Mlčení tu neplatí.**
+2. **Kalendář cross-check (povinné):** u vláken / e-mailů se signálem „bookni“, „najdeme čas“,
+   „1:1“, „mrkni do kalendáře“, nebo kde zbývající míček = domluva callu — **před návrhem
+   tasku/Waiting** načti kalendář (`user-google-workspace` `get_events`, query jméno/e-mail,
+   ~14 dní dopředu). Hit → do řádku datum+čas, follow-up = vyřešené (archive). Miss → teprve
+   Waiting/hold. Stejně u DEEP, když action item je „domluvit schůzku“. Detail:
+   `.cursor/rules/slack-inbox-triage.mdc`.
+3. **DM/GDM vždy 1 řádek (vet):** každé archive DM / group DM = **1 řádek** (kdo, o čem,
+   otevřený míček / update běžícího tasku / nic k přijetí) — i bez inbound signálu a i když
+   už jsi odepsal. Heuristika „archive“ neznamená „bez hodnoty“; může to být kontext
+   k běžícímu tasku nebo závazek ještě nepřijatý do vaultu. **DM/GDM nikdy do šumu počtem.**
+4. **Šum počtem:** **jen** veřejné kanály bez inboundu + stale nižší `_vN`. Jen tady:
+   **mlčení = archiv**. U DM/GDM, inbound a kalendáře **mlčení ≠ archiv**.
+
+Inbound **bez** Lukášovy odpovědi sem nepatří — to je **DEEP** (rule + `detect_inbound_work_for_lukas`).
 
 **Verze vlákna (povinné — nejdřív tohle, teprve pak relevance):**
 n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí **jen nejvyšší `_vN`**. Nižší verze = `archive_only`, **nesmíš z nich tahat závazky** (zastaralý snapshot — 25. 8. 2026: Leadspicker / Poppe hotel vypadaly otevřené, v aktuální verzi už byly hotové).

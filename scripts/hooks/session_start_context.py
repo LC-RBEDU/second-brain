@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -11,7 +10,6 @@ REPO = Path(__file__).resolve().parents[2]
 CTX = REPO / "OBSIDIAN" / "00-System" / "agent-context.json"
 LESSONS_PENDING = REPO / "OBSIDIAN" / "00-System" / "Lessons-Pending"
 _STALE_PENDING_DAYS = 7
-_LESSONS_SHOWN = 3
 
 
 def _lessons_pending_line() -> str | None:
@@ -33,37 +31,6 @@ def _lessons_pending_line() -> str | None:
         f"- Lessons ke schválení: **{len(batches)}**{flag} "
         f"(řekni „schval lessons“)"
     )
-
-
-def _active_lessons_lines(data: dict, top: list[dict]) -> list[str]:
-    """Active lessons — nejdřív ty k dnešním prioritám, pak doplnit nejnovějšími.
-
-    Snapshot nese `lessons[]` jako index (`takeaway` = první „Příště udělej").
-    Do session se vejdou jen tři, jinak hlavička přeroste to, co uvozuje.
-    """
-    lessons = data.get("lessons") or []
-    if not lessons:
-        return []
-
-    hubs_today = set()
-    slugs_today = {t.get("slug") for t in top[:5]}
-    for p in data.get("projects") or []:
-        if p.get("slug") in slugs_today:
-            hubs_today.add(str(p.get("hub_filename") or "").removesuffix(".md"))
-
-    relevant = [x for x in lessons if hubs_today & set(x.get("projects") or [])]
-    picked = relevant[:_LESSONS_SHOWN]
-    if len(picked) < _LESSONS_SHOWN:
-        seen = {x["id"] for x in picked}
-        picked += [x for x in lessons if x["id"] not in seen][: _LESSONS_SHOWN - len(picked)]
-
-    out = ["", f"**Lessons (z {len(lessons)} aktivních):**"]
-    for x in picked:
-        mark = " ⟵ k dnešku" if hubs_today & set(x.get("projects") or []) else ""
-        out.append(f"- `[{x.get('domain', '?')}]` {x.get('title', '')}{mark}")
-        if x.get("takeaway"):
-            out.append(f"  → {x['takeaway'][:160]}")
-    return out
 
 
 def main() -> int:
@@ -115,8 +82,6 @@ def main() -> int:
         lines.append("**Deadlines (7d):**")
         for t in upcoming[:3]:
             lines.append(f"- {t.get('deadline')} — **{t.get('id')} — {t.get('title', '')[:45]}**")
-
-    lines += _active_lessons_lines(data, top)
 
     print("\n".join(lines))
     return 0

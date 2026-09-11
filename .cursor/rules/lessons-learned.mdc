@@ -1,47 +1,57 @@
 ---
-description: Lessons learned — OHIO assist nabídka + recall; ne weekly ritual
+description: Lessons = guardy proti třídám chyb; nabídka jen při škodě; placement do rules/skills
 alwaysApply: true
 ---
 
-# Lessons learned (assist)
+# Lessons learned (guardy)
 
-Atomická poučení žijí v `OBSIDIAN/00-System/Lessons/`. Skill: `agenda-lessons`.
+Lesson = **guard proti třídě chyby**, ne záznam incidentu. Skill: `agenda-lessons`.
+Soubory: `OBSIDIAN/00-System/Lessons/`.
 
-## Session-end nabídka (povinná při relevantní práci)
+## Situační guardy (vždy)
 
-Na konci turnu nabídni **1–3** kandidáty (ne full file), když nastalo alespoň jedno z:
+Při práci, kde to hrozí:
 
-- oprava bugu / incident / root cause
-- korekce od uživatele („tohle ne, dělej X“)
-- architektonické rozhodnutí s trvalým dopadem
-- změna konvence / skillu / n8n / Bases / triage
+- **Migrace sdíleného formátu** — najdi všechny čtenáře, nasaď je dřív než přepíšeš data, ukliď legacy.
+- **Tiché prázdno** — prázdná kolekce může být fakt o kódu/filtru, ne o datech; ověř během bez filtru.
+- **Identita** — jména a osoby jen z autoritativního zdroje; nedomýšlej příjmení; jmenovce rozliš e-mailem.
+- **Generovaný vs. kurátorovaný** — u generovaného souboru vyhraje kurátorovaný zdroj, ne dosavadní obsah.
+
+Detail a incidenty: Active soubory v `00-System/Lessons/` (otevři jen když řádek nestačí).
+
+## Session-end nabídka
+
+Na konci turnu nabídni **1–3** kandidáty **jen** když:
+
+- nastala **škoda nebo těsný únik** (`severity`: `data` | `decision` | `trust`), **nebo**
+- stejná chyba se **opakuje podruhé** (`efficiency` jen při opakování)
+
+„Oprava bugu / zajímavost o API / změna konvence" **nestačí**. Konvence → `.cursor/rules/` (lesson nevzniká). Fakt o nástroji → projektový materiál.
 
 Formát:
 
 ```
 **Lessons? (assist)** — odpověz `ulož 1,3` / `uprav 2: …` / `drop`
-1. `[tech]` … → příště: …
+1. `[tech|data]` krátký title → guard: …
 ```
 
-- Bez odpovědi **nezapisuj**.
-- Max 1 nabídka na session, pokud user už `drop`.
-- Explicitní triggery: „ulož lessons“, „schval lessons“, „co jsme se naučili“.
+- Před návrhem: existuje Active guard se stejným triggerem/škodou? → **řádek do Incidentů**, ne nový soubor.
+- Bez odpovědi **nezapisuj**. Max 1 nabídka na session po `drop`.
+- Explicitně: „ulož lessons“, „schval lessons“, „co jsme se naučili“.
 
 ## Pending dluh
 
-Otevřené `00-System/Lessons-Pending/*` připomínej přes session_start snapshot a při „co teď“ (`agenda-co-ted`).
+Otevřené `00-System/Lessons-Pending/*` připomínej přes session_start a při „co teď“.
 
-## Recall
+## Index (ne auto-výpis)
 
-Active lessons s `agent_recall: true` jsou v `agent-context.json` → **`lessons[]`** (max 30, `takeaway` = první „Příště udělej"). Při práci na projektu (`agenda-work`) vyber max 3 matching `projects` / `topics`; celý soubor otevři, jen když `takeaway` nestačí.
+`agent-context.json` → `lessons[]` = Active s `agent_recall: true` (bez limitu počtu).
+Pro člověka jen na vyžádání. Pro `agenda-work`: max 3 matching `projects` / `topics`.
 
-**Před novou lesson zkontroluj `lessons[]` na překryv** (`topics` / `domain`) — když kandidát zpřesňuje starou, navrhni ji na `Superseded` s `superseded_by`. Dvě lessons o tomtéž = recall vytáhne tu horší.
-
-Statusy: `Active` (v recallu) · `Superseded` (nahradila ji jiná lesson nebo rule) · `Archived` (vyčerpaná, nástupce není). Soubor se nemaže. Detail: `00-System/Lessons/README.md`.
-
-**Konvence platná vždy patří do `.cursor/rules/`, ne (jen) do Lessons** — rules se načítají při každé session, lessons se dotahují cíleně.
+Statusy: `Active` · `Superseded` (`superseded_by`) · `Archived`. Soubor se nemaže.
 
 ## Co nedělat
 
-- Weekly lessons cron / tiché drafty bez push (past weekly retro — zrušeno).
-- Lesson po každé drobné editaci.
+- Weekly lessons cron / tiché drafty.
+- Lesson po každé drobné editaci nebo „zjistil jsem jak funguje X".
+- Číselná kvóta Active guardů — objem drží síto škody + sloučení opakování.

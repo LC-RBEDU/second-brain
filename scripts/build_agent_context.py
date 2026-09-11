@@ -8,6 +8,8 @@ Reads:
 
 Writes:
 - 00-System/agent-context.json
+- 00-System/agent-context-light.json  (meeting-prep index)
+- 00-System/charters.json             (hub narratives by slug)
 
 Usage:
     python3 scripts/build_agent_context.py
@@ -62,9 +64,11 @@ from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
     URGENCY_BONUS_TODAY,
     URGENCY_BONUS_TOMORROW,
+    enrich_task_dict,
     is_queue_eligible,
     select_top_priority,
 )
+from agent_context_light import write_context_bundle  # noqa: E402
 from task_identity import check_task_identity  # noqa: E402
 from hub_state import (  # noqa: E402
     STALE_AREA_WEEKS,
@@ -364,11 +368,10 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
 
 
 LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
-LESSONS_LIMIT = 80
 
 
 def _lesson_takeaway(body: str) -> str:
-    """První 'Příště udělej' odrážka jako jedna věta.
+    """První 'Příště udělej' odrážka jako jedna věta (sekce Guard / Důsledek).
 
     Odrážky v lessons bývají zalomené přes víc řádků, takže se pokračovací
     řádky přilepí — konec je prázdný řádek, další odrážka nebo nadpis.
@@ -386,10 +389,10 @@ def _lesson_takeaway(body: str) -> str:
 
 
 def collect_lessons(vault: Path) -> list[dict]:
-    """Active lessons s agent_recall: true — index pro recall mimo agenda-work.
+    """Active lessons s agent_recall: true — index (bez limitu počtu).
 
     Vrací metadata + jednu actionable větu, ne celé tělo. Agent podle projects /
-    topics pozná, jestli má soubor otevřít.
+    topics pozná, jestli má soubor otevřít. Auto-výpis do session hlavičky ne.
     """
     lessons_dir = vault / "00-System" / "Lessons"
     if not lessons_dir.exists():
@@ -414,6 +417,7 @@ def collect_lessons(vault: Path) -> list[dict]:
             "id": f.stem,
             "title": fm.get("title") or f.stem,
             "domain": fm.get("domain") or "other",
+            "severity": fm.get("severity") or "",
             "projects": [str(p).strip("[]") for p in projects],
             "topics": [str(t) for t in topics],
             "takeaway": _lesson_takeaway(body),
@@ -421,7 +425,7 @@ def collect_lessons(vault: Path) -> list[dict]:
             "created": _date_str(fm.get("created")),
         })
     out.sort(key=lambda x: x["created"] or "", reverse=True)
-    return out[:LESSONS_LIMIT]
+    return out
 
 
 def collect_areas(vault: Path) -> list[dict]:
@@ -678,28 +682,47 @@ def main() -> int:
     snapshot = build_snapshot(args.vault)
     ref_index = snapshot.pop("_reference_index", None)
     out = args.out or (args.vault / "00-System" / "agent-context.json")
+    out_dir = out.parent
+    today = date.fromisoformat(snapshot["today"])
+
+    # All open tasks for light flat index (Waiting/Backlog included — meeting-prep).
+    open_task_dicts = [
+        enrich_task_dict(t.to_dict(), today)
+        for t in collect_tasks(args.vault, archive=False)
+        if not is_terminal(t.status)
+    ]
 
     if args.dry_run:
         print(json.dumps(snapshot, ensure_ascii=False, indent=2)[:2000])
         print(f"\n(dry-run, would write to {out})")
+        print(f"(dry-run, light open tasks: {len(open_task_dicts)})")
         if ref_index:
             print(f"reference-index nodes: {len(ref_index.get('nodes', {}))}")
         return 0
 
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+    written = write_context_bundle(
+        out_dir, snapshot, open_task_dicts, today=today
+    )
     if ref_index:
         ref_out = write_reference_index(args.vault, ref_index)
-        print(f"reference-index: {len(ref_index.get('nodes', {}))} nodes → {ref_out.relative_to(args.vault)}")
+        print(
+            f"reference-index: {len(ref_index.get('nodes', {}))} nodes "
+            f"→ {ref_out.relative_to(args.vault)}"
+        )
     cw = snapshot.get("health", {}).get("charter_warnings_count", 0)
     if cw:
         print(f"charter warnings: {cw}")
     stats = snapshot["stats"]
+    light_note = ""
+    if written.get("light"):
+        light_bytes = written["light"].stat().st_size
+        light_note = f" light={light_bytes}B"
     print(
         f"agent-context: projects={stats['active_projects']} "
         f"open={stats['total_open_tasks']} "
         f"done7d={stats['recently_done_7d']} "
-        f"upcoming={stats['upcoming_deadlines_7d']} "
+        f"upcoming={stats['upcoming_deadlines_7d']}"
+        f"{light_note} "
         f"→ {out.relative_to(args.vault) if out.is_relative_to(args.vault) else out}"
     )
     return 0

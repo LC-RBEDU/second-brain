@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""F8.2 (VPS): Build agent-context.json snapshot from Drive vault.
+"""F8.2 (VPS): Build agent-context.json (+ light + charters) from Drive vault.
 
 Cron runs every 15 min during workhours (07-22). See deploy/crontab.
 
-Reads via DriveVault, writes 00-System/agent-context.json (no CAS — single writer).
+Reads via DriveVault, writes:
+- 00-System/agent-context.json (SSOT, no CAS — single writer)
+- 00-System/agent-context-light.json (meeting-prep)
+- 00-System/charters.json
 """
 from __future__ import annotations
 
@@ -45,15 +48,16 @@ from focus import (  # noqa: E402
 from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 
 LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
-LESSONS_LIMIT = 80
 from strategy_meeting import collect_strategy_meeting_from_drive  # noqa: E402
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
     URGENCY_BONUS_TODAY,
     URGENCY_BONUS_TOMORROW,
+    enrich_task_dict,
     is_queue_eligible,
     select_top_priority,
 )
+from agent_context_light import build_charters, project_light  # noqa: E402
 from task_identity import check_task_identity  # noqa: E402
 from hub_state import (  # noqa: E402
     STALE_AREA_WEEKS,
@@ -69,6 +73,8 @@ from hierarchy import (  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 OUTPUT_REL = "00-System/agent-context.json"
+OUTPUT_LIGHT_REL = "00-System/agent-context-light.json"
+OUTPUT_CHARTERS_REL = "00-System/charters.json"
 HUB_TITLE_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)
 
@@ -239,10 +245,10 @@ def _lesson_takeaway(body: str) -> str:
 
 
 def collect_lessons(vault: DriveVault) -> list[dict]:
-    """Active lessons s agent_recall: true — index pro recall mimo agenda-work.
+    """Active lessons s agent_recall: true — index (bez limitu počtu).
 
     Vrací metadata + jednu actionable větu, ne celé tělo. Agent podle projects /
-    topics pozná, jestli má soubor otevřít.
+    topics pozná, jestli má soubor otevřít. Auto-výpis do session hlavičky ne.
     """
     out: list[dict] = []
     try:
@@ -270,6 +276,7 @@ def collect_lessons(vault: DriveVault) -> list[dict]:
             "id": meta.name.removesuffix(".md"),
             "title": fm.get("title") or meta.name.removesuffix(".md"),
             "domain": fm.get("domain") or "other",
+            "severity": fm.get("severity") or "",
             "projects": [str(p).strip("[]") for p in projects],
             "topics": [str(t) for t in topics],
             "takeaway": _lesson_takeaway(parsed.body),
@@ -277,7 +284,7 @@ def collect_lessons(vault: DriveVault) -> list[dict]:
             "created": _date_str(fm.get("created")),
         })
     out.sort(key=lambda x: x["created"] or "", reverse=True)
-    return out[:LESSONS_LIMIT]
+    return out
 
 
 def collect_areas(vault: DriveVault) -> list[dict]:
@@ -529,6 +536,19 @@ def main() -> None:
     }
 
     vault.write_json(OUTPUT_REL, snapshot)
+
+    open_enriched = [enrich_task_dict(dict(t), today) for t in open_tasks]
+    try:
+        light = project_light(snapshot, open_enriched, today=today)
+        vault.write_json(OUTPUT_LIGHT_REL, light)
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: agent-context-light.json write failed: {exc}")
+    try:
+        charters = build_charters(snapshot)
+        vault.write_json(OUTPUT_CHARTERS_REL, charters)
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: charters.json write failed: {exc}")
+
     s = snapshot["stats"]
     print(
         f"agent-context: projects={s['active_projects']} "

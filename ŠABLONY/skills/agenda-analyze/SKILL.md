@@ -27,6 +27,8 @@ description: "Analyzuje materiály (URL, vault) k tématu/úkolu. Výstup: struk
 6. **Akční závěr** — sekce **Co s tím** (konkrétní kroky / návrhy do hubu), pak **Otevřené otázky**.
 7. **Žádná fixní šablona** — vždy zvol tvar podle toho, *co* analyzuješ.
 
+**Zdroj tvrzení (guard):** čísla, termíny a povinnosti s dopadem na rozhodnutí ověř u **primárního zdroje** (zákon, oficiální dokument, primary docs). Whitepaper / pitch / blog = sekundární — necituj jako fakt bez ověření. Detail: `LL-2026-09-11-zdroj-tvrzeni`.
+
 **Filtr pro Action items:** Vault je single-user (Lukáš). Action items extrahuj **pouze pro Lukáše**. Cizí akce patří do "Kontext" / "Otevřené otázky" sekce výstupu, ne do tasků. (Hraniční: pokud Lukáš čeká na cizí výstup → status Waiting + waitUntil.)
 
 ## Workflow
