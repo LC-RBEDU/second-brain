@@ -107,12 +107,18 @@ V task `.md` frontmatteru je material referencován v `materials:` array (bare a
 
 #### `schuzka` / transkript
 
+**Sembly / Plaud (meeting přepis):** **nepoužívej** tuhle krátkou šablonu.
+Deleguj na skill **`agenda-zapis-ze-schuzky`** (HTML do `~/Downloads/` + MD do
+`05-RESOURCES/vystupy/zapisy/YYYY-MM/` + Lukášovy tasky).
+
+**Ostatní krátké zápisky / poznámky ze schůzky** (ne plný přepis):
+
 - `## TL;DR`
 - `## Kontext` (2–3 bullets)
 - `## Rozhodnutí` (bullets)
-- `## Akční body` — tabulka: Kdo | Co | Do kdy (pokud známo). Slouží jen pro záznam meetingu — **task soubory v `02-PROJEKTY/.../tasks/` se vytváří jen pro řádky, kde "Kdo" = Lukáš** (případně `Waiting` pokud Lukáš čeká na cizí dodání).
-- `## Co patří do hubu` (návrhy úkolů / materiálů — bullets, ne automatický zápis; pouze Lukášovy akce, viz Filtr pro Action items výše)
-- Volitelně mermaid `flowchart` pro proces, o kterém se mluvilo
+- `## Akční body` — tabulka: Kdo | Co | Do kdy (pokud známo). Task soubory jen kde "Kdo" = Lukáš (nebo `Waiting`).
+- `## Co patří do hubu` (návrhy — jen Lukášovy akce)
+- Volitelně mermaid `flowchart`
 - `## Co s tím` → `## Otevřené otázky`
 
 #### `technicky`

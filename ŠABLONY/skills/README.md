@@ -11,6 +11,7 @@
 | `agenda-work` | Práce na projektu + výstupy |
 | `agenda-status-update` | Single-task status flip (hotovo / odlož / do fokusu / zruš) |
 | `agenda-analyze` | Rozbor materiálů → strukturovaný material `.md` |
+| `agenda-zapis-ze-schuzky` | DEEP Sembly/Plaud → HTML Downloads + MD `vystupy/zapisy/` + Lukášovy tasky |
 | `agenda-proces` | Firemní procesy pro RB Universe Procesní architekt |
 | `agenda-weekly-review` | Neděle: schválení weekly draftu |
 | `agenda-priority-review` | Ad-hoc revize priorit / ICE |
@@ -36,6 +37,7 @@ Skript zároveň odstraní deprecated kopie v `~/.claude/skills/`.
 - *"Hotovo S21"* → `agenda-status-update`
 - *"Jdeme na strategy"* → `agenda-work`
 - *"Analyzuj tento PDF"* → `agenda-analyze`
+- *"Zápis ze schůzky"* / Sembly DEEP → `agenda-zapis-ze-schuzky`
 - *"Týdenní shrnutí"* → `agenda-weekly-review`
 - *"Revize priorit"* → `agenda-priority-review`
 - *"Ulož lessons"* / *"schval lessons"* → `agenda-lessons`

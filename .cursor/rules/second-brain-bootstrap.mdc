@@ -139,6 +139,7 @@ Z toho plyne (v README není):
 | `agenda-status-update` | "označ X jako Done", "odlož na Y" |
 | `agenda-priority-review` | "přehodnoť ICE", "revize priorit" |
 | `agenda-analyze` | "analyzuj", "rozbor materiálů" |
+| `agenda-zapis-ze-schuzky` | "zápis ze schůzky", Sembly/Plaud DEEP → HTML+MD |
 | `agenda-weekly-review` | "weekly review", "schvál draft" |
 | `agenda-lessons` | "ulož lessons", "schval lessons", "co jsme se naučili" |
 | `agenda-remind` | "připomeň mi", "remind me", Slack připomínka v … |

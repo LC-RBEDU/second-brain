@@ -83,7 +83,8 @@ V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a ro
 
 **Komplexní materiál** = ten, ze kterého se zákonitě bude rozsekávat víc tasků nebo se z něj stane samostatný materiál. Sdílená heuristika `vps/second-brain-hub/lib/triage_complexity.py` (volá ji i cron `triage_run.py`); pravidla v OR:
 
-- Subdir `01-INBOX/sembly/` → **vždy** DEEP (přepisy meetingů).
+- Subdir `01-INBOX/sembly/` → **vždy** DEEP → skill **`agenda-zapis-ze-schuzky`** (HTML+MD zápis).
+- Subdir `01-INBOX/daily/` + signály Plaud/Sembly přepisu → stejně `agenda-zapis-ze-schuzky`.
 - Subdir `01-INBOX/email/sent/` → **nikdy** DEEP (commitment fast-path).
 - Subdir `01-INBOX/Clippings/` → BATCH nebo DEEP dle `triage_complexity` (dlouhé clipy); viz `01-INBOX/Clippings/README.md`.
 - `word_count > 800` nebo `line_count > 100`.
@@ -212,6 +213,20 @@ Pending JSON může nést `slack_route`, `slack_source_kind`, `slack_relevance_r
 ## Deep
 
 Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z BATCH/PENDING):
+
+### Meeting přepis (Sembly / Plaud) → `agenda-zapis-ze-schuzky`
+
+**Kdy:** zdroj v `01-INBOX/sembly/`, **nebo** v `01-INBOX/daily/` se signály meeting přepisu
+(Plaud/Sembly hlavička, seznam účastníků, dlouhý dialog). Slack / mail / Clippings sem **ne**.
+
+1. **Deleguj celý DEEP** na skill `agenda-zapis-ze-schuzky` (načti jeho `SKILL.md`).
+2. Výstupy: HTML `~/Downloads/…_zapis.html` + MD `05-RESOURCES/vystupy/zapisy/YYYY-MM/…_zapis.md`
+   (+ wikilink stubs v `materials/` u jasných projektů). Default `variant: full`.
+3. Tento zápis **nahrazuje** starý krátký DEEP materiál / `agenda-analyze` typ `schuzka`.
+4. Z MD tabulky úkolů → Lukáš-only filter → preview tasků → apply → archiv zdroje
+   (`archive_inbox_item.py`). Detaily a checklist ve skillu zápisu.
+
+### Ostatní DEEP zdroje
 
 1. Read sourceFile naplno (ne jen prvních pár řádků).
 2. Shrnutí 3–5 bullety: o čem to je, klíčové entity, decision points.
