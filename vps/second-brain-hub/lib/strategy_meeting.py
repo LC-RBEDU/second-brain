@@ -132,8 +132,13 @@ def collect_strategy_meeting_from_drive(vault, *, parse_frontmatter) -> dict[str
         names = vault.list_dir("02-PROJEKTY/strategy/materials", pattern="*.md")
     except Exception:
         names = []
+    # list_dir returns FileMeta, not names. "x" in a FileMeta raises TypeError.
     candidates = sorted(
-        (n for n in names if "Strategická schůzka" in n and not n.startswith("_")),
+        (
+            meta.name
+            for meta in names
+            if "Strategická schůzka" in meta.name and not meta.name.startswith("_")
+        ),
         reverse=True,
     )
     if candidates:
