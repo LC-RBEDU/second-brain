@@ -12,7 +12,8 @@ agent: none
 ice_i: 5
 ice_c: 5
 ice_e: 5
-deadline:
+deadline:  # jen reálný externí závazek
+review_deadline:  # kdy se k tomu vracím / chci to mít (vlastní měkké datum; ne závazek)
 waitUntil:
 created: {{date}}
 updated: {{date}}

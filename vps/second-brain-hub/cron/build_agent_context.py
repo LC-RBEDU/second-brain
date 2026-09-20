@@ -51,10 +51,14 @@ LESSON_TAKEAWAY_RE = re.compile(r"^- Příště \*\*udělej:\*\*\s*(.*)$", re.M)
 from strategy_meeting import collect_strategy_meeting_from_drive  # noqa: E402
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
+    URGENCY_BONUS_REVIEW_TODAY,
+    URGENCY_BONUS_REVIEW_TOMORROW,
     URGENCY_BONUS_TODAY,
     URGENCY_BONUS_TOMORROW,
+    effective_due,
     enrich_task_dict,
     is_queue_eligible,
+    needs_decision,
     select_top_priority,
 )
 from agent_context_light import build_charters, project_light  # noqa: E402
@@ -151,6 +155,9 @@ def task_to_dict(task) -> dict:
     e = max(_to_int(fm.get("ice_e")), 1)
     work_type = normalise_work_type(fm.get("type"))
     parent = parse_parent_id(fm.get("parent"))
+    deadline = _date_str(fm.get("deadline"))
+    review_deadline = _date_str(fm.get("review_deadline"))
+    due = effective_due(deadline, review_deadline)
     return {
         "id": tid,
         "slug": str(fm.get("slug") or ""),
@@ -161,7 +168,9 @@ def task_to_dict(task) -> dict:
         "parent": parent,
         "ice_i": i, "ice_c": c, "ice_e": e,
         "priority_score": round((i * c) / e, 2),
-        "deadline": _date_str(fm.get("deadline")),
+        "deadline": deadline,
+        "review_deadline": review_deadline,
+        "due": due.isoformat() if due else None,
         "waitUntil": _date_str(fm.get("waitUntil")),
         "focus": parse_focus(fm.get("focus")),
         "agent": normalise_agent(fm.get("agent")),
@@ -394,18 +403,44 @@ def main() -> None:
     recently_cancelled.sort(key=lambda t: t.get("updated") or "", reverse=True)
 
     upcoming = []
+    due_soon = []
+    needs_decision_list = []
+    no_review_deadline = []
+    stale_focus = []
     soon = today + timedelta(days=7)
     for t in open_tasks:
         dl = t.get("deadline")
-        if not dl:
-            continue
-        try:
-            d = date.fromisoformat(dl[:10])
-        except ValueError:
-            continue
-        if today <= d <= soon:
-            upcoming.append(t)
+        if dl:
+            try:
+                d = date.fromisoformat(dl[:10])
+            except ValueError:
+                d = None
+            if d is not None and today <= d <= soon:
+                upcoming.append(t)
+        due = effective_due(t.get("deadline"), t.get("review_deadline"))
+        if due is not None and today <= due <= soon:
+            due_soon.append(t)
+        if needs_decision(t, today):
+            needs_decision_list.append(t)
+        if (
+            t.get("status") not in (STATUS_DONE, STATUS_CANCELLED, "Waiting")
+            and t.get("type") != "epic"
+            and not t.get("review_deadline")
+        ):
+            no_review_deadline.append(t)
+        if t.get("focus") and not is_focus_current(t.get("focus"), today):
+            stale_focus.append(t)
     upcoming.sort(key=lambda t: t.get("deadline") or "")
+    due_soon.sort(
+        key=lambda t: effective_due(t.get("deadline"), t.get("review_deadline"))
+        or today
+    )
+    needs_decision_list.sort(
+        key=lambda t: effective_due(t.get("deadline"), t.get("review_deadline"))
+        or today
+    )
+    no_review_deadline.sort(key=lambda t: -float(t.get("priority_score") or 0))
+    stale_focus.sort(key=lambda t: t.get("focus") or "")
 
     recurring_done = [
         t for t in active_dicts if t.get("is_recurring") and t["status"] == STATUS_DONE
@@ -492,6 +527,10 @@ def main() -> None:
             "focus_count": len(focused),
             "focus_limit": FOCUS_LIMIT,
             "upcoming_deadlines_7d": len(upcoming),
+            "due_soon_7d": len(due_soon),
+            "needs_decision": len(needs_decision_list),
+            "no_review_deadline": len(no_review_deadline),
+            "stale_focus": len(stale_focus),
             "recurring_pending_rotation": len(recurring_done),
         },
         "projects": projects,
@@ -500,13 +539,19 @@ def main() -> None:
         "strategy_meeting": strategy_meeting,
         "strategy_meeting_themes": strategy_meeting.get("themes", []),
         "priority_rules": {
-            "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
+            "model": (
+                "v2.1 — status / deadline (externí) / review_deadline (vlastní) / "
+                "focus (na co teď)"
+            ),
             "base": "priority_score = (ice_i * ice_c) / ice_e",
-            "today_score": "priority_score + urgency_bonus(deadline)",
+            "due": "min(deadline, review_deadline)",
+            "today_score": "priority_score + max(urgency_deadline, urgency_review)",
             "urgency_bonus": {
                 "overdue": URGENCY_BONUS_OVERDUE,
                 "deadline_today": URGENCY_BONUS_TODAY,
                 "deadline_tomorrow": URGENCY_BONUS_TOMORROW,
+                "review_today": URGENCY_BONUS_REVIEW_TODAY,
+                "review_tomorrow": URGENCY_BONUS_REVIEW_TOMORROW,
             },
             "top_eligible": (
                 f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
@@ -523,6 +568,10 @@ def main() -> None:
         "recently_done": recently_done[:25],
         "recently_cancelled": recently_cancelled[:25],
         "upcoming_deadlines": upcoming,
+        "due_soon": due_soon,
+        "needs_decision": needs_decision_list,
+        "no_review_deadline": no_review_deadline[:40],
+        "stale_focus": stale_focus,
         "recurring_pending": recurring_done,
         "blocked_by_graph": blocked,
         "stale_hubs": stale_hubs,

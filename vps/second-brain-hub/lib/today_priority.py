@@ -1,18 +1,22 @@
 """TOP priority dnes — eligibility + today_score (SSOT for agent-context.json).
 
-Priority model v2 — "what now" is answered by the focus week, not by a status:
+Priority model v2.1 — "what now" is answered by the focus week, not by a status:
 
 - ``top_priority_today`` — tasks whose ``focus`` is the current ISO week (max 5).
   Nothing else qualifies, and no cron may add to it: focus is a human choice.
 - ``top_priority`` — the wider queue (focus + Doing + Next), sorted the same way.
 
-Urgency bonuses (on top of priority_score = (I*C)/E):
-- deadline today: +30
-- deadline tomorrow: +15
-- overdue (deadline < today): +5
+Dates:
+- ``deadline`` — external commitment only
+- ``review_deadline`` — own soft date ("when I revisit / want it done")
+- ``due = min(deadline, review_deadline)`` — single "when" key
+
+Urgency bonuses (on top of priority_score = (I*C)/E); take the max of both axes:
+- external deadline today +30 / tomorrow +15 / overdue +5
+- review_deadline today +20 / tomorrow +10 / overdue +5
 
 The overdue bonus used to be +35, which made a task climb the list the longer it
-rotted. It now only breaks ties, so an expired deadline is visible without
+rotted. It now only breaks ties, so an expired date is visible without
 outranking work that is actually due.
 """
 from __future__ import annotations
@@ -25,13 +29,17 @@ from focus import (
     FOCUS_LIMIT,
     STATUS_DOING,
     STATUS_NEXT,
+    STATUS_WAITING,
     is_focus_current,
+    is_terminal,
 )
 from hierarchy import is_focusable
 
 URGENCY_BONUS_OVERDUE = 5
 URGENCY_BONUS_TODAY = 30
 URGENCY_BONUS_TOMORROW = 15
+URGENCY_BONUS_REVIEW_TODAY = 20
+URGENCY_BONUS_REVIEW_TOMORROW = 10
 
 TOP_PRIORITY_TODAY_LIMIT = FOCUS_LIMIT
 TOP_PRIORITY_LIMIT = 15
@@ -48,7 +56,9 @@ def _task_get(task: Any, key: str, default=None):
     return getattr(task, key, default)
 
 
-def parse_deadline(deadline: str | None, today: date) -> date | None:
+def parse_deadline(deadline: str | None, today: date | None = None) -> date | None:
+    """Parse ISO date string. ``today`` is unused; kept for call-site compatibility."""
+    del today  # API compatibility with older callers
     if not deadline:
         return None
     try:
@@ -57,27 +67,91 @@ def parse_deadline(deadline: str | None, today: date) -> date | None:
         return None
 
 
-def urgency_bonus(deadline: str | None, today: date) -> float:
-    dl = parse_deadline(deadline, today)
+def effective_due(
+    deadline: str | None,
+    review_deadline: str | None = None,
+) -> date | None:
+    """``due = min(deadline, review_deadline)`` — single key for 'when'."""
+    dates = [
+        d
+        for d in (
+            parse_deadline(deadline),
+            parse_deadline(review_deadline),
+        )
+        if d is not None
+    ]
+    return min(dates) if dates else None
+
+
+def _axis_bonus(
+    value: str | None,
+    today: date,
+    *,
+    today_pts: float,
+    tomorrow_pts: float,
+    overdue_pts: float = URGENCY_BONUS_OVERDUE,
+) -> float:
+    dl = parse_deadline(value)
     if dl is None:
         return 0.0
     if dl < today:
-        return float(URGENCY_BONUS_OVERDUE)
+        return float(overdue_pts)
     if dl == today:
-        return float(URGENCY_BONUS_TODAY)
+        return float(today_pts)
     if dl == today + timedelta(days=1):
-        return float(URGENCY_BONUS_TOMORROW)
+        return float(tomorrow_pts)
     return 0.0
 
 
-def today_score(priority_score: float, deadline: str | None, today: date) -> float:
-    return round(float(priority_score) + urgency_bonus(deadline, today), 2)
+def urgency_bonus(
+    deadline: str | None,
+    today: date,
+    review_deadline: str | None = None,
+) -> float:
+    """Max of external and review urgency; external can outrank soft review."""
+    ext = _axis_bonus(
+        deadline,
+        today,
+        today_pts=URGENCY_BONUS_TODAY,
+        tomorrow_pts=URGENCY_BONUS_TOMORROW,
+    )
+    rev = _axis_bonus(
+        review_deadline,
+        today,
+        today_pts=URGENCY_BONUS_REVIEW_TODAY,
+        tomorrow_pts=URGENCY_BONUS_REVIEW_TOMORROW,
+    )
+    return max(ext, rev)
+
+
+def today_score(
+    priority_score: float,
+    deadline: str | None,
+    today: date,
+    review_deadline: str | None = None,
+) -> float:
+    return round(
+        float(priority_score) + urgency_bonus(deadline, today, review_deadline),
+        2,
+    )
+
+
+def needs_decision(task: Any, today: date) -> bool:
+    """True when due < today and the item is actionable (not Waiting/terminal)."""
+    status = str(_task_get(task, "status") or "")
+    if is_terminal(status) or status == STATUS_WAITING:
+        return False
+    due = effective_due(
+        _task_get(task, "deadline"),
+        _task_get(task, "review_deadline"),
+    )
+    return due is not None and due < today
 
 
 def is_focus_eligible(task: Any, today: date) -> bool:
     """True when the task carries the current focus week and is actionable.
 
-    Epics never qualify — focus belongs on stories (or flat tasks).
+    Epics never qualify as queue work — focus on epics is etapa 3 (expand children).
     """
     if not is_focusable(task):
         return False
@@ -111,9 +185,12 @@ def _priority_score(task: Any) -> float:
 def enrich_task_dict(task_dict: dict, today: date) -> dict:
     ps = float(task_dict.get("priority_score") or 0)
     dl = task_dict.get("deadline")
+    rd = task_dict.get("review_deadline")
     out = dict(task_dict)
-    out["urgency_bonus"] = urgency_bonus(dl, today)
-    out["today_score"] = today_score(ps, dl, today)
+    due = effective_due(dl, rd)
+    out["due"] = due.isoformat() if due else None
+    out["urgency_bonus"] = urgency_bonus(dl, today, rd)
+    out["today_score"] = today_score(ps, dl, today, rd)
     return out
 
 
@@ -123,8 +200,12 @@ def _to_enriched(task: Any, ts: float, today: date) -> dict:
         base.setdefault("priority_score", _priority_score(task))
     else:
         base = task.to_dict() if hasattr(task, "to_dict") else dict(task.frontmatter)
+    dl = base.get("deadline")
+    rd = base.get("review_deadline")
+    due = effective_due(dl, rd)
+    base["due"] = due.isoformat() if due else None
     base["today_score"] = ts
-    base["urgency_bonus"] = urgency_bonus(base.get("deadline"), today)
+    base["urgency_bonus"] = urgency_bonus(dl, today, rd)
     return base
 
 
@@ -144,7 +225,15 @@ def select_top_priority(
 
     def scored(tasks: list[Any]) -> list[tuple[Any, float]]:
         pairs = [
-            (t, today_score(_priority_score(t), _task_get(t, "deadline"), today))
+            (
+                t,
+                today_score(
+                    _priority_score(t),
+                    _task_get(t, "deadline"),
+                    today,
+                    _task_get(t, "review_deadline"),
+                ),
+            )
             for t in tasks
         ]
         pairs.sort(key=lambda pair: -pair[1])

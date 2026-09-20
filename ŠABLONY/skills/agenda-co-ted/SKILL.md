@@ -19,10 +19,18 @@ description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit'
 
 V2 priority pořadí:
 
-1. **`OBSIDIAN/00-System/agent-context.json`** (PRIMARY) — `top_priority_today` (TOP dnes, max 5), `top_priority` (max 15), `recently_done`, `upcoming_deadlines`, `recurring_pending`, `blocked_by_graph`, `priority_rules`. Pokud `generated_at` je starší než 24 h, spusť `python3 scripts/build_agent_context.py` před analýzou.
+1. **`OBSIDIAN/00-System/agent-context.json`** (PRIMARY) — `needs_decision`, `top_priority_today` (TOP dnes, max 5), `top_priority` (max 15), `due_soon`, `no_review_deadline`, `recently_done`, `upcoming_deadlines`, `recurring_pending`, `blocked_by_graph`, `priority_rules`. Pokud `generated_at` je starší než 24 h, spusť `python3 scripts/build_agent_context.py` před analýzou.
 2. Fallback: parsuj všechny `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md` frontmattery + aplikuj stejná pravidla jako `vps/second-brain-hub/lib/today_priority.py`
 3. Backup: `OBSIDIAN/Dashboard.md` Bases embedy (aproximace — SSOT je agent-context)
 4. **Lessons pending:** pokud `00-System/Lessons-Pending/*.md` (ne `.gitkeep`) není prázdný → v dashboardu řádek `Lessons ke schválení: N` (+ **stale** pokud mtime > 7 dní). Příkaz: „schval lessons“ → skill `agenda-lessons`.
+
+## Lane Rozhodni (SSOT: `needs_decision`)
+
+**Nejdřív tahle lane**, pak fokus.
+
+- `due = min(deadline, review_deadline) < dnes` a status není Waiting / Done / Cancelled
+- U každé položky nabídni: hotovo / nové `review_deadline` (nebo `deadline` pokud je externí) / Waiting + blocker / Cancelled
+- Když je `needs_decision` neprázdné, **nesmíš mlčet** — vypiš ji i když fokus je plný
 
 ## TOP priority dnes (SSOT: `top_priority_today`)
 
@@ -37,18 +45,20 @@ V2 priority pořadí:
 
 **Scoring:**
 - `priority_score = (ice_i * ice_c) / ice_e`
-- `today_score = priority_score + urgency_bonus`:
-  - **+30** deadline dnes
-  - **+15** deadline zítra
-  - **+5** overdue (`deadline < dnes`) — jen rozřazovač, ne odměna za hnilobu
+- `today_score = priority_score + max(urgency_deadline, urgency_review)`:
+  - **+30** / **+15** externí `deadline` dnes / zítra
+  - **+20** / **+10** `review_deadline` dnes / zítra
+  - **+5** overdue (`due < dnes`) — jen rozřazovač, ne odměna za hnilobu
 - Sort: `today_score DESC`
 
 **Pole `agent`** — u každé položky zmiň, kdo ji udělá: `solo` (zvládnu sám a můžu se do toho pustit hned), `assist` (připravím podklad, rozhodneš ty), `none` (jen ty).
 
 ## Ostatní klasifikace
 
-- **PO TERMÍNU**: `deadline` < dnes && `status != Done`
-- **DNES**: `deadline` = dnes
+- **ROZHODNI**: `needs_decision` — viz výše
+- **BEZ DATA**: `no_review_deadline` — otevřené bez `review_deadline` (doplň)
+- **DUE SOON**: `due_soon` — `due` v příštích 7 dnech
+- **PO TERMÍNU (externí)**: `deadline` < dnes && `status != Done`
 - **WAITING**: `status = Waiting` && `waitUntil >= dnes` — zobraz zvlášť, **nikdy v TOP**
 - **BLOKOVANÉ**: `blocked_by != []` — kromě "nic"
 
@@ -63,15 +73,22 @@ Vždy **`ID — title`** (z frontmatter / `agent-context.json`), ne jen zkratka 
 CO TEĎ — DD/MM/YYYY
 ═══════════════════════════════════════════════
 
-🔥 TOP 3 (z `top_priority_today`, sort today_score)
-  • [slug] ID — title (z frontmatter) — focus=2026-W32 agent=solo today_score=… deadline=…
+⚠️ ROZHODNI (N) — due po termínu
+  • [slug] ID — title — due=… deadline=… review=… status=…
+  → nabídni: hotovo / nové datum / Waiting / Cancelled
+
+🔥 TOP (z `top_priority_today`, sort today_score)
+  • [slug] ID — title — focus=2026-W32 agent=solo today_score=… due=…
   ...
+
+📅 DUE ≤ 7 dní (N)
+  • …
 
 ⏸ WAITING (N)
   • [slug] ID — title — do YYYY-MM-DD
 
-⚠️ PO TERMÍNU (N)
-  ...
+📭 BEZ review_deadline (top ICE, max 5)
+  • …
 
 🚧 BLOKOVANÉ (N)
   ...

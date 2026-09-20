@@ -131,8 +131,17 @@ def test_project_light_shape_and_ids():
     assert proj["people"] == ["Lukáš Cypra", "Dominik Holíček", "Martina Mašková"]
     # every listed id exists in tasks
     task_ids = {t["id"] for t in light["tasks"]}
-    for key in ("top_priority_today", "top_priority", "focus_suggestions", "open_epics"):
-        for tid in light[key]:
+    for key in (
+        "top_priority_today",
+        "top_priority",
+        "focus_suggestions",
+        "open_epics",
+        "due_soon",
+        "needs_decision",
+        "no_review_deadline",
+        "stale_focus",
+    ):
+        for tid in light.get(key) or []:
             assert tid in task_ids
 
 

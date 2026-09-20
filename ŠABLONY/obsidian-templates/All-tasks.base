@@ -1,0 +1,280 @@
+filters:
+  and:
+    - type != "epic"
+formulas:
+  priority_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0)
+  # due = min(deadline, review_deadline) — jediný klíč „kdy“
+  due: if(deadline, if(review_deadline, if(date(deadline) < date(review_deadline), date(deadline), date(review_deadline)), date(deadline)), if(review_deadline, date(review_deadline), null))
+  urgency_bonus: if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0)
+  review_urgency: if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0)
+  today_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0) + if(if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0) > if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0), if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0), if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0))
+  task_title: file.asLink(if(title, title, file.basename))
+properties:
+  formula.task_title:
+    displayName: Task
+  formula.priority_score:
+    displayName: Score
+  formula.today_score:
+    displayName: Score
+  formula.due:
+    displayName: Due
+  type:
+    displayName: Typ
+  project:
+    displayName: Project
+  ice_i:
+    displayName: I
+  ice_c:
+    displayName: C
+  ice_e:
+    displayName: E
+  waitUntil:
+    displayName: Wait until
+  deadline:
+    displayName: Deadline
+  review_deadline:
+    displayName: Review
+  focus:
+    displayName: Fokus
+  agent:
+    displayName: Agent
+views:
+  - type: table
+    name: Rozhodni
+    filters:
+      and:
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - formula.due && formula.due < today()
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - formula.due
+      - deadline
+      - review_deadline
+      - status
+      - formula.priority_score
+    sort:
+      - property: formula.due
+        direction: ASC
+    columnSize:
+      formula.task_title: 480
+  - type: table
+    name: BezData
+    filters:
+      and:
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - "!deadline"
+        - "!review_deadline"
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - status
+      - formula.priority_score
+    sort:
+      - property: formula.priority_score
+        direction: DESC
+    limit: 30
+    columnSize:
+      formula.task_title: 480
+  - type: table
+    name: FokusTydne
+    filters:
+      and:
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - status != "Backlog"
+        - focus
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - focus
+      - agent
+      - formula.today_score
+      - formula.due
+      - deadline
+    sort:
+      - property: focus
+        direction: DESC
+      - property: formula.today_score
+        direction: DESC
+    limit: 5
+    columnSize:
+      formula.task_title: 516
+  - type: table
+    name: KandidatiNaFokus
+    filters:
+      and:
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - status != "Backlog"
+        - "!focus"
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - agent
+      - formula.today_score
+      - formula.due
+      - deadline
+    sort:
+      - property: formula.today_score
+        direction: DESC
+    limit: 10
+  - type: table
+    name: Overdue
+    filters:
+      and:
+        - status != "Done"
+        - status != "Cancelled"
+        - deadline && deadline < today()
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - deadline
+      - status
+      - formula.priority_score
+    sort:
+      - property: deadline
+        direction: ASC
+    columnSize:
+      note.id: 70
+      formula.task_title: 457
+  - type: table
+    name: DueIn7Days
+    filters:
+      and:
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - formula.due && formula.due <= today() + 7d
+        - formula.due >= today()
+    order:
+      - formula.task_title
+      - type
+      - project
+      - formula.due
+      - deadline
+      - review_deadline
+      - status
+    sort:
+      - property: formula.due
+        direction: ASC
+  - type: table
+    name: WaitingExpired
+    filters:
+      and:
+        - status == "Waiting"
+        - waitUntil && waitUntil <= today()
+    order:
+      - formula.task_title
+      - type
+      - project
+      - waitUntil
+    sort:
+      - property: waitUntil
+        direction: ASC
+  - type: table
+    name: Backlog
+    filters:
+      and:
+        - status == "Backlog"
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - deadline
+      - review_deadline
+      - formula.priority_score
+      - status
+    sort:
+      - property: formula.priority_score
+        direction: DESC
+    columnSize:
+      formula.task_title: 765
+  - type: table
+    name: RecentDone
+    filters:
+      and:
+        - status == "Done"
+    order:
+      - formula.task_title
+      - type
+      - project
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+    limit: 10
+  - type: table
+    name: TaskCountByProject
+    filters:
+      and:
+        - status != "Done"
+        - project != link("<HubFilename>")
+    groupBy:
+      property: project
+      direction: ASC
+    order:
+      - id
+      - formula.task_title
+      - type
+      - status
+      - deadline
+    summaries:
+      formula.task_title: Count
+    columnSize:
+      note.id: 76
+      formula.task_title: 667
+  - type: kanban
+    name: ProjectKanban
+    filters:
+      and:
+        - project == this.file.asLink()
+        - status != "Done"
+        - status != "Cancelled"
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - formula.priority_score
+      - formula.due
+      - deadline
+      - materials
+    kanbanState:
+      columnOrders:
+        note.status:
+          - Doing
+          - Next
+          - Waiting
+          - Backlog
+  - type: table
+    name: ProjectRecentDone
+    filters:
+      and:
+        - project == this.file.asLink()
+        - status == "Done"
+    order:
+      - id
+      - formula.task_title
+      - type
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+    limit: 5

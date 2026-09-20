@@ -47,16 +47,18 @@ Mapping user intent → frontmatter změna:
 |-------------|-------|
 | "hotovo" / "done" | `status: Done`, `waitUntil:` prázdné, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>`. **U `type: epic` potvrď výslovně** — epic se z checkboxů / GitHubu neauto-Done. |
 | "hotovo PD4-3" / "hotovo RBU62-1" | flip checkbox `**ID-N**` v `## Operativní kroky` na `[x]` (single subtask); v chatu uveď parent **ID — title** + text kroku |
-| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. **Odmítni u epic.** Nejdřív spočítej fokus (limit 5). |
+| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. U epic OK (téma týdne). Nejdřív spočítej fokus (limit 5). |
 | "pryč z fokusu" | `focus:` prázdné, `updated: <today>` |
 | "odlož do YYYY-MM-DD" | `status: Waiting`, `waitUntil: <date>`, `updated: <today>` |
 | "ztím čekat" (bez data) | `status: Waiting`, `waitUntil: <today + 3 dny>`, `updated: <today>` |
 | kanban / ruční Waiting bez data | cron `lifecycle_waiting_default_waituntil` (every 2h :02) doplní `waitUntil: dnes + 3` |
 | "zruš" / "cancel" | `status: Cancelled`, `waitUntil:` prázdné, `updated: <today>`, body append `- <today>: **ZRUŠENO** — <důvod>`. **Nemaž soubor** — cron ho archivuje jako Done a `Cancelled` drží rozdíl mezi splněným a odepsaným. |
 | "sloučeno do X" | totéž jako zruš, v logu wikilink na cílový úkol |
-| "deadline YYYY-MM-DD" | `deadline: <date>`, `updated: <today>` |
+| "deadline YYYY-MM-DD" | `deadline: <date>` (jen externí závazek), `updated: <today>` |
+| "review YYYY-MM-DD" / "vrať se k tomu" | `review_deadline: <date>` (vlastní měkké datum), `updated: <today>` |
 | "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` (ne u epic) |
-| status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`) |
+| status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`). **`Next` / `Doing` bez `review_deadline` nezakládej ani neponechávej** — zeptej se na datum, kdy se k tomu vrátit. |
+| due po termínu (Rozhodni) | nabídni čtyři výstupy: Done / nové `review_deadline` (nebo `deadline`) / Waiting + blocker / Cancelled |
 
 ### 4. Preview (povinné)
 
@@ -105,5 +107,5 @@ python3 scripts/build_agent_context.py
 - Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej
 - "Zruš" → potvrď s userem (mazání je destruktivní)
 - Recurring tasky (`recurring:` blok ve frontmatteru) — Done flip spustí cron `lifecycle_recurring.py` (vytvoří next instance) — ne dělej manuálně
-- **Epic** (`type: epic`): status Done jen ručně po tvé explicitní vůli; focus/ICE na epic nepatří. Auto z GitHubu / checkboxů epic nezavře.
+- **Epic** (`type: epic`): status Done jen ručně po tvé explicitní vůli; ICE na epic nepatří, `focus` smí (téma týdne). Auto z GitHubu / checkboxů epic nezavře.
 - **RBU GitHub:** odškrtnutí `ID-N` z `Closes` na `dev` dělá cron — manuálně duplikuj jen když cron nestihl / konflikt CAS.

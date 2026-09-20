@@ -24,14 +24,16 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus
 ## Scoring (sjednoceno s `today_priority.py` / agent-context)
 
 - `priority_score = (ice_i * ice_c) / ice_e`
-- `today_score = priority_score + urgency_bonus`:
-  - +35 overdue (`deadline < today`)
-  - +30 deadline dnes
-  - +15 deadline zítra
+- `due = min(deadline, review_deadline)`
+- `today_score = priority_score + max(urgency_deadline, urgency_review)`:
+  - +30 / +15 externí `deadline` dnes / zítra
+  - +20 / +10 `review_deadline` dnes / zítra
+  - +5 overdue (`due < today`) — jen rozřazovač (ne +35)
 - **TOP eligibility:** jen `focus` = aktuální ISO týden, max 5; nikdy Waiting/Backlog/Cancelled
 - **Do `focus` nezapisuj sám** — navrhni kandidáty a nech volbu na uživateli
 - **Waiting** — nepatří do TOP; zkontroluj `waitUntil` a smysl
 - **Blocked** — pokud `blocked_by != []`, označ v preview
+- **`needs_decision` / BezData** — položky s `due < today` nebo bez `review_deadline`; navrhni nové datum / Waiting / Cancelled
 
 ## Preview formát
 
@@ -43,6 +45,7 @@ REVIZE PRIORIT — YYYY-MM-DD
 Navrhované změny (N):
   [finance] F17 — Název úkolu: ICE I7→I10, návrh do fokusu W32 (důvod: cashflow)
   [strategy] S8 — Název úkolu: status Next → Waiting, waitUntil: 2026-05-31 (důvod: čeká na Lenku)
+  [owners] OWN8 — …: review_deadline → 2026-09-24 (důvod: Rozhodni — due po termínu)
   ...
 
 Beze změny (TOP 5 podle today_score):
@@ -52,12 +55,15 @@ Beze změny (TOP 5 podle today_score):
 
 Watch — Waiting blízko expiraci (≤ 7 dnů):
   • [strategy/S5] waitUntil 2026-05-31 — připravit follow-up
+
+Watch — Bez review_deadline (top ICE):
+  • [allfred/AF15] — doplnit review_deadline
 ```
 
 ## Zápis
 
 - Jen po explicitním "schval" / "apply"
-- Patch task `.md` frontmatter (CAS): status, ice_i/c/e, waitUntil, deadline, updated
+- Patch task `.md` frontmatter (CAS): status, ice_i/c/e, waitUntil, deadline, review_deadline, updated
 - Append do body `## Poznámky / log`: `- <today>: priority-review — <change>`
 - (Volitelně) ulož batch do `00-System/Triage-Pending/priority-review-YYYY-MM-DD.json` pro audit
 - **Bases dashboard** se aktualizuje sám — žádný cron build potřeba

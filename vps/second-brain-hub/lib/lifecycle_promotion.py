@@ -32,8 +32,23 @@ def deadline_str(fm: dict[str, Any]) -> str | None:
     return s[:10] if s and s.lower() != "null" else None
 
 
+def review_deadline_str(fm: dict[str, Any]) -> str | None:
+    rd = fm.get("review_deadline")
+    if rd is None:
+        return None
+    if hasattr(rd, "isoformat"):
+        return rd.isoformat()[:10]
+    s = str(rd).strip()
+    return s[:10] if s and s.lower() != "null" else None
+
+
 def task_today_score(fm: dict[str, Any], today: date) -> float:
-    return today_score(priority_score_from_frontmatter(fm), deadline_str(fm), today)
+    return today_score(
+        priority_score_from_frontmatter(fm),
+        deadline_str(fm),
+        today,
+        review_deadline_str(fm),
+    )
 
 
 def has_wait_until_value(value: Any) -> bool:

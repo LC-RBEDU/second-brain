@@ -62,10 +62,14 @@ from hierarchy import parse_parent_id  # noqa: E402
 from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 from today_priority import (  # noqa: E402
     URGENCY_BONUS_OVERDUE,
+    URGENCY_BONUS_REVIEW_TODAY,
+    URGENCY_BONUS_REVIEW_TOMORROW,
     URGENCY_BONUS_TODAY,
     URGENCY_BONUS_TOMORROW,
+    effective_due,
     enrich_task_dict,
     is_queue_eligible,
+    needs_decision,
     select_top_priority,
 )
 from agent_context_light import write_context_bundle  # noqa: E402
@@ -107,6 +111,7 @@ class TaskInfo:
     ice_c: int = 5
     ice_e: int = 5
     deadline: str | None = None
+    review_deadline: str | None = None
     waitUntil: str | None = None
     focus: str | None = None
     agent: str = "none"
@@ -125,6 +130,7 @@ class TaskInfo:
         return round((self.ice_i * self.ice_c) / e, 2)
 
     def to_dict(self) -> dict:
+        due = effective_due(self.deadline, self.review_deadline)
         return {
             "id": self.id,
             "slug": self.slug,
@@ -138,6 +144,8 @@ class TaskInfo:
             "ice_e": self.ice_e,
             "priority_score": self.priority_score,
             "deadline": self.deadline,
+            "review_deadline": self.review_deadline,
+            "due": due.isoformat() if due else None,
             "waitUntil": self.waitUntil,
             "focus": self.focus,
             "agent": self.agent,
@@ -352,6 +360,7 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
                 ice_c=_to_int(fm.get("ice_c"), 5),
                 ice_e=_to_int(fm.get("ice_e"), 5),
                 deadline=_date_str(fm.get("deadline")),
+                review_deadline=_date_str(fm.get("review_deadline")),
                 waitUntil=_date_str(fm.get("waitUntil")),
                 focus=parse_focus(fm.get("focus")),
                 agent=normalise_agent(fm.get("agent")),
@@ -555,17 +564,39 @@ def build_snapshot(vault: Path) -> dict:
     recently_cancelled.sort(key=lambda t: t.updated or "", reverse=True)
 
     upcoming = []
+    due_soon = []
+    needs_decision_list = []
+    no_review_deadline = []
+    stale_focus = []
     soon = today + timedelta(days=7)
     for t in open_tasks:
-        if not t.deadline:
-            continue
-        try:
-            d = date.fromisoformat(t.deadline[:10])
-        except ValueError:
-            continue
-        if today <= d <= soon:
-            upcoming.append(t)
+        if t.deadline:
+            try:
+                d = date.fromisoformat(t.deadline[:10])
+            except ValueError:
+                d = None
+            if d is not None and today <= d <= soon:
+                upcoming.append(t)
+        due = effective_due(t.deadline, t.review_deadline)
+        if due is not None and today <= due <= soon:
+            due_soon.append(t)
+        if needs_decision(t, today):
+            needs_decision_list.append(t)
+        if (
+            t.status not in (STATUS_DONE, STATUS_CANCELLED, "Waiting")
+            and t.type != "epic"
+            and not t.review_deadline
+        ):
+            no_review_deadline.append(t)
+        if t.focus and not is_focus_current(t.focus, today):
+            stale_focus.append(t)
     upcoming.sort(key=lambda t: t.deadline or "")
+    due_soon.sort(key=lambda t: effective_due(t.deadline, t.review_deadline) or today)
+    needs_decision_list.sort(
+        key=lambda t: effective_due(t.deadline, t.review_deadline) or today
+    )
+    no_review_deadline.sort(key=lambda t: -t.priority_score)
+    stale_focus.sort(key=lambda t: t.focus or "")
 
     recurring_done = [t for t in active_tasks if t.is_recurring and t.status == STATUS_DONE]
     blocked = {t.id: t.blocked_by for t in active_tasks if t.blocked_by}
@@ -619,6 +650,10 @@ def build_snapshot(vault: Path) -> dict:
             "focus_count": len(focused),
             "focus_limit": FOCUS_LIMIT,
             "upcoming_deadlines_7d": len(upcoming),
+            "due_soon_7d": len(due_soon),
+            "needs_decision": len(needs_decision_list),
+            "no_review_deadline": len(no_review_deadline),
+            "stale_focus": len(stale_focus),
             "recurring_pending_rotation": len(recurring_done),
         },
         "projects": [p.to_dict() for p in projects],
@@ -627,13 +662,19 @@ def build_snapshot(vault: Path) -> dict:
         "strategy_meeting": strategy_meeting,
         "strategy_meeting_themes": strategy_meeting.get("themes", []),
         "priority_rules": {
-            "model": "v2 — status (co vůbec) / deadline (externí závazek) / focus (na co teď)",
+            "model": (
+                "v2.1 — status / deadline (externí) / review_deadline (vlastní) / "
+                "focus (na co teď)"
+            ),
             "base": "priority_score = (ice_i * ice_c) / ice_e",
-            "today_score": "priority_score + urgency_bonus(deadline)",
+            "due": "min(deadline, review_deadline)",
+            "today_score": "priority_score + max(urgency_deadline, urgency_review)",
             "urgency_bonus": {
                 "overdue": URGENCY_BONUS_OVERDUE,
                 "deadline_today": URGENCY_BONUS_TODAY,
                 "deadline_tomorrow": URGENCY_BONUS_TOMORROW,
+                "review_today": URGENCY_BONUS_REVIEW_TODAY,
+                "review_tomorrow": URGENCY_BONUS_REVIEW_TOMORROW,
             },
             "top_eligible": (
                 f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
@@ -650,6 +691,10 @@ def build_snapshot(vault: Path) -> dict:
         "recently_done": [t.to_dict() for t in recently_done[:25]],
         "recently_cancelled": [t.to_dict() for t in recently_cancelled[:25]],
         "upcoming_deadlines": [t.to_dict() for t in upcoming],
+        "due_soon": [t.to_dict() for t in due_soon],
+        "needs_decision": [t.to_dict() for t in needs_decision_list],
+        "no_review_deadline": [t.to_dict() for t in no_review_deadline[:40]],
+        "stale_focus": [t.to_dict() for t in stale_focus],
         "recurring_pending": [t.to_dict() for t in recurring_done],
         "blocked_by_graph": blocked,
         "stale_hubs": stale_hubs,

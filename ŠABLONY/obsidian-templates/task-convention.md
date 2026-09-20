@@ -8,14 +8,16 @@ Vault kopie: `OBSIDIAN/00-System/Templates/task-convention.md` (Drive).
 Zapnuto u **`rb-universe-development`**, **`it-ai-data`**, **`firemni-procesy`**, **`finance`**. (`vibe-coding` paused → merge do `it-ai-data`, SB10.)
 Jinde: hub `hierarchy: true` nebo presence alespoň jednoho `type: epic` v `tasks/`.
 
-> **Past:** v hierarchickém projektu se `type: task` neukáže **nikde** na hub page — flat `All-tasks.base`
-> má root filtr `type == "task"`, hierarchy views filtrují `story` / `epic`. Osamocený kus = `story` bez `parent`.
+> **Past (opraveno 20. 9. 2026):** flat `All-tasks.base` má root filtr `type != "epic"`
+> (dřív `type == "task"`, což schovávalo všechny stories). V hierarchickém projektu
+> stále platí: osamocený kus = `story` bez `parent`, ne `type: task` — hub views
+> filtrují `story` / `epic`.
 
-| Vrstva | `type` | Soubor | ICE / focus | Auto-Done |
-|--------|--------|--------|-------------|-----------|
-| Epic | `epic` | `.md` v `tasks/` | ne | **nikdy** (jen člověk) |
-| User story | `story` | `.md` v `tasks/` | ano | checkboxy všechny `[x]` **nebo** GitHub `Closes ID` (bez otevřených kroků) |
-| Task (list) | — | checkbox `- [ ] **ID-N**` v `## Operativní kroky` story | — | GitHub `Closes ID-N` / ruční odškrtnutí |
+| Vrstva | `type` | Soubor | ICE | focus | Auto-Done |
+|--------|--------|--------|-----|-------|-----------|
+| Epic | `epic` | `.md` v `tasks/` | ne | ano (téma týdne; fronta se nerozbaluje v etapě 1) | **nikdy** (jen člověk) |
+| User story | `story` | `.md` v `tasks/` | ano | ano | checkboxy všechny `[x]` **nebo** GitHub `Closes ID` (bez otevřených kroků) |
+| Task (list) | — | checkbox `- [ ] **ID-N**` v `## Operativní kroky` story | — | — | GitHub `Closes ID-N` / ruční odškrtnutí |
 
 Mimo hierarchii zůstává `type: task` (legacy flat).
 
@@ -26,8 +28,10 @@ Mimo hierarchii zůstává `type: task` (legacy flat).
 ```yaml
 type: epic
 parent:   # vždy prázdné / null
-# ice_*: nevyplňovat (nesoutěží o fokus)
-# focus: nevyplňovat
+# ice_*: nevyplňovat (nesoutěží o fokus skóre)
+focus:    # volitelné — téma týdne (ISO); etapa 3 rozbalí děti
+deadline: # jen externí závazek
+review_deadline:  # kdy se k epicu vrátím
 ```
 
 ### Story
@@ -40,14 +44,28 @@ agent: none | assist | solo
 ice_i: …
 ice_c: …
 ice_e: …
+deadline:         # jen reálný externí závazek
+review_deadline:  # kdy se k tomu vracím (vlastní měkké datum)
 ```
 
 ### Flat task (legacy / non-hierarchy slug)
 
 ```yaml
 type: task
+deadline:         # jen reálný externí závazek
+review_deadline:  # kdy se k tomu vracím
 ```
 
+## Osy priority (v2.1)
+
+| Otázka | Pole |
+|---|---|
+| Udělám to vůbec? | `status` |
+| Externí závazek? | `deadline` |
+| Kdy se k tomu vrátím? | `review_deadline` |
+| Na co teď? | `focus` (ISO týden, max 5; člověk) |
+
+`due = min(deadline, review_deadline)`. Lane **Rozhodni** = `due < today` (mimo Waiting).
 ## Hub page
 
 Hierarchický hub embeduje `All-tasks-hierarchy.base` (**ne** flat `All-tasks.base`, a to i u `ProjectRecentDone`):

@@ -25,20 +25,23 @@ alwaysApply: true
 - **V hierarchickém projektu `type: task` nepoužívej** — na hub page není vidět. Flat `All-tasks.base` má root filtr `type == "task"`, hierarchy views filtrují `story` / `epic`, takže plochý task propadne oběma. Osamocený kus = `story` bez `parent`.
 - **Hub embeduje `All-tasks-hierarchy.base`**, ne `All-tasks.base` — včetně `ProjectRecentDone`. Sekce se jmenuje `## Aktivní práce (Epic → Story → Task)`.
 - **Přesun tasku mezi projekty:** nový ID v cílovém projektu, původní `Cancelled` s ukazatelem — smazané ID by `max+1` přidělil znovu.
-- **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, **ne** ICE/focus; **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
-- **Story** (`type: story`) — doručitelná hodnota. ICE / `focus` / `agent` / `status` žijí tady. `parent: '[[RBU-E23 — …]]'` → epic. Checkboxy `**ID-N**` v `## Operativní kroky` = listové tasky.
+- **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, může mít `focus` (téma týdne); **ne** ICE; **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
+- **Story** (`type: story`) — doručitelná hodnota. ICE / `focus` / `agent` / `status` / `review_deadline` žijí tady. `parent: '[[RBU-E23 — …]]'` → epic. Checkboxy `**ID-N**` v `## Operativní kroky` = listové tasky.
 - **Task** (`type: task`) — legacy / flat (default mimo hierarchii). Osamocený tech kus bez epicu = `story` bez `parent` (např. Traefik).
 - **ID nese úroveň:** `<PREFIX>-E<N>` epic, `<PREFIX>-S<N>` story, `<PREFIX>-T<N>` task (`RBU-E69`, `RBU-S70`). Podúkol = `<ID>-<M>`, tedy `RBU-S70-1`.
 - **Čítač je jeden pro celý projekt, ne per úroveň** — epic i story berou další volné číslo přes `next_task_id.py`. Povýšení story na epic mění písmeno, ne číslo, takže se žádné číslo neuvolní k recyklaci.
 - Platí od 8. 9. 2026 v hierarchických projektech; mapping starých ID je v `00-System/hierarchy-id-migration.json`. Archiv a ploché projekty mají dál `<PREFIX><N>` — parsery umí obojí.
 - Verzované šablony: `ŠABLONY/obsidian-templates/` (vault kopie v `00-System/Templates/`).
 
-### Tři osy priority (model v2 od 4. 8. 2026)
+### Osy priority (model v2.1 od 20. 9. 2026)
 | Otázka | Nositel | Pole |
 |---|---|---|
 | Udělám to vůbec? | člověk | `status` |
 | Kdy to musí být hotové? | svět | `deadline` — **jen reálný externí závazek** |
+| Kdy se k tomu vrátím? | člověk | `review_deadline` — vlastní měkké datum |
 | Na co se soustředím teď? | člověk | `focus` — ISO týden, max 5 |
+
+`due = min(deadline, review_deadline)`. Lane **Rozhodni** = `due < today` (mimo Waiting).
 
 ### Statusy
 `Doing | Next | Backlog | Waiting | Done | Cancelled`
@@ -53,10 +56,12 @@ alwaysApply: true
 
 ### Priority score
 - `priority_score = (ice_i * ice_c) / ice_e` (Bases formula + agent-context.json)
-- **`today_score`**: `priority_score` + urgency bonus — deadline dnes +30, zítra +15, **overdue jen +5**
-  (dřív +35, což znamenalo, že čím déle věc hnila, tím výš lezla)
+- **`today_score`**: `priority_score` + max(urgency z `deadline`, urgency z `review_deadline`)
+  - deadline dnes +30, zítra +15; review_deadline dnes +20, zítra +10; **overdue jen +5**
+  (dřív overdue +35, což znamenalo, že čím déle věc hnila, tím výš lezla)
 - **`top_priority_today`** (SSOT, max 5): jen úkoly s `focus` = aktuální ISO týden; nikdy `Waiting` / `Backlog` / `Cancelled`
 - **`focus_suggestions`**: když je fokus pod 5, `build_agent_context.py` nabídne kandidáty — **návrhy, ne povýšení**
+- **`needs_decision`**: `due < today` (mimo Waiting) — lane Rozhodni
 - **`top_priority`** (max 15): fokus + `Doing` + `Next`, sort `today_score DESC`
 
 ### Konvence — vždy zachovej
@@ -89,9 +94,12 @@ Snapshot obsahuje:
 - `projects[]` — všechny project huby (slug, hub_filename, status, area, owner, open_tasks_count, `hierarchy`, `open_epics_count`)
 - `top_priority_today[]` — TOP dnes (max 5, eligibility + today_score) — **primární pro „co teď“**; epicy vyloučeny
 - `top_priority[]` — širší seznam (max 15, stejná pravidla)
+- `needs_decision[]` — `due < today` (lane Rozhodni)
+- `due_soon[]` — `due` v příštích 7 dnech
+- `no_review_deadline[]` — otevřené bez vlastního data
 - `open_epics[]` — otevřené `type: epic` (roadmap; ne fokus)
 - `recently_done[]` — last 7 days
-- `upcoming_deadlines[]` — next 7 days
+- `upcoming_deadlines[]` — next 7 days (jen externí `deadline`)
 - `recurring_pending[]` — recurring tasky čekající na rotaci
 - `stale_hubs[]` — chartery se zastaralým narativem (>14 dní od poslední task aktivity)
 - `stale_areas[]`, `areas[]` — area health (F6)

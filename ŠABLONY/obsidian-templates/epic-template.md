@@ -7,8 +7,10 @@ slug: {{slug}}
 aliases: [{{ID}}]
 status: Next
 parent:
+focus:  # volitelné — téma týdne (ISO); ICE na epicu ne
 agent: none
-deadline:
+deadline:  # jen reálný externí závazek
+review_deadline:  # kdy se k epicu vrátím (měkké); ne závazek
 created: {{date}}
 updated: {{date}}
 materials: []

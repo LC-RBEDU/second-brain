@@ -6,8 +6,9 @@ filters:
         - type == "epic"
 formulas:
   priority_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0)
+  due: if(deadline, if(review_deadline, if(date(deadline) < date(review_deadline), date(deadline), date(review_deadline)), date(deadline)), if(review_deadline, date(review_deadline), null))
   urgency_bonus: if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0)
-  today_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0) + if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0)
+  today_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0) + if(if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0) > if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0), if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0), if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0))
   task_title: file.asLink(if(title, title, file.basename))
 properties:
   formula.task_title:
@@ -16,6 +17,8 @@ properties:
     displayName: Score
   formula.today_score:
     displayName: Score
+  formula.due:
+    displayName: Due
   type:
     displayName: Typ
   parent:
@@ -30,6 +33,8 @@ properties:
     displayName: Agent
   deadline:
     displayName: Deadline
+  review_deadline:
+    displayName: Review
   waitUntil:
     displayName: Wait until
 views:
@@ -115,6 +120,28 @@ views:
           - Next
           - Waiting
           - Backlog
+      cardOrders:
+        note.status:
+          Backlog:
+            - 02-PROJEKTY/finance/tasks/F-S22 — Prověřit Národní záruku (NRBCZ) pro firmu.md
+            - 02-PROJEKTY/finance/tasks/F-S55 — Workflow pro Revolut Business platební karty.md
+            - 02-PROJEKTY/finance/tasks/F-S9 — Procesní mapa a mapa zodpovědností finančního týmu.md
+          Next:
+            - 02-PROJEKTY/finance/tasks/F-S16 — Overdue faktury zkontrolovat spárování + spustit remindery.md
+            - 02-PROJEKTY/finance/tasks/F-S19 — Šuplíčky Happiness srovnání + mock doklady + procesní dokument.md
+            - 02-PROJEKTY/finance/tasks/F-S26 — Firemní karty a Revolut — vystavování, distribuce parťákům, doplňování.md
+            - 02-PROJEKTY/finance/tasks/F-S33 — Ověřit u Lenky výsledek daňové konzultace (ubytování externistů, karty, interní eventy).md
+            - 02-PROJEKTY/finance/tasks/F39 — Finanční přehled MOCK doklady — pohledy Honza + Luboš.md
+            - 02-PROJEKTY/finance/tasks/F-S41 — FIO kontokorent — SSOT podmínek čerpání.md
+            - 02-PROJEKTY/finance/tasks/F-S43 — Pravidla pro platby.md
+            - 02-PROJEKTY/finance/tasks/F-S46 — Nákladové rozpočty RBL — doplnit plán výdajů v čase.md
+            - 02-PROJEKTY/finance/tasks/F-S50 — Třídění účetních PDF do složek podle středisek.md
+            - 02-PROJEKTY/finance/tasks/F-S51 — Pojištění majetku v kanceláři Impact Hub.md
+            - 02-PROJEKTY/finance/tasks/F-S52 — IBAN nesoulad faktura vs. dodavatel — Slack alert v platební automatizaci.md
+            - 02-PROJEKTY/finance/tasks/F-S54 — Fix manuální příprava FIO příkazů + první čtvrtek.md
+            - 02-PROJEKTY/finance/tasks/F-S61 — Kurzová politika faktur ECB vs. ČNB (interní směrnice).md
+          Waiting:
+            - 02-PROJEKTY/finance/tasks/F-S53 — Sledovat — Lenka Turečková dodá podklad Google Vault.md
   - type: table
     name: ProjectStoriesByParent
     filters:
@@ -204,7 +231,6 @@ views:
       - property: file.mtime
         direction: DESC
     limit: 8
-  # Dashboard (global) — story + flat task; epicy ne (nemají focus)
   - type: table
     name: FokusTydne
     filters:
@@ -216,7 +242,7 @@ views:
         - status != "Cancelled"
         - status != "Waiting"
         - status != "Backlog"
-        - "focus"
+        - focus
     order:
       - id
       - formula.task_title
@@ -255,6 +281,8 @@ views:
       - formula.today_score
       - deadline
     sort:
+      - property: formula.task_title
+        direction: ASC
       - property: formula.today_score
         direction: DESC
     limit: 10

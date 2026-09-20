@@ -189,7 +189,9 @@ def build_state_content(
         if _task_get(t, "status") not in (STATUS_DOING, STATUS_NEXT):
             continue
         ps = _priority_score(t)
-        ts = calc_today_score(ps, _task_get(t, "deadline"), today)
+        ts = calc_today_score(
+            ps, _task_get(t, "deadline"), today, _task_get(t, "review_deadline")
+        )
         scored.append((t, ts))
     scored.sort(key=lambda x: -x[1])
     top3 = scored[:3]

@@ -82,12 +82,13 @@ slug: <slug>
 aliases: [<ID>]
 status: Next | Doing | Backlog | Waiting | Done | Cancelled
 parent:  # jen story → "[[RBU-E23 — …]]"; epic/standalone prázdné
-focus:  (prázdné — nastavuje jen člověk; **ne** u epic)
+focus:  (prázdné — nastavuje jen člověk; u epic = téma týdne OK)
 agent:  none | assist | solo
 ice_i: <1-10>   # u epic vynech
 ice_c: <1-10>
 ice_e: <1-10>
-deadline: <YYYY-MM-DD or empty>
+deadline: <YYYY-MM-DD or empty>          # jen reálný externí závazek
+review_deadline: <YYYY-MM-DD or empty>   # kdy se k tomu vrátím (povinné u Next/Doing)
 waitUntil: <YYYY-MM-DD or empty>
 created: <YYYY-MM-DD>
 updated: <YYYY-MM-DD>
@@ -99,6 +100,8 @@ blocked_by: []
 ```
 
 `aliases: [<ID>]` zajišťuje, že `[[<ID>]]` z body resolvuje na soubor i po případné změně titulu.
+
+**`review_deadline`:** u `Next` / `Doing` vždy vyplň (i odhad). Bez něj položka zmizí z radaru. `deadline` nech prázdné, pokud nejde o externí závazek.
 
 **RBU:** default nové doručení = `type: story` (+ `parent` pokud patří pod epic). Roadmap kontejner = `type: epic` ze `ŠABLONY/obsidian-templates/epic-template.md`. Konvence: `ŠABLONY/obsidian-templates/task-convention.md`.
 

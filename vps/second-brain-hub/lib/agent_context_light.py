@@ -24,6 +24,8 @@ LIGHT_TASK_KEYS = (
     "status",
     "title",
     "deadline",
+    "review_deadline",
+    "due",
     "waitUntil",
     "focus",
     "agent",
@@ -50,6 +52,10 @@ ID_LIST_KEYS = (
     "top_priority_today",
     "top_priority",
     "upcoming_deadlines",
+    "due_soon",
+    "needs_decision",
+    "no_review_deadline",
+    "stale_focus",
     "focus_suggestions",
     "open_epics",
 )
@@ -100,7 +106,9 @@ def _slim_task(task: dict, today: date) -> dict:
     ps = float(task.get("priority_score") or 0)
     ts = task.get("today_score")
     if ts is None:
-        ts = compute_today_score(ps, task.get("deadline"), today)
+        ts = compute_today_score(
+            ps, task.get("deadline"), today, task.get("review_deadline")
+        )
     slim = {k: task.get(k) for k in LIGHT_TASK_KEYS}
     slim["priority_score"] = ps
     slim["today_score"] = float(ts)
