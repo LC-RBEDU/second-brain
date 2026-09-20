@@ -5,7 +5,7 @@ Vault kopie: `OBSIDIAN/00-System/Templates/task-convention.md` (Drive).
 
 ## Tři vrstvy (opt-in)
 
-Zapnuto u **`rb-universe-development`**, **`vibe-coding`**, **`firemni-procesy`**, **`finance`**.
+Zapnuto u **`rb-universe-development`**, **`it-ai-data`**, **`firemni-procesy`**, **`finance`**. (`vibe-coding` paused → merge do `it-ai-data`, SB10.)
 Jinde: hub `hierarchy: true` nebo presence alespoň jednoho `type: epic` v `tasks/`.
 
 > **Past:** v hierarchickém projektu se `type: task` neukáže **nikde** na hub page — flat `All-tasks.base`

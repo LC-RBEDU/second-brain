@@ -176,6 +176,7 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Procesní architekt / Delivery & Operations",
         "org": "Red Button EDU",
         "email": "martin.ruman@redbuttonedu.cz",
+        "emails": ["martin.ruman@redbuttonedu.cz", "martin.ruman@odyssey.cz"],
         "slack": "Martin R.",
         "projects": ["Firemní procesy", "Sales a Business Development", "Strategy", "M&A Odyssey"],
     },
@@ -196,8 +197,8 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Growth (Strategy tým)",
         "org": "Red Button EDU",
         "email": "jan@redbutton.cz",
-        # jan@redbuttonedu.cz potvrdil Lukáš 8. 9. 2026 (v hlavičkách mailů jen jan@redbutton.cz)
-        "emails": ["jan@redbutton.cz", "jan@redbuttonedu.cz"],
+        # jan@redbuttonedu.cz (8. 9. 2026) + jan@masek.me (backfill 11. 9. 2026)
+        "emails": ["jan@redbutton.cz", "jan@redbuttonedu.cz", "jan@masek.me"],
         "slack": "Honza",
         "projects": ["Strategy", "M&A Odyssey"],
     },
@@ -344,6 +345,7 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Spolumajitel / výkonný výbor RBN",
         "org": "Red Button EDU",
         "email": "jindrich@redbutton.cz",
+        "emails": ["jindrich@redbutton.cz", "jindrich@redbuttonedu.cz"],
         "slack": "Jindra",
         "projects": ["Red Button Network", "Owners"],
     },
@@ -390,6 +392,7 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "role": "Externí spolupracovník (Pestratex)",
         "org": "Pestratex",
         "email": "roman.stupka@pestratex.cz",
+        "emails": ["roman.stupka@pestratex.cz", "roman.stupka@scaleupboard.com"],
         "projects": ["Red Button Network", "M&A Odyssey", "Vibe coding"],
     },
     "Soňa Šadibol": {
@@ -622,22 +625,57 @@ def linkify_vault(dry_run: bool, *, paths: list[Path] | None = None) -> int:
     return modified
 
 
+def _emails_from_person_file(person: str, *, emails_from_fm) -> list[str]:
+    """Primary + emails from person frontmatter (runtime SSOT)."""
+    pf = LIDE / f"{person}.md"
+    if not pf.exists():
+        return []
+    try:
+        text = pf.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    m = re.match(r"---\n(.*?\n)---\n", text, re.S)
+    if not m:
+        return []
+    try:
+        import yaml
+
+        fm = yaml.safe_load(m.group(1)) or {}
+    except Exception:
+        return []
+    if not isinstance(fm, dict):
+        return []
+    primary, emails = emails_from_fm(fm)
+    return emails or ([primary] if primary else [])
+
+
 def match_aliases() -> dict[str, list[str]]:
-    """ALIASES + e-mailové adresy z KNOWN_META.
+    """ALIASES + e-mailové adresy z person souborů (``email`` + ``emails``).
 
     Sembly zápisy a hlavičky mailů uvádějí účastníky často jen adresou, bez jména —
     bez tohohle by se taková zmínka k člověku nepřiřadila. Adresy jdou jen do matchingu,
     ne do ``aliases:`` ve frontmatteru; tam patří jména, ne kontakty.
+
+    Runtime SSOT = vault person file. ``KNOWN_META`` jen fallback, když soubor
+    ještě nemá adresu (nový člověk před prvním zápisem).
     """
+    _LIB = REPO / "vps" / "second-brain-hub" / "lib"
+    if str(_LIB) not in sys.path:
+        sys.path.insert(0, str(_LIB))
+    from people import person_emails_from_frontmatter  # noqa: E402
+
     out: dict[str, list[str]] = {}
     for person, aliases in ALIASES.items():
-        extra = KNOWN_META.get(person, {}).get("emails") or []
-        if isinstance(extra, str):
-            extra = [extra]
-        primary = KNOWN_META.get(person, {}).get("email")
-        if primary and primary not in extra:
-            extra = [primary, *extra]
-        out[person] = list(aliases) + [e for e in extra if e]
+        addrs = _emails_from_person_file(person, emails_from_fm=person_emails_from_frontmatter)
+        if not addrs:
+            extra = KNOWN_META.get(person, {}).get("emails") or []
+            if isinstance(extra, str):
+                extra = [extra]
+            primary = KNOWN_META.get(person, {}).get("email")
+            if primary and primary not in extra:
+                extra = [primary, *extra]
+            addrs = [e for e in extra if e]
+        out[person] = list(aliases) + list(addrs)
     return out
 
 

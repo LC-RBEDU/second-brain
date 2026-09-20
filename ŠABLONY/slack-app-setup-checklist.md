@@ -43,6 +43,25 @@ Volitelné (už ne pro tento workflow nutné): `reactions:read` — jen pokud ch
 
 > Po přidání nového scope vždy **Install App → Reinstall to Workspace**, jinak Slack token nový scope nezná.
 
+**Odeslání jako Lukáš** (zápis, follow-up — `scripts/slack_send_message.py`). Bot token na to nestačí, zpráva by šla za appku.
+
+User Token Scopes na stejné appce:
+
+- `chat:write`
+- `files:write`
+- `im:write`
+- `mpim:write`
+- `users:read`
+- `users:read.email`
+
+Po Reinstall zkopíruj **User OAuth Token** (`xoxp-…`, ne `xoxb-`) do `~/.config/second-brain/slack.env`:
+
+```
+SLACK_USER_TOKEN=xoxp-...
+```
+
+Soubor je mimo repo, do chatu token nepatří. Login keychain ani cookies Slack aplikace se na odesílání nepoužívají.
+
 ### 4. Event Subscriptions
 
 - **Event Subscriptions** → Enable

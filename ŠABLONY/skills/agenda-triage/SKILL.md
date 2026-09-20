@@ -225,6 +225,10 @@ Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z
 3. Tento zápis **nahrazuje** starý krátký DEEP materiál / `agenda-analyze` typ `schuzka`.
 4. Z MD tabulky úkolů → Lukáš-only filter → preview tasků → apply → archiv zdroje
    (`archive_inbox_item.py`). Detaily a checklist ve skillu zápisu.
+5. **Samonosný task (povinné):** při apply ze zápisu nestačí holý checkbox + `materials:`.
+   Task musí nést **Z:** (wikilink na zápis), **Cíl**, **Kontext ze zápisu** (2–5 vět
+   z karty / tabulky) a u nových kroků `→ *proč:* …; *DoD:* …`. Plné znění = skill
+   `agenda-zapis-ze-schuzky` → Krok 8 „Samonosný kontext v tasku“.
 
 ### Ostatní DEEP zdroje
 
@@ -333,6 +337,9 @@ Správně: „PE v Allfredu umím ověřit. Řešit rovnou?“
 **`needs_link` (cron):** pokud návrh nemá `project:` + `materials:` pro DEEP zdroj, nastav `needs_link: true` a **neaplikuj automaticky** (stejně jako `deep_analysis`).
 
 Body návrhu musí mít subtasky se prefixem `**<ID>-N**` v `## Operativní kroky`.
+Když návrh vzniká ze **zápisu schůzky** (`vystupy/zapisy` / `agenda-zapis-ze-schuzky`),
+tělo musí být **samonosné** (Z + Cíl + Kontext ze zápisu + *proč/DoD* u nových kroků) —
+viz skill zápisu, Krok 8.
 
 7. Ukaž změny podle `proposalType`. **Nikdy neaplikuj bez explicitního „ano" / „apply"**.
 8. Po schválení:

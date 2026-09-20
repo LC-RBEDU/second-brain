@@ -27,6 +27,7 @@ jde jen to, co v přepisu explicitně zaznělo.
 5. U jasných projektů přidá **wikilink stub** do `02-PROJEKTY/<slug>/materials/`.
 6. Z tabulky úkolů navrhne **Lukášovy** tasky (Lukáš-only filter) → preview → apply.
 7. Archivuje zdroj přes `scripts/archive_inbox_item.py`.
+8. Interní schůzku rozešle na Slack (HTML + MD). Pravidlo: `.cursor/rules/internal-meeting-slack.mdc`.
 
 **Sdílená varianta** (`variant: shared`, sufix `_tym`) jen když uživatel řekne
 „pro tým“ / „sdílená verze“ — kratší, bez úkolů a citlivin (viz krok Varianta).
@@ -205,10 +206,51 @@ Z konsolidované tabulky / `**tasks**` v MD:
 1. Aplikuj **Lukáš-only filter** (`agenda-triage`): task jen kde míček drží Lukáš;
    cizí akce zůstanou v zápisu; hraniční → `Waiting` / „Sledovat: …“.
 2. Preview návrhů (projekt, ICE, status, `agent`) — zatím jako triáž.
-3. Po schválení: file-per-task + `materials:` / `related_tasks:` na kanónický MD zápis.
+3. Po schválení: file-per-task + `materials:` / `related_tasks:` na kanónický MD zápis
+   **a samonosný kontext ze zápisu** (viz níže — povinné).
 4. `python3 scripts/sync_lide_people.py --incremental --paths "…"`  
    `python3 scripts/build_agent_context.py`
 5. Archiv zdroje: `python3 scripts/archive_inbox_item.py <source.md>`
+
+### Samonosný kontext v tasku (povinné)
+
+Task musí jít otevřít **bez** nutnosti hned číst celý zápis a pochopit, čeho se týká a co je cíl.
+Zápis ve `05-RESOURCES/vystupy/zapisy/` zůstává kanón detailu („co zaznělo“); task nese zhuštěný kontext.
+
+**Zdroj textu:** konsolidovaná tabulka + karta v zápisu (`**Co zaznělo**`, owner, status) —
+ne improvizace mimo zápis.
+
+U **nového** i **update** tasku ze zápisu vždy:
+
+| Pole / místo | Co napsat |
+|---|---|
+| `materials:` | wikilink na kanónický `…_zapis` (+ materials stub, pokud je) |
+| `related_tasks:` na zápisu | plný název task souboru |
+| **Z:** | schůzka + datum + wikilink na zápis (případně sekce / `id:` karty) |
+| **Cíl:** / **Cíl teď:** | 1–3 věty — co je hotovo, až je story/krok done |
+| **Kontext ze zápisu:** | 2–5 vět — rozhodnutí, kdo drží míček, omezení, vazba na jiné priority |
+| Checkbox `**ID-N**` | krátký název + `→ *proč:* …; *DoD:* …` (1 věta proč, 1 věta DoD) |
+
+**Update existujícího tasku:** nepřepisuj celou historii; doplň **Kontext ze zápisu**
+(datum schůzky), případně **Cíl teď**, nové checkboxy s *proč/DoD*, řádek do logu
+s wikilinkem na zápis.
+
+**Ne:** holý checkbox „udělat X“ + jen `materials:` bez vět v těle.  
+**Ne:** kopírovat celou kartu „co zaznělo“ do tasku — zůstaň u zhuštění.
+
+V **preview** tasků u každé položky uveď i návrh Cíl + 1 větu kontextu (ne jen ID a ICE).
+
+---
+
+## Krok 9 — rozeslání
+
+Až jsou HTML a MD na disku. Detail a tabulka kanálů: `.cursor/rules/internal-meeting-slack.mdc` (při rozporu vyhraje pravidlo).
+
+1. Účastníci z kalendáře. Všichni `@redbuttonedu.cz` / `@redbutton.cz` → Slack. Jinak e-mail.
+2. Týmová nebo opakovaná schůzka: kanál z pravidla. Není tam → zeptej se, neposílej.
+3. Jinak DM / skupinový DM účastníků.
+4. Jedna zpráva, oslovení Hoj / Hojte nebo vokativ z `05-RESOURCES/lide/` či historie Slacku. Přílohy: HTML i MD.
+5. Známý kanál = pošli, nečekej na další schválení. Příkaz: `python3 scripts/slack_send_message.py`. Token jen z `~/.config/second-brain/slack.env` (user `xoxp-`). Do chatu ho nedávej, login keychain ani Slack cookies nečti.
 
 ---
 
@@ -220,6 +262,7 @@ Před zápisem do Downloads/vaultu ukaž krátce:
 - 3 highlights
 - počet položek osnovy + počet úkolů (Lukáš vs ostatní)
 - cílové cesty HTML a MD
+- kam to půjde: Slack kanál / DM, nebo e-mail když je někdo mimo RB
 - navržené projekty pro `projects:` / materials stubs
 
 Až po „ano“ / „upiš“ zapisuj soubory a tasky.
@@ -236,5 +279,7 @@ Až po „ano“ / „upiš“ zapisuj soubory a tasky.
 - [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material`
 - [ ] Stubs v `materials/` u jasných projektů
 - [ ] Lukášovy tasky preview → apply
+- [ ] Každý task/update ze zápisu: **Z:** + **Cíl** + **Kontext ze zápisu** + checkbox *proč/DoD* + `materials:` na zápis
 - [ ] Zdroj archivován
+- [ ] Interní zápis na Slacku (HTML + MD), kanál z pravidla nebo dotaz
 - [ ] Default = full (ne shared)

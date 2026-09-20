@@ -55,6 +55,8 @@ obsahují přezdívky a typická oslovení. Tenhle seznam je jen záchytný bod 
   Dzuroška = sales, KAM, EDUtéka, summit (mluví slovensky).
 - Automatický přepis komolí slovenštinu Lukáše Dzurošky víc než češtinu ostatních.
   U nejednoznačných pasáží radši nic netvrď.
+- **DigiSN ≠ nový produkt / IT framework.** Sembly z „DigiEssen“ často udělá DigiSN.
+  Jde o pořad v EDUtéce (Digital Essentials for Business). Viz [[DigiEssen]].
 
 ## Zkratky, které nejsou jména
 
@@ -67,5 +69,6 @@ obsahují přezdívky a typická oslovení. Tenhle seznam je jen záchytný bod 
 | ECS | Exponential Circles Summit |
 | H@W | Happiness at Work |
 | BBB / BBC | Brain & Breakfast / Brain & Coffee |
+| DigiSN, Digi SN, DigiEssence | **DigiEssen** — Digital Essentials for Business (pořad v EDUtéce; [[Michal Šrajer]] + [[Jakub Heikenwälder]]). SSOT: [[DigiEssen]] |
 | L&D | Learning & Development |
 | KAM | Key Account Management |

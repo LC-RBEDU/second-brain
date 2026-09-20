@@ -168,6 +168,13 @@ nepoznal rozdíl mezi „nebyly" a „nezpracováno".
 `id` je stabilní slug `oblast/aktivita` bez diakritiky. Při aktualizaci zápisu ze
 stejné série schůzek drž stejné `id`, ať se dají porovnat v čase.
 
+### Tasky odvozené ze zápisu
+
+Po zápisu jdou Lukášovy řádky z konsolidované tabulky do `02-PROJEKTY/…/tasks/`.
+Task musí být **samonosný** (Cíl + Kontext ze zápisu + *proč/DoD* u kroků) a mít
+`materials:` na tento MD — detail ve skillu `agenda-zapis-ze-schuzky` → Krok 8.
+Zápis zůstává kanónem „co zaznělo“; task je zhuštěný závazek, ne kopie karty.
+
 ### Povinné sekce
 
 1. `## 0. Meta` — rámec schůzky, highlights

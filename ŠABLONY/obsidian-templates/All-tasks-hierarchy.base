@@ -204,3 +204,59 @@ views:
       - property: file.mtime
         direction: DESC
     limit: 8
+  # Dashboard (global) — story + flat task; epicy ne (nemají focus)
+  - type: table
+    name: FokusTydne
+    filters:
+      and:
+        - or:
+            - type == "story"
+            - type == "task"
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - status != "Backlog"
+        - "focus"
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - focus
+      - agent
+      - formula.today_score
+      - deadline
+    sort:
+      - property: focus
+        direction: DESC
+      - property: formula.today_score
+        direction: DESC
+    limit: 5
+    columnSize:
+      formula.task_title: 516
+  - type: table
+    name: KandidatiNaFokus
+    filters:
+      and:
+        - or:
+            - type == "story"
+            - type == "task"
+        - status != "Done"
+        - status != "Cancelled"
+        - status != "Waiting"
+        - status != "Backlog"
+        - "!focus"
+    order:
+      - id
+      - formula.task_title
+      - type
+      - project
+      - agent
+      - formula.today_score
+      - deadline
+    sort:
+      - property: formula.today_score
+        direction: DESC
+    limit: 10
+    columnSize:
+      formula.task_title: 516
