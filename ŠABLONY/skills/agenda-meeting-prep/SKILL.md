@@ -1,13 +1,13 @@
 ---
 name: agenda-meeting-prep
-description: "Ad-hoc příprava na schůzky — posbírá kalendář, kontext projektu ve vaultu, otevřené tasky, waiting, sliby z minula a přílohy, a vypíše přípravu do chatu. Triggery: připrav schůzky, příprava na schůzku, co mě dnes čeká za schůzky, připrav mi zítřek, připrav tu schůzku s X. Nezapisuje do vaultu, neposílá do Slacku."
+description: "Příprava na schůzky do chatu. Ad-hoc (připrav schůzky, příprava na schůzku, co mě dnes čeká) i naplánovaný běh: jen schůzka s dalším účastníkem, výstup do chatu. Nezapisuje do vaultu, neposílá do Slacku."
 ---
 
 # agenda-meeting-prep
 
 > Příprava na schůzky **na vyžádání**. Výstup jde do chatu, nikam se nezapisuje.
 
-**Zdroje:** Google Calendar MCP (primary), `00-System/agent-context-light.json` (+ `charters.json` dle potřeby), vault OBSIDIAN, Gmail MCP, Slack MCP, Drive MCP
+**Zdroje:** Google Calendar MCP (primary), RB Universe MCP (organizace, osoby, dealy účastníků), `00-System/agent-context-light.json` (+ `charters.json` dle potřeby), vault OBSIDIAN, Gmail MCP, Slack MCP, Drive MCP
 **Nezapisuje:** ani do vaultu, ani do Slacku. Pokud si Lukáš přípravu chce uložit, řekne si o to zvlášť → `agenda-capture`.
 
 ## Kdy spouštět
@@ -18,6 +18,18 @@ description: "Ad-hoc příprava na schůzky — posbírá kalendář, kontext pr
 - „Co mě dnes čeká za schůzky"
 
 **Nepoužívat** pro „co teď" / „co dnes" — to jsou úkoly, ne kalendář → `agenda-co-ted`.
+
+### Naplánovaný běh (Cowork, cca hodinu dopředu)
+
+Cowork umí jen pevný interval (nejjemnější je hodina), ne spoušť „30 minut před eventem“. Naplánovaný task proto jednou za hodinu v pracovní době:
+
+1. Vezmi schůzky, které **začínají v příštích 70 minutách**.
+2. Nech jen ty, kde je **aspoň jeden účastník kromě Lukáše** (`self` nepočítej; `resource` / místnost nepočítej). Bez lidí → přeskoč, včetně bloků bez účastníků, OOO, focus, Reclaim bufferů a Reclaim sync osobních eventů.
+3. Když v okně nic takového není → **napiš nula znaků**. Žádné „nic není“.
+4. Když je → pro každou takovou schůzku udělej přípravu podle zbytku tohoto skillu a vypiš ji **jen do tohoto chatu**. Do vaultu ani do Slacku ne.
+5. Stejný `event id` v tom samém dni neprezentuj podruhé, když už příprava v tomto vlákně je.
+
+RB Universe MCP je na to dost. Pro externího účastníka nebo firmu v názvu pozvánky ho použij (osoba, organizace, otevřený deal). Vault pořád čteš z lokální složky SECOND_BRAIN — bez ní tasky a zápisy nemáš.
 
 ---
 
@@ -58,9 +70,13 @@ MCP vrací rovnou: `summary`, `description`, `attendees[]` (email, displayName, 
 
 ### 1b. Co zahrnout
 
+Ad-hoc („připrav dnešek“):
+
 - Celodenní eventy
 - Eventy bez účastníků
 - `visibility: private` — **ano, u ad-hoc přípravy se zahrnuje**
+
+Naplánovaný běh: event bez dalšího člověka **vynech úplně**, i celodenní. `private` ber jen když má jiného účastníka.
 
 ### 1c. Reclaim sync osobních eventů
 
@@ -216,7 +232,11 @@ Když je směr nejednoznačný → do „Sliby z minula" jako neutrální polož
 
 Co se prokazatelně uzavřelo, **označ jako uzavřené** a nepředkládej k řešení.
 
-### 6.3 Externí bez kontextu
+### 6.3 Externí a RB Universe
+
+U účastníka mimo `@redbuttonedu.cz` / `@redbutton.cz` (nebo firmy v názvu pozvánky) se nejdřív zeptej **RB Universe MCP** — `search_persons`, `search_organizations`, `search_deals`. Ber jen to, co nástroj vrátí. Nic z toho nevymýšlej a dev Universe nepoužívej.
+
+Když Universe ani vault nic nemají:
 
 ```
 👤 Jana Nováková (jana@ahold.cz) · přijala — nemáme kontext

@@ -20,7 +20,7 @@ flowchart LR
 | Kde | Co běží |
 |-----|---------|
 | **Google Drive** | Vault root `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/`) — SSOT |
-| **coolify-dev** | Docker stateless: lifecycle scripts, `triage_llm_run.py`, `lifecycle_hub_state.py`, `build_agent_context.py` — vše přes Drive API + CAS |
+| **coolify-dev** | Docker stateless: lifecycle scripts, `lifecycle_hub_state.py`, `build_agent_context.py` — vše přes Drive API + CAS. LLM triáž (`triage_llm_run.py`) je vypnutá. |
 | **Mac** | Obsidian + Bases plugin čte frontmatter live, agent-context.json sync přes Drive Desktop |
 
 INBOX = `OBSIDIAN/01-INBOX/{slack,sembly,email,email/sent,daily,Clippings}/`.
@@ -77,7 +77,7 @@ git push origin main
 | `CALENDAR_DAYS_AHEAD` | `2` (max 14) |
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
-| `CURSOR_API_KEY` | **LLM triáž** (`triage_llm_run.py`) — user API key z Cursor Dashboard → API Keys |
+| `CURSOR_API_KEY` | Nepoužívá se. Dřív LLM triáž (`triage_llm_run.py`); cron je vypnutý. |
 | `SLACK_USER_TOKEN` | `xoxp-` pro Slack poll (zmínky, Later, DM). Ne `SLACK_BOT_TOKEN`. |
 | `GOOGLE_GMAIL_OAUTH_JSON` | samostatný OAuth `gmail.compose` — jen `drafts.create` |
 
@@ -103,7 +103,7 @@ git push origin main
 
 | Job | Po-Pa | So-Ne |
 |-----|-------|-------|
-| `triage_llm_run.py` | 7:00, 14:00, 20:00 | 7:00 |
+| `triage_llm_run.py` | vypnuto (20. 9. 2026) | vypnuto |
 | `inbox_inventory.py` | Po 6:55 | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
 | `slack_poll.py` | každých 2 min, 08:00–23:59 | stejně |
@@ -113,7 +113,7 @@ EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalend
 
 ### Schválení triáže
 
-V Cursoru: `schval pending triáž` / `apply batch` (skill `agenda-triage`, mode PENDING).
+Cron návrhy už nevznikají. Triáž je jen v chatu: „proveď mě triáží“ (skill `agenda-triage`, živý `01-INBOX`).
 
 ### EDU news (OPS2)
 
