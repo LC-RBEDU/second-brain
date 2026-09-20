@@ -512,6 +512,21 @@ class DriveVault:
         mime_type: str = "text/markdown",
         encoding: str = "utf-8",
     ) -> FileMeta:
+        return self.write_bytes(
+            rel_path,
+            text.encode(encoding),
+            expect_mtime=expect_mtime,
+            mime_type=mime_type,
+        )
+
+    def write_bytes(
+        self,
+        rel_path: str,
+        data: bytes,
+        *,
+        expect_mtime: datetime | None = None,
+        mime_type: str = "application/octet-stream",
+    ) -> FileMeta:
         rel = _norm_rel(rel_path)
         if not rel:
             raise ValueError("rel_path cannot be empty")
@@ -551,7 +566,7 @@ class DriveVault:
             existing = fresh
             self._meta_cache[rel] = fresh
 
-        body = io.BytesIO(text.encode(encoding))
+        body = io.BytesIO(data)
         media = MediaIoBaseUpload(body, mimetype=mime_type, resumable=False)
 
         if existing is None:

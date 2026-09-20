@@ -3,6 +3,34 @@
 const TZ = 'Europe/Prague';
 const MAX_LINKED_DOCS = 10;
 
+function yamlQuote(s) {
+  return JSON.stringify(String(s || '').replace(/\n/g, ' '));
+}
+
+function headerValue(e, name) {
+  const want = String(name || '').toLowerCase();
+  const h = (e && e.headers) || (e && e.payload && e.payload.headers);
+  if (!h) return '';
+  if (Array.isArray(h)) {
+    const row = h.find((x) => String((x && x.name) || '').toLowerCase() === want);
+    return row ? String(row.value || '') : '';
+  }
+  if (typeof h === 'object') {
+    for (const [k, v] of Object.entries(h)) {
+      if (String(k).toLowerCase() === want) return typeof v === 'string' ? v : String((v && v.value) || v || '');
+    }
+  }
+  return '';
+}
+
+function shouldDropInbound(fromText, subject) {
+  const from = String(fromText || '').toLowerCase();
+  const sub = String(subject || '').toLowerCase();
+  if (from.includes('calendar-noreply') || from.includes('calendar-notification@google.com')) return true;
+  if (/^(invitation|updated invitation|accepted|declined|tentatively accepted):/i.test(sub)) return true;
+  return false;
+}
+
 /** Slug pro název souboru: NFC, zachová diakritiku (češtinu), odstraní jen znaky nebezpečné v názvech souborů. */
 function filenameFriendlySlug(s, maxLen) {
   let t = String(s || '').normalize('NFC');
@@ -204,6 +232,7 @@ for (const item of $input.all()) {
   const subject = (e.subject && String(e.subject).trim()) || 'no-subject';
   const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\s*/gi, '').trim();
   const subjectSlug = filenameFriendlySlug(subjectClean, 80);
+  if (shouldDropInbound(fromText, subject)) continue;
   const filename = `${ts}-${fromSlug}-${subjectSlug || 'no-subject'}.md`;
 
   const plain = e.text && String(e.text).trim();
@@ -247,6 +276,23 @@ for (const item of $input.all()) {
   }
 
 
+  const gmailThreadId = String(e.threadId || e.thread_id || '');
+  const rfcMessageId = headerValue(e, 'message-id');
+  const inReplyTo = headerValue(e, 'in-reply-to');
+  const fm = [
+    '---',
+    'source: email',
+    `gmail_thread_id: ${yamlQuote(gmailThreadId)}`,
+    `message_id: ${yamlQuote(rfcMessageId)}`,
+    `in_reply_to: ${yamlQuote(inReplyTo)}`,
+    `from: ${yamlQuote(fromText)}`,
+    `to: ${yamlQuote(toText)}`,
+    `subject: ${yamlQuote(subject)}`,
+    `date: ${yamlQuote(date.toISOString())}`,
+    '---',
+    '',
+  ].join('\n');
+
   const lines = [
     `# Email: ${subject}`,
     '',
@@ -266,7 +312,7 @@ for (const item of $input.all()) {
 
   lines.push('## Tělo', '', body, '');
 
-  const md = lines.join('\n');
+  const md = fm + lines.join('\n');
   const binList = item.binary ? Object.keys(item.binary) : [];
 
   const row = {

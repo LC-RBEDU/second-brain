@@ -92,6 +92,26 @@ function htmlToText(html) {
     .trim();
 }
 
+function yamlQuote(s) {
+  return JSON.stringify(String(s || '').replace(/\n/g, ' '));
+}
+
+function headerValue(e, name) {
+  const want = String(name || '').toLowerCase();
+  const h = (e && e.headers) || (e && e.payload && e.payload.headers);
+  if (!h) return '';
+  if (Array.isArray(h)) {
+    const row = h.find((x) => String((x && x.name) || '').toLowerCase() === want);
+    return row ? String(row.value || '') : '';
+  }
+  if (typeof h === 'object') {
+    for (const [k, v] of Object.entries(h)) {
+      if (String(k).toLowerCase() === want) return typeof v === 'string' ? v : String((v && v.value) || v || '');
+    }
+  }
+  return '';
+}
+
 const items = [];
 for (const item of $input.all()) {
   const e = item.json;
@@ -120,14 +140,20 @@ for (const item of $input.all()) {
     plain ||
     htmlText ||
     (snippet ? snippet + '\n\n_(snippet — vypni Simplify u triggeru)_' : '_(prázdné tělo)_');
+  const gmailThreadId = String(e.threadId || e.thread_id || '');
+  const rfcMessageId = headerValue(e, 'message-id');
+  const inReplyTo = headerValue(e, 'in-reply-to');
   const fm = [
     '---',
     'source: sent',
-    `messageId: ${messageId}`,
-    `to: ${toText.replace(/\n/g, ' ')}`,
-    `subject: ${subject.replace(/\n/g, ' ')}`,
-    `date: ${date.toISOString()}`,
-    `from: ${fromText.replace(/\n/g, ' ')}`,
+    `gmail_thread_id: ${yamlQuote(gmailThreadId)}`,
+    `message_id: ${yamlQuote(rfcMessageId || messageId)}`,
+    `in_reply_to: ${yamlQuote(inReplyTo)}`,
+    `gmail_id: ${yamlQuote(messageId)}`,
+    `to: ${yamlQuote(toText)}`,
+    `subject: ${yamlQuote(subject)}`,
+    `date: ${yamlQuote(date.toISOString())}`,
+    `from: ${yamlQuote(fromText)}`,
     '---',
     '',
   ].join('\n');

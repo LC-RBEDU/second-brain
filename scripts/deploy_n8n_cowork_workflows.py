@@ -27,12 +27,20 @@ DEPLOYS = [
         "template": "email-to-cowork.json",
         "workflow_id": "omQRpDBa48ePiKnT",
         "action": "put",
+        "format_js": "email-to-cowork-Format-Markdown.js",
+        "format_node": "Format → Markdown",
+        "gmail_query": (
+            "in:inbox -in:trash -category:promotions -category:social "
+            "-from:calendar-notification@google.com -from:calendar-noreply@google.com"
+        ),
     },
     {
         "template": "workspace-sent-to-inbox.json",
         "workflow_id": "7fhDXThOaxl1yNtE",
         "action": "put",
         "gmail_options": {"downloadAttachments": True},
+        "format_js": "workspace-sent-format-markdown.js",
+        "format_node": "Format → Markdown (sent)",
     },
     {
         "template": "mobile-capture-to-cowork.json",
@@ -137,6 +145,21 @@ def merge_nodes(template_nodes: list, live: dict, *, gmail_options: dict | None 
     return merged
 
 
+def inject_format_js(nodes: list, node_name: str, js_path: Path) -> None:
+    code = js_path.read_text(encoding="utf-8")
+    for node in nodes:
+        if node.get("name") == node_name:
+            node.setdefault("parameters", {})["jsCode"] = code
+
+
+def apply_gmail_query(nodes: list, query: str) -> None:
+    """Live trigger params are copied over the template; force the inbox query anyway."""
+    for node in nodes:
+        if "gmailTrigger" in node.get("type", "") or str(node.get("name", "")).startswith("Gmail:"):
+            filters = node.setdefault("parameters", {}).setdefault("filters", {})
+            filters["q"] = query
+
+
 def apply_folder_override(nodes: list, folder_id: str) -> None:
     folder_ref = {
         "__rl": True,
@@ -180,12 +203,21 @@ def deploy_one(host: str, key: str, spec: dict, dry_run: bool) -> dict:
             live,
             gmail_options=spec.get("gmail_options"),
         )
+        if spec.get("format_js"):
+            inject_format_js(nodes, spec["format_node"], TEMPLATES / spec["format_js"])
+        if spec.get("gmail_query"):
+            apply_gmail_query(nodes, spec["gmail_query"])
         payload = put_payload(name, nodes, template["connections"])
         if dry_run:
             print(f"DRY PUT {spec['workflow_id']} {name} nodes={len(nodes)}")
             return {"dry_run": True, "id": spec["workflow_id"]}
         result = api_request(host, key, "PUT", f"/api/v1/workflows/{spec['workflow_id']}", payload)
         print(f"PUT OK {result.get('id')} {result.get('name')} updatedAt={result.get('updatedAt')}")
+        try:
+            api_request(host, key, "POST", f"/api/v1/workflows/{spec['workflow_id']}/activate", {})
+            print(f"ACTIVE {spec['workflow_id']}")
+        except RuntimeError as exc:
+            print(f"activate skipped: {exc}")
         return result
 
     # POST mobile
@@ -216,15 +248,22 @@ def sync_export(workflow_id: str, out_path: Path, host: str, key: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--only",
+        help="Comma-separated template filenames (skip the rest, including mobile POST)",
+    )
     args = parser.parse_args()
     host, key = load_env()
 
+    wanted = {s.strip() for s in args.only.split(",")} if args.only else None
     results = []
     for spec in DEPLOYS:
+        if wanted is not None and spec["template"] not in wanted:
+            continue
         print(f"\n--- {spec['template']} ({spec['action']}) ---")
         results.append(deploy_one(host, key, spec, args.dry_run))
 
-    if args.dry_run:
+    if args.dry_run or wanted is not None:
         return 0
 
     # Re-fetch and sync exports

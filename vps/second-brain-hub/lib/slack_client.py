@@ -88,3 +88,73 @@ def resolve_dm_channel(token: str, env: dict | None = None) -> str:
 def send_reminder_dm(token: str, text: str, env: dict | None = None) -> str:
     channel = resolve_dm_channel(token, env=env)
     return post_message(token, channel, text)
+
+
+def api_get(token: str, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    import urllib.parse
+
+    qs = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v is not None})
+    url = f"https://slack.com/api/{method}"
+    if qs:
+        url = f"{url}?{qs}"
+    req = urllib.request.Request(
+        url,
+        headers={"Authorization": f"Bearer {token}"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        raise SlackAPIError(method, f"HTTP {exc.code}: {raw}") from exc
+    except urllib.error.URLError as exc:
+        raise SlackAPIError(method, str(exc)) from exc
+    if not body.get("ok"):
+        raise SlackAPIError(method, body.get("error") or "unknown_error", ok=False)
+    return body
+
+
+def search_messages(token: str, query: str, *, count: int = 20) -> list[dict[str, Any]]:
+    body = api_get(
+        token,
+        "search.messages",
+        {"query": query, "count": str(count), "sort": "timestamp", "sort_dir": "asc"},
+    )
+    return list((body.get("messages") or {}).get("matches") or [])
+
+
+def conversation_replies(token: str, channel: str, ts: str, *, limit: int = 100) -> list[dict[str, Any]]:
+    body = _post(token, "conversations.replies", {"channel": channel, "ts": ts, "limit": limit})
+    return list(body.get("messages") or [])
+
+
+def user_display_name(token: str, user_id: str, cache: dict[str, str] | None = None) -> str:
+    if cache is not None and user_id in cache:
+        return cache[user_id]
+    body = _post(token, "users.info", {"user": user_id})
+    user = body.get("user") or {}
+    profile = user.get("profile") or {}
+    name = (
+        profile.get("real_name")
+        or profile.get("display_name")
+        or user.get("real_name")
+        or user_id
+    )
+    if cache is not None:
+        cache[user_id] = name
+    return name
+
+
+def download_private_file(token: str, url: str, *, max_bytes: int = 5_000_000) -> bytes:
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read(max_bytes + 1)
+    except urllib.error.HTTPError as exc:
+        raise SlackAPIError("files.download", f"HTTP {exc.code}") from exc
+    except urllib.error.URLError as exc:
+        raise SlackAPIError("files.download", str(exc)) from exc
+    if len(data) > max_bytes:
+        raise SlackAPIError("files.download", "too_large")
+    return data

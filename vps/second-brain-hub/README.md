@@ -78,6 +78,8 @@ git push origin main
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
 | `CURSOR_API_KEY` | **LLM triáž** (`triage_llm_run.py`) — user API key z Cursor Dashboard → API Keys |
+| `SLACK_USER_TOKEN` | `xoxp-` pro Slack poll (zmínky, Later, DM). Ne `SLACK_BOT_TOKEN`. |
+| `GOOGLE_GMAIL_OAUTH_JSON` | samostatný OAuth `gmail.compose` — jen `drafts.create` |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
 
@@ -104,6 +106,8 @@ git push origin main
 | `triage_llm_run.py` | 7:00, 14:00, 20:00 | 7:00 |
 | `inbox_inventory.py` | Po 6:55 | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
+| `slack_poll.py` | každých 2 min, 08:00–23:59 | stejně |
+| `assistant_ingest.py` | liché minuty, 08:00–23:59 | stejně |
 
 EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.
 
