@@ -1,6 +1,7 @@
 """Ingest decisions: pair sent mail, draft only when a reply is expected, never add_task."""
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 
@@ -18,7 +19,7 @@ SEND_POLICY_TEXT = """mode: draft_only
 
 PLAYBOOK_TEXT = """# Reply playbook
 
-Krátké zvyklosti pro drafty (ne skill). Když draft upravíš a chceš, aby se to opakovalo, dopiš sem jeden řádek.
+Krátké zvyklosti, které čte agent při návrhu odpovědi. Upravíš tady ve vaultu z Cursoru i z Coworku. Cron soubor nepřepisuje, jen ho založí, když chybí.
 
 - Oslovení: Ahoj, / Hoj, — kolegové tykání, velké T.
 - Konec mailu: Díky + L.
@@ -32,6 +33,11 @@ _REPLY_RE = re.compile(
     r"\?|prosím|prosim|můžeš|muzes|můžete|could you|can you|\bplease\b",
     re.IGNORECASE,
 )
+_EMAIL_ADDR_RE = re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
+_SLACK_ARCHIVE_RE = re.compile(r"archives/([A-Z0-9]+)/")
+_THREAD_TS_RE = re.compile(r"\*\*Thread TS:\*\*\s*(\d+\.\d+)")
+DRAFT_CHANNEL_ID = "C0C3E0JFNA0"
+LUKAS_SLACK_ID = "U014AEZD72S"
 _LUKAS_SPEAKER_RE = re.compile(r"^\*\*Lukáš", re.MULTILINE)
 _DROP_FROM_RE = re.compile(
     r"calendar-noreply|calendar-notification@google\.com|notify@google\.com",
@@ -104,6 +110,72 @@ def last_speaker_is_lukas(body: str) -> bool:
     return bool(re.match(r"^\*\*Lukáš", others[-1]))
 
 
+def reply_address(raw: str) -> str:
+    """Bare email for a Gmail To header. A display name in From breaks drafts.create."""
+    text = (raw or "").replace('\\"', "").replace('"', "").strip()
+    angled = re.search(r"<([^<>\s]+@[^<>\s]+)>", text)
+    if angled:
+        return angled.group(1).strip()
+    match = _EMAIL_ADDR_RE.search(text)
+    return match.group(0) if match else ""
+
+
+def slack_reply_target(item: InboxItem) -> tuple[str, str] | None:
+    """Channel and thread root to reply into. None when the note has neither."""
+    channel = (item.fm.get("channel_id") or "").strip()
+    thread_ts = (item.fm.get("thread_ts") or "").strip()
+    if not channel:
+        found = _SLACK_ARCHIVE_RE.search(item.body)
+        channel = found.group(1) if found else ""
+    if not thread_ts:
+        found = _THREAD_TS_RE.search(item.body)
+        thread_ts = found.group(1) if found else ""
+    if not channel or not thread_ts or channel == DRAFT_CHANNEL_ID:
+        return None
+    return channel, thread_ts
+
+
+def slack_draft_skip_reason(item: InboxItem) -> str:
+    """Why this Slack note must not become a reply card. Empty means draft it."""
+    if not item.rel.startswith("01-INBOX/slack"):
+        return ""
+    if (item.fm.get("kind") or "") == "saved_later":
+        return "saved_later"
+    if "vlastní zpráva" in item.body[:1200]:
+        return "own_message"
+    if slack_reply_target(item) is None:
+        return "no_target"
+    return ""
+
+
+def slack_reply_blocks(proposal: str, channel: str, thread_ts: str, permalink: str) -> list[dict]:
+    target = json.dumps({"c": channel, "t": thread_ts}, separators=(",", ":"))
+    context = permalink or f"{channel} {thread_ts}"
+    return [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": f"*Návrh odpovědi*\n{context}"},
+        },
+        {
+            "type": "section",
+            "block_id": "reply_body",
+            "text": {"type": "mrkdwn", "text": proposal[:2900]},
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "action_id": "slack_reply_send",
+                    "style": "primary",
+                    "text": {"type": "plain_text", "text": "Odpověz"},
+                    "value": target,
+                }
+            ],
+        },
+    ]
+
+
 def expects_reply(item: InboxItem) -> bool:
     kind = item.fm.get("kind") or item.fm.get("source") or ""
     if kind in {"sent", "sembly"} or item.rel.startswith("01-INBOX/sembly"):
@@ -169,7 +241,11 @@ def plan_actions(items: list[InboxItem]) -> list[Action]:
             actions.append(Action("skip", item, "no_reply_expected"))
             continue
         if item.rel.startswith("01-INBOX/slack"):
-            actions.append(Action("draft_slack", item, "slack_reply"))
+            skip = slack_draft_skip_reason(item)
+            if skip:
+                actions.append(Action("skip", item, skip))
+            else:
+                actions.append(Action("draft_slack", item, "slack_reply"))
         elif item.rel.startswith("01-INBOX/email"):
             actions.append(Action("draft_email", item, "email_reply"))
         else:

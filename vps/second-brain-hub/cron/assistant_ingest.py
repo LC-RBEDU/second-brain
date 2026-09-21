@@ -13,6 +13,7 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from assistant_ingest import (  # noqa: E402
+    DRAFT_CHANNEL_ID,
     INBOX_DIRS,
     INGEST_STATE_REL,
     PENDING_REL,
@@ -22,18 +23,20 @@ from assistant_ingest import (  # noqa: E402
     SEND_POLICY_TEXT,
     Action,
     InboxItem,
-    draft_text,
     email_pointer,
     parse_frontmatter,
     plan_actions,
+    reply_address,
     set_status,
     slack_pointer,
+    slack_reply_blocks,
+    slack_reply_target,
 )
 from assistant_window import in_active_window  # noqa: E402
 from drive_io import DriveNotFoundError, DriveVault, credentials_from_env  # noqa: E402
 from gmail_drafts import build_reply_body, create_reply_draft, credentials_from_env as gmail_creds  # noqa: E402
-from run_lock import try_lock  # noqa: E402
-from slack_client import SlackAPIError, send_reminder_dm  # noqa: E402
+from reply_compose import compose_reply  # noqa: E402
+from slack_client import SlackAPIError, post_message, send_reminder_dm  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 LOCK = "/tmp/second-brain-assistant-ingest.lock"
@@ -74,7 +77,7 @@ def _item_key(item: InboxItem) -> str:
     return f"{item.rel}|{stamp}|{item.fm.get('status', '')}"
 
 
-def _apply(vault: DriveVault, action: Action, token: str, creds) -> str:
+def _apply(vault: DriveVault, action: Action, token: str, creds, playbook: str) -> str:
     item = action.item
     if action.op == "skip":
         return "skip"
@@ -82,35 +85,66 @@ def _apply(vault: DriveVault, action: Action, token: str, creds) -> str:
         text, meta = vault.read_text(item.rel)
         vault.write_text(item.rel, set_status(text, "handled_by_user"), expect_mtime=meta.modified_time)
         return "handle"
-    text = draft_text(item)
+    if action.op not in {"draft_email", "draft_slack"}:
+        return "deep"
+    text = compose_reply(item, playbook)
+    if not text:
+        raise RuntimeError(f"reply agent returned empty {item.rel}")
     stamp = datetime.now(TZ).strftime("%Y-%m-%d-%H%M")
     slug = Path(item.rel).stem[:60]
     if action.op == "draft_email":
-        draft_id = ""
-        if creds is not None:
-            subject = item.fm.get("subject") or "bez předmětu"
-            to = item.fm.get("from") or ""
-            body = build_reply_body(
-                to=to,
-                subject=subject,
-                body=text,
-                thread_id=item.fm.get("gmail_thread_id") or "",
-                in_reply_to=item.fm.get("message_id") or "",
-            )
-            try:
-                draft_id = create_reply_draft(creds, body)
-            except Exception as exc:  # noqa: BLE001
-                print(f"assistant_ingest: gmail draft failed {item.rel}: {exc}")
-        elif creds is None:
-            print("assistant_ingest: GOOGLE_GMAIL_OAUTH_JSON missing — pointer only")
+        to = reply_address(item.fm.get("from") or "")
+        if not to:
+            print(f"assistant_ingest: no reply address {item.rel}")
+            return "skip-no-address"
+        subject = item.fm.get("subject") or "bez předmětu"
+        body = build_reply_body(
+            to=to,
+            subject=subject,
+            body=text,
+            thread_id=item.fm.get("gmail_thread_id") or "",
+            in_reply_to=item.fm.get("message_id") or "",
+        )
+        if creds is None:
+            raise RuntimeError("GOOGLE_GMAIL_OAUTH_JSON missing")
+        try:
+            draft_id = create_reply_draft(creds, body)
+        except Exception as exc:  # noqa: BLE001
+            print(f"assistant_ingest: gmail draft failed {item.rel}: {exc}")
+            raise
+        if not draft_id:
+            raise RuntimeError(f"gmail draft id empty {item.rel}")
         rel = f"01-INBOX/drafts/{stamp}-{slug}.md"
         vault.write_text(rel, email_pointer(item, text, draft_id))
         return rel
     if action.op == "draft_slack":
+        target = slack_reply_target(item)
+        if target is None:
+            return "skip-no-target"
+        channel, thread_ts = target
+        bot = (os.environ.get("SLACK_BOT_TOKEN") or "").strip()
+        draft_channel = (os.environ.get("SLACK_DRAFT_CHANNEL_ID") or DRAFT_CHANNEL_ID).strip()
+        if not bot:
+            raise RuntimeError("SLACK_BOT_TOKEN missing")
+        permalink = ""
+        for line in item.body.splitlines():
+            if line.startswith("**Vlákno:**"):
+                permalink = line.split("**Vlákno:**", 1)[1].strip()
+                break
+        blocks = slack_reply_blocks(text, channel, thread_ts, permalink)
+        post_message(bot, draft_channel, text, blocks=blocks)
         rel = f"01-INBOX/drafts/{stamp}-{slug}.md"
         vault.write_text(rel, slack_pointer(item, text))
         return rel
     return "deep"
+
+
+def _playbook(vault: DriveVault) -> str:
+    try:
+        text, _ = vault.read_text(PLAYBOOK_REL)
+    except Exception:
+        return PLAYBOOK_TEXT
+    return text or PLAYBOOK_TEXT
 
 
 def _ping(token: str, lines: list[str]) -> None:
@@ -179,12 +213,12 @@ def _run(now: datetime) -> None:
     summary = ["# Assistant inbox", "", f"updated: {now.isoformat()}", ""]
     for action in fresh:
         try:
-            result = _apply(vault, action, token, gcreds)
+            result = _apply(vault, action, token, gcreds, _playbook(vault))
         except Exception as exc:  # noqa: BLE001
             print(f"assistant_ingest: {action.op} {action.item.rel}: {exc}")
             continue
         seen.add(_item_key(action.item) + "|" + action.op)
-        if action.op in {"draft_email", "draft_slack", "deep"}:
+        if action.op in {"draft_email", "deep"}:
             ping_lines.append(f"{action.op}: {Path(action.item.rel).name}")
         summary.append(f"- {action.op} `{action.item.rel}` ({action.reason}) → {result}")
     if fresh:

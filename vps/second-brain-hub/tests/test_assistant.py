@@ -162,3 +162,33 @@ def test_gmail_body_threads_and_module_does_not_send():
     assert "drafts().send" not in source
     assert "messages().send" not in source
     assert "draft_only" in ing.SEND_POLICY_TEXT
+
+
+def test_reply_address_strips_display_name():
+    raw = '"\\"Lukáš Dzuroška\\" <lukas.dzuroska@redbuttonedu.cz>"'
+    assert ing.reply_address(raw) == "lukas.dzuroska@redbuttonedu.cz"
+
+
+def test_saved_later_is_not_a_slack_reply():
+    item = ing.InboxItem(
+        rel="01-INBOX/slack/later.md",
+        fm={"kind": "saved_later", "channel_id": "C1", "thread_ts": "1.2"},
+        body="můžeš se na to podívat?",
+    )
+    actions = ing.plan_actions([item])
+    assert actions[0].op == "skip"
+    assert actions[0].reason == "saved_later"
+
+
+def test_compose_reply_uses_runner_not_a_stub():
+    import reply_compose
+
+    item = ing.InboxItem(
+        rel="01-INBOX/email/a.md",
+        fm={"from": "a@x.cz", "subject": "otázka"},
+        body="Můžeš to poslat?",
+    )
+    text = reply_compose.compose_reply(item, "buď stručný", run=lambda prompt: "Ahoj,\n\nPošlu to.\n\nDíky\nL.")
+    assert "Pošlu to." in text
+    assert reply_compose.compose_reply(item, "", run=lambda prompt: "krátké") == ""
+

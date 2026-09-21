@@ -20,7 +20,7 @@ Hub už smí založit Gmail draft a pointer. Tyhle kroky jsou pro ruční úprav
 ## Výstup
 
 - Mail: uprav Gmail draft (stejné vlákno). Do pointeru nic nového, pokud text v Gmailu stačí.
-- Slack: uprav `## Návrh` v `01-INBOX/drafts/`. Uživatel to pošle sám. API drafty ve Slacku nejsou.
+- Slack: text návrhu je v kartě v kanálu draftů. Tlačítko Odpověz ho odešle. `## Návrh` v pointeru je kopie. **Neodesílej** sám, pokud o to Lukáš výslovně neřekne.
 - Externí účastník zápisu schůzky: jen Gmail draft.
 
 ## Po úpravě

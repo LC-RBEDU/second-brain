@@ -59,12 +59,25 @@ def open_dm_channel(token: str, user_id: str) -> str:
     return channel
 
 
-def post_message(token: str, channel: str, text: str) -> str:
-    body = _post(
-        token,
-        "chat.postMessage",
-        {"channel": channel, "text": text, "unfurl_links": False, "unfurl_media": False},
-    )
+def post_message(
+    token: str,
+    channel: str,
+    text: str,
+    *,
+    blocks: list[dict[str, Any]] | None = None,
+    thread_ts: str = "",
+) -> str:
+    payload: dict[str, Any] = {
+        "channel": channel,
+        "text": text,
+        "unfurl_links": False,
+        "unfurl_media": False,
+    }
+    if blocks:
+        payload["blocks"] = blocks
+    if thread_ts:
+        payload["thread_ts"] = thread_ts
+    body = _post(token, "chat.postMessage", payload)
     ts = body.get("ts")
     if not ts:
         raise SlackAPIError("chat.postMessage", "missing ts")
