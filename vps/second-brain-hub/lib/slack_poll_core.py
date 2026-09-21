@@ -13,7 +13,9 @@ LUKAS_USER_ID = "U014AEZD72S"
 STATE_REL = "00-System/slack-poll-state.json"
 INBOX_DIR = "01-INBOX/slack"
 LOOKBACK = timedelta(hours=2)
+REPLY_LOOKBACK = timedelta(hours=8)
 MAX_NEW_THREADS = 8
+MAX_REPLY_THREADS = 3
 
 _SLUG_RE = re.compile(r"[^a-z0-9_-]+")
 _PERMALINK_THREAD_RE = re.compile(r"[?&]thread_ts=(\d+\.\d+)")
@@ -132,6 +134,47 @@ def select_threads(
     # Newest first so MAX_NEW_THREADS does not stall on old DMs after a quiet period.
     ordered = sorted(best.values(), key=lambda h: ts_float(h.latest_ts), reverse=True)
     return ordered[:MAX_NEW_THREADS]
+
+
+def reply_seen_key(channel_id: str, thread_ts: str, latest_ts: str) -> str:
+    return "slack-live|" + thread_key(channel_id, thread_ts) + "|" + latest_ts
+
+
+def select_reply_hits(
+    grouped: dict[str, list[dict[str, Any]]],
+    *,
+    seen_keys: set[str],
+    now: datetime,
+    exclude_channels: set[str] | None = None,
+    archived_keys: set[str] | None = None,
+) -> list[ThreadHit]:
+    """Mentions and 1:1 DMs that still need a reply card. Does not write an archive."""
+    floor = now.timestamp() - REPLY_LOOKBACK.total_seconds()
+    exclude = exclude_channels or set()
+    archived = archived_keys or set()
+    best: dict[str, ThreadHit] = {}
+    for kind, matches in grouped.items():
+        for match in matches:
+            if str(match.get("user") or "") == LUKAS_USER_ID:
+                continue
+            if match.get("bot_id") or match.get("subtype") == "bot_message":
+                continue
+            hit = hit_from_match(match, kind)
+            if hit is None or ts_float(hit.latest_ts) <= floor:
+                continue
+            if hit.channel_id in exclude:
+                continue
+            if kind == "dm" and not hit.channel_id.startswith(("D", "U")):
+                continue
+            if thread_key(hit.channel_id, hit.thread_ts) in archived:
+                continue
+            if reply_seen_key(hit.channel_id, hit.thread_ts, hit.latest_ts) in seen_keys:
+                continue
+            current = best.get(thread_key(hit.channel_id, hit.thread_ts))
+            if current is None or ts_float(hit.latest_ts) > ts_float(current.latest_ts):
+                best[thread_key(hit.channel_id, hit.thread_ts)] = hit
+    ordered = sorted(best.values(), key=lambda h: ts_float(h.latest_ts), reverse=True)
+    return ordered[:MAX_REPLY_THREADS]
 
 
 def inbox_filename(when: datetime, channel_name: str, thread_ts: str) -> str:

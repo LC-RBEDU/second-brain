@@ -70,6 +70,55 @@ def test_selects_full_thread_not_seen_again():
     assert again == []
 
 
+def test_reply_hits_keep_mentions_and_real_dms():
+    now = datetime(2026, 9, 21, 15, tzinfo=TZ)
+    recent = f"{now.timestamp():.6f}"
+    hits = poll.select_reply_hits(
+        {
+            "mention": [
+                {
+                    "channel": {"id": "C1", "name": "finance"},
+                    "ts": recent,
+                    "user": "UOTHER",
+                    "text": "<@U014AEZD72S> chybí Belanová",
+                }
+            ],
+            "dm": [
+                {"channel": {"id": "D2", "name": "veronika"}, "ts": recent, "user": "UOTHER", "text": "ahoj"},
+                {"channel": {"id": "C9", "name": "not-a-dm"}, "ts": recent, "user": "UOTHER", "text": "kanál"},
+                {"channel": {"id": "D3", "name": "me"}, "ts": recent, "user": "U014AEZD72S", "text": "moje"},
+            ],
+        },
+        seen_keys=set(),
+        now=now,
+        exclude_channels={"C0C3E0JFNA0"},
+    )
+    keys = {(h.channel_id, h.kind) for h in hits}
+    assert ("C1", "mention") in keys
+    assert ("D2", "dm") in keys
+    assert all(h.channel_id != "C9" for h in hits)
+    assert all(h.channel_id != "D3" for h in hits)
+    again = poll.select_reply_hits(
+        {
+            "mention": [
+                {
+                    "channel": {"id": "C1", "name": "finance"},
+                    "ts": recent,
+                    "user": "UOTHER",
+                    "text": "znovu",
+                }
+            ],
+            "dm": [
+                {"channel": {"id": "U9", "name": "veronika"}, "ts": recent, "user": "UOTHER", "text": "dm"},
+            ],
+        },
+        seen_keys={poll.reply_seen_key("C1", recent, recent)},
+        now=now,
+        archived_keys={poll.thread_key("U9", recent)},
+    )
+    assert again == []
+
+
 def test_select_threads_newest_first():
     state = poll.bootstrap_state(datetime(2026, 9, 1, 9, tzinfo=TZ))
     state.watermark_ts = "100"

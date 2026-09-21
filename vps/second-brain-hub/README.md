@@ -111,7 +111,7 @@ git push origin main
 | `inbox_inventory.py` | Po 6:55 | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
 | `slack_poll.py` | každých 2 min, 08:00–23:59, jen Later (`is:saved`) | stejně |
-| `assistant_ingest.py` | liché minuty, 08:00–23:59 | stejně |
+| `assistant_ingest.py` | liché minuty, 08:00–23:59. Gmail drafty z inboxu. Slack karty pro zmínky a soukromé zprávy z posledních 8 h, bez druhého archivu | stejně |
 
 EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.
 

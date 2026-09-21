@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -40,7 +41,19 @@ from drive_io import DriveNotFoundError, DriveVault, credentials_from_env  # noq
 from gmail_drafts import build_reply_body, create_reply_draft, credentials_from_env as gmail_creds  # noqa: E402
 from reply_compose import compose_reply  # noqa: E402
 from run_lock import try_lock  # noqa: E402
-from slack_client import SlackAPIError, send_reminder_dm  # noqa: E402
+from slack_client import (  # noqa: E402
+    SlackAPIError,
+    conversation_replies,
+    open_dm_channel,
+    search_messages,
+    send_reminder_dm,
+)
+from slack_poll_core import (  # noqa: E402
+    LUKAS_USER_ID,
+    reply_seen_key,
+    select_reply_hits,
+    thread_key,
+)
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 LOCK = "/tmp/second-brain-assistant-ingest.lock"
@@ -245,11 +258,106 @@ def _run(now: datetime) -> None:
     if fresh:
         vault.write_text(PENDING_REL, "\n".join(summary) + "\n")
         _ping(token, ping_lines)
+    if token:
+        _draft_live_slack(vault, token, seen, now, items)
     vault.write_json(
         INGEST_STATE_REL,
         {"bootstrapped": True, "seen": sorted(seen)[-4000:]},
     )
     print(f"assistant_ingest: actions={len(fresh)} scanned={len(items)}")
+
+
+def _archived_thread_keys(items: list[InboxItem]) -> set[str]:
+    keys: set[str] = set()
+    for item in items:
+        if "/slack/" not in item.rel:
+            continue
+        channel = str(item.fm.get("channel_id") or "").strip()
+        thread_ts = str(item.fm.get("thread_ts") or "").strip()
+        if not channel:
+            found = re.search(r"archives/([A-Z0-9]+)/", item.body)
+            channel = found.group(1) if found else ""
+        if not thread_ts:
+            found = re.search(r"\*\*Thread TS:\*\*\s*`?([0-9.]+)", item.body)
+            thread_ts = found.group(1) if found else ""
+        if channel and thread_ts:
+            keys.add(thread_key(channel, thread_ts))
+    return keys
+
+
+def _draft_live_slack(
+    vault: DriveVault,
+    token: str,
+    seen: set[str],
+    now: datetime,
+    items: list[InboxItem],
+) -> None:
+    """Reply cards for mentions and 1:1 DMs. The Later poll stays the archive."""
+    grouped: dict[str, list] = {}
+    for kind, query in (("mention", f"<@{LUKAS_USER_ID}>"), ("dm", "is:dm")):
+        try:
+            grouped[kind] = search_messages(token, query, count=100)
+        except SlackAPIError as exc:
+            print(f"assistant_ingest: slack search {kind}: {exc}")
+            grouped[kind] = []
+    hits = select_reply_hits(
+        grouped,
+        seen_keys=seen,
+        now=now,
+        exclude_channels={DRAFT_CHANNEL_ID},
+        archived_keys=_archived_thread_keys(items),
+    )
+    playbook = _playbook(vault)
+    posted: set[str] = set()
+    for hit in hits:
+        key = reply_seen_key(hit.channel_id, hit.thread_ts, hit.latest_ts)
+        channel = hit.channel_id
+        if channel.startswith("U"):
+            try:
+                channel = open_dm_channel(token, channel)
+            except SlackAPIError as exc:
+                print(f"assistant_ingest: slack dm {hit.channel_id}: {exc}")
+                continue
+        ident = channel + "|" + hit.thread_ts
+        if ident in posted:
+            seen.add(key)
+            continue
+        try:
+            messages = conversation_replies(token, channel, hit.thread_ts)
+        except SlackAPIError as exc:
+            print(f"assistant_ingest: slack replies {channel}: {exc}")
+            continue
+        last_user = ""
+        last_bot = False
+        lines: list[str] = []
+        for msg in messages:
+            if msg.get("subtype") in {"channel_join", "channel_leave", "bot_add", "bot_message"}:
+                continue
+            last_user = str(msg.get("user") or "")
+            last_bot = bool(msg.get("bot_id")) or not last_user
+            text = str(msg.get("text") or "").strip()
+            if text:
+                lines.append(text)
+        if not lines or last_bot or last_user == LUKAS_USER_ID:
+            seen.add(key)
+            continue
+        item = InboxItem(
+            rel=f"01-INBOX/slack/{channel}_{hit.thread_ts}.md",
+            fm={"kind": hit.kind, "channel_id": channel, "thread_ts": hit.thread_ts},
+            body="\n\n".join(lines[-12:]),
+        )
+        try:
+            text = compose_reply(item, playbook)
+            if not text:
+                raise RuntimeError("reply agent returned empty")
+            payload = slack_draft_payload(text, channel, hit.thread_ts, hit.permalink)
+            _post_n8n_slack_draft(payload)
+        except Exception as exc:  # noqa: BLE001
+            print(f"assistant_ingest: slack reply {hit.channel_name}: {exc}")
+            continue
+        posted.add(ident)
+        seen.add(key)
+        print(f"assistant_ingest: slack reply {hit.channel_name} {hit.thread_ts}")
 
 
 if __name__ == "__main__":
