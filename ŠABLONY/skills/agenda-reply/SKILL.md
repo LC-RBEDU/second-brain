@@ -2,8 +2,8 @@
 name: agenda-reply
 description: >-
   Návrh odpovědi na inbound e-mail nebo Slack ve vaultu. Gmail = existující
-  draft (neposílat). Slack = pointer v 01-INBOX/drafts plus text, který
-  uživatel odešle sám. Triggers: odpověz, draft odpovědi, agenda-reply.
+  draft (neposílat). Slack = karta v kanálu návrhů, tlačítko Odpověz
+  odešle text. Triggers: odpověz, draft odpovědi, agenda-reply.
 ---
 
 # Agenda reply

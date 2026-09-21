@@ -78,10 +78,11 @@ git push origin main
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
 | `CURSOR_API_KEY` | text odpovědi v `assistant_ingest` (`cursor-agent`). Triáž cron zůstává vypnutá. |
-| `SLACK_USER_TOKEN` | `xoxp-` — Later poll a odeslání odpovědi po tlačítku Odpověz |
-| `SLACK_BOT_TOKEN` | `xoxb-` — karta návrhu do `SLACK_DRAFT_CHANNEL_ID` |
+| `SLACK_USER_TOKEN` | `xoxp-` — Later poll. Odpověď po tlačítku posílá n8n tímhle tokenem |
+| `SLACK_BOT_TOKEN` | `xoxb-` — připomínky. Karta Odpověz jde přes n8n credential „Slack - Lukáš - RB EDU“ |
 | `SLACK_DRAFT_CHANNEL_ID` | kanál návrhů, default `C0C3E0JFNA0` |
-| `SLACK_SIGNING_SECRET` | ověření kliknutí na Odpověz (`/slack/interactions`) |
+| `N8N_SLACK_REPLY_WEBHOOK` | `https://n8n.redbuttonedu.cz/webhook/slack-reply-draft` |
+| `N8N_SLACK_REPLY_TOKEN` | hlavička `X-Reply-Token` pro ten webhook |
 | `GOOGLE_GMAIL_OAUTH_JSON` | samostatný OAuth `gmail.compose` — jen `drafts.create` |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.

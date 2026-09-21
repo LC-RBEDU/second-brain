@@ -2,8 +2,11 @@
 """Ingest INBOX every 1–2 min (08:00–24:00). Pending + drafts. Never add_task."""
 from __future__ import annotations
 
+import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -28,15 +31,15 @@ from assistant_ingest import (  # noqa: E402
     plan_actions,
     reply_address,
     set_status,
+    slack_draft_payload,
     slack_pointer,
-    slack_reply_blocks,
     slack_reply_target,
 )
 from assistant_window import in_active_window  # noqa: E402
 from drive_io import DriveNotFoundError, DriveVault, credentials_from_env  # noqa: E402
 from gmail_drafts import build_reply_body, create_reply_draft, credentials_from_env as gmail_creds  # noqa: E402
 from reply_compose import compose_reply  # noqa: E402
-from slack_client import SlackAPIError, post_message, send_reminder_dm  # noqa: E402
+from slack_client import SlackAPIError, send_reminder_dm  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 LOCK = "/tmp/second-brain-assistant-ingest.lock"
@@ -122,21 +125,38 @@ def _apply(vault: DriveVault, action: Action, token: str, creds, playbook: str) 
         if target is None:
             return "skip-no-target"
         channel, thread_ts = target
-        bot = (os.environ.get("SLACK_BOT_TOKEN") or "").strip()
-        draft_channel = (os.environ.get("SLACK_DRAFT_CHANNEL_ID") or DRAFT_CHANNEL_ID).strip()
-        if not bot:
-            raise RuntimeError("SLACK_BOT_TOKEN missing")
         permalink = ""
         for line in item.body.splitlines():
             if line.startswith("**Vlákno:**"):
                 permalink = line.split("**Vlákno:**", 1)[1].strip()
                 break
-        blocks = slack_reply_blocks(text, channel, thread_ts, permalink)
-        post_message(bot, draft_channel, text, blocks=blocks)
+        draft_channel = (os.environ.get("SLACK_DRAFT_CHANNEL_ID") or DRAFT_CHANNEL_ID).strip()
+        payload = slack_draft_payload(text, channel, thread_ts, permalink)
+        payload["draft_channel"] = draft_channel
+        _post_n8n_slack_draft(payload)
         rel = f"01-INBOX/drafts/{stamp}-{slug}.md"
         vault.write_text(rel, slack_pointer(item, text))
         return rel
     return "deep"
+
+
+def _post_n8n_slack_draft(payload: dict) -> None:
+    url = (os.environ.get("N8N_SLACK_REPLY_WEBHOOK") or "").strip()
+    token = (os.environ.get("N8N_SLACK_REPLY_TOKEN") or "").strip()
+    if not url or not token:
+        raise RuntimeError("N8N_SLACK_REPLY_WEBHOOK missing")
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={"Content-Type": "application/json", "X-Reply-Token": token},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            if resp.status >= 300:
+                raise RuntimeError(f"n8n slack draft HTTP {resp.status}")
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"n8n slack draft HTTP {exc.code}") from exc
 
 
 def _playbook(vault: DriveVault) -> str:

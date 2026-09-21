@@ -148,6 +148,16 @@ def slack_draft_skip_reason(item: InboxItem) -> str:
     return ""
 
 
+def slack_draft_payload(text: str, channel: str, thread_ts: str, permalink: str) -> dict:
+    return {
+        "text": text,
+        "channel": channel,
+        "thread_ts": thread_ts,
+        "permalink": permalink,
+        "draft_channel": DRAFT_CHANNEL_ID,
+    }
+
+
 def slack_reply_blocks(proposal: str, channel: str, thread_ts: str, permalink: str) -> list[dict]:
     target = json.dumps({"c": channel, "t": thread_ts}, separators=(",", ":"))
     context = permalink or f"{channel} {thread_ts}"

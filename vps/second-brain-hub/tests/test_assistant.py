@@ -164,6 +164,12 @@ def test_gmail_body_threads_and_module_does_not_send():
     assert "draft_only" in ing.SEND_POLICY_TEXT
 
 
+def test_slack_draft_payload_keeps_thread_ts_string():
+    payload = ing.slack_draft_payload("Ahoj, pošlu to.", "C1", "1789979263.882229", "https://slack/x")
+    assert payload["thread_ts"] == "1789979263.882229"
+    assert payload["draft_channel"] == "C0C3E0JFNA0"
+
+
 def test_reply_address_strips_display_name():
     raw = '"\\"Lukáš Dzuroška\\" <lukas.dzuroska@redbuttonedu.cz>"'
     assert ing.reply_address(raw) == "lukas.dzuroska@redbuttonedu.cz"
