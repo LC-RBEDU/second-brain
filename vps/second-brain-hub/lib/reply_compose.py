@@ -41,7 +41,7 @@ def _cursor_agent(prompt: str) -> str:
         return ""
     try:
         proc = subprocess.run(
-            [agent, "--model", "auto", "--print", "--output-format", "text", prompt],
+            [agent, "--trust", "--model", "auto", "--print", "--output-format", "text", prompt],
             capture_output=True,
             text=True,
             timeout=120,
