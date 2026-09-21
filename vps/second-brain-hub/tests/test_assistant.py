@@ -70,6 +70,29 @@ def test_selects_full_thread_not_seen_again():
     assert again == []
 
 
+def test_select_threads_newest_first():
+    state = poll.bootstrap_state(datetime(2026, 9, 1, 9, tzinfo=TZ))
+    state.watermark_ts = "100"
+    older = {
+        "channel": {"id": "C1", "name": "a"},
+        "ts": "150.0",
+        "thread_ts": "150.0",
+        "text": "old",
+    }
+    newer = {
+        "channel": {"id": "C2", "name": "b"},
+        "ts": "300.0",
+        "thread_ts": "300.0",
+        "text": "new",
+    }
+    hits = poll.select_threads(
+        {"dm": [older, newer]},
+        state,
+        now=datetime(2026, 9, 20, 9, tzinfo=TZ),
+    )
+    assert [h.latest_ts for h in hits] == ["300.0", "150.0"]
+
+
 def test_sent_pair_closes_inbound_and_skips_draft():
     inbound = ing.InboxItem(
         rel="01-INBOX/email/a.md",

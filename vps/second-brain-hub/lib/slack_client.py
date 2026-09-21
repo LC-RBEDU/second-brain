@@ -116,16 +116,23 @@ def api_get(token: str, method: str, params: dict[str, Any] | None = None) -> di
 
 
 def search_messages(token: str, query: str, *, count: int = 20) -> list[dict[str, Any]]:
+    # desc = newest first. asc returned 2020–2024 DMs/Later and the watermark
+    # floor then dropped every hit after bootstrap.
     body = api_get(
         token,
         "search.messages",
-        {"query": query, "count": str(count), "sort": "timestamp", "sort_dir": "asc"},
+        {"query": query, "count": str(count), "sort": "timestamp", "sort_dir": "desc"},
     )
     return list((body.get("messages") or {}).get("matches") or [])
 
 
 def conversation_replies(token: str, channel: str, ts: str, *, limit: int = 100) -> list[dict[str, Any]]:
-    body = _post(token, "conversations.replies", {"channel": channel, "ts": ts, "limit": limit})
+    # GET — JSON POST returns invalid_arguments for this method.
+    body = api_get(
+        token,
+        "conversations.replies",
+        {"channel": channel, "ts": ts, "limit": str(limit)},
+    )
     return list(body.get("messages") or [])
 
 

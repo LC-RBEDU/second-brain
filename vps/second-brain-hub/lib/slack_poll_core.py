@@ -124,7 +124,8 @@ def select_threads(
                 if current and current.kind != "saved_later" and hit.kind == "saved_later":
                     hit.kind = current.kind
                 best[key] = hit
-    ordered = sorted(best.values(), key=lambda h: ts_float(h.latest_ts))
+    # Newest first so MAX_NEW_THREADS does not stall on old DMs after a quiet period.
+    ordered = sorted(best.values(), key=lambda h: ts_float(h.latest_ts), reverse=True)
     return ordered[:MAX_NEW_THREADS]
 
 
