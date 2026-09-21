@@ -39,6 +39,7 @@ from assistant_window import in_active_window  # noqa: E402
 from drive_io import DriveNotFoundError, DriveVault, credentials_from_env  # noqa: E402
 from gmail_drafts import build_reply_body, create_reply_draft, credentials_from_env as gmail_creds  # noqa: E402
 from reply_compose import compose_reply  # noqa: E402
+from run_lock import try_lock  # noqa: E402
 from slack_client import SlackAPIError, send_reminder_dm  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
