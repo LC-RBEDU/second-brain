@@ -47,9 +47,11 @@ from slack_client import (  # noqa: E402
     open_dm_channel,
     search_messages,
     send_reminder_dm,
+    user_is_bot,
 )
 from slack_poll_core import (  # noqa: E402
     LUKAS_USER_ID,
+    latest_message_addresses_lukas,
     reply_seen_key,
     select_reply_hits,
     thread_key,
@@ -250,6 +252,8 @@ def _run(now: datetime) -> None:
             result = _apply(vault, action, token, gcreds, _playbook(vault))
         except Exception as exc:  # noqa: BLE001
             print(f"assistant_ingest: {action.op} {action.item.rel}: {exc}")
+            if "reply agent returned empty" in str(exc):
+                seen.add(_item_key(action.item) + "|" + action.op)
             continue
         seen.add(_item_key(action.item) + "|" + action.op)
         if action.op in {"draft_email", "deep"}:
@@ -334,17 +338,25 @@ def _draft_live_slack(
             if msg.get("subtype") in {"channel_join", "channel_leave", "bot_add", "bot_message"}:
                 continue
             last_user = str(msg.get("user") or "")
-            last_bot = bool(msg.get("bot_id")) or not last_user
+            last_bot = bool(msg.get("bot_id") or msg.get("bot_profile")) or not last_user
             text = str(msg.get("text") or "").strip()
             if text:
                 lines.append(text)
-        if not lines or last_bot or last_user == LUKAS_USER_ID:
+        if not lines or last_user == LUKAS_USER_ID:
             seen.add(key)
+            continue
+        if last_bot or user_is_bot(token, last_user):
+            seen.add(key)
+            print(f"assistant_ingest: slack skip {hit.channel_name} bot")
+            continue
+        if hit.kind == "mention" and not latest_message_addresses_lukas(lines[-1]):
+            seen.add(key)
+            print(f"assistant_ingest: slack skip {hit.channel_name} stale-mention")
             continue
         item = InboxItem(
             rel=f"01-INBOX/slack/{channel}_{hit.thread_ts}.md",
             fm={"kind": hit.kind, "channel_id": channel, "thread_ts": hit.thread_ts},
-            body="\n\n".join(lines[-12:]),
+            body="\n\n".join(lines[-4:])[:2500],
         )
         try:
             text = compose_reply(item, playbook)

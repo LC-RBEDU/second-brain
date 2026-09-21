@@ -149,6 +149,19 @@ def conversation_replies(token: str, channel: str, ts: str, *, limit: int = 100)
     return list(body.get("messages") or [])
 
 
+def user_is_bot(token: str, user_id: str, cache: dict[str, bool] | None = None) -> bool:
+    if not user_id:
+        return True
+    if cache is not None and user_id in cache:
+        return cache[user_id]
+    body = _post(token, "users.info", {"user": user_id})
+    user = body.get("user") or {}
+    is_bot = bool(user.get("is_bot") or user.get("is_app_user"))
+    if cache is not None:
+        cache[user_id] = is_bot
+    return is_bot
+
+
 def user_display_name(token: str, user_id: str, cache: dict[str, str] | None = None) -> str:
     if cache is not None and user_id in cache:
         return cache[user_id]

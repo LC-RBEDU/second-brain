@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 
 from assistant_ingest import InboxItem
+
+AGENT_FLAGS = ["--trust", "--mode", "ask", "--model", "auto", "--print", "--output-format", "text"]
 
 _PROMPT = """Napiš odpověď za Lukáše Cypru. Výstup je jen text zprávy, nic kolem.
 
@@ -33,27 +36,41 @@ def _strip_fences(text: str) -> str:
     return "\n".join(lines).strip()
 
 
+def _kill_group(proc: subprocess.Popen) -> None:
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        proc.kill()
+    proc.wait(timeout=5)
+
+
 def _cursor_agent(prompt: str) -> str:
     api_key = (os.environ.get("CURSOR_API_KEY") or "").strip()
     agent = shutil.which("cursor-agent") or shutil.which("agent")
     if not api_key or not agent:
         print("reply_compose: CURSOR_API_KEY or cursor-agent missing")
         return ""
+    proc = subprocess.Popen(
+        [agent, *AGENT_FLAGS, prompt],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+        env={**os.environ, "CURSOR_API_KEY": api_key},
+    )
     try:
-        proc = subprocess.run(
-            [agent, "--trust", "--model", "auto", "--print", "--output-format", "text", prompt],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env={**os.environ, "CURSOR_API_KEY": api_key},
-        )
-    except (subprocess.TimeoutExpired, OSError) as exc:
+        out, err = proc.communicate(timeout=45)
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        print("reply_compose: agent timed out")
+        return ""
+    except OSError as exc:
         print(f"reply_compose: agent failed: {exc}")
         return ""
     if proc.returncode != 0:
-        print(f"reply_compose: agent exit {proc.returncode}: {proc.stderr[:300]}")
+        print(f"reply_compose: agent exit {proc.returncode}: {(err or '')[:300]}")
         return ""
-    return proc.stdout or ""
+    return out or ""
 
 
 def compose_reply(item: InboxItem, playbook: str, *, run=None) -> str:
@@ -63,7 +80,7 @@ def compose_reply(item: InboxItem, playbook: str, *, run=None) -> str:
         kind=kind,
         sender=(item.fm.get("from") or item.fm.get("kind") or "").strip()[:200],
         subject=(item.fm.get("subject") or "").strip()[:200],
-        body=(item.body or "").strip()[:6000],
+        body=(item.body or "").strip()[:2500],
     )
     text = _strip_fences((run or _cursor_agent)(prompt))
     if len(text) < 8:

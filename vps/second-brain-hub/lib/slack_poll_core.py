@@ -15,7 +15,7 @@ INBOX_DIR = "01-INBOX/slack"
 LOOKBACK = timedelta(hours=2)
 REPLY_LOOKBACK = timedelta(hours=8)
 MAX_NEW_THREADS = 8
-MAX_REPLY_THREADS = 3
+MAX_REPLY_THREADS = 8
 
 _SLUG_RE = re.compile(r"[^a-z0-9_-]+")
 _PERMALINK_THREAD_RE = re.compile(r"[?&]thread_ts=(\d+\.\d+)")
@@ -140,6 +140,10 @@ def reply_seen_key(channel_id: str, thread_ts: str, latest_ts: str) -> str:
     return "slack-live|" + thread_key(channel_id, thread_ts) + "|" + latest_ts
 
 
+def latest_message_addresses_lukas(text: str) -> bool:
+    return f"<@{LUKAS_USER_ID}>" in (text or "")
+
+
 def select_reply_hits(
     grouped: dict[str, list[dict[str, Any]]],
     *,
@@ -166,7 +170,7 @@ def select_reply_hits(
                 continue
             if kind == "dm" and not hit.channel_id.startswith(("D", "U")):
                 continue
-            if thread_key(hit.channel_id, hit.thread_ts) in archived:
+            if kind != "dm" and thread_key(hit.channel_id, hit.thread_ts) in archived:
                 continue
             if reply_seen_key(hit.channel_id, hit.thread_ts, hit.latest_ts) in seen_keys:
                 continue

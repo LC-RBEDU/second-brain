@@ -111,12 +111,38 @@ def test_reply_hits_keep_mentions_and_real_dms():
             "dm": [
                 {"channel": {"id": "U9", "name": "veronika"}, "ts": recent, "user": "UOTHER", "text": "dm"},
             ],
+            "saved": [],
         },
         seen_keys={poll.reply_seen_key("C1", recent, recent)},
         now=now,
-        archived_keys={poll.thread_key("U9", recent)},
+        archived_keys={poll.thread_key("U9", recent), poll.thread_key("C8", recent)},
     )
-    assert again == []
+    assert [h.channel_id for h in again] == ["U9"]
+    archived_mention = poll.select_reply_hits(
+        {
+            "mention": [
+                {
+                    "channel": {"id": "C8", "name": "old"},
+                    "ts": recent,
+                    "user": "UOTHER",
+                    "text": "<@U014AEZD72S> ahoj",
+                }
+            ]
+        },
+        seen_keys=set(),
+        now=now,
+        archived_keys={poll.thread_key("C8", recent)},
+    )
+    assert archived_mention == []
+    assert poll.latest_message_addresses_lukas("<@U014AEZD72S> mrkni") is True
+    assert poll.latest_message_addresses_lukas("schvaleno") is False
+
+
+def test_reply_agent_is_ask_mode():
+    import reply_compose
+
+    assert "--mode" in reply_compose.AGENT_FLAGS
+    assert reply_compose.AGENT_FLAGS[reply_compose.AGENT_FLAGS.index("--mode") + 1] == "ask"
 
 
 def test_select_threads_newest_first():
