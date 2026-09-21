@@ -77,13 +77,9 @@ git push origin main
 | `CALENDAR_DAYS_AHEAD` | `2` (max 14) |
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
-| `CURSOR_API_KEY` | text odpovědi v `assistant_ingest` (`cursor-agent`). Triáž cron zůstává vypnutá. |
-| `SLACK_USER_TOKEN` | `xoxp-` — Later poll. Odpověď po tlačítku posílá n8n tímhle tokenem |
-| `SLACK_BOT_TOKEN` | `xoxb-` — připomínky. Karta Odpověz jde přes n8n credential „Slack - Lukáš - RB EDU“ |
-| `SLACK_DRAFT_CHANNEL_ID` | kanál návrhů, default `C0C3E0JFNA0` |
-| `N8N_SLACK_REPLY_WEBHOOK` | `https://n8n.redbuttonedu.cz/webhook/slack-reply-draft` |
-| `N8N_SLACK_REPLY_TOKEN` | hlavička `X-Reply-Token` pro ten webhook |
-| `GOOGLE_GMAIL_OAUTH_JSON` | samostatný OAuth `gmail.compose` — jen `drafts.create` |
+| `CURSOR_API_KEY` | volitelné — `cursor-agent` v `triage_llm_run.py` (cron triáže je vypnutý) |
+| `SLACK_USER_TOKEN` | `xoxp-` — Later poll (`slack_poll.py`) |
+| `SLACK_BOT_TOKEN` | `xoxb-` — připomínky (`reminders_dispatch.py`) |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
 
@@ -111,7 +107,6 @@ git push origin main
 | `inbox_inventory.py` | Po 6:55 | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
 | `slack_poll.py` | každých 2 min, 08:00–23:59, jen Later (`is:saved`) | stejně |
-| `assistant_ingest.py` | liché minuty, 08:00–23:59. Gmail drafty z inboxu. Slack karty pro zmínky a soukromé zprávy z posledních 8 h, bez druhého archivu | stejně |
 
 EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.
 

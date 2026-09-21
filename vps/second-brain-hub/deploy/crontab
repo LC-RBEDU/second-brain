@@ -59,12 +59,10 @@ TZ=Europe/Prague
 # Every 2 min — dispatch due items from 00-System/Reminders-Pending/
 */2 * * * * /usr/local/bin/python3 /app/cron/reminders_dispatch.py >> /var/log/second-brain/reminders.log 2>&1
 
-# === ASSISTANT (08:00–23:59 Europe/Prague; n8n may write overnight, first run after 08:00 picks it up) ===
-# :even — Slack Later (is:saved) only → 01-INBOX/slack/ (needs SLACK_USER_TOKEN)
-# Mentions and DMs are the Cowork archive, not this cron.
+# === SLACK LATER (08:00–23:59 Europe/Prague) ===
+# is:saved only → 01-INBOX/slack/ (needs SLACK_USER_TOKEN).
+# Mentions and DMs are the Cowork archive. Reply drafts are on-demand (Cursor/Cowork), not cron.
 */2 8-23 * * * /usr/local/bin/python3 /app/cron/slack_poll.py >> /var/log/second-brain/slack-poll.log 2>&1
-# :odd — pair sent mail, draft pointers, ping. Never add_task.
-1-59/2 8-23 * * * /usr/local/bin/python3 /app/cron/assistant_ingest.py >> /var/log/second-brain/assistant-ingest.log 2>&1
 
 # === FOCUS (priority model v2) ===
 # No cron writes `focus` — it is the one field only the human sets.

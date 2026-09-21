@@ -65,6 +65,26 @@ _SENT_INBOX_DROP_RULES: tuple[dict[str, object], ...] = (
         "subject": "Podklady pro fakturaci",
         "reason": "notifikace podkladů k fakturaci — vlastní automatika, měnící se příjemce",
     },
+    {
+        "to": "*",
+        "subject_contains": "out of office",
+        "reason": "OOO automat",
+    },
+    {
+        "to": "*",
+        "subject_contains": "automatická odpověď",
+        "reason": "OOO automat (CS)",
+    },
+    {
+        "to": "*",
+        "subject_contains": "automatic reply",
+        "reason": "OOO automat (EN)",
+    },
+    {
+        "to": "*",
+        "subject_contains": "mimo kancelář",
+        "reason": "OOO automat",
+    },
 )
 
 # Back-compat alias (tests / starší volání)

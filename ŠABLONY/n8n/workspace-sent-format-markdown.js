@@ -1,14 +1,15 @@
-// SSOT for workspace-sent-to-inbox Format node (+ mirror in triage_commitments.py)
+// SSOT mirror: ŠABLONY/n8n/workspace-sent-format-markdown.js
 const TZ = 'Europe/Prague';
 
-// to: konkrétní adresa nebo '*' | subject: přesná shoda | subjectContains: podřetězec
-// (pro předměty s proměnnou částí — datum týdne, timestamp, prefix [oprava] / [force test])
-// dropReplies: default false — Re:/Fwd: znamená, že do vlákna psal člověk
 const SENT_INBOX_DROP_RULES = [
   { to: 'finance@redbutton.cz', subject: 'Fakturace dealu', dropReplies: true },
   { to: '*', subjectContains: 'Narozeniny a výročí' },
   { to: '*', subjectContains: '[Audits]' },
   { to: '*', subject: 'Podklady pro fakturaci' },
+  { to: '*', subjectContains: 'out of office' },
+  { to: '*', subjectContains: 'automatická odpověď' },
+  { to: '*', subjectContains: 'automatic reply' },
+  { to: '*', subjectContains: 'mimo kancelář' },
 ];
 
 function extractEmail(raw) {
@@ -17,7 +18,6 @@ function extractEmail(raw) {
   if (m) return m[1].trim().toLowerCase();
   return s.split(',')[0].trim().toLowerCase();
 }
-
 function normalizeSubject(subject) {
   let t = String(subject || '').trim();
   while (/^(Re:|Fwd:|FW:|RE:|FWD:)\s*/i.test(t)) {
@@ -25,11 +25,15 @@ function normalizeSubject(subject) {
   }
   return t;
 }
-
-function shouldDropSentFromInbox(toText, subject) {
+function shouldDropSentFromInbox(toText, subject, fromText) {
   const to = extractEmail(toText);
+  const from = String(fromText || '').toLowerCase();
   const subj = normalizeSubject(subject).toLowerCase();
+  const rawSub = String(subject || '').toLowerCase();
   const isReply = /^(Re:|Fwd:|FW:|RE:|FWD:)\s*/i.test(String(subject || '').trim());
+  if (from.includes('calendar-noreply') || from.includes('calendar-notification@google.com')) return true;
+  if (/^(accepted|declined|tentatively accepted|invitation|updated invitation):/i.test(rawSub)) return true;
+  if (/out of office|automatick[aá] odpov|automatic reply|mimo kancel/i.test(rawSub)) return true;
   return SENT_INBOX_DROP_RULES.some((r) => {
     if (r.to !== '*' && to !== r.to.toLowerCase()) return false;
     if (r.subjectContains) {
@@ -38,7 +42,6 @@ function shouldDropSentFromInbox(toText, subject) {
     return !isReply || !!r.dropReplies;
   });
 }
-
 function slug(s, maxLen) {
   let t = String(s || '')
     .normalize('NFC')
@@ -50,7 +53,6 @@ function slug(s, maxLen) {
   if (!t) t = 'unnamed';
   return t.length > maxLen ? t.substring(0, maxLen).replace(/-+$/g, '') : t;
 }
-
 function tsPrague(d) {
   const p = Object.fromEntries(
     new Intl.DateTimeFormat('en-GB', {
@@ -68,7 +70,6 @@ function tsPrague(d) {
   );
   return `${p.year}-${p.month}-${p.day}-${p.hour}${p.minute}`;
 }
-
 function addr(v) {
   if (!v) return '';
   if (typeof v === 'string') return v;
@@ -78,7 +79,6 @@ function addr(v) {
     return v.value.map((x) => x && (x.address || x.name)).filter(Boolean).join(', ');
   return '';
 }
-
 function htmlToText(html) {
   if (!html) return '';
   return String(html)
@@ -91,11 +91,9 @@ function htmlToText(html) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
-
 function yamlQuote(s) {
   return JSON.stringify(String(s || '').replace(/\n/g, ' '));
 }
-
 function headerValue(e, name) {
   const want = String(name || '').toLowerCase();
   const h = (e && e.headers) || (e && e.payload && e.payload.headers);
@@ -127,8 +125,17 @@ for (const item of $input.all()) {
   const toText = addr(e.to) || '';
   const subject = (e.subject && String(e.subject).trim()) || 'no-subject';
   const subjectClean = subject.replace(/^(Re:|Fwd:|FW:|RE:|FWD:)\s*/gi, '').trim();
+  const inReplyTo = headerValue(e, 'in-reply-to');
+  const gmailThreadId = String(e.threadId || e.thread_id || '');
 
-  if (shouldDropSentFromInbox(toText, subject)) {
+  // New originated mail only — not a reply in someone else's thread.
+  if (inReplyTo && String(inReplyTo).trim()) {
+    continue;
+  }
+  if (/^(Re:|Fwd:|FW:|RE:|FWD:)\s*/i.test(subject)) {
+    continue;
+  }
+  if (shouldDropSentFromInbox(toText, subject, fromText)) {
     continue;
   }
 
@@ -140,12 +147,11 @@ for (const item of $input.all()) {
     plain ||
     htmlText ||
     (snippet ? snippet + '\n\n_(snippet — vypni Simplify u triggeru)_' : '_(prázdné tělo)_');
-  const gmailThreadId = String(e.threadId || e.thread_id || '');
   const rfcMessageId = headerValue(e, 'message-id');
-  const inReplyTo = headerValue(e, 'in-reply-to');
   const fm = [
     '---',
     'source: sent',
+    'mailbox: workspace',
     `gmail_thread_id: ${yamlQuote(gmailThreadId)}`,
     `message_id: ${yamlQuote(rfcMessageId || messageId)}`,
     `in_reply_to: ${yamlQuote(inReplyTo)}`,
@@ -172,7 +178,7 @@ for (const item of $input.all()) {
     body,
     '',
   ].join('\n');
-  const row = { json: { filename, content: md, messageId } };
+  const row = { json: { filename, content: md, messageId, threadId: gmailThreadId } };
   if (item.binary && Object.keys(item.binary).length) row.binary = item.binary;
   items.push(row);
 }

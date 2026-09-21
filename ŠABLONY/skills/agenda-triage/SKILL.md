@@ -145,7 +145,7 @@ Po apply s materiálem: binárku **volitelně** zkopíruj do `02-PROJEKTY/<slug>
 
 - Capture: n8n `workspace-sent-to-inbox.json` (Workspace `lukas@redbuttonedu.cz`, frontmatter `source: sent`)
 - Cron `triage_run.py` + `triage_commitments.py`: závazky (`kind: commitment`) nebo fallback u mailu bez závazku
-- **Drop list** (`triage_commitments._SENT_INBOX_DROP_RULES`): shoda `to` + `subject` → **n8n neukládá** do INBOX (`workspace-sent-to-inbox.json`); cron `purge_dropped_sent_inbox` **smaže** případné staré soubory (+ přílohy `stem__*`) bez triáže. Aktuálně: `finance@redbutton.cz` + `Fakturace dealu`.
+- **Drop list** (`triage_commitments._SENT_INBOX_DROP_RULES`): shoda `to` + `subject` / `subject_contains` → **n8n neukládá** do INBOX (`workspace-sent-to-inbox.json`); cron `purge_dropped_sent_inbox` **smaže** případné staré soubory (+ přílohy `stem__*`) bez triáže. Mj. `finance@` + Fakturace dealu, Audits, OOO.
 - **Manuální triáž (agenda-triage):** při BATCH/DEEP/PENDING — pokud soubor v `01-INBOX/email/sent/` odpovídá drop listu (normalizovaný `to` + `subject` z frontmatter / hlavičky, stejná logika jako `should_drop_sent_from_inbox` v `workspace-sent-format-markdown.js`), použij **`proposalType: drop`**: **smaž** zdroj + přílohy `stem__*`, **ne** archivuj, **ne** vytvářej task. V preview uveď „DROP (sent inbox rule)" — apply bez dalšího potvrzení, pokud user schválil batch obsahující drop.
 - Každý návrh v batchi má **`proposalType`**:
   - `add_task` — vytvoří `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (em-dash U+2014, sanitized title) + frontmatter `aliases: [<ID>]` + očíslované subtasky `**<ID>-N**`

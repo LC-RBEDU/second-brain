@@ -24,15 +24,9 @@ ENV_FILE = Path.home() / "GitHub/Allfred invoices - Equilibrium/.env"
 
 DEPLOYS = [
     {
-        "template": "email-to-cowork.json",
-        "workflow_id": "omQRpDBa48ePiKnT",
+        "template": "gmail-starred-to-inbox-workspace.json",
+        "workflow_id": "xtnI0PYaTp8Ou2la",
         "action": "put",
-        "format_js": "email-to-cowork-Format-Markdown.js",
-        "format_node": "Format → Markdown",
-        "gmail_query": (
-            "in:inbox -in:trash -category:promotions -category:social "
-            "-from:calendar-notification@google.com -from:calendar-noreply@google.com"
-        ),
     },
     {
         "template": "workspace-sent-to-inbox.json",
@@ -267,8 +261,9 @@ def main() -> int:
         return 0
 
     # Re-fetch and sync exports
-    sync_export("omQRpDBa48ePiKnT", TEMPLATES / "email-to-cowork.json", host, key)
+    sync_export("xtnI0PYaTp8Ou2la", TEMPLATES / "gmail-starred-to-inbox-workspace.json", host, key)
     sync_export("7fhDXThOaxl1yNtE", TEMPLATES / "workspace-sent-to-inbox.json", host, key)
+    sync_export("yuFyLHlioxuE2Jhj", TEMPLATES / "gmail-starred-to-inbox-personal.json", host, key)
     mobile = results[-1]
     if mobile.get("id"):
         sync_export(mobile["id"], TEMPLATES / "mobile-capture-to-cowork.json", host, key)

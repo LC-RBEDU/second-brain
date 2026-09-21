@@ -1,73 +1,35 @@
-# Email forward → Cowork INBOX
+# Gmail hvězdička → Second Brain INBOX
 
-> Cíl: cokoli, co přepošleš na `lukas.cypra+cowork@gmail.com`, padne jako .md do `INBOX/email/`.
+> Označ e-mail hvězdičkou → do ~2 min celé vlákno v `01-INBOX/email/` jako `sb-<mailbox>-<threadId>.md`, label **SB Saved**, hvězdička pryč.
 
-## Jak to funguje
+## Co běží
 
-Gmail má vestavěné **plus-addressing**: cokoli ve formátu `lukas.cypra+ANYTHING@gmail.com` chodí do schránky `lukas.cypra@gmail.com`. Není potřeba nic ve Gmailu nastavovat.
+| Účet | n8n workflow | Stav |
+|------|--------------|------|
+| `lukas@redbuttonedu.cz` | `xtnI0PYaTp8Ou2la` — Gmail starred → INBOX (workspace) | aktivní |
+| `lukas.cypra@gmail.com` | `yuFyLHlioxuE2Jhj` — Gmail starred → INBOX (personal) | **neaktivní** — potřebuje Gmail OAuth osobního účtu |
 
-n8n workflow `email-to-cowork.json` pollne Gmail s filtrem `to:lukas.cypra+cowork@gmail.com` a každou novou zprávu zformátuje do .md a uloží na Drive.
+Query každých 2 min: `(is:starred -label:"SB Saved") OR (newer_than:2h label:"SB Saved")`.
 
-## Setup
+- Nová hvězdička → stáhne celé vlákno, upsert souboru, label SB Saved, unstar.
+- Vlákno už ve vaultu (`SB Saved`) → při nové zprávě do 2 h soubor přepíše.
 
-### 1. Gmail OAuth pro n8n
+Forward `lukas.cypra+cowork@gmail.com` je zrušený.
 
-- n8n → Credentials → New → **Gmail OAuth2 API**
-- Klikni "Sign in with Google" → přihlas se na **`lukas.cypra@gmail.com`** (NE firemní)
-- Allow scope: `gmail.readonly` (na čtení emailů a download attachmentů)
-- Save
+## Setup osobního účtu
 
-### 2. Import workflow
+1. n8n → Credentials → Gmail OAuth2 → Sign in as **`lukas.cypra@gmail.com`**.
+2. Do všech Gmail nodů ve workflow `yuFyLHlioxuE2Jhj` vlož ten credential (Drive nech stávající).
+3. Activate.
 
-- n8n → Workflows → Import from File → `ŠABLONY/n8n/email-to-cowork.json`
-- V Gmail Trigger nodu vlož credential z bodu 1
-- V Drive Save nodu vlož Drive credential + Folder ID `INBOX/email/`
-- Activate
+## Odeslané (nové maily, ne odpovědi)
 
-### 3. Test
+- Workspace: `7fhDXThOaxl1yNtE` — jen nové odeslané bez `In-Reply-To`, bez OOO/kalendáře/šablon; po zápisu label SB Saved.
+- Osobní sent: až po OAuth výše — zatím jen Workspace.
 
-- Z jiného účtu (nebo z firemního) pošli e-mail na `lukas.cypra+cowork@gmail.com`
-- Počkej max 1 min (poll interval)
-- Zkontroluj `INBOX/email/` na Drive
+Drop list SSOT: `ŠABLONY/n8n/workspace-sent-format-markdown.js` + `triage_commitments._SENT_INBOX_DROP_RULES`.
 
-## Tipy
+## On-demand draft
 
-### Použití v praxi
-
-- **Forward e-mailu**, který chceš zachytit → adresa do To: nebo Cc: → odeslat. n8n to vyzvedne.
-- **Bcc**: funguje taky — pošleš e-mail komu chceš a do Bcc dáš `lukas.cypra+cowork@gmail.com`. Zachycení je tiché.
-- **Označení tématu předem**: do Subject přidej `[téma: rb-universe]` — capture skill toho využije při třídění
-
-### Filter, ať to nesype všechno
-
-n8n workflow má filter `to:lukas.cypra+cowork@gmail.com`. Pokud chceš ještě vyloučit:
-- `-from:me` — neuloží to, co posíláš sám sobě (test)
-- `-label:newsletter` — vyloučí newslettery, pokud máš label
-
-### Gmail label "Cowork" (volitelné)
-
-Pokud chceš ve Gmailu mít přehled, co se uložilo:
-- Vytvoř Gmail label `Cowork`
-- Vytvoř Gmail filter: `to:(lukas.cypra+cowork@gmail.com)` → Apply label `Cowork`
-- Pak vidíš ve Gmailu složku Cowork s vším, co prošlo do INBOXu
-
-### Přílohy
-
-Workflow `email-to-cowork.json` stahuje přílohy na Drive a do `.md` vkládá kanonický blok:
-
-```markdown
-## Přílohy
-
-- [soubor.pdf](https://drive.google.com/.../view) — application/pdf, 1.2 MB
-```
-
-Flow: Gmail download → upload → `Code: Finalize ## Přílohy` → save `.md`. Viz `ŠABLONY/n8n/README.md` a helper `ŠABLONY/n8n/lib/attachments-markdown.js`.
-
-## Bezpečnost
-
-- Adresa `lukas.cypra+cowork@gmail.com` je **veřejně předvídatelná** (kdokoli, kdo zná tvoji základní adresu, ji uhodne)
-- Workflow ukládá **vše**, co přijde — pokud někdo zlomyslně pošle obří přílohu, plní ti to Drive
-- **Mitigation**:
-  - V Gmailu si přidej filter, který nepouští do schránky známé spam patterny
-  - Workflow má max. limit (n8n executions / minute) — nesype tam fakt všechno najednou
-  - Pokud bys měl problém, zruš plus-alias a uděláme dedikovanou e-mail adresu na vlastní doméně
+- Cursor / Cowork: skill `agenda-reply` → Gmail draft (Workspace). Nikdy send.
+- Osobní draft v Cursoru: až druhý MCP `google-workspace-personal` (viz plán). Cowork druhý Gmail účet neumí.
