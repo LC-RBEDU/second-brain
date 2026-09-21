@@ -1,1 +1,1233 @@
-{"updatedAt":"2026-09-21T21:51:35.409Z","createdAt":"2026-09-21T21:51:11.623Z","id":"xtnI0PYaTp8Ou2la","name":"SECOND BRAIN: Gmail starred → INBOX (workspace)","description":null,"active":true,"isArchived":false,"nodes":[{"parameters":{"rule":{"interval":[{"field":"minutes","minutesInterval":2}]}},"id":"sch-1","name":"Every 2 min","type":"n8n-nodes-base.scheduleTrigger","typeVersion":1.2,"position":[0,300]},{"parameters":{"resource":"message","operation":"getAll","returnAll":false,"limit":25,"simple":false,"filters":{"q":"(is:starred -label:\"SB Saved\") OR (newer_than:2h label:\"SB Saved\")","readStatus":"both"},"options":{"downloadAttachments":false}},"id":"gm-star","name":"Gmail: starred or recent SB Saved","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[240,120],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"cdd0e7db-e65a-4beb-9498-d90f2a9dc69e"},{"parameters":{"jsCode":"\nconst seen = new Set();\nconst out = [];\nfor (const item of $input.all()) {\n  const tid = String(item.json.threadId || item.json.thread_id || '').trim();\n  if (!tid || seen.has(tid)) continue;\n  seen.add(tid);\n  out.push({ json: { threadId: tid } });\n}\nreturn out;\n"},"id":"code-dedup","name":"Unique threadIds","type":"n8n-nodes-base.code","typeVersion":2,"position":[700,260]},{"parameters":{"resource":"thread","operation":"get","threadId":"={{ $json.threadId }}","simple":false,"options":{"returnOnlyMessages":false}},"id":"gm-thread","name":"Gmail: get thread","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[920,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"31027cba-dc2f-4e02-a55d-3f2d04527043"},{"parameters":{"jsCode":"\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nconst OWN = 'lukas@redbuttonedu.cz';\n\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  // simplified thread message fields\n  return String(msg[name] || msg[name && name.replace(/(^|-)(\\w)/g, (_, a, b) => b.toUpperCase())] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  // strip html lightly\n  if (/<html|<div|<br/i.test(text) && !text.includes('\\n\\n')) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\\s+\\n/g, '\\n').trim();\n  }\n  return text || '_(prázdné tělo)_';\n}\nfunction addr(msg, field) {\n  return headerOf(msg, field) || (msg[field] && (msg[field].text || msg[field])) || '';\n}\n\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  // thread get returns {id, messages:[...]} or simplified messages list\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!messages && j.threadId && j.id && !j.historyId) {\n    // single message from getAll — skip here, thread node feeds us\n    continue;\n  }\n  if (!Array.isArray(messages)) messages = [j];\n  if (!threadId) threadId = String((messages[0] && (messages[0].threadId || messages[0].thread_id)) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || (m.from && m.from.text) || '';\n    const to = headerOf(m, 'to') || m.To || (m.to && m.to.text) || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    const body = decodeBody(m);\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${body}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = [\n    '---',\n    'source: email',\n    `mailbox: ${MAILBOX}`,\n    `gmail_thread_id: ${yamlQuote(threadId)}`,\n    `from: ${yamlQuote(firstFrom)}`,\n    `subject: ${yamlQuote(subject)}`,\n    `date: ${yamlQuote(lastDate)}`,\n    '---',\n    '',\n  ].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX, unstar: true } });\n}\nreturn out;\n"},"id":"code-fmt","name":"Format thread → Markdown","type":"n8n-nodes-base.code","typeVersion":2,"position":[1140,260]},{"parameters":{"resource":"fileFolder","operation":"search","searchMethod":"name","queryString":"={{ $json.filename }}","returnAll":false,"limit":5,"filter":{"folderId":{"__rl":true,"value":"https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC","mode":"url"},"whatToSearch":"files"},"options":{"fields":["id","name"]}},"id":"drv-search","name":"Drive: find existing file","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[1360,260],"credentials":{"googleDriveOAuth2Api":{"id":"IKFHnIw3Csp8FHyI","name":"Google Drive account 2"}}},{"parameters":{"jsCode":"\nconst formatted = $('Format thread → Markdown').all();\nconst searches = $input.all();\nconst out = [];\nfor (let i = 0; i < formatted.length; i++) {\n  const f = formatted[i].json;\n  // collect matching search hits for this filename from any search items\n  const hits = searches.filter((s) => String(s.json.name || '') === f.filename);\n  const fileId = hits.length ? String(hits[0].json.id || '') : '';\n  out.push({ json: { ...f, existingFileId: fileId } });\n}\nreturn out;\n"},"id":"code-pair","name":"Pair file id","type":"n8n-nodes-base.code","typeVersion":2,"position":[1580,260]},{"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"loose"},"conditions":[{"id":"c1","leftValue":"={{ $json.existingFileId }}","rightValue":"","operator":{"type":"string","operation":"notEmpty"}}],"combinator":"and"},"options":{}},"id":"if-exists","name":"File exists?","type":"n8n-nodes-base.if","typeVersion":2.2,"position":[1800,260]},{"parameters":{"resource":"file","operation":"deleteFile","fileId":{"__rl":true,"value":"={{ $json.existingFileId }}","mode":"id"},"options":{}},"id":"drv-del","name":"Drive: delete old","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[2020,140],"credentials":{"googleDriveOAuth2Api":{"id":"IKFHnIw3Csp8FHyI","name":"Google Drive account 2"}}},{"parameters":{"resource":"file","operation":"createFromText","content":"={{ $('Pair file id').item.json.content }}","name":"={{ $('Pair file id').item.json.filename }}","driveId":{"__rl":true,"value":"My Drive","mode":"list","cachedResultName":"My Drive"},"folderId":{"__rl":true,"value":"https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC","mode":"url"},"options":{}},"id":"drv-create","name":"Drive: save markdown","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[2240,260],"credentials":{"googleDriveOAuth2Api":{"id":"IKFHnIw3Csp8FHyI","name":"Google Drive account 2"}}},{"parameters":{"resource":"label","operation":"getAll","returnAll":true},"id":"gm-labels","name":"Gmail: list labels","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[2460,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"executeOnce":true,"webhookId":"f5a796f1-8072-4068-a41a-e6a7de43faad"},{"parameters":{"jsCode":"\nconst staticData = $getWorkflowStaticData('global');\nconst labels = $input.all().map((i) => i.json);\nlet found = labels.find((l) => String(l.name || '') === 'SB Saved');\nif (found) {\n  staticData.sbSavedLabelId = found.id;\n  return [{ json: { labelId: found.id, created: false } }];\n}\nreturn [{ json: { labelId: '', needCreate: true } }];\n"},"id":"code-label","name":"Resolve SB Saved label","type":"n8n-nodes-base.code","typeVersion":2,"position":[2680,260]},{"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"loose"},"conditions":[{"id":"c2","leftValue":"={{ $json.needCreate }}","rightValue":true,"operator":{"type":"boolean","operation":"true","singleValue":true}}],"combinator":"and"},"options":{}},"id":"if-create-label","name":"Need create label?","type":"n8n-nodes-base.if","typeVersion":2.2,"position":[2900,260]},{"parameters":{"resource":"label","operation":"create","name":"SB Saved","options":{"labelListVisibility":"labelShow","messageListVisibility":"show"}},"id":"gm-create-label","name":"Gmail: create SB Saved","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[3120,140],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"b131368d-f2d5-4f0d-937a-5cf702ef0ce4"},{"parameters":{"jsCode":"\nconst staticData = $getWorkflowStaticData('global');\nlet labelId = staticData.sbSavedLabelId || '';\n// prefer freshly created\nfor (const item of $input.all()) {\n  if (item.json.id && item.json.name === 'SB Saved') labelId = item.json.id;\n  if (item.json.labelId) labelId = item.json.labelId;\n}\nif (labelId) staticData.sbSavedLabelId = labelId;\nconst threads = $('Pair file id').all();\nreturn threads.map((t) => ({\n  json: {\n    threadId: t.json.threadId,\n    labelId,\n    unstar: !!t.json.unstar,\n  },\n}));\n"},"id":"code-prep","name":"Prep label ops","type":"n8n-nodes-base.code","typeVersion":2,"position":[3340,260]},{"parameters":{"resource":"thread","operation":"addLabels","threadId":"={{ $json.threadId }}","labelIds":"={{ [$json.labelId] }}"},"id":"gm-addlab","name":"Gmail: add SB Saved","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[3560,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"f69fd1ae-69d5-4a50-8760-00fdf9c220d8"},{"parameters":{"resource":"thread","operation":"removeLabels","threadId":"={{ $('Prep label ops').item.json.threadId }}","labelIds":["STARRED"]},"id":"gm-rmstar","name":"Gmail: remove STARRED","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[3780,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"8bd8873c-318f-435a-8fd0-e02bc38d9060"}],"connections":{"Every 2 min":{"main":[[{"node":"Gmail: starred or recent SB Saved","type":"main","index":0}]]},"Gmail: starred or recent SB Saved":{"main":[[{"node":"Unique threadIds","type":"main","index":0}]]},"Unique threadIds":{"main":[[{"node":"Gmail: get thread","type":"main","index":0}]]},"Gmail: get thread":{"main":[[{"node":"Format thread → Markdown","type":"main","index":0}]]},"Format thread → Markdown":{"main":[[{"node":"Drive: find existing file","type":"main","index":0}]]},"Drive: find existing file":{"main":[[{"node":"Pair file id","type":"main","index":0}]]},"Pair file id":{"main":[[{"node":"File exists?","type":"main","index":0}]]},"File exists?":{"main":[[{"node":"Drive: delete old","type":"main","index":0}],[{"node":"Drive: save markdown","type":"main","index":0}]]},"Drive: delete old":{"main":[[{"node":"Drive: save markdown","type":"main","index":0}]]},"Drive: save markdown":{"main":[[{"node":"Gmail: list labels","type":"main","index":0}]]},"Gmail: list labels":{"main":[[{"node":"Resolve SB Saved label","type":"main","index":0}]]},"Resolve SB Saved label":{"main":[[{"node":"Need create label?","type":"main","index":0}]]},"Need create label?":{"main":[[{"node":"Gmail: create SB Saved","type":"main","index":0}],[{"node":"Prep label ops","type":"main","index":0}]]},"Gmail: create SB Saved":{"main":[[{"node":"Prep label ops","type":"main","index":0}]]},"Prep label ops":{"main":[[{"node":"Gmail: add SB Saved","type":"main","index":0}]]},"Gmail: add SB Saved":{"main":[[{"node":"Gmail: remove STARRED","type":"main","index":0}]]}},"settings":{"executionOrder":"v1"},"staticData":{"node:Every 2 min":{"recurrenceRules":[]}},"meta":null,"pinData":null,"versionId":"e6443262-6fde-4a0c-b3be-87044dc2c4fa","activeVersionId":"e6443262-6fde-4a0c-b3be-87044dc2c4fa","versionCounter":5,"triggerCount":1,"shared":[{"updatedAt":"2026-09-21T21:51:11.623Z","createdAt":"2026-09-21T21:51:11.623Z","role":"workflow:owner","workflowId":"xtnI0PYaTp8Ou2la","projectId":"X3Gb83P3UZlojuge","project":{"updatedAt":"2025-11-15T16:08:05.137Z","createdAt":"2025-11-15T16:02:16.475Z","id":"X3Gb83P3UZlojuge","name":"Michal Šrajer <michal@redbutton.cz>","type":"personal","icon":null,"description":null,"creatorId":"ab9cdb84-1cd7-44c2-a37f-279184e818e1"}}],"tags":[],"activeVersion":{"updatedAt":"2026-09-21T21:51:35.411Z","createdAt":"2026-09-21T21:51:35.411Z","versionId":"e6443262-6fde-4a0c-b3be-87044dc2c4fa","workflowId":"xtnI0PYaTp8Ou2la","nodes":[{"parameters":{"rule":{"interval":[{"field":"minutes","minutesInterval":2}]}},"id":"sch-1","name":"Every 2 min","type":"n8n-nodes-base.scheduleTrigger","typeVersion":1.2,"position":[0,300]},{"parameters":{"resource":"message","operation":"getAll","returnAll":false,"limit":25,"simple":false,"filters":{"q":"(is:starred -label:\"SB Saved\") OR (newer_than:2h label:\"SB Saved\")","readStatus":"both"},"options":{"downloadAttachments":false}},"id":"gm-star","name":"Gmail: starred or recent SB Saved","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[240,120],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"cdd0e7db-e65a-4beb-9498-d90f2a9dc69e"},{"parameters":{"jsCode":"\nconst seen = new Set();\nconst out = [];\nfor (const item of $input.all()) {\n  const tid = String(item.json.threadId || item.json.thread_id || '').trim();\n  if (!tid || seen.has(tid)) continue;\n  seen.add(tid);\n  out.push({ json: { threadId: tid } });\n}\nreturn out;\n"},"id":"code-dedup","name":"Unique threadIds","type":"n8n-nodes-base.code","typeVersion":2,"position":[700,260]},{"parameters":{"resource":"thread","operation":"get","threadId":"={{ $json.threadId }}","simple":false,"options":{"returnOnlyMessages":false}},"id":"gm-thread","name":"Gmail: get thread","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[920,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"31027cba-dc2f-4e02-a55d-3f2d04527043"},{"parameters":{"jsCode":"\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nconst OWN = 'lukas@redbuttonedu.cz';\n\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  // simplified thread message fields\n  return String(msg[name] || msg[name && name.replace(/(^|-)(\\w)/g, (_, a, b) => b.toUpperCase())] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  // strip html lightly\n  if (/<html|<div|<br/i.test(text) && !text.includes('\\n\\n')) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\\s+\\n/g, '\\n').trim();\n  }\n  return text || '_(prázdné tělo)_';\n}\nfunction addr(msg, field) {\n  return headerOf(msg, field) || (msg[field] && (msg[field].text || msg[field])) || '';\n}\n\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  // thread get returns {id, messages:[...]} or simplified messages list\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!messages && j.threadId && j.id && !j.historyId) {\n    // single message from getAll — skip here, thread node feeds us\n    continue;\n  }\n  if (!Array.isArray(messages)) messages = [j];\n  if (!threadId) threadId = String((messages[0] && (messages[0].threadId || messages[0].thread_id)) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || (m.from && m.from.text) || '';\n    const to = headerOf(m, 'to') || m.To || (m.to && m.to.text) || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    const body = decodeBody(m);\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${body}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = [\n    '---',\n    'source: email',\n    `mailbox: ${MAILBOX}`,\n    `gmail_thread_id: ${yamlQuote(threadId)}`,\n    `from: ${yamlQuote(firstFrom)}`,\n    `subject: ${yamlQuote(subject)}`,\n    `date: ${yamlQuote(lastDate)}`,\n    '---',\n    '',\n  ].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX, unstar: true } });\n}\nreturn out;\n"},"id":"code-fmt","name":"Format thread → Markdown","type":"n8n-nodes-base.code","typeVersion":2,"position":[1140,260]},{"parameters":{"resource":"fileFolder","operation":"search","searchMethod":"name","queryString":"={{ $json.filename }}","returnAll":false,"limit":5,"filter":{"folderId":{"__rl":true,"value":"https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC","mode":"url"},"whatToSearch":"files"},"options":{"fields":["id","name"]}},"id":"drv-search","name":"Drive: find existing file","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[1360,260],"credentials":{"googleDriveOAuth2Api":{"id":"IKFHnIw3Csp8FHyI","name":"Google Drive account 2"}}},{"parameters":{"jsCode":"\nconst formatted = $('Format thread → Markdown').all();\nconst searches = $input.all();\nconst out = [];\nfor (let i = 0; i < formatted.length; i++) {\n  const f = formatted[i].json;\n  // collect matching search hits for this filename from any search items\n  const hits = searches.filter((s) => String(s.json.name || '') === f.filename);\n  const fileId = hits.length ? String(hits[0].json.id || '') : '';\n  out.push({ json: { ...f, existingFileId: fileId } });\n}\nreturn out;\n"},"id":"code-pair","name":"Pair file id","type":"n8n-nodes-base.code","typeVersion":2,"position":[1580,260]},{"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"loose"},"conditions":[{"id":"c1","leftValue":"={{ $json.existingFileId }}","rightValue":"","operator":{"type":"string","operation":"notEmpty"}}],"combinator":"and"},"options":{}},"id":"if-exists","name":"File exists?","type":"n8n-nodes-base.if","typeVersion":2.2,"position":[1800,260]},{"parameters":{"resource":"file","operation":"deleteFile","fileId":{"__rl":true,"value":"={{ $json.existingFileId }}","mode":"id"},"options":{}},"id":"drv-del","name":"Drive: delete old","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[2020,140],"credentials":{"googleDriveOAuth2Api":{"id":"IKFHnIw3Csp8FHyI","name":"Google Drive account 2"}}},{"parameters":{"resource":"file","operation":"createFromText","content":"={{ $('Pair file id').item.json.content }}","name":"={{ $('Pair file id').item.json.filename }}","driveId":{"__rl":true,"value":"My Drive","mode":"list","cachedResultName":"My Drive"},"folderId":{"__rl":true,"value":"https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC","mode":"url"},"options":{}},"id":"drv-create","name":"Drive: save markdown","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[2240,260],"credentials":{"googleDriveOAuth2Api":{"id":"IKFHnIw3Csp8FHyI","name":"Google Drive account 2"}}},{"parameters":{"resource":"label","operation":"getAll","returnAll":true},"id":"gm-labels","name":"Gmail: list labels","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[2460,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"executeOnce":true,"webhookId":"f5a796f1-8072-4068-a41a-e6a7de43faad"},{"parameters":{"jsCode":"\nconst staticData = $getWorkflowStaticData('global');\nconst labels = $input.all().map((i) => i.json);\nlet found = labels.find((l) => String(l.name || '') === 'SB Saved');\nif (found) {\n  staticData.sbSavedLabelId = found.id;\n  return [{ json: { labelId: found.id, created: false } }];\n}\nreturn [{ json: { labelId: '', needCreate: true } }];\n"},"id":"code-label","name":"Resolve SB Saved label","type":"n8n-nodes-base.code","typeVersion":2,"position":[2680,260]},{"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"loose"},"conditions":[{"id":"c2","leftValue":"={{ $json.needCreate }}","rightValue":true,"operator":{"type":"boolean","operation":"true","singleValue":true}}],"combinator":"and"},"options":{}},"id":"if-create-label","name":"Need create label?","type":"n8n-nodes-base.if","typeVersion":2.2,"position":[2900,260]},{"parameters":{"resource":"label","operation":"create","name":"SB Saved","options":{"labelListVisibility":"labelShow","messageListVisibility":"show"}},"id":"gm-create-label","name":"Gmail: create SB Saved","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[3120,140],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"b131368d-f2d5-4f0d-937a-5cf702ef0ce4"},{"parameters":{"jsCode":"\nconst staticData = $getWorkflowStaticData('global');\nlet labelId = staticData.sbSavedLabelId || '';\n// prefer freshly created\nfor (const item of $input.all()) {\n  if (item.json.id && item.json.name === 'SB Saved') labelId = item.json.id;\n  if (item.json.labelId) labelId = item.json.labelId;\n}\nif (labelId) staticData.sbSavedLabelId = labelId;\nconst threads = $('Pair file id').all();\nreturn threads.map((t) => ({\n  json: {\n    threadId: t.json.threadId,\n    labelId,\n    unstar: !!t.json.unstar,\n  },\n}));\n"},"id":"code-prep","name":"Prep label ops","type":"n8n-nodes-base.code","typeVersion":2,"position":[3340,260]},{"parameters":{"resource":"thread","operation":"addLabels","threadId":"={{ $json.threadId }}","labelIds":"={{ [$json.labelId] }}"},"id":"gm-addlab","name":"Gmail: add SB Saved","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[3560,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"f69fd1ae-69d5-4a50-8760-00fdf9c220d8"},{"parameters":{"resource":"thread","operation":"removeLabels","threadId":"={{ $('Prep label ops').item.json.threadId }}","labelIds":["STARRED"]},"id":"gm-rmstar","name":"Gmail: remove STARRED","type":"n8n-nodes-base.gmail","typeVersion":2.1,"position":[3780,260],"credentials":{"gmailOAuth2":{"id":"oBPPDPfB7W66DTxZ","name":"Gmail account 2"}},"webhookId":"8bd8873c-318f-435a-8fd0-e02bc38d9060"}],"connections":{"Every 2 min":{"main":[[{"node":"Gmail: starred or recent SB Saved","type":"main","index":0}]]},"Gmail: starred or recent SB Saved":{"main":[[{"node":"Unique threadIds","type":"main","index":0}]]},"Unique threadIds":{"main":[[{"node":"Gmail: get thread","type":"main","index":0}]]},"Gmail: get thread":{"main":[[{"node":"Format thread → Markdown","type":"main","index":0}]]},"Format thread → Markdown":{"main":[[{"node":"Drive: find existing file","type":"main","index":0}]]},"Drive: find existing file":{"main":[[{"node":"Pair file id","type":"main","index":0}]]},"Pair file id":{"main":[[{"node":"File exists?","type":"main","index":0}]]},"File exists?":{"main":[[{"node":"Drive: delete old","type":"main","index":0}],[{"node":"Drive: save markdown","type":"main","index":0}]]},"Drive: delete old":{"main":[[{"node":"Drive: save markdown","type":"main","index":0}]]},"Drive: save markdown":{"main":[[{"node":"Gmail: list labels","type":"main","index":0}]]},"Gmail: list labels":{"main":[[{"node":"Resolve SB Saved label","type":"main","index":0}]]},"Resolve SB Saved label":{"main":[[{"node":"Need create label?","type":"main","index":0}]]},"Need create label?":{"main":[[{"node":"Gmail: create SB Saved","type":"main","index":0}],[{"node":"Prep label ops","type":"main","index":0}]]},"Gmail: create SB Saved":{"main":[[{"node":"Prep label ops","type":"main","index":0}]]},"Prep label ops":{"main":[[{"node":"Gmail: add SB Saved","type":"main","index":0}]]},"Gmail: add SB Saved":{"main":[[{"node":"Gmail: remove STARRED","type":"main","index":0}]]}},"authors":"Michal Šrajer","name":null,"description":null,"autosaved":false,"workflowPublishHistory":[{"createdAt":"2026-09-21T21:51:35.584Z","id":432,"workflowId":"xtnI0PYaTp8Ou2la","versionId":"e6443262-6fde-4a0c-b3be-87044dc2c4fa","event":"activated","userId":"ab9cdb84-1cd7-44c2-a37f-279184e818e1"}]}}
+{
+  "updatedAt": "2026-09-21T22:00:40.017Z",
+  "createdAt": "2026-09-21T21:51:11.623Z",
+  "id": "xtnI0PYaTp8Ou2la",
+  "name": "SECOND BRAIN: Gmail starred \u2192 INBOX (workspace)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "507a4be3-47fa-46ed-bcf3-4963cb2b5824",
+      "name": "Every 2 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 25,
+        "simple": false,
+        "filters": {
+          "q": "(is:starred -label:\"SB Saved\") OR (newer_than:2h label:\"SB Saved\")",
+          "readStatus": "both"
+        },
+        "options": {}
+      },
+      "id": "aad2d2b2-f167-4e86-90c3-0afe805bfa0b",
+      "name": "Gmail: starred or recent SB Saved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        220,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
+        }
+      },
+      "webhookId": "6a321147-8217-4741-ba99-b3e222679201"
+    },
+    {
+      "parameters": {
+        "jsCode": "const seen=new Set(); const out=[]; for (const item of $input.all()) { const tid=String(item.json.threadId||item.json.thread_id||'').trim(); if(!tid||seen.has(tid)) continue; seen.add(tid); out.push({json:{threadId:tid}}); } return out;"
+      },
+      "id": "754659df-6fd6-468a-8f7e-034ff04b6d9a",
+      "name": "Unique threadIds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "get",
+        "threadId": "={{ $json.threadId }}",
+        "simple": false,
+        "options": {
+          "returnOnlyMessages": false
+        }
+      },
+      "id": "2105a456-dce7-42ab-819f-6ad03c8ba2fd",
+      "name": "Gmail: get thread",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
+        }
+      },
+      "webhookId": "424f1bf5-9ccd-4b8a-a63e-6914cabb2ce8"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(pr\u00e1zdn\u00e9 t\u011blo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
+      },
+      "id": "e41b7d03-2a84-46a2-a4f4-6a0364f4643c",
+      "name": "Format thread \u2192 Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.fileByThread) staticData.fileByThread = {};\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const existingFileId = staticData.fileByThread[j.threadId] || '';\n  const bin = Buffer.from(String(j.content || ''), 'utf8').toString('base64');\n  out.push({\n    json: { ...j, existingFileId, isUpdate: !!existingFileId },\n    binary: {\n      data: {\n        data: bin,\n        mimeType: 'text/markdown',\n        fileName: j.filename,\n      },\n    },\n  });\n}\nreturn out;\n"
+      },
+      "id": "d77ffeeb-eeff-4ffc-8d90-6d9019c39e5c",
+      "name": "Route create/update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.isUpdate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b9fa610e-abfd-46dc-aefd-9989fd722f87",
+      "name": "Update existing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "update",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.existingFileId }}",
+          "mode": "id"
+        },
+        "changeFileContent": true,
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "771d1198-2bd3-47e1-a1a2-6647e5092748",
+      "name": "Drive: update markdown",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1540,
+        160
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "createFromText",
+        "content": "={{ $json.content }}",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "9d63e0e5-f522-4d80-b748-62086a0fae2e",
+      "name": "Drive: create markdown",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1540,
+        420
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.fileByThread) staticData.fileByThread = {};\nconst out = [];\nfor (const item of $input.all()) {\n  const id = String(item.json.id || '');\n  // threadId from paired Create/Update input\n  let threadId = '';\n  try {\n    threadId = String($('Route create/update').item.json.threadId || '');\n  } catch (e) {\n    threadId = String(item.json.appProperties && item.json.appProperties.threadId || '');\n  }\n  if (!threadId) {\n    // fallback: parse from filename sb-workspace-THREAD.md\n    const name = String(item.json.name || '');\n    const m = name.match(/^sb-(?:workspace|personal)-(.+)\\.md$/);\n    if (m) threadId = m[1];\n  }\n  if (id && threadId) staticData.fileByThread[threadId] = id;\n  out.push({\n    json: {\n      threadId: threadId || $('Route create/update').item.json.threadId,\n      fileId: id,\n    },\n  });\n}\nreturn out;\n"
+      },
+      "id": "e4debe9f-6eb8-41d3-958d-f427b2e09381",
+      "name": "Remember Drive fileId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "id": "6b9f50a7-30b3-45ce-b682-86432ab6f1bd",
+      "name": "Gmail: list labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1980,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
+        }
+      },
+      "executeOnce": true,
+      "webhookId": "a10f32bd-3f1d-4d88-8dc7-c9fb520d1253"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nconst labels = $input.all().map(i => i.json);\nlet found = labels.find(l => l.name === 'SB Saved');\nif (found) { staticData.sbSavedLabelId = found.id; return [{json:{labelId:found.id, needCreate:false}}]; }\nreturn [{json:{labelId:'', needCreate:true}}];\n"
+      },
+      "id": "003eefcc-5202-4938-bf0a-955e81d4ddfa",
+      "name": "Resolve SB Saved label",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.needCreate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "789316c8-5538-4b8e-8022-f17f6699f24f",
+      "name": "Need create label?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "SB Saved",
+        "options": {
+          "labelListVisibility": "labelShow",
+          "messageListVisibility": "show"
+        }
+      },
+      "id": "b7beae3c-bd12-49e2-90d1-eb5bdd2b19c3",
+      "name": "Gmail: create SB Saved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2640,
+        160
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
+        }
+      },
+      "webhookId": "68fab39e-8db9-4528-b598-67ebca646008"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nlet labelId = staticData.sbSavedLabelId || '';\nfor (const item of $input.all()) {\n  if (item.json.id && item.json.name === 'SB Saved') labelId = item.json.id;\n  if (item.json.labelId) labelId = item.json.labelId;\n}\nif (labelId) staticData.sbSavedLabelId = labelId;\nconst threads = $('Remember Drive fileId').all();\nreturn threads.filter(t => t.json.threadId && labelId).map(t => ({json:{threadId:t.json.threadId, labelId}}));\n"
+      },
+      "id": "9c3268dd-0cae-4f90-82c8-eabf58ab10ef",
+      "name": "Prep label ops",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "addLabels",
+        "threadId": "={{ $json.threadId }}",
+        "labelIds": "={{ [$json.labelId] }}"
+      },
+      "id": "4620cf2a-4554-49cc-b201-a1982965b3b5",
+      "name": "Gmail: add SB Saved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3080,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
+        }
+      },
+      "webhookId": "f4e0e12e-e9c3-4329-8f70-92dd40e5c5b2"
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "removeLabels",
+        "threadId": "={{ $('Prep label ops').item.json.threadId }}",
+        "labelIds": [
+          "STARRED"
+        ]
+      },
+      "id": "25182b26-7d87-4e27-a186-dd9460c1a5b9",
+      "name": "Gmail: remove STARRED",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3300,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail account 2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "68ccc558-22d6-461e-ac08-5c121f6a2c83"
+    }
+  ],
+  "connections": {
+    "Every 2 min": {
+      "main": [
+        [
+          {
+            "node": "Gmail: starred or recent SB Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: starred or recent SB Saved": {
+      "main": [
+        [
+          {
+            "node": "Unique threadIds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unique threadIds": {
+      "main": [
+        [
+          {
+            "node": "Gmail: get thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: get thread": {
+      "main": [
+        [
+          {
+            "node": "Format thread \u2192 Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format thread \u2192 Markdown": {
+      "main": [
+        [
+          {
+            "node": "Route create/update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route create/update": {
+      "main": [
+        [
+          {
+            "node": "Update existing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update existing?": {
+      "main": [
+        [
+          {
+            "node": "Drive: update markdown",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive: create markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: update markdown": {
+      "main": [
+        [
+          {
+            "node": "Remember Drive fileId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: create markdown": {
+      "main": [
+        [
+          {
+            "node": "Remember Drive fileId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remember Drive fileId": {
+      "main": [
+        [
+          {
+            "node": "Gmail: list labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: list labels": {
+      "main": [
+        [
+          {
+            "node": "Resolve SB Saved label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve SB Saved label": {
+      "main": [
+        [
+          {
+            "node": "Need create label?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need create label?": {
+      "main": [
+        [
+          {
+            "node": "Gmail: create SB Saved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep label ops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: create SB Saved": {
+      "main": [
+        [
+          {
+            "node": "Prep label ops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep label ops": {
+      "main": [
+        [
+          {
+            "node": "Gmail: add SB Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: add SB Saved": {
+      "main": [
+        [
+          {
+            "node": "Gmail: remove STARRED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Every 2 min": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": null,
+  "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+  "activeVersionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+  "versionCounter": 15,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-09-21T21:51:11.623Z",
+      "createdAt": "2026-09-21T21:51:11.623Z",
+      "role": "workflow:owner",
+      "workflowId": "xtnI0PYaTp8Ou2la",
+      "projectId": "X3Gb83P3UZlojuge",
+      "project": {
+        "updatedAt": "2025-11-15T16:08:05.137Z",
+        "createdAt": "2025-11-15T16:02:16.475Z",
+        "id": "X3Gb83P3UZlojuge",
+        "name": "Michal \u0160rajer <michal@redbutton.cz>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-09-21T22:00:40.019Z",
+    "createdAt": "2026-09-21T22:00:40.019Z",
+    "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+    "workflowId": "xtnI0PYaTp8Ou2la",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 2
+              }
+            ]
+          }
+        },
+        "id": "507a4be3-47fa-46ed-bcf3-4963cb2b5824",
+        "name": "Every 2 min",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "getAll",
+          "returnAll": false,
+          "limit": 25,
+          "simple": false,
+          "filters": {
+            "q": "(is:starred -label:\"SB Saved\") OR (newer_than:2h label:\"SB Saved\")",
+            "readStatus": "both"
+          },
+          "options": {}
+        },
+        "id": "aad2d2b2-f167-4e86-90c3-0afe805bfa0b",
+        "name": "Gmail: starred or recent SB Saved",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          220,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        },
+        "webhookId": "6a321147-8217-4741-ba99-b3e222679201"
+      },
+      {
+        "parameters": {
+          "jsCode": "const seen=new Set(); const out=[]; for (const item of $input.all()) { const tid=String(item.json.threadId||item.json.thread_id||'').trim(); if(!tid||seen.has(tid)) continue; seen.add(tid); out.push({json:{threadId:tid}}); } return out;"
+        },
+        "id": "754659df-6fd6-468a-8f7e-034ff04b6d9a",
+        "name": "Unique threadIds",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "thread",
+          "operation": "get",
+          "threadId": "={{ $json.threadId }}",
+          "simple": false,
+          "options": {
+            "returnOnlyMessages": false
+          }
+        },
+        "id": "2105a456-dce7-42ab-819f-6ad03c8ba2fd",
+        "name": "Gmail: get thread",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          660,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        },
+        "webhookId": "424f1bf5-9ccd-4b8a-a63e-6914cabb2ce8"
+      },
+      {
+        "parameters": {
+          "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(pr\u00e1zdn\u00e9 t\u011blo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
+        },
+        "id": "e41b7d03-2a84-46a2-a4f4-6a0364f4643c",
+        "name": "Format thread \u2192 Markdown",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.fileByThread) staticData.fileByThread = {};\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const existingFileId = staticData.fileByThread[j.threadId] || '';\n  const bin = Buffer.from(String(j.content || ''), 'utf8').toString('base64');\n  out.push({\n    json: { ...j, existingFileId, isUpdate: !!existingFileId },\n    binary: {\n      data: {\n        data: bin,\n        mimeType: 'text/markdown',\n        fileName: j.filename,\n      },\n    },\n  });\n}\nreturn out;\n"
+        },
+        "id": "d77ffeeb-eeff-4ffc-8d90-6d9019c39e5c",
+        "name": "Route create/update",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $json.isUpdate }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "b9fa610e-abfd-46dc-aefd-9989fd722f87",
+        "name": "Update existing?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1320,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "update",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ $json.existingFileId }}",
+            "mode": "id"
+          },
+          "changeFileContent": true,
+          "inputDataFieldName": "data",
+          "options": {}
+        },
+        "id": "771d1198-2bd3-47e1-a1a2-6647e5092748",
+        "name": "Drive: update markdown",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1540,
+          160
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "createFromText",
+          "content": "={{ $json.content }}",
+          "name": "={{ $json.filename }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list",
+            "cachedResultName": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+            "mode": "url"
+          },
+          "options": {}
+        },
+        "id": "9d63e0e5-f522-4d80-b748-62086a0fae2e",
+        "name": "Drive: create markdown",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1540,
+          420
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.fileByThread) staticData.fileByThread = {};\nconst out = [];\nfor (const item of $input.all()) {\n  const id = String(item.json.id || '');\n  // threadId from paired Create/Update input\n  let threadId = '';\n  try {\n    threadId = String($('Route create/update').item.json.threadId || '');\n  } catch (e) {\n    threadId = String(item.json.appProperties && item.json.appProperties.threadId || '');\n  }\n  if (!threadId) {\n    // fallback: parse from filename sb-workspace-THREAD.md\n    const name = String(item.json.name || '');\n    const m = name.match(/^sb-(?:workspace|personal)-(.+)\\.md$/);\n    if (m) threadId = m[1];\n  }\n  if (id && threadId) staticData.fileByThread[threadId] = id;\n  out.push({\n    json: {\n      threadId: threadId || $('Route create/update').item.json.threadId,\n      fileId: id,\n    },\n  });\n}\nreturn out;\n"
+        },
+        "id": "e4debe9f-6eb8-41d3-958d-f427b2e09381",
+        "name": "Remember Drive fileId",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "label",
+          "operation": "getAll",
+          "returnAll": true
+        },
+        "id": "6b9f50a7-30b3-45ce-b682-86432ab6f1bd",
+        "name": "Gmail: list labels",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1980,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        },
+        "executeOnce": true,
+        "webhookId": "a10f32bd-3f1d-4d88-8dc7-c9fb520d1253"
+      },
+      {
+        "parameters": {
+          "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nconst labels = $input.all().map(i => i.json);\nlet found = labels.find(l => l.name === 'SB Saved');\nif (found) { staticData.sbSavedLabelId = found.id; return [{json:{labelId:found.id, needCreate:false}}]; }\nreturn [{json:{labelId:'', needCreate:true}}];\n"
+        },
+        "id": "003eefcc-5202-4938-bf0a-955e81d4ddfa",
+        "name": "Resolve SB Saved label",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "c2",
+                "leftValue": "={{ $json.needCreate }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "789316c8-5538-4b8e-8022-f17f6699f24f",
+        "name": "Need create label?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2420,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "label",
+          "operation": "create",
+          "name": "SB Saved",
+          "options": {
+            "labelListVisibility": "labelShow",
+            "messageListVisibility": "show"
+          }
+        },
+        "id": "b7beae3c-bd12-49e2-90d1-eb5bdd2b19c3",
+        "name": "Gmail: create SB Saved",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          2640,
+          160
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        },
+        "webhookId": "68fab39e-8db9-4528-b598-67ebca646008"
+      },
+      {
+        "parameters": {
+          "jsCode": "\nconst staticData = $getWorkflowStaticData('global');\nlet labelId = staticData.sbSavedLabelId || '';\nfor (const item of $input.all()) {\n  if (item.json.id && item.json.name === 'SB Saved') labelId = item.json.id;\n  if (item.json.labelId) labelId = item.json.labelId;\n}\nif (labelId) staticData.sbSavedLabelId = labelId;\nconst threads = $('Remember Drive fileId').all();\nreturn threads.filter(t => t.json.threadId && labelId).map(t => ({json:{threadId:t.json.threadId, labelId}}));\n"
+        },
+        "id": "9c3268dd-0cae-4f90-82c8-eabf58ab10ef",
+        "name": "Prep label ops",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "thread",
+          "operation": "addLabels",
+          "threadId": "={{ $json.threadId }}",
+          "labelIds": "={{ [$json.labelId] }}"
+        },
+        "id": "4620cf2a-4554-49cc-b201-a1982965b3b5",
+        "name": "Gmail: add SB Saved",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          3080,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        },
+        "webhookId": "f4e0e12e-e9c3-4329-8f70-92dd40e5c5b2"
+      },
+      {
+        "parameters": {
+          "resource": "thread",
+          "operation": "removeLabels",
+          "threadId": "={{ $('Prep label ops').item.json.threadId }}",
+          "labelIds": [
+            "STARRED"
+          ]
+        },
+        "id": "25182b26-7d87-4e27-a186-dd9460c1a5b9",
+        "name": "Gmail: remove STARRED",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          3300,
+          300
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail account 2"
+          }
+        },
+        "onError": "continueRegularOutput",
+        "webhookId": "68ccc558-22d6-461e-ac08-5c121f6a2c83"
+      }
+    ],
+    "connections": {
+      "Every 2 min": {
+        "main": [
+          [
+            {
+              "node": "Gmail: starred or recent SB Saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail: starred or recent SB Saved": {
+        "main": [
+          [
+            {
+              "node": "Unique threadIds",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Unique threadIds": {
+        "main": [
+          [
+            {
+              "node": "Gmail: get thread",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail: get thread": {
+        "main": [
+          [
+            {
+              "node": "Format thread \u2192 Markdown",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format thread \u2192 Markdown": {
+        "main": [
+          [
+            {
+              "node": "Route create/update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route create/update": {
+        "main": [
+          [
+            {
+              "node": "Update existing?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update existing?": {
+        "main": [
+          [
+            {
+              "node": "Drive: update markdown",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Drive: create markdown",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: update markdown": {
+        "main": [
+          [
+            {
+              "node": "Remember Drive fileId",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: create markdown": {
+        "main": [
+          [
+            {
+              "node": "Remember Drive fileId",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Remember Drive fileId": {
+        "main": [
+          [
+            {
+              "node": "Gmail: list labels",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail: list labels": {
+        "main": [
+          [
+            {
+              "node": "Resolve SB Saved label",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolve SB Saved label": {
+        "main": [
+          [
+            {
+              "node": "Need create label?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Need create label?": {
+        "main": [
+          [
+            {
+              "node": "Gmail: create SB Saved",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Prep label ops",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail: create SB Saved": {
+        "main": [
+          [
+            {
+              "node": "Prep label ops",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prep label ops": {
+        "main": [
+          [
+            {
+              "node": "Gmail: add SB Saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail: add SB Saved": {
+        "main": [
+          [
+            {
+              "node": "Gmail: remove STARRED",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Michal \u0160rajer",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-09-21T22:00:40.318Z",
+        "id": 444,
+        "workflowId": "xtnI0PYaTp8Ou2la",
+        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "event": "deactivated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      },
+      {
+        "createdAt": "2026-09-21T22:00:40.352Z",
+        "id": 445,
+        "workflowId": "xtnI0PYaTp8Ou2la",
+        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "event": "activated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      },
+      {
+        "createdAt": "2026-09-21T22:00:40.112Z",
+        "id": 442,
+        "workflowId": "xtnI0PYaTp8Ou2la",
+        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "event": "deactivated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      },
+      {
+        "createdAt": "2026-09-21T22:00:40.144Z",
+        "id": 443,
+        "workflowId": "xtnI0PYaTp8Ou2la",
+        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "event": "activated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      }
+    ]
+  }
+}
