@@ -93,6 +93,19 @@ def test_select_threads_newest_first():
     assert [h.latest_ts for h in hits] == ["300.0", "150.0"]
 
 
+def test_permalink_thread_ts_beats_reply_ts():
+    match = {
+        "channel": {"id": "C1", "name": "priority"},
+        "ts": "1789970417.435419",
+        "permalink": "https://slack.test/archives/C1/p1789970417435419?thread_ts=1789561381.924319",
+        "text": "saved",
+    }
+    hit = poll.hit_from_match(match, "saved_later")
+    assert hit is not None
+    assert hit.thread_ts == "1789561381.924319"
+    assert hit.latest_ts == "1789970417.435419"
+
+
 def test_sent_pair_closes_inbound_and_skips_draft():
     inbound = ing.InboxItem(
         rel="01-INBOX/email/a.md",

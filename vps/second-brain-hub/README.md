@@ -106,7 +106,7 @@ git push origin main
 | `triage_llm_run.py` | vypnuto (20. 9. 2026) | vypnuto |
 | `inbox_inventory.py` | Po 6:55 | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
-| `slack_poll.py` | každých 2 min, 08:00–23:59 | stejně |
+| `slack_poll.py` | každých 2 min, 08:00–23:59, jen Later (`is:saved`) | stejně |
 | `assistant_ingest.py` | liché minuty, 08:00–23:59 | stejně |
 
 EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.

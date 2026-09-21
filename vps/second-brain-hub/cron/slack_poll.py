@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Poll Slack mentions, Later (is:saved) and DMs into 01-INBOX/slack/.
+"""Poll Slack Later (is:saved) into 01-INBOX/slack/.
 
-Writes the whole thread, not the tagging line. First run sets a watermark
-and does not backfill. Active 08:00–24:00 Europe/Prague.
+Mentions and DMs are Cowork's archive (_vN). This cron only stores Save for
+Later, including attachments. First run sets a watermark and does not
+backfill. Active 08:00–24:00 Europe/Prague.
 """
 from __future__ import annotations
 
@@ -28,7 +29,6 @@ from slack_client import (  # noqa: E402
 )
 from slack_poll_core import (  # noqa: E402
     INBOX_DIR,
-    LUKAS_USER_ID,
     STATE_REL,
     PollState,
     advance_seen,
@@ -43,13 +43,9 @@ TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 LOCK = "/tmp/second-brain-slack-poll.lock"
 
 
-def _queries(user_id: str) -> list[tuple[str, str]]:
-    return [
-        ("mention", f"<@{user_id}>"),
-        ("saved_later", "is:saved"),
-        ("dm", "is:dm"),
-        ("gdm", "is:mpim"),
-    ]
+def _queries() -> list[tuple[str, str]]:
+    # Mentions and DMs belong to the Cowork archive. is:dm also matched app bots.
+    return [("saved_later", "is:saved")]
 
 
 def _save_attachments(token: str, vault: DriveVault, messages: list[dict], stem: str) -> list[str]:
@@ -117,9 +113,8 @@ def _run(now: datetime) -> None:
         print(f"slack_poll: bootstrapped watermark={state.watermark_ts} (no backfill)")
         return
 
-    user_id = (os.environ.get("SLACK_LUKAS_USER_ID") or LUKAS_USER_ID).strip()
     grouped: dict[str, list] = {}
-    for kind, query in _queries(user_id):
+    for kind, query in _queries():
         try:
             grouped[kind] = search_messages(token, query, count=20)
         except SlackAPIError as exc:

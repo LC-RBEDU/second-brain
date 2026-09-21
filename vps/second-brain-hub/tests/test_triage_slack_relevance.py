@@ -157,6 +157,17 @@ def test_thread_version_key_strips_duplicate_filename_noise():
     assert key == ("1787226196.980259", 1)
 
 
+def test_unversioned_later_file_is_not_a_stale_sibling():
+    later = "01-INBOX/slack/2026-09-21_priority_1789970417.435419.md"
+    cowork = "01-INBOX/slack/2026-09-21_gdm_1789561381.924319_v2.md"
+    body_later = "kind: saved_later\n**Thread TS:** 1789561381.924319\n"
+    body_v2 = "**Thread TS:** 1789561381.924319\n**Verze:** v2\n"
+    assert mod.slack_thread_version_key("2026-09-21_priority_1789970417.435419.md", body_later) is None
+    stale = mod.stale_slack_rel_paths_from_items([(later, body_later), (cowork, body_v2)])
+    assert later not in stale
+    assert cowork not in stale
+
+
 def test_inbound_sales_feed_thread_routes_deep_not_archive():
     rel = (
         "01-INBOX/slack/"

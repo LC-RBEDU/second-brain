@@ -113,12 +113,11 @@ def slack_thread_version_key(filename: str, body: str = "") -> tuple[str, int] |
     m = _THREAD_TS_BODY_RE.search(body or "")
     thread_ts = m.group(1) if m else None
     vm = _THREAD_VERSION_FILENAME_RE.search(filename)
-    if vm:
-        ts = thread_ts or f"{vm.group(1)}.{vm.group(2)}"
-        return ts, int(vm.group(3))
-    if thread_ts:
-        return thread_ts, 1
-    return None
+    if not vm:
+        # Cron Later files have no _vN. They are not a version of the Cowork dump.
+        return None
+    ts = thread_ts or f"{vm.group(1)}.{vm.group(2)}"
+    return ts, int(vm.group(3))
 
 
 def stale_slack_rel_paths_from_items(

@@ -16,6 +16,7 @@ LOOKBACK = timedelta(hours=2)
 MAX_NEW_THREADS = 8
 
 _SLUG_RE = re.compile(r"[^a-z0-9_-]+")
+_PERMALINK_THREAD_RE = re.compile(r"[?&]thread_ts=(\d+\.\d+)")
 
 
 @dataclass
@@ -87,14 +88,18 @@ def hit_from_match(match: dict[str, Any], kind: str) -> ThreadHit | None:
     ts = str(match.get("ts") or "")
     if not channel_id or not ts:
         return None
-    thread_ts = str(match.get("thread_ts") or ts)
+    permalink = str(match.get("permalink") or "")
+    # Search often omits thread_ts and sets ts to the reply. The permalink
+    # still carries the thread root, which is what Cowork dedups on.
+    from_link = _PERMALINK_THREAD_RE.search(permalink)
+    thread_ts = str(match.get("thread_ts") or (from_link.group(1) if from_link else "") or ts)
     return ThreadHit(
         channel_id=channel_id,
         channel_name=channel_name,
         thread_ts=thread_ts,
         latest_ts=ts,
         kind=kind,
-        permalink=str(match.get("permalink") or ""),
+        permalink=permalink,
     )
 
 
