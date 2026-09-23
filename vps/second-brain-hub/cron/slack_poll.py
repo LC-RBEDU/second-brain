@@ -138,8 +138,11 @@ def _fetch_watch_messages(
         history = conversation_history(token, channel_id, limit=100, oldest=oldest)
         budget[0] -= 1
         replies_by_parent: dict[str, list[dict]] = {}
+        # Cap nested reply expansion so one busy DM cannot burn the whole tick (P).
+        max_reply_fetches = min(5, budget[0])
+        fetched = 0
         for msg in history:
-            if budget[0] <= 0:
+            if fetched >= max_reply_fetches or budget[0] <= 0:
                 break
             parent = str(msg.get("ts") or "")
             reply_count = int(msg.get("reply_count") or 0)
@@ -150,6 +153,7 @@ def _fetch_watch_messages(
                     token, channel_id, parent, limit=100
                 )
                 budget[0] -= 1
+                fetched += 1
             except SlackAPIError as exc:
                 print(f"slack_poll: replies {channel_id}:{parent}: {exc}")
         return merge_channel_history_with_replies(history, replies_by_parent)
