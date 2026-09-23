@@ -344,8 +344,18 @@ def _run(now: datetime) -> None:
         advance_watch(state, key, latest_ts=newest, rel=rel, version=version)
         written += 1
         print(f"slack_poll: wrote {rel} kind={entry.kind} key={key}")
+        # Persist after each dump so a mid-tick crash / CAS failure does not
+        # re-dump the same empty-rel watches forever.
+        try:
+            state_mtime = _write_state(vault, state, state_mtime)
+        except Exception as exc:  # noqa: BLE001
+            print(f"slack_poll: state persist after write failed: {exc}")
 
-    state_mtime = _write_state(vault, state, state_mtime)
+    try:
+        state_mtime = _write_state(vault, state, state_mtime)
+    except Exception as exc:  # noqa: BLE001
+        print(f"slack_poll: final state write failed: {exc}")
+        raise
     print(
         f"slack_poll: done enrolled={enrolled} written={written} "
         f"watch={len(state.watch)} ({now.isoformat()})"
