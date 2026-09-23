@@ -11,6 +11,7 @@ Prereq: pause Cowork Slack archive schedules 3.3 + 3.4 (dual-writer).
 from __future__ import annotations
 
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
