@@ -183,12 +183,11 @@ def test_boost_ts_prioritizes_batch():
     hot = poll.ThreadHit("Chot", "b", poll.FLAT_THREAD_TS, "50.0", "dm")
     poll.enroll_watch(state, old, seed_latest_ts="10.0")
     poll.enroll_watch(state, hot, seed_latest_ts="50.0")
-    # Quiet watch looks older; discover bumps boost without advancing latest_ts
+    # Both already dumped — boost wins among captured
     state.watch[poll.thread_key("Cold", poll.FLAT_THREAD_TS)].latest_ts = "90.0"
     state.watch[poll.thread_key("Cold", poll.FLAT_THREAD_TS)].rel = "x.md"
     state.watch[poll.thread_key("Chot", poll.FLAT_THREAD_TS)].latest_ts = "50.0"
     state.watch[poll.thread_key("Chot", poll.FLAT_THREAD_TS)].rel = "y.md"
-    # New activity on hot via re-enroll
     poll.enroll_watch(
         state,
         poll.ThreadHit("Chot", "b", poll.FLAT_THREAD_TS, "95.0", "dm"),
@@ -199,3 +198,16 @@ def test_boost_ts_prioritizes_batch():
     assert state.watch[batch[0]].boost_ts == "95.0"
     poll.advance_watch(state, batch[0], latest_ts="95.0", rel="y2.md", version=2)
     assert state.watch[batch[0]].boost_ts == ""
+
+
+def test_empty_rel_outranks_newer_captured():
+    """First dump must not starve behind newer already-captured watches (QA finding)."""
+    state = poll.PollState(bootstrapped=True)
+    stale = poll.ThreadHit("Cstale", "old", "111.0", "10.0", "gdm")
+    fresh = poll.ThreadHit("Cfresh", "new", poll.FLAT_THREAD_TS, "99.0", "dm")
+    poll.enroll_watch(state, stale, seed_latest_ts="10.0")
+    poll.enroll_watch(state, fresh, seed_latest_ts="99.0")
+    state.watch[poll.thread_key("Cfresh", poll.FLAT_THREAD_TS)].rel = "already.md"
+    # stale still has empty rel
+    batch = poll.select_watch_batch(state, limit=1)
+    assert batch[0] == poll.thread_key("Cstale", "111.0")

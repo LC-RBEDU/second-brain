@@ -316,9 +316,15 @@ def watch_sort_ts(entry: WatchEntry) -> float:
 
 
 def select_watch_batch(state: PollState, *, limit: int = MAX_REFETCH_PER_TICK) -> list[str]:
-    """Non-ignored watch keys, newest activity first (latest_ts or boost_ts)."""
+    """Non-ignored watch keys. Prefer never-dumped (empty rel), then newest activity."""
     keys = [k for k, e in state.watch.items() if not e.ignored]
-    keys.sort(key=lambda k: watch_sort_ts(state.watch[k]), reverse=True)
+
+    def sort_key(k: str) -> tuple[int, float]:
+        e = state.watch[k]
+        # 0 = needs first dump → always ahead of already-captured watches
+        return (0 if not e.rel else 1, -watch_sort_ts(e))
+
+    keys.sort(key=sort_key)
     return keys[:limit]
 
 
