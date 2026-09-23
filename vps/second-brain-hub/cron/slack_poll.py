@@ -192,7 +192,6 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
             try:
                 raw, meta = vault.read_json(STATE_REL)
                 remote = PollState.from_json(raw if isinstance(raw, dict) else {})
-                # Merge: keep our watch keys, prefer remote ignored=true, max latest_ts / max_v
                 for key, entry in remote.watch.items():
                     ours = state.watch.get(key)
                     if ours is None:
@@ -205,18 +204,21 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
                     if ts_float(entry.boost_ts or "0") > ts_float(ours.boost_ts or "0"):
                         ours.boost_ts = entry.boost_ts
                     ours.max_v = max(ours.max_v, entry.max_v)
+                    # Prefer whichever side has a dump path; keep newer max_v's rel
                     if entry.rel and (not ours.rel or entry.max_v >= ours.max_v):
                         ours.rel = entry.rel
                 for uid, name in remote.names.items():
                     state.names.setdefault(uid, name)
+                if remote.bootstrapped:
+                    state.bootstrapped = True
                 mtime = meta.modified_time
             except DriveNotFoundError:
                 mtime = None
         except DriveNotFoundError:
             meta = vault.write_json(STATE_REL, state.to_json())
             return meta.modified_time
-    if last_exc:
-        raise last_exc
+    # Last resort: force write without CAS so empty-rel progress is not lost forever.
+    print(f"slack_poll: state CAS exhausted ({last_exc}); force write")
     meta = vault.write_json(STATE_REL, state.to_json())
     return meta.modified_time
 
