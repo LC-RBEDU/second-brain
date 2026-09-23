@@ -86,15 +86,17 @@ def _save_attachments(token: str, vault: DriveVault, messages: list[dict], stem:
                     lines.append(f"- [{name}]({permalink})")
                 continue
             n += 1
-            safe = name.replace("/", "-")
+            safe = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-.")[:80] or "attachment"
             rel = f"{INBOX_DIR}/{stem}__{n}-{safe}"
             try:
                 data = download_private_file(token, url)
-                meta = vault.write_bytes(rel, data, mime_type=str(file.get("mimetype") or "application/octet-stream"))
+                meta = vault.write_bytes(
+                    rel, data, mime_type=str(file.get("mimetype") or "application/octet-stream")
+                )
                 link = f"https://drive.google.com/file/d/{meta.id}/view"
                 lines.append(f"- [{name}]({link})")
-            except (SlackAPIError, OSError) as exc:
-                print(f"slack_poll: attachment skip {name}: {exc}")
+            except Exception as exc:  # noqa: BLE001 — Drive HttpError must not abort the poll
+                print(f"slack_poll: attachment skip {name} ({rel}): {exc}")
                 if permalink:
                     lines.append(f"- [{name}]({permalink})")
     return lines
