@@ -44,6 +44,7 @@ class WatchEntry:
     ignored: bool = False
     channel_name: str = ""
     permalink: str = ""
+    boost_ts: str = ""  # discover priority only — does not advance latest_ts
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -55,6 +56,7 @@ class WatchEntry:
             "ignored": self.ignored,
             "channel_name": self.channel_name,
             "permalink": self.permalink,
+            "boost_ts": self.boost_ts,
         }
 
     @classmethod
@@ -69,6 +71,7 @@ class WatchEntry:
             ignored=bool(raw.get("ignored")),
             channel_name=str(raw.get("channel_name") or ""),
             permalink=str(raw.get("permalink") or ""),
+            boost_ts=str(raw.get("boost_ts") or ""),
         )
 
 
@@ -270,10 +273,11 @@ def enroll_watch(
             existing.kind = hit.kind
         if reason:
             existing.reason = reason
-        # Do not lower latest_ts on re-enroll
-        if ts_float(seed) > ts_float(existing.latest_ts):
-            # New activity discovered via search — leave latest_ts so refetch writes dump
-            pass
+        # Do not advance latest_ts on re-enroll (that would skip the dump) —
+        # boost sort priority when search sees newer activity (B5 / P).
+        if ts_float(hit.latest_ts) > ts_float(existing.latest_ts):
+            if ts_float(hit.latest_ts) > ts_float(existing.boost_ts or "0"):
+                existing.boost_ts = hit.latest_ts
         return existing
     entry = WatchEntry(
         kind=hit.kind,
@@ -284,6 +288,7 @@ def enroll_watch(
         ignored=False,
         channel_name=hit.channel_name,
         permalink=hit.permalink,
+        boost_ts=hit.latest_ts if ts_float(hit.latest_ts) > ts_float(seed) else "",
     )
     state.watch[key] = entry
     return entry
@@ -306,10 +311,14 @@ def should_refetch(entry: WatchEntry, newest_ts: str) -> bool:
     return ts_float(newest_ts) > ts_float(entry.latest_ts)
 
 
+def watch_sort_ts(entry: WatchEntry) -> float:
+    return max(ts_float(entry.latest_ts), ts_float(entry.boost_ts or "0"))
+
+
 def select_watch_batch(state: PollState, *, limit: int = MAX_REFETCH_PER_TICK) -> list[str]:
-    """Non-ignored watch keys, newest latest_ts first."""
+    """Non-ignored watch keys, newest activity first (latest_ts or boost_ts)."""
     keys = [k for k, e in state.watch.items() if not e.ignored]
-    keys.sort(key=lambda k: ts_float(state.watch[k].latest_ts), reverse=True)
+    keys.sort(key=lambda k: watch_sort_ts(state.watch[k]), reverse=True)
     return keys[:limit]
 
 
@@ -439,6 +448,7 @@ def advance_watch(
     entry.latest_ts = latest_ts
     entry.rel = rel
     entry.max_v = max(entry.max_v, version)
+    entry.boost_ts = ""
     if ts_float(latest_ts) > ts_float(state.watermark_ts):
         state.watermark_ts = latest_ts
 

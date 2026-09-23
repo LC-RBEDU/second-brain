@@ -39,6 +39,7 @@ from slack_poll_core import (  # noqa: E402
     STATE_REL,
     PollState,
     ThreadHit,
+    WatchEntry,
     advance_watch,
     bootstrap_state,
     discover_hits,
@@ -122,25 +123,41 @@ def _seed_latest(token: str, hit: ThreadHit) -> str:
     return newest_ts(msgs) or hit.latest_ts
 
 
-def _fetch_watch_messages(token: str, channel_id: str, thread_ts: str) -> list[dict]:
+def _fetch_watch_messages(
+    token: str,
+    channel_id: str,
+    thread_ts: str,
+    *,
+    oldest: str = "",
+    budget: list[int],
+) -> list[dict]:
+    """Fetch messages; each Slack API call decrements shared budget[0]."""
+    if budget[0] <= 0:
+        return []
     if thread_ts == FLAT_THREAD_TS:
-        history = conversation_history(token, channel_id, limit=100)
+        history = conversation_history(token, channel_id, limit=100, oldest=oldest)
+        budget[0] -= 1
         replies_by_parent: dict[str, list[dict]] = {}
-        api_calls = 1
         for msg in history:
+            if budget[0] <= 0:
+                break
             parent = str(msg.get("ts") or "")
             reply_count = int(msg.get("reply_count") or 0)
             if not parent or reply_count <= 0:
                 continue
-            if api_calls >= MAX_REFETCH_PER_TICK:
-                break
             try:
-                replies_by_parent[parent] = conversation_replies(token, channel_id, parent, limit=100)
-                api_calls += 1
+                replies_by_parent[parent] = conversation_replies(
+                    token, channel_id, parent, limit=100
+                )
+                budget[0] -= 1
             except SlackAPIError as exc:
                 print(f"slack_poll: replies {channel_id}:{parent}: {exc}")
         return merge_channel_history_with_replies(history, replies_by_parent)
-    return conversation_replies(token, channel_id, thread_ts, limit=100)
+    msgs = conversation_replies(
+        token, channel_id, thread_ts, limit=100, oldest=oldest
+    )
+    budget[0] -= 1
+    return msgs
 
 
 def _scan_max_v(vault: DriveVault, channel_id: str, thread_ts: str, entry: WatchEntry) -> int:
@@ -181,6 +198,8 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
                         ours.ignored = True
                     if ts_float(entry.latest_ts) > ts_float(ours.latest_ts):
                         ours.latest_ts = entry.latest_ts
+                    if ts_float(entry.boost_ts or "0") > ts_float(ours.boost_ts or "0"):
+                        ours.boost_ts = entry.boost_ts
                     ours.max_v = max(ours.max_v, entry.max_v)
                     if entry.rel and (not ours.rel or entry.max_v >= ours.max_v):
                         ours.rel = entry.rel
@@ -261,15 +280,25 @@ def _run(now: datetime) -> None:
 
     # --- Refetch watches ---
     written = 0
-    api_budget = MAX_REFETCH_PER_TICK
+    budget = [MAX_REFETCH_PER_TICK]
     for key in select_watch_batch(state, limit=MAX_REFETCH_PER_TICK):
-        if api_budget <= 0:
+        if budget[0] <= 0:
             break
         entry = state.watch[key]
         channel_id, thread_ts = parse_watch_key(key)
+        oldest = ""
+        if (
+            thread_ts != FLAT_THREAD_TS
+            and entry.rel
+            and ts_float(entry.latest_ts) > 0
+        ):
+            # Thread replies API: oldest is safe. Flat :0 history+replies must
+            # still see reply_count bumps on older parents — no oldest filter.
+            oldest = entry.latest_ts
         try:
-            messages = _fetch_watch_messages(token, channel_id, thread_ts)
-            api_budget -= 1
+            messages = _fetch_watch_messages(
+                token, channel_id, thread_ts, oldest=oldest, budget=budget
+            )
         except SlackAPIError as exc:
             print(f"slack_poll: fetch {key}: {exc}")
             continue

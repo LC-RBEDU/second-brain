@@ -175,3 +175,27 @@ def test_ignored_re_enroll_noop():
     poll.mark_ignored(state, "C1", poll.FLAT_THREAD_TS)
     again = poll.enroll_watch(state, hit, seed_latest_ts="20.0")
     assert again.ignored is True
+
+
+def test_boost_ts_prioritizes_batch():
+    state = poll.PollState(bootstrapped=True)
+    old = poll.ThreadHit("Cold", "a", poll.FLAT_THREAD_TS, "10.0", "dm")
+    hot = poll.ThreadHit("Chot", "b", poll.FLAT_THREAD_TS, "50.0", "dm")
+    poll.enroll_watch(state, old, seed_latest_ts="10.0")
+    poll.enroll_watch(state, hot, seed_latest_ts="50.0")
+    # Quiet watch looks older; discover bumps boost without advancing latest_ts
+    state.watch[poll.thread_key("Cold", poll.FLAT_THREAD_TS)].latest_ts = "90.0"
+    state.watch[poll.thread_key("Cold", poll.FLAT_THREAD_TS)].rel = "x.md"
+    state.watch[poll.thread_key("Chot", poll.FLAT_THREAD_TS)].latest_ts = "50.0"
+    state.watch[poll.thread_key("Chot", poll.FLAT_THREAD_TS)].rel = "y.md"
+    # New activity on hot via re-enroll
+    poll.enroll_watch(
+        state,
+        poll.ThreadHit("Chot", "b", poll.FLAT_THREAD_TS, "95.0", "dm"),
+        seed_latest_ts="50.0",
+    )
+    batch = poll.select_watch_batch(state, limit=2)
+    assert batch[0] == poll.thread_key("Chot", poll.FLAT_THREAD_TS)
+    assert state.watch[batch[0]].boost_ts == "95.0"
+    poll.advance_watch(state, batch[0], latest_ts="95.0", rel="y2.md", version=2)
+    assert state.watch[batch[0]].boost_ts == ""
