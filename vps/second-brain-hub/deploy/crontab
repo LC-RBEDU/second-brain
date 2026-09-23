@@ -59,9 +59,10 @@ TZ=Europe/Prague
 # Every 2 min — dispatch due items from 00-System/Reminders-Pending/
 */2 * * * * /usr/local/bin/python3 /app/cron/reminders_dispatch.py >> /var/log/second-brain/reminders.log 2>&1
 
-# === SLACK LATER (08:00–23:59 Europe/Prague) ===
-# is:saved only → 01-INBOX/slack/ (needs SLACK_USER_TOKEN).
-# Mentions and DMs are the Cowork archive. Reply drafts are on-demand (Cursor/Cowork), not cron.
+# === SLACK WATCHLIST (08:00–23:59 Europe/Prague) ===
+# Discover DM/GDM (to:/from:), @mentions, is:saved → watchlist refetch → 01-INBOX/slack/_vN.
+# Archive does NOT stop watching. Stop only via scripts/slack_watch_ignore.py (triage).
+# Prereq: pause Cowork Slack archive schedules 3.3 + 3.4 (dual-writer). Needs SLACK_USER_TOKEN.
 */2 8-23 * * * /usr/local/bin/python3 /app/cron/slack_poll.py >> /var/log/second-brain/slack-poll.log 2>&1
 
 # === FOCUS (priority model v2) ===

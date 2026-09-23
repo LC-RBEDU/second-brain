@@ -196,6 +196,15 @@ nedělej.
 4. **Šum počtem:** **jen** veřejné kanály bez inboundu + stale nižší `_vN`. Jen tady:
    **mlčení = archiv**. U DM/GDM, inbound a kalendáře **mlčení ≠ archiv**.
 
+**Formát tabulky v chatu (povinné — viz `task-mention-convention.mdc`):**
+
+| # | Kdo / kanál | O čem (téma z obsahu) | Míček / stav |
+|---|-------------|------------------------|--------------|
+| 1 | … | věcná věta z vlákna, ne „later / bez odpovědi“ | … |
+
+- První sloupec **`#`** — ať jde říct „řádek 3 jinak“.
+- **O čem** = předmět zprávy (co člověk chce / o čem je diskuse). Routing meta („saved later“, „bez tvé odpovědi“, „interakce bez commitmentu“) patří jen do sloupce Míček/stav, ne místo tématu.
+
 Inbound **bez** Lukášovy odpovědi sem nepatří — to je **DEEP** (rule + `detect_inbound_work_for_lukas`).
 
 **Verze vlákna (povinné — nejdřív tohle, teprve pak relevance):**
@@ -207,6 +216,19 @@ n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí *
 4. Helper: `stale_slack_rel_paths` / `stale_slack_rel_paths_from_items` v `triage_slack_relevance.py` (cron `triage_run.py` to už předává).
 
 **Manuální triáž:** před návrhem tasku zavolej stejnou logiku — `evaluate_slack_inbox_relevance(rel, body, stale_rels=…)`. Nepředpokládej, že každý slack soubor = úkol. U ARCHIVE apply = jen přesun do `07-ARCHIV/inbox-processed/` (stejně jako `archive_only` u sent mailů).
+
+**Ignorovat (přestat sledovat) — odděleně od ARCHIVE:**
+
+- `archive_only` / `ZPRACOVÁNO` **nesmí** stáhnout vlákno z VPS watchlistu (`slack_poll` dál hledá nové odpovědi).
+- Teprve když Lukáš v triáži řekne **ignoruj / nesleduj toto vlákno**, zavolej:
+
+```bash
+python3 scripts/slack_watch_ignore.py <channel_id> <thread_ts>
+```
+
+- `channel_id` / `thread_ts` z frontmatter dumpů (`channel_id:`, `thread_ts:`). U flat IM/MPIM je `thread_ts` = `0`.
+- V preview tabulce měj akci **ignorovat (přestat sledovat)** jako samostatnou volbu, ne jako synonymum ARCHIVE.
+- Vyžaduje Drive env (`VAULT_DRIVE_ID` + OAuth) — stejné jako jiné vault skripty.
 
 Pending JSON může nést `slack_route`, `slack_source_kind`, `slack_relevance_reasons` — ukaž je v preview.
 

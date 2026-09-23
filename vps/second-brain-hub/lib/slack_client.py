@@ -128,26 +128,71 @@ def api_get(token: str, method: str, params: dict[str, Any] | None = None) -> di
     return body
 
 
-def search_messages(token: str, query: str, *, count: int = 20) -> list[dict[str, Any]]:
+def search_messages(
+    token: str,
+    query: str,
+    *,
+    count: int = 100,
+    max_pages: int = 3,
+) -> list[dict[str, Any]]:
     # desc = newest first. asc returned 2020–2024 DMs/Later and the watermark
-    # floor then dropped every hit after bootstrap.
-    body = api_get(
-        token,
-        "search.messages",
-        {"query": query, "count": str(count), "sort": "timestamp", "sort_dir": "desc"},
-    )
-    return list((body.get("messages") or {}).get("matches") or [])
+    # floor then dropped every hit after bootstrap. Paginate next_cursor (cap max_pages).
+    matches: list[dict[str, Any]] = []
+    cursor = ""
+    for _ in range(max(1, max_pages)):
+        params: dict[str, Any] = {
+            "query": query,
+            "count": str(min(100, max(1, count))),
+            "sort": "timestamp",
+            "sort_dir": "desc",
+        }
+        if cursor:
+            params["cursor"] = cursor
+        body = api_get(token, "search.messages", params)
+        page = list((body.get("messages") or {}).get("matches") or [])
+        matches.extend(page)
+        pagination = body.get("response_metadata") or {}
+        # search.messages also nests pagination under messages
+        msg_meta = (body.get("messages") or {}).get("pagination") or {}
+        cursor = str(
+            pagination.get("next_cursor")
+            or msg_meta.get("next_cursor")
+            or ""
+        ).strip()
+        if not cursor or not page:
+            break
+    return matches
 
 
-def conversation_replies(token: str, channel: str, ts: str, *, limit: int = 100) -> list[dict[str, Any]]:
+def conversation_replies(
+    token: str,
+    channel: str,
+    ts: str,
+    *,
+    limit: int = 100,
+    oldest: str = "",
+) -> list[dict[str, Any]]:
     # GET — JSON POST returns invalid_arguments for this method.
-    body = api_get(
-        token,
-        "conversations.replies",
-        {"channel": channel, "ts": ts, "limit": str(limit)},
-    )
+    params: dict[str, Any] = {"channel": channel, "ts": ts, "limit": str(limit)}
+    if oldest:
+        params["oldest"] = oldest
+    body = api_get(token, "conversations.replies", params)
     return list(body.get("messages") or [])
 
+
+def conversation_history(
+    token: str,
+    channel: str,
+    *,
+    limit: int = 100,
+    oldest: str = "",
+) -> list[dict[str, Any]]:
+    """Channel messages (IM/MPIM flat). Thread replies are not included — fetch via replies."""
+    params: dict[str, Any] = {"channel": channel, "limit": str(limit)}
+    if oldest:
+        params["oldest"] = oldest
+    body = api_get(token, "conversations.history", params)
+    return list(body.get("messages") or [])
 
 def user_display_name(token: str, user_id: str, cache: dict[str, str] | None = None) -> str:
     if cache is not None and user_id in cache:
