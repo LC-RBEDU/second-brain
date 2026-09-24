@@ -13,7 +13,7 @@ Usage (Service Account fallback):
 Performs a round-trip exercising the operations cron jobs need:
   1. list 01-INBOX subfolders
   2. count 02-PROJEKTY/*.md
-  3. write + read + delete a dummy file under 00-System/Triage-Pending/
+  3. write + read + delete a dummy file under 00-System/_smoke/
   4. mtime-based CAS rewrite of the dummy file (positive case)
 
 Exits non-zero on the first failure.
@@ -66,7 +66,7 @@ def main() -> int:
 
     print("== write + read + CAS + delete smoke ==")
     stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    rel = f"00-System/Triage-Pending/_smoke_{stamp}.json"
+    rel = f"00-System/_smoke/_smoke_{stamp}.json"
     payload = {"smoke": True, "ts": stamp}
     meta = vault.write_json(rel, payload)
     print(f"  wrote {rel} mtime={meta.modified_time.isoformat()}")

@@ -1,6 +1,6 @@
 ---
 name: agenda-priority-review
-description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus/Next/Waiting in MrLUC Second Brain v2. Ad-hoc only. Scans all 02-PROJEKTY/<slug>/tasks/*.md frontmatters, proposes status/ICE/waitUntil changes. ALWAYS preview before write. Optional export to 00-System/Triage-Pending/priority-review-*.json."
+description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus/Next/Waiting in MrLUC Second Brain v2. Ad-hoc only. Scans all 02-PROJEKTY/<slug>/tasks/*.md frontmatters, proposes status/ICE/waitUntil changes. ALWAYS preview before write."
 ---
 
 # agenda-priority-review (v2)
@@ -65,7 +65,6 @@ Watch — Bez review_deadline (top ICE):
 - Jen po explicitním "schval" / "apply"
 - Patch task `.md` frontmatter (CAS): status, ice_i/c/e, waitUntil, deadline, review_deadline, updated
 - Append do body `## Poznámky / log`: `- <today>: priority-review — <change>`
-- (Volitelně) ulož batch do `00-System/Triage-Pending/priority-review-YYYY-MM-DD.json` pro audit
 - **Bases dashboard** se aktualizuje sám — žádný cron build potřeba
 - **Po batchi spusť** `python3 scripts/build_agent_context.py` — refresh `agent-context.json` pro Cursor agenta
 

@@ -48,7 +48,7 @@ def test_sembly_with_empty_body_still_deep_edge_case():
 def test_sent_email_subdir_never_deep_even_when_long():
     """Sent email fast-path (commitment extraction) — defenzivní vrstva.
 
-    `triage_run.py` má brance `is_sent_email` před voláním této funkce,
+    Chat `agenda-triage` má brance `is_sent_email` před voláním této funkce,
     ale heuristika nezávisle vrátí False, aby šel test izolovaně.
     """
     rel = "01-INBOX/email/sent/2026-05-23-long-mail.md"

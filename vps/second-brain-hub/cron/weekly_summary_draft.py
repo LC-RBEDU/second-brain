@@ -68,14 +68,6 @@ def count_inbox() -> int:
     return n
 
 
-def count_pending() -> int:
-    try:
-        files = get_vault().list_dir("00-System/Triage-Pending", pattern="*.json")
-    except DriveNotFoundError:
-        return 0
-    return len(files)
-
-
 def ice_score(t: dict, today: date) -> float:
     ice = t.get("ice") or {}
     i, c, e = ice.get("i", 5), ice.get("c", 5), max(ice.get("e", 5), 1)
@@ -167,7 +159,6 @@ def build_draft() -> str:
 ## Metriky
 
 - INBOX nezpracovaných: **{count_inbox()}**
-- Triage-Pending batchů: **{count_pending()}**
 - Otevřených úkolů (bez Waiting): **{len(open_tasks)}**
 - Waiting: **{len(waiting)}**
 - Po termínu: **{len(overdue)}**

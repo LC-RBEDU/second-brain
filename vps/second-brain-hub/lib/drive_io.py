@@ -262,6 +262,9 @@ def _retry(
             sleep(delay + jitter)
 
 
+_LRU_POP_MISSING = object()
+
+
 class _LRU(OrderedDict):
     def __init__(self, maxsize: int = 512):
         super().__init__()
@@ -278,6 +281,16 @@ class _LRU(OrderedDict):
         value = super().__getitem__(key)
         self.move_to_end(key)
         return value
+
+    def pop(self, key, default=_LRU_POP_MISSING):  # type: ignore[override]
+        # Bypass __getitem__ (move_to_end) — invalidate paths must not KeyError.
+        if key in self:
+            value = OrderedDict.__getitem__(self, key)
+            OrderedDict.__delitem__(self, key)
+            return value
+        if default is _LRU_POP_MISSING:
+            raise KeyError(key)
+        return default
 
 
 _META_FIELDS = "id,name,mimeType,modifiedTime,size,parents"

@@ -1,5 +1,7 @@
 # Implementační plán — migrace na Drive API
 
+> **Poznámka (2026-09-24):** cron writers `triage_run` / `triage_llm_run` removed — triáž je chat-only (`agenda-triage` BATCH/DEEP). Smoke log a checklisty níže zůstávají historické.
+
 > **Status (2026-05-23):** Phase **0–3** hotové. **Coolify Redeploy hotov** — běží image **`881b458`**. Phase **4.1 částečně** — triage + build + hourly cron ověřeno; **`edu_news_refresh` NameError (`key`) opraven v main** — po redeploy znovu `edu_news_refresh --dry-run` pro uzavření 4.1. Phase **4.2–4.3** čekají na čas / E2E.
 >
 > **Phase 4.1 smoke (2026-05-23, image `881b458`, po redeploy):**
@@ -119,7 +121,7 @@ VAULT_DRIVE_ID=1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz- \
 .venv/bin/python scripts/smoke_drive_io.py
 ```
 
-Skript: `auto-detect creds (oauth/sa)` → root stat → list `01-INBOX` → count `02-PROJEKTY/*.md` → write+read+CAS+trash dummy file v `00-System/Triage-Pending/`.
+Skript: `auto-detect creds (oauth/sa)` → root stat → list `01-INBOX` → count `02-PROJEKTY/*.md` → write+read+CAS+trash dummy file v `00-System/_smoke/`.
 
 **Checkpoint:** ✅ unit testy zelené, smoke test prošel z Macu (15:55). Smoke z kontejneru — provedeme až po Phase 3 deploy.
 

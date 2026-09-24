@@ -1,11 +1,11 @@
 ---
 name: agenda-triage
-description: "INBOX triage in MrLUC Second Brain v2 vault, pending batch approval from cron, or re-priority. Triggers: projeď inbox, schval pending triáž, apply batch, udělejme triage. Modes: BATCH, DEEP, PENDING (read 00-System/Triage-Pending/*.json with v2 schema). Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (human-readable filename, em-dash U+2014; subtasks číslované **<ID>-N**), archives to 07-ARCHIV/inbox-processed/. Spotify/podcast link or show title in Slack/email/inbox → queue via MCP spotify (not a vault task). ALWAYS preview before write."
+description: "INBOX triage in MrLUC Second Brain v2 vault or re-priority. Triggers: projeď inbox, apply batch, udělejme triage. Modes: BATCH, DEEP (chat-only; čte živý 01-INBOX). Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (human-readable filename, em-dash U+2014; subtasks číslované **<ID>-N**), archives to 07-ARCHIV/inbox-processed/. Spotify/podcast link or show title in Slack/email/inbox → queue via MCP spotify (not a vault task). ALWAYS preview before write. Heuristiky: vps/second-brain-hub/lib/triage_*.py."
 ---
 
 # agenda-triage (v2)
 
-> Pravidelný průchod nasbíraného. Capture ukládá rychle, triage pročistí. **V2:** vytváří `task .md` soubory v `02-PROJEKTY/<slug>/tasks/` (file-per-task), Bases dashboard se aktualizuje sám.
+> Pravidelný průchod nasbíraného. Capture ukládá rychle, triage pročistí. **V2:** vytváří `task .md` soubory v `02-PROJEKTY/<slug>/tasks/` (file-per-task), Bases dashboard se aktualizuje sám. **Chat-only** — žádný cron pending batch; módy jen BATCH + DEEP.
 
 **Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
 
@@ -13,7 +13,6 @@ description: "INBOX triage in MrLUC Second Brain v2 vault, pending batch approva
 
 - "Projeď inbox" / "udělejme triage" / "co tam mám nasbíráno"
 - V `01-INBOX/*` je >5 nezpracovaných položek
-- "Schval pending triáž" / "apply batch" → mód **PENDING**
 
 ## Módy
 
@@ -21,10 +20,9 @@ description: "INBOX triage in MrLUC Second Brain v2 vault, pending batch approva
 Mám N položek v INBOXu.
   [B]atch — rychlý souhrn, potvrzení najednou
   [D]eep — položka po položce
-  [P]ending — schválení 00-System/Triage-Pending/*.json (cron návrh)
   [R]e-priority — delegace na agenda-priority-review
 
-Default: B (nebo P pokud uživatel žádá pending).
+Default: B.
 ```
 
 ## Triage routing (PARA)
@@ -46,11 +44,11 @@ Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy: co-located bi
 
 Spotify **nemá oficiální MCP**. V Cursoru je community server `spotify` (`@xavifabregat/spotify-mcp` v `~/.cursor/mcp.json`). Tokeny: `~/.spotify-mcp/`. Premium + běžící Spotify app (telefon/desktop) — jinak API frontu odmítne.
 
-**Kdy:** v Slacku, e-mailu, Sembly, Clippings, daily i pending JSONu je
+**Kdy:** v Slacku, e-mailu, Sembly, Clippings, daily je
 - URL `open.spotify.com/…` nebo URI `spotify:episode:` / `spotify:show:` / `spotify:playlist:`
 - holý název podcastu / pořadu / epizody (doporučení, „poslechni“, „mrkni na“)
 
-**Postup (BATCH i DEEP i PENDING — vedle běžného routingu):**
+**Postup (BATCH i DEEP — vedle běžného routingu):**
 1. Najdi cílovou **epizodu** (ne jen show, pokud jde o konkrétní díl). MCP `search` umí track/album/artist/playlist — **show/episode ne**. Hledej `GET https://api.spotify.com/v1/search?type=show,episode` s access tokenem z `~/.spotify-mcp/tokens.json`, nebo queue rovnou z URI v odkazu.
 2. Přidej do fronty: MCP `queue` (URI), případně `PUT /v1/me/player/queue?uri=…`.
 3. 0 devices / 404 player → v preview „fronta přeskočena — otevři Spotify“; **neblokuj** zbytek triáže.
@@ -65,7 +63,7 @@ Ad-hoc mimo INBOX („hoď to do fronty“) = stejný postup, bez zápisu do vau
 
 ## Lidé — automatická detekce (každý zdroj)
 
-Pro každý INBOX / pending zdroj:
+Pro každý INBOX zdroj:
 1. Extrahuj zmíněné osoby (jména + aliasy z `05-RESOURCES/lide/` frontmatter).
 2. **Neznámá** → proposal `add_person` (role/org/email z textu).
 3. **Nový kontakt/narozeniny/role/téma** u známé → proposal `update_person`.
@@ -79,9 +77,9 @@ Pokud batch vyžaduje **nový projekt** (nový slug): naved na [[00-System/Templ
 
 ## Auto-routing „komplexních" zdrojů
 
-V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a routuje ho do DEEP, místo aby ho mlel přes default add_task flow.
+V BATCH módu skill **automaticky** detekuje komplexní materiál a routuje ho do DEEP, místo aby ho mlel přes default add_task flow.
 
-**Komplexní materiál** = ten, ze kterého se zákonitě bude rozsekávat víc tasků nebo se z něj stane samostatný materiál. Sdílená heuristika `vps/second-brain-hub/lib/triage_complexity.py` (volá ji i cron `triage_run.py`); pravidla v OR:
+**Komplexní materiál** = ten, ze kterého se zákonitě bude rozsekávat víc tasků nebo se z něj stane samostatný materiál. Sdílená heuristika `vps/second-brain-hub/lib/triage_complexity.py` (stejná logika pro chat BATCH); pravidla v OR:
 
 - Subdir `01-INBOX/sembly/` → **vždy** DEEP → skill **`agenda-zapis-ze-schuzky`** (HTML+MD zápis).
 - Subdir `01-INBOX/daily/` + signály Plaud/Sembly přepisu → stejně `agenda-zapis-ze-schuzky`.
@@ -95,19 +93,22 @@ V BATCH i PENDING módu skill **automaticky** detekuje komplexní materiál a ro
 - Signální fráze: „Action items", „Akční kroky", „Úkoly", „Závěry", „Decision points", „Rozhodnutí", „Next steps", „Další kroky".
 - Override v souboru: `<!-- triage:deep -->` nebo `<!-- triage:simple -->` má precedenci přede vším ostatním.
 
-Cron označuje takový návrh `requires_deep_analysis: true`, `kind: "deep"`, `proposalType: "deep_analysis"`, `target_path: null`, `frontmatter: null`, `body: "DEEP analysis required..."` a v summary `…-summary.md` přidává sekci **DEEP candidates** s důvody.
+U komplexních zdrojů v preview uveď `requires_deep_analysis` / důvody a zpracuj je DEEP flow (ne default `add_task`).
 
 ## Batch
 
 1. Načti `01-INBOX/*/`
 2. Pro **`01-INBOX/slack/`** nejdřív relevance (`vps/second-brain-hub/lib/triage_slack_relevance.py`) → archive / batch / deep (viz sekce Slack INBOX níže).
-3. Pro ostatní položky zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
-4. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
-5. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo) + **`review_deadline`** (povinné u Next/Doing — kdy se k tomu vrátit; `deadline` jen při externím závazku). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
-6. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
-7. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura).
+3. Pro **`01-INBOX/email/`** (ne `sent/`): nejdřív `email_must_propose_task` (`triage_email_actionable.py`).
+   **True → `add_task` `agent: solo`** (splatnost → `deadline`; platba → krok „Připravit platební příkaz“) —
+   **přeskoč complex/DEEP**, i když je `## Přílohy`. False → pokračuj krokem 4.
+4. Pro ostatní položky (a e-maily kde krok 3 = False) zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
+5. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
+6. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo) + **`review_deadline`** (povinné u Next/Doing — kdy se k tomu vrátit; `deadline` jen při externím závazku). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
+7. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
+8. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura).
    **Nad ~10 položek předkládej po blocích** — viz níže.
-8. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` (**včetně co-located příloh** — viz níže)
+9. Po OK: zápis task `.md` souborů, archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` (**včetně co-located příloh** — viz níže)
 
 ### Předkládání po blocích
 
@@ -144,27 +145,55 @@ Po apply s materiálem: binárku **volitelně** zkopíruj do `02-PROJEKTY/<slug>
 ### Odeslané e-maily (`01-INBOX/email/sent/`)
 
 - Capture: n8n `workspace-sent-to-inbox.json` (Workspace `lukas@redbuttonedu.cz`, frontmatter `source: sent`)
-- Cron `triage_run.py` + `triage_commitments.py`: závazky (`kind: commitment`) nebo fallback u mailu bez závazku
+- Heuristika závazků: `vps/second-brain-hub/lib/` + cron `triage_commitments.py` (purge drop list); chat triáž stejná logika
 - **Drop list** (`triage_commitments._SENT_INBOX_DROP_RULES`): shoda `to` + `subject` / `subject_contains` → **n8n neukládá** do INBOX (`workspace-sent-to-inbox.json`); cron `purge_dropped_sent_inbox` **smaže** případné staré soubory (+ přílohy `stem__*`) bez triáže. Mj. `finance@` + Fakturace dealu, Audits, OOO.
-- **Manuální triáž (agenda-triage):** při BATCH/DEEP/PENDING — pokud soubor v `01-INBOX/email/sent/` odpovídá drop listu (normalizovaný `to` + `subject` z frontmatter / hlavičky, stejná logika jako `should_drop_sent_from_inbox` v `workspace-sent-format-markdown.js`), použij **`proposalType: drop`**: **smaž** zdroj + přílohy `stem__*`, **ne** archivuj, **ne** vytvářej task. V preview uveď „DROP (sent inbox rule)" — apply bez dalšího potvrzení, pokud user schválil batch obsahující drop.
+- **Manuální triáž (agenda-triage):** při BATCH/DEEP — pokud soubor v `01-INBOX/email/sent/` odpovídá drop listu (normalizovaný `to` + `subject` z frontmatter / hlavičky, stejná logika jako `should_drop_sent_from_inbox` v `workspace-sent-format-markdown.js`), použij **`proposalType: drop`**: **smaž** zdroj + přílohy `stem__*`, **ne** archivuj, **ne** vytvářej task. V preview uveď „DROP (sent inbox rule)" — apply bez dalšího potvrzení, pokud user schválil batch obsahující drop.
 - Každý návrh v batchi má **`proposalType`**:
   - `add_task` — vytvoří `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (em-dash U+2014, sanitized title) + frontmatter `aliases: [<ID>]` + očíslované subtasky `**<ID>-N**`
   - `update_task` — patchne frontmatter / body existujícího task souboru
   - `archive_only` — jen přesune source do archivu
-- Souhrn: `00-System/Triage-Pending/YYYY-MM-DD-HHMM-summary.md` — české odrážky po souborech (typ, projekt, archiv po schválení)
 - **`archiveAfterApply`**: default `true` — po schválení `add_task` z odeslaného mailu přesuň zdroj do `07-ARCHIV/inbox-processed/` + `**ZPRACOVÁNO**` v hlavičce
-- PENDING: u commitmentů zkontroluj `notes` (citace) a `confidence`
+- U commitmentů zkontroluj citace / confidence v preview
+
+### Inbound e-mail — úkol od kontaktu (povinné, ne jen archiv)
+
+**Incident:** DPH 8/2026 (Jana Kočová, 20 876 Kč, splatnost 25. 9.) — triáž označila
+„Done“ a archivovala **bez tasku**. Platba / daň / splatnost nesmí zmizet.
+
+SSOT heuristika: `vps/second-brain-hub/lib/triage_email_actionable.py`
+(`email_must_propose_task` / `evaluate_email_actionable`).
+**BATCH / DEEP musí stejné pravidlo dodržet** — i když heuristika
+řekne False, lidský úsudek „tohle je úkol pro mě“ → `add_task`.
+
+| Kdy | `proposalType` | Zakázáno |
+|-----|----------------|----------|
+| Inbound e-mail (ne `email/sent/`) od **známého kontaktu** (`05-RESOURCES/lide/` **e-mail** ve frontmatter) **a** tělo obsahuje úkol pro Lukáše | **`add_task`** `agent: solo` (přílohy **ne** přesměrovávají do DEEP) | `archive_only` / `deep_analysis` jako jediný výstup; log „Done“ bez tasku |
+| Silný platební / daňový signál (`daňová povinnost`, `DPH`+splatnost, VS+částka, „údaje k platbě“) — i bez karty v lide/ | **`add_task`** `agent: solo` + `deadline` ze splatnosti; krok „Připravit platební příkaz (…)“ | Stejně |
+| `mailbox: personal` / `sb-personal-*` + měkká žádost o akci | **`add_task`** `agent: solo` | Stejně |
+| Bulk / noreply / newsletter bez konkrétní akce | `archive_only` OK | — |
+
+**Úkol pro Lukáše v inboundu** = adresát jsi Ty a tělo říká, co máš udělat
+(zaplatit, potvrdit, podepsat, poslat, objednat, doplnit do termínu) — **nemusí**
+tam být „já udělám“. To je míček u Tebe, ne u odesílatele.
+
+**Platební doklad (`upload_personal_receipt`)** a **úkol zaplatit** se nevylučují:
+doklad na Drive ≠ uhrazená daň. Když mail nese splatnost / VS / povinnost k úhradě →
+vždy i `add_task` (deadline = splatnost, `agent: solo` — agent připraví platební příkaz
+ke schválení).
+
+**Preview:** řádek s částkou, VS, splatností, od koho. Status `Next` (ne Done).
+`deadline:` = datum splatnosti. ICE u daně/platby typicky vysoké I/C, nízké E.
 
 ### Slack INBOX (`01-INBOX/slack/`)
 
-Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (cron i manuální BATCH/DEEP/PENDING):
+Ve složce jsou **dva typy zdrojů** — triáž vždy vyhodnotí relevanci (BATCH/DEEP):
 
 | Typ | Signály | Typický původ |
 |-----|---------|---------------|
 | **capture_n8n** | `**Čas:**`, `## Komentář`, `## Forwardovaný obsah` | `slack-cowork-inbox-with-attachments.json` (:cowork: / reakce v capture kanálu) |
 | **thread_dump** | `**Vlákno:**`, `**Kanál:**`, citované `> **Jméno**` nebo `**Jméno** HH:MM` | export celého vlákna s Lukášovou interakcí (reakce mimo capture kanál) |
 
-**Routing (SSOT:** `vps/second-brain-hub/lib/triage_slack_relevance.py` **, volá `triage_run.py`):**
+**Routing (SSOT:** `vps/second-brain-hub/lib/triage_slack_relevance.py` **):**
 
 | Route | Kdy | `proposalType` | Preview label |
 |-------|-----|----------------|---------------|
@@ -213,14 +242,14 @@ n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí *
 1. Seskup `01-INBOX/slack/*.md` podle Thread TS (`**Thread TS:**` v body, fallback filename `_<ts>_vN.md`).
 2. Pro každý thread vezmi **jen max `_vN`**. V těle hledáš `← AKTUÁLNÍ`.
 3. Až na té aktuální verzi volej `evaluate_slack_inbox_relevance(..., stale_rels=…)`.
-4. Helper: `stale_slack_rel_paths` / `stale_slack_rel_paths_from_items` v `triage_slack_relevance.py` (cron `triage_run.py` to už předává).
+4. Helper: `stale_slack_rel_paths` / `stale_slack_rel_paths_from_items` v `triage_slack_relevance.py`.
 
 **Manuální triáž:** před návrhem tasku zavolej stejnou logiku — `evaluate_slack_inbox_relevance(rel, body, stale_rels=…)`. Nepředpokládej, že každý slack soubor = úkol. U ARCHIVE apply = jen přesun do `07-ARCHIV/inbox-processed/` (stejně jako `archive_only` u sent mailů).
 
 **Ignorovat (přestat sledovat) — odděleně od ARCHIVE:**
 
 - `archive_only` / `ZPRACOVÁNO` **nesmí** stáhnout vlákno z VPS watchlistu (`slack_poll` dál hledá nové odpovědi).
-- Ruční Slack capture: reakce **`:eyes:`** (hub poll → INBOX s důvodem `označeno :eyes:` → route **batch**). Slack Later / `is:saved` poll nebere.
+- Ruční Slack capture: reakce **`:gear:`** (hub poll → INBOX s důvodem `označeno :gear:` → route **batch**). Slack Later / `is:saved` poll nebere.
 - Teprve když Lukáš v triáži řekne **ignoruj / nesleduj toto vlákno**, zavolej:
 
 ```bash
@@ -231,11 +260,9 @@ python3 scripts/slack_watch_ignore.py <channel_id> <thread_ts>
 - V preview tabulce měj akci **ignorovat (přestat sledovat)** jako samostatnou volbu, ne jako synonymum ARCHIVE.
 - Vyžaduje Drive env (`VAULT_DRIVE_ID` + OAuth) — stejné jako jiné vault skripty.
 
-Pending JSON může nést `slack_route`, `slack_source_kind`, `slack_relevance_reasons` — ukaž je v preview.
-
 ## Deep
 
-Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z BATCH/PENDING):
+Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z BATCH):
 
 ### Meeting přepis (Sembly / Plaud) → `agenda-zapis-ze-schuzky`
 
@@ -261,20 +288,56 @@ Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z
 4. Projdi s uživatelem po jednom: OK / uprav / přeskoč / drop.
 5. Zápis task `.md` + materiál `.md` souborů; archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` přes `scripts/archive_inbox_item.py` (`.md` + co-located přílohy).
 
+### Osobní Gmail — platební doklad → Drive (`upload_personal_receipt`)
+
+**Vrstvy (nezaměňovat):**
+1. Hvězdička personal → n8n ukládá přílohy (B0) + `## Přílohy`.
+2. Když `email_must_propose_task` (splatnost / daň / požadavek) → **`add_task` solo** i s přílohami (ne DEEP jen kvůli `## Přílohy`).
+3. Navíc, když je to **platební doklad** a uživatel schválí → upload na Drive `MM-YYYY` dle DUZP (`upload_personal_receipt`) — doklad ≠ uhrazená platba.
+
+**Detekce B1** (`scripts/lib/payment_doc.py` · config `00-System/personal-payment-docs.json`):
+- `mailbox: personal` (nebo filename `sb-personal-*`) **a** `is_payment_doc` (allowlist From / subject_regex / VS+money v body).
+- Dokladový soubor = co-located `{stem}__*.{pdf,jpg,jpeg,png}` (první PDF, jinak první obrázek) — `find_receipt_attachment`.
+- Fallback: `~/Downloads` match VS/issuer ≤ `downloads_max_age_days` (B5).
+
+**Preview (povinné před uploadem):**
+- proposalType / akce: **`upload_personal_receipt`**
+- Navrhovaná podsložka `MM-YYYY`, issuer slug, VS, confidence (`duzp`/`issued`/`none`), cílový Drive folder ID
+- U JPEG/PNG (bez DUZP): date = email `date:` + potvrzení
+
+**Apply po „ano“:**
+1. Načti PDF/obrázek z vaultu (ne z Gmail HTML).
+2. Text: `extract_material_text` / `pdftotext` → `scripts/lib/invoice_duzp.parse_invoice_text`.
+3. **B10 idempotence:** `00-System/Personal-Docs-Uploaded/manifest.json` — skip při shodě `threadId`+`sha256` nebo `vs`; jinak `search_drive_files` v podsložce (`name contains VS`).
+4. MCP `create_drive_file` (`lukas@redbuttonedu.cz`, `base64_content`) do `drive_root_folder_id` / podsložka `MM-YYYY` (list/create folder).
+5. Filename: `{issuer_slug}-{VS|sha8}-{YYYY-MM-DD}.{pdf|jpg}` (u image date = email_date).
+6. Append manifest + řádek do `00-System/Agent-Log/YYYY-MM.md`.
+7. Teprve pak `archive_inbox_item.py` (MD + co-located). Fail kroků 1–6 → **nearchivovat**.
+
+**Ne:** auto-upload bez preview; Playwright; OCR.
+
 ## Lukáš-only filter (vault je single-user)
 
-Vault patří **jednomu uživateli (Lukáš)**. Tasky v `02-PROJEKTY/<slug>/tasks/` jsou **operativní akce, které Lukáš sám provede / drží míček**. Ne todo list pro celou firmu, ne sumář meetingu. Aplikuj **před** přípravou návrhů (krok 3 v Deep, BATCH extrakce, i v PENDING reviewu).
+Vault patří **jednomu uživateli (Lukáš)**. Tasky v `02-PROJEKTY/<slug>/tasks/` jsou **operativní akce, které Lukáš sám provede / drží míček**. Ne todo list pro celou firmu, ne sumář meetingu. Aplikuj **před** přípravou návrhů (krok 3 v Deep, BATCH extrakce).
 
 **Lukášův task = ano**, pokud:
 - Lukáš je commitment owner ("já udělám", "musím", "připravím", "zavolám", "potvrdím", "domluvím", "rozhodnu")
 - Lukáš je svolavatel / zodpovědný (i když exekuci deleguje — drží termín a follow-up)
 - Strategický krok, kde Lukáš drží rozhodnutí
+- **Inbound e-mail / DM adresovaný Lukášovi s konkrétní akcí, kterou má udělat on**
+  (zaplatit daň/fakturu, potvrdit, podepsat, poslat podklady, objednat) — včetně
+  zpráv od účetní / právníka / dodavatele se splatností. Nemusí obsahovat „já udělám“.
 
 **Lukášův task = NE**, pokud:
 - Akci dělá někdo jiný (Luboš připraví, Pavel implementuje, Slávek napíše, klient dodá)
 - Je to volně zmíněná oblast bez konkrétního Lukášova kroku
 - Je to názor / postoj v diskusi bez akce
 - Jde o cizí projekt / téma, kde Lukáš jen poslouchal
+- FYI / newsletter / noreply bez výzvy k akci
+
+**Nikdy:** `archive_only` + „Done“ u inboundu se splatností / částkou k úhradě /
+„daňová povinnost“ / VS k platbě — to není hotovo, dokud neexistuje task **nebo**
+Lukáš výslovně neřekne „už zaplaceno“.
 
 **Hraniční (Waiting / sledovat)** — pokud Lukáš čeká na výstup od konkrétní osoby a chce to evidovat:
 - Status: `Waiting`, `waitUntil: <date>`, title: `Sledovat: <kdo> dodá <co>`
@@ -313,66 +376,6 @@ Když je položka `solo` a jde o ověření / lookup / jednu odpověď (Slack �
 
 Špatně (AF26, 31. 8.): Kamila — SLSP PE přes Work → task s **AF26-1 — ověřit PE** + **AF26-2 — odepsat** (`assist`).
 Správně: „PE v Allfredu umím ověřit. Řešit rovnou?“
-
-## PENDING (cron)
-
-1. Načti nejnovější `00-System/Triage-Pending/*-batch.json`.
-2. Rozděl proposals na **2 fronty**:
-   - `simple_queue` — `requires_deep_analysis != true` (default BATCH apply route).
-   - `deep_queue` — `requires_deep_analysis == true` (`kind: "deep"`, `proposalType: "deep_analysis"`).
-3. Pokud `deep_queue` není prázdná, řekni uživateli:
-   > Nalezeno N návrhů (M simple, K DEEP). Začneme DEEP, protože vyžadují víc pozornosti. Pokračovat? [yes/skip-deep/simple-only]
-4. **DEEP fronta**: pro každý zdroj projet DEEP analysis flow s pre-loaded `sourceFile` z Pending JSONu. Po schválení DEEP zápisu:
-   - Smazat ten proposal z Pending JSONu (CAS write s `expect_mtime`).
-   - Přesunout zdroj do `07-ARCHIV/inbox-processed/YYYY/MM/`.
-5. **Simple fronta**: stávající BATCH apply (per-proposal `proposalType`).
-6. JSON v2 schema (každý návrh):
-
-```json
-{
-  "proposalType": "add_task" | "update_task" | "archive_only" | "deep_analysis" | "add_person" | "update_person" | "area_log",
-  "target_path": "02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md",
-  "frontmatter": {
-    "id": "RBU30",
-    "type": "task",
-    "title": "Titulek lidsky čitelný",
-    "project": "[[RB Universe]]",
-    "slug": "rb-universe-development",
-    "aliases": ["RBU30"],
-    "status": "Next",
-    "ice_i": 7, "ice_c": 8, "ice_e": 5,
-    "materials": ["[[some-material]]"],
-    "source": "...",
-    "deadline": null,
-    "review_deadline": "2026-09-27",
-    "waitUntil": null
-  },
-  "body": "...",
-  "sourceFile": "01-INBOX/...",
-  "archiveAfterApply": true,
-  "confidence": 0.85,
-  "notes": "...",
-  "requires_deep_analysis": false,
-  "deep_reasons": [],
-  "needs_link": false
-}
-```
-
-**`needs_link` (cron):** pokud návrh nemá `project:` + `materials:` pro DEEP zdroj, nastav `needs_link: true` a **neaplikuj automaticky** (stejně jako `deep_analysis`).
-
-Body návrhu musí mít subtasky se prefixem `**<ID>-N**` v `## Operativní kroky`.
-Když návrh vzniká ze **zápisu schůzky** (`vystupy/zapisy` / `agenda-zapis-ze-schuzky`),
-tělo musí být **samonosné** (Z + Cíl + Kontext ze zápisu + *proč/DoD* u nových kroků) —
-viz skill zápisu, Krok 8.
-
-7. Ukaž změny podle `proposalType`. **Nikdy neaplikuj bez explicitního „ano" / „apply"**.
-8. Po schválení:
-   - `add_task` → vytvoř `target_path` se YAML frontmatterem + body.
-   - `update_task` → patchne frontmatter + append do body (CAS-aware).
-   - `archive_only` → přesun source.
-   - `deep_analysis` → **nikdy se neaplikuje automaticky**; přepni do DEEP flow (krok 4) pro daný `sourceFile`.
-   - **Archiv batch: oba soubory** — `*-batch.json` **a** `*-summary.md` se stejným prefixem (`YYYY-MM-DD-HHMM-`) přesunout z `00-System/Triage-Pending/` do `00-System/Triage-Applied/`. Nikdy nenech v Pending jen md bez JSONu (sirotek). Naming: pokud byl batch jen zavřen bez nového apply manifestu, použij sufix `-closed` (`*-batch-closed.json`, `*-summary-closed.md`).
-   - **Sanity check**: po apply zkontroluj, že `Triage-Pending/` neobsahuje žádné `*.md` ani `*.json` se starším datem než dnešek (sirotci z předchozích triage).
 
 ## Hygiena tasků (RE-ID / přesun mezi projekty / přejmenování hubu)
 
@@ -444,7 +447,7 @@ V2 — žádný cron build pro dashboard nepotřebuje. **Bases dashboard** (`OBS
 python3 scripts/sync_lide_people.py --incremental --paths "<vault-relative cesty oddělené středníkem ;>"
 ```
 
-`--paths` = vše z batchi: nové/aktualizované tasky, materiály, archivované capture (`02-PROJEKTY/...`, `07-ARCHIV/inbox-processed/...`). Separátor je **středník** (`;`) — čárka v názvu souboru je OK. Přeskoč JSON/summary v `Triage-Pending/`.
+`--paths` = vše z batchi: nové/aktualizované tasky, materiály, archivované capture (`02-PROJEKTY/...`, `07-ARCHIV/inbox-processed/...`). Separátor je **středník** (`;`) — čárka v názvu souboru je OK.
 
 3. **Vždy spusť** `python3 scripts/build_agent_context.py` (vault root) — refresh `00-System/agent-context.json` pro Cursor agenta
 4. V chatu uveď výsledek: `tasks_created=N tasks_updated=M archived=K lide_sync: linkified=L profiles_rebuilt=P agent_context_refreshed=yes`

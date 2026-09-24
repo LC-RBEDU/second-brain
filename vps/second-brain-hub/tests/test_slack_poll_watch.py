@@ -213,29 +213,29 @@ def test_empty_rel_outranks_newer_captured():
     assert batch[0] == poll.thread_key("Cstale", "111.0")
 
 
-def test_eyes_ts_survives_newer_to_me_on_same_im():
-    """Separate eyes pass must stamp ts even when dm already owns the watch."""
+def test_gear_ts_survives_newer_to_me_on_same_im():
+    """Separate gear pass must stamp ts even when dm already owns the watch."""
     state = poll.PollState(bootstrapped=True)
     dm = poll.ThreadHit("D1", "u", poll.FLAT_THREAD_TS, "50.0", "dm")
     poll.enroll_watch(state, dm, seed_latest_ts="50.0", reason="dm")
     key = poll.thread_key("D1", poll.FLAT_THREAD_TS)
     state.watch[key].rel = "already.md"
-    eyes_match = {
+    gear_match = {
         "channel": {"id": "D1", "name": "u", "is_im": True},
         "ts": "40.0",
         "text": "old starred",
     }
-    # Simulate eyes pass after discover enroll
-    hit = poll.hit_from_match(eyes_match, "eyes")
+    # Simulate gear pass after discover enroll
+    hit = poll.hit_from_match(gear_match, "gear")
     assert hit is not None
     assert hit.kind == "dm"
-    poll.enroll_watch(state, hit, seed_latest_ts="50.0", reason="eyes")
-    state.watch[key].eyes_message_ts = "40.0"
+    poll.enroll_watch(state, hit, seed_latest_ts="50.0", reason="gear")
+    state.watch[key].gear_message_ts = "40.0"
     assert state.watch[key].kind == "dm"
-    assert state.watch[key].eyes_message_ts == "40.0"
+    assert state.watch[key].gear_message_ts == "40.0"
 
 
-def test_eyes_pending_outranks_captured_in_batch():
+def test_gear_pending_outranks_captured_in_batch():
     state = poll.PollState(bootstrapped=True)
     captured = poll.ThreadHit("Ca", "a", poll.FLAT_THREAD_TS, "99.0", "dm")
     eyed = poll.ThreadHit("Cb", "b", "111.0", "10.0", "gdm")
@@ -243,23 +243,23 @@ def test_eyes_pending_outranks_captured_in_batch():
     poll.enroll_watch(state, eyed, seed_latest_ts="10.0")
     state.watch[poll.thread_key("Ca", poll.FLAT_THREAD_TS)].rel = "x.md"
     state.watch[poll.thread_key("Cb", "111.0")].rel = "y.md"
-    state.watch[poll.thread_key("Cb", "111.0")].eyes_message_ts = "10.5"
+    state.watch[poll.thread_key("Cb", "111.0")].gear_message_ts = "10.5"
     batch = poll.select_watch_batch(state, limit=1)
     assert batch[0] == poll.thread_key("Cb", "111.0")
 
 
-def test_ignored_eyes_not_stamped():
+def test_ignored_gear_not_stamped():
     state = poll.PollState(bootstrapped=True)
     hit = poll.ThreadHit("C1", "ch", "1.0", "1.0", "mention")
     poll.enroll_watch(state, hit, seed_latest_ts="1.0")
     poll.mark_ignored(state, "C1", "1.0")
     entry = state.watch[poll.thread_key("C1", "1.0")]
     assert entry.ignored is True
-    # eyes pass must skip — simulate by not writing when ignored
-    assert entry.eyes_message_ts == ""
+    # gear pass must skip — simulate by not writing when ignored
+    assert entry.gear_message_ts == ""
 
 
-def test_format_reason_override_eyes():
+def test_format_reason_override_gear():
     hit = poll.ThreadHit("C1", "gdm", "1.0", "2.0", "dm")
     md = poll.format_thread_markdown(
         hit,
@@ -267,25 +267,33 @@ def test_format_reason_override_eyes():
         {"U1": "X"},
         tz=TZ,
         version=1,
-        reason_override="označeno :eyes:",
+        reason_override="označeno :gear:",
     )
-    assert "**Důvod zálohy:** označeno :eyes:" in md
+    assert "**Důvod zálohy:** označeno :gear:" in md
     assert "kind: dm" in md
 
 
-def test_watch_entry_eyes_json_roundtrip():
+
+
+def test_watch_entry_loads_legacy_eyes_message_ts():
+    back = poll.WatchEntry.from_json(
+        {"kind": "dm", "reason": "dm", "latest_ts": "1", "eyes_message_ts": "8.8"}
+    )
+    assert back.gear_message_ts == "8.8"
+
+def test_watch_entry_gear_json_roundtrip():
     e = poll.WatchEntry(
-        kind="dm", reason="dm", latest_ts="1", eyes_message_ts="9.9"
+        kind="dm", reason="dm", latest_ts="1", gear_message_ts="9.9"
     )
     raw = e.to_json()
-    assert raw["eyes_message_ts"] == "9.9"
+    assert raw["gear_message_ts"] == "9.9"
     back = poll.WatchEntry.from_json(raw)
-    assert back.eyes_message_ts == "9.9"
+    assert back.gear_message_ts == "9.9"
 
 
-def test_discover_hits_skips_eyes_key():
+def test_discover_hits_skips_gear_key():
     grouped = {
-        "eyes": [
+        "gear": [
             {
                 "channel": {"id": "C1", "name": "pub", "is_im": False},
                 "ts": "9.0",

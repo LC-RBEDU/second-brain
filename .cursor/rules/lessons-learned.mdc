@@ -16,6 +16,8 @@ Při práci, kde to hrozí:
 - **Tiché prázdno** — prázdná kolekce může být fakt o kódu/filtru, ne o datech; ověř během bez filtru.
 - **Identita** — jména a osoby jen z autoritativního zdroje; nedomýšlej příjmení; jmenovce rozliš e-mailem.
 - **Generovaný vs. kurátorovaný** — u generovaného souboru vyhraje kurátorovaný zdroj, ne dosavadní obsah.
+- **Match aliasy** — do person match listu nikdy `—` / prázdné markery jako „e-mail“; bez adresy piš `""` (viz LL-2026-09-23).
+- **Inbound závazek** — splatnost / platba / „prosím o…“ v inboundu → `add_task`, ne `archive_only` + „Done“ (viz LL-2026-09-24).
 
 Detail a incidenty: Active soubory v `00-System/Lessons/` (otevři jen když řádek nestačí).
 

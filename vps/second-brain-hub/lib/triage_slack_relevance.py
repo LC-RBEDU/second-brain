@@ -6,8 +6,8 @@ Two source kinds land in the same folder:
    ``slack-cowork-inbox-with-attachments.json`` (``## Komentář``,
    ``## Forwardovaný obsah``, ``**Čas:**``).
 2. **thread_dump** — full thread export with ``**Vlákno:**`` and quoted
-   ``> **Name**`` messages. Hub ``slack_poll`` :eyes: dumps use
-   ``Důvod zálohy: označeno :eyes:`` → route **batch**.
+   ``> **Name**`` messages. Hub ``slack_poll`` :gear: dumps use
+   ``Důvod zálohy: označeno :gear:`` → route **batch**.
 
 Routes (always evaluated before default ``add_task`` for slack):
 
@@ -80,11 +80,11 @@ _ADDRESSED_TO_LUKAS_HEADER_RE = re.compile(
     re.IGNORECASE,
 )
 _EYES_CAPTURE_HEADER_RE = re.compile(
-    r"\*\*Důvod\s+zálohy:\*\*\s*označeno\s+:eyes:",
+    r"\*\*Důvod\s+zálohy:\*\*\s*označeno\s+:(?:gear|eyes):",
     re.IGNORECASE,
 )
 _KIND_EYES_FM_RE = re.compile(
-    r"^kind:\s*eyes\s*$",
+    r"^kind:\s*(?:gear|eyes)\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 _MENTION_LUKAS_RE = re.compile(r"@Lukáš\b|@lukas\b", re.IGNORECASE)
@@ -271,9 +271,9 @@ def evaluate_slack_inbox_relevance(
     kind = classify_slack_source(rel_path, body)
     reasons: list[str] = []
 
-    # Intentional :eyes: capture (hub slack_poll) → batch, never silent archive.
+    # Intentional :gear: capture (hub slack_poll) → batch, never silent archive.
     if _EYES_CAPTURE_HEADER_RE.search(body) or _KIND_EYES_FM_RE.search(body):
-        reasons.append("záměrný capture :eyes:")
+        reasons.append("záměrný capture :gear:")
         return SlackRelevanceResult(
             route="batch",
             source_kind=kind,

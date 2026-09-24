@@ -1,6 +1,6 @@
 # second-brain-hub (MrLUC v2 cron — Coolify, stateless)
 
-**Coolify = stateless cron** (lifecycle, triage, agent context, EDU news).
+**Coolify = stateless cron** (lifecycle, inbox inventory, agent context, EDU news marker).
 **Dashboard UI = nativní Obsidian Bases** (čte frontmatter live, žádný HTML build).
 
 Detailní architektura: [`docs/sync-architecture.md`](docs/sync-architecture.md).
@@ -20,7 +20,7 @@ flowchart LR
 | Kde | Co běží |
 |-----|---------|
 | **Google Drive** | Vault root `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/`) — SSOT |
-| **coolify-dev** | Docker stateless: lifecycle scripts, `lifecycle_hub_state.py`, `build_agent_context.py` — vše přes Drive API + CAS. LLM triáž (`triage_llm_run.py`) je vypnutá. |
+| **coolify-dev** | Docker stateless: lifecycle, `inbox_inventory.py`, `build_agent_context.py` — Drive API + CAS. Triáž jen v chatu (`agenda-triage`). |
 | **Mac** | Obsidian + Bases plugin čte frontmatter live, agent-context.json sync přes Drive Desktop |
 
 INBOX = `OBSIDIAN/01-INBOX/{slack,sembly,email,email/sent,daily,Clippings}/`.
@@ -77,8 +77,7 @@ git push origin main
 | `CALENDAR_DAYS_AHEAD` | `2` (max 14) |
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
-| `CURSOR_API_KEY` | volitelné — `cursor-agent` v `triage_llm_run.py` (cron triáže je vypnutý) |
-| `SLACK_USER_TOKEN` | `xoxp-` — Slack watchlist poll (`slack_poll.py`: DM/GDM + mentions + `:eyes:`) |
+| `SLACK_USER_TOKEN` | `xoxp-` — Slack watchlist poll (`slack_poll.py`: DM/GDM + mentions + `:gear:`) |
 | `SLACK_BOT_TOKEN` | `xoxb-` — připomínky (`reminders_dispatch.py`) |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
@@ -103,16 +102,17 @@ git push origin main
 
 | Job | Po-Pa | So-Ne |
 |-----|-------|-------|
-| `triage_llm_run.py` | vypnuto (20. 9. 2026) | vypnuto |
-| `inbox_inventory.py` | Po 6:55 | — |
+| `inbox_inventory.py` | Po 6:55 (log only) | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
-| `slack_poll.py` | každých 2 min, 08:00–23:59 — watchlist (DM/GDM + mention + `:eyes:` → `_vN`) | stejně |
+| `slack_poll.py` | každých 2 min, 08:00–23:59 — watchlist (DM/GDM + mention + `:gear:` → `_vN`) | stejně |
+
+Cron batch / LLM writers odstraněny 2026-09-24.
 
 EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.
 
 ### Schválení triáže
 
-Cron návrhy už nevznikají. Triáž je jen v chatu: „proveď mě triáží“ (skill `agenda-triage`, živý `01-INBOX`).
+Cron návrhy už nevznikají. Triáž je jen v chatu: „projeď inbox“ (skill `agenda-triage`, BATCH/DEEP nad živým `01-INBOX`).
 
 ### EDU news (OPS2)
 

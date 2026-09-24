@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Poll Slack into 01-INBOX/slack/ with a persistent watchlist.
 
-Discover (no on:date): to:/from: Lukáš in IM/MPIM, @mentions, hasmy::eyes:.
+Discover (no on:date): to:/from: Lukáš in IM/MPIM, @mentions, hasmy::gear:.
 Refetch non-ignored watches; write Cowork-compatible _vN dumps.
-:eyes: force-captures even on existing watches; reactions.remove after persist.
+:gear: force-captures even on existing watches; reactions.remove after persist.
 Stop watching only when triage marks ignored (scripts/slack_watch_ignore.py).
 Archive/ZPRACOVÁNO does not clear the watch. Active 08:00–24:00 Europe/Prague.
 
@@ -64,7 +64,7 @@ from slack_poll_core import (  # noqa: E402
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 LOCK = "/tmp/second-brain-slack-poll.lock"
 CAS_RETRIES = 3
-EYES_REASON = "označeno :eyes:"
+GEAR_REASON = "označeno :gear:"
 
 
 def _discover_queries() -> list[tuple[str, str]]:
@@ -74,7 +74,7 @@ def _discover_queries() -> list[tuple[str, str]]:
         ("to_me", f"to:<@{uid}>"),
         ("from_me", f"from:<@{uid}>"),
         ("mention", f"<@{uid}> -from:<@{uid}>"),
-        ("eyes", "hasmy::eyes:"),
+        ("gear", "hasmy::gear:"),
     ]
 
 
@@ -212,8 +212,8 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
                     ours.max_v = max(ours.max_v, entry.max_v)
                     if entry.rel and (not ours.rel or entry.max_v >= ours.max_v):
                         ours.rel = entry.rel
-                    # eyes_message_ts: local-authoritative (including intentional clear "").
-                    # Do not copy remote.eyes_message_ts onto ours.
+                    # gear_message_ts: local-authoritative (including intentional clear "").
+                    # Do not copy remote.gear_message_ts onto ours.
                 for uid, name in remote.names.items():
                     state.names.setdefault(uid, name)
                 if remote.bootstrapped:
@@ -229,11 +229,11 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
     return meta.modified_time
 
 
-def _apply_eyes_pass(token: str, state: PollState, matches: list[dict]) -> int:
-    """Stamp eyes_message_ts from hasmy::eyes: matches. Enroll if needed. Returns new enrolls."""
+def _apply_gear_pass(token: str, state: PollState, matches: list[dict]) -> int:
+    """Stamp gear_message_ts from hasmy::gear: matches. Enroll if needed. Returns new enrolls."""
     enrolled = 0
     for match in matches:
-        hit = hit_from_match(match, "eyes")
+        hit = hit_from_match(match, "gear")
         if hit is None:
             continue
         key = thread_key(hit.channel_id, hit.thread_ts)
@@ -245,40 +245,40 @@ def _apply_eyes_pass(token: str, state: PollState, matches: list[dict]) -> int:
             continue
         if entry is None:
             seed = _seed_latest(token, hit)
-            enroll_watch(state, hit, seed_latest_ts=seed, reason="eyes")
+            enroll_watch(state, hit, seed_latest_ts=seed, reason="gear")
             enrolled += 1
             entry = state.watch.get(key)
             if entry is None:
                 continue
-        entry.eyes_message_ts = msg_ts
+        entry.gear_message_ts = msg_ts
     return enrolled
 
 
-def _clear_eyes_after_unreact(
+def _clear_gear_after_unreact(
     token: str,
     vault: DriveVault,
     state: PollState,
     key: str,
     channel_id: str,
-    eyes_ts: str,
+    gear_ts: str,
     state_mtime,
 ):
-    """Remove :eyes: then clear pending ts. no_reaction counts as success."""
+    """Remove :gear: then clear pending ts. no_reaction counts as success."""
     entry = state.watch.get(key)
     if entry is None:
         return state_mtime
     try:
-        reactions_remove(token, channel_id, eyes_ts, name="eyes")
+        reactions_remove(token, channel_id, gear_ts, name="gear")
     except SlackAPIError as exc:
         if exc.error != "no_reaction":
-            print(f"slack_poll: reactions.remove {key} ts={eyes_ts}: {exc}")
+            print(f"slack_poll: reactions.remove {key} ts={gear_ts}: {exc}")
             return state_mtime
-        print(f"slack_poll: reactions.remove no_reaction {key} ts={eyes_ts} — clear anyway")
-    entry.eyes_message_ts = ""
+        print(f"slack_poll: reactions.remove no_reaction {key} ts={gear_ts} — clear anyway")
+    entry.gear_message_ts = ""
     try:
         return _write_state(vault, state, state_mtime)
     except Exception as exc:  # noqa: BLE001
-        print(f"slack_poll: state persist after eyes clear failed: {exc}")
+        print(f"slack_poll: state persist after gear clear failed: {exc}")
         return state_mtime
 
 
@@ -343,8 +343,8 @@ def _run(now: datetime) -> None:
         if is_new:
             enrolled += 1
 
-    # Separate :eyes: pass — stamps eyes_message_ts even when dm/gdm already won kind.
-    enrolled += _apply_eyes_pass(token, state, grouped.get("eyes") or [])
+    # Separate :gear: pass — stamps gear_message_ts even when dm/gdm already won kind.
+    enrolled += _apply_gear_pass(token, state, grouped.get("gear") or [])
 
     # --- Refetch watches ---
     written = 0
@@ -354,18 +354,18 @@ def _run(now: datetime) -> None:
             break
         entry = state.watch[key]
         channel_id, thread_ts = parse_watch_key(key)
-        force_eyes = bool(entry.eyes_message_ts)
-        eyes_ts = entry.eyes_message_ts
+        force_gear = bool(entry.gear_message_ts)
+        gear_ts = entry.gear_message_ts
         oldest = ""
         if (
-            not force_eyes
+            not force_gear
             and thread_ts != FLAT_THREAD_TS
             and entry.rel
             and ts_float(entry.latest_ts) > 0
         ):
             # Thread replies API: oldest is safe. Flat :0 history+replies must
             # still see reply_count bumps on older parents — no oldest filter.
-            # Force :eyes: always uses oldest="" so older reacted messages dump.
+            # Force :gear: always uses oldest="" so older reacted messages dump.
             oldest = entry.latest_ts
         try:
             messages = _fetch_watch_messages(
@@ -375,10 +375,10 @@ def _run(now: datetime) -> None:
             print(f"slack_poll: fetch {key}: {exc}")
             continue
         if not messages:
-            # Budget starved or empty — do not clear eyes / unreact (retry next tick).
+            # Budget starved or empty — do not clear gear / unreact (retry next tick).
             continue
         newest = newest_ts(messages)
-        if entry.rel and not force_eyes and not should_refetch(entry, newest):
+        if entry.rel and not force_gear and not should_refetch(entry, newest):
             continue
         _fill_names(token, state, messages)
         scanned = _scan_max_v(vault, channel_id, thread_ts, entry)
@@ -403,7 +403,7 @@ def _run(now: datetime) -> None:
             tz=TZ,
             attachment_lines=attachments,
             version=version,
-            reason_override=EYES_REASON if force_eyes else None,
+            reason_override=GEAR_REASON if force_gear else None,
         )
         try:
             vault.write_text(rel, md)
@@ -412,15 +412,15 @@ def _run(now: datetime) -> None:
             continue
         advance_watch(state, key, latest_ts=newest, rel=rel, version=version)
         written += 1
-        print(f"slack_poll: wrote {rel} kind={entry.kind} key={key} eyes={bool(force_eyes)}")
+        print(f"slack_poll: wrote {rel} kind={entry.kind} key={key} gear={bool(force_gear)}")
         try:
             state_mtime = _write_state(vault, state, state_mtime)
         except Exception as exc:  # noqa: BLE001
             print(f"slack_poll: state persist after write failed: {exc}")
             continue
-        if force_eyes and eyes_ts:
-            state_mtime = _clear_eyes_after_unreact(
-                token, vault, state, key, channel_id, eyes_ts, state_mtime
+        if force_gear and gear_ts:
+            state_mtime = _clear_gear_after_unreact(
+                token, vault, state, key, channel_id, gear_ts, state_mtime
             )
 
     try:

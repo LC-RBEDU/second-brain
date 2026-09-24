@@ -11,9 +11,8 @@ REPO=/opt/second-brain-hub
 0 4 * * *     cd $REPO && python3 cron/archive_done_tasks.py >> /var/log/sb-lifecycle.log 2>&1
 30 4 * * *    cd $REPO && python3 cron/lifecycle_recurring.py >> /var/log/sb-lifecycle.log 2>&1
 
-# Po-Pa triage
-0 7,14,20 * * 1-5  cd $REPO && python3 cron/triage_run.py >> /var/log/sb-triage.log 2>&1
-0 7 * * 0,6        cd $REPO && python3 cron/triage_run.py >> /var/log/sb-triage.log 2>&1
+# Po-Pa inbox inventory (log only — no pending batch writers)
+55 6 * * 1-5  cd $REPO && python3 cron/inbox_inventory.py >> /var/log/sb-triage.log 2>&1
 
 # EDU news — topics via Cursor skill `agenda-edu-news` (not cron)
 # Optional: cd $REPO && python3 cron/lifecycle_extra_edu_news.py --reset

@@ -79,8 +79,8 @@ OBSIDIAN/
   00-System/Memory/about-me.md
   00-System/Templates/agenda-system.md
   00-System/Templates/konvence-a-slovnik.md
-  00-System/Triage-Pending/         ← cron návrhy triáže
   00-System/Reminders-Pending/      ← Slack připomínky (VPS cron)
+  00-System/Lessons-Pending/        ← drafty lessons ke schválení
   01-INBOX/{daily,email,sembly,slack,Clippings}/
   02-PROJEKTY/<Hub>.md              ← project charter
   02-PROJEKTY/<slug>/tasks/
@@ -103,9 +103,8 @@ FY RB EDU: 1. 3. – 28. 2. (FY2026 = bře 2026 – únor 2027).
 ### Capture → triáž
 
 1. Vstup: n8n (email, slack, sembly) nebo ručně daily/Clippings, nebo agent capture
-2. Cron `triage_run.py` → `Triage-Pending/*.json`
-3. Schválení: skill agenda-triage (Cursor spolehlivěji u apply)
-4. Lifecycle cron every 2h: checkboxy→Done, Waiting→Next, archiv >90 dní
+2. Schválení v chatu: skill `agenda-triage` (BATCH / DEEP) nad živým `01-INBOX` — heuristiky v `lib/triage_*.py`
+3. Lifecycle cron every 2h: checkboxy→Done, Waiting→Next, archiv >90 dní
 
 
 
@@ -132,7 +131,7 @@ Blacklist: `OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`
 | --------------------------------------- | ------------------------------- |
 | Talking points, shrnutí callu, brief    | Claude                          |
 | Zápis material/task s preview           | Claude (jednoduché) nebo Cursor |
-| Apply Triage-Pending batch              | Cursor                          |
+| Apply triage batch (BATCH/DEEP chat)    | Cursor                          |
 | Commit, push, PR                        | Cursor                          |
 | Coolify/VPS/cron deploy                 | Cursor                          |
 | pytest, Playwright                      | Cursor                          |

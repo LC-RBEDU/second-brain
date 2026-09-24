@@ -3,7 +3,6 @@ description: Slack INBOX triage — dva zdroje ve 01-INBOX/slack/, relevance rou
 globs:
   - OBSIDIAN/01-INBOX/slack/**
   - vps/second-brain-hub/lib/triage_slack_relevance.py
-  - vps/second-brain-hub/cron/triage_run.py
 alwaysApply: false
 ---
 
@@ -41,13 +40,13 @@ Vlákno je **inbound**, pokud platí alespoň jedno:
 
 1. **Inbound řádky (vždy vypiš):** každé archive vlákno s inbound signálem = 1 řádek (kdo, o čem, jsi odpověděl?, zbývá otevřený míček?). Uživatel musí vidět, že byl tagnutý / adresovaný — i když už odepsal.
 2. **Kalendář (povinné u „book / najdeme čas / 1:1“):** když vlákno končí odkazem na booknutí schůzky (nebo kolega slíbil slot), **před rozhodnutím o tasku/Waiting** načti Google Calendar (`user-google-workspace` → `get_events`, query jméno / e-mail protistrany, window ~14 dní dopředu). Najdeš matching event → v řádku uveď datum+čas a ber jako **vyřešené follow-up** (archive, ne nový task „domluvit call“). Nenajdeš → teprve Waiting / hold. Incident: Verča Kuncová Leadspicker DM 7. 9. → event `Luky C./Verča K.` 10. 9. 10:00.
-3. **DM/GDM vždy 1 řádek (vet):** každé archive DM nebo group DM = **1 řádek** (kdo, o čem, otevřený míček / update běžícího tasku / nic k přijetí). I když classifier říká archive a Ty jsi odepsal — může to být kontext k běžícímu tasku nebo závazek, který jsi ještě nepřijal do vaultu. **DM/GDM nikdy nepatří do „šum počtem“.**
+3. **DM/GDM vždy 1 řádek (vet):** každé archive DM nebo group DM = **1 řádek** (kdo, o čem, otevřený míček / update běžícího tasku / nic k přijetí). I když classifier říká archive a Ty jsi odepsal — může to být kontext k běžícímu tasku nebo závazek, který jsi ještě nepřijal do vaultu. **DM/GDM nikdy nepatří do „šum počtem".**
 4. **Šum počtem:** **jen** veřejné kanály bez inboundu (`#edu-team`, `#inspo-…`, `#prodej-…` bez tagu) + stale nižší `_vN`. Nic jiného.
 5. **„Mlčení = archiv“ platí jen u skupiny 4.** **Neplatí** u inbound, kalendáře, DM/GDM vet ani u „hotových“ DM — ty musíš vypsat.
 
 ## Routing (před default add_task)
 
-SSOT: `vps/second-brain-hub/lib/triage_slack_relevance.py` — volá `triage_run.py`, skill `agenda-triage` při manuální triáži.
+SSOT: `vps/second-brain-hub/lib/triage_slack_relevance.py` — skill `agenda-triage` při chat triáži (BATCH/DEEP).
 
 | Route | Význam | proposalType |
 |-------|--------|--------------|
@@ -55,7 +54,7 @@ SSOT: `vps/second-brain-hub/lib/triage_slack_relevance.py` — volá `triage_run
 | **batch** | jasný Lukášův krok nebo záměrný capture komentář | `add_task` |
 | **deep** | dlouhé vlákno / forward bez komentáře / **inbound bez Lukášovy odpovědi** | `deep_analysis` |
 
-Cron summary: sekce **Slack — archiv (bez tasku)** v `Triage-Pending/*-summary.md` — inbound archive kandidáty vyjmenovat, ne jen počet.
+V preview ARCHIVE dávky: inbound archive kandidáty vyjmenovat (1 řádek), ne jen počet.
 
 ## Guardy (triáž)
 

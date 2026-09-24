@@ -36,7 +36,6 @@ from pathlib import Path
 VAULT = Path(__file__).resolve().parents[1] / "OBSIDIAN"
 TASK_DIRS = ("02-PROJEKTY", "07-ARCHIV")
 MAPPING_REL = "00-System/migration-mapping.json"
-PENDING_REL = "00-System/Triage-Pending"
 
 # The level letter is not part of the counter: RBU-E69 and RBU-S70 share one
 # sequence, so promoting a story to an epic never frees a number for reuse.
@@ -112,16 +111,6 @@ def ceiling_for_prefix(prefix: str) -> tuple[int, str]:
             continue
         for m in mention_re.finditer(text):
             consider(int(m.group(1)), f"wikilink v {path.relative_to(VAULT)}")
-
-    pending = VAULT / PENDING_REL
-    if pending.is_dir():
-        for jf in pending.glob("*.json"):
-            try:
-                blob = jf.read_text(encoding="utf-8")
-            except OSError:
-                continue
-            for m in exact.finditer(blob):
-                consider(int(m.group(1)), f"pending triáž {jf.name}")
 
     return best, where
 

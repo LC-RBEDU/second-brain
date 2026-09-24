@@ -45,7 +45,7 @@ class WatchEntry:
     channel_name: str = ""
     permalink: str = ""
     boost_ts: str = ""  # discover priority only — does not advance latest_ts
-    eyes_message_ts: str = ""  # pending :eyes: unreact target (match.ts)
+    gear_message_ts: str = ""  # pending :gear: unreact target (match.ts)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -58,7 +58,7 @@ class WatchEntry:
             "channel_name": self.channel_name,
             "permalink": self.permalink,
             "boost_ts": self.boost_ts,
-            "eyes_message_ts": self.eyes_message_ts,
+            "gear_message_ts": self.gear_message_ts,
         }
 
     @classmethod
@@ -74,7 +74,9 @@ class WatchEntry:
             channel_name=str(raw.get("channel_name") or ""),
             permalink=str(raw.get("permalink") or ""),
             boost_ts=str(raw.get("boost_ts") or ""),
-            eyes_message_ts=str(raw.get("eyes_message_ts") or ""),
+            gear_message_ts=str(
+                raw.get("gear_message_ts") or raw.get("eyes_message_ts") or ""
+            ),
         )
 
 
@@ -219,7 +221,7 @@ def select_threads(
                 continue
             current = best.get(key)
             if current is None or ts_float(hit.latest_ts) > ts_float(current.latest_ts):
-                if current and current.kind != "eyes" and hit.kind == "eyes":
+                if current and current.kind != "gear" and hit.kind == "gear":
                     hit.kind = current.kind
                 best[key] = hit
     ordered = sorted(best.values(), key=lambda h: ts_float(h.latest_ts), reverse=True)
@@ -229,11 +231,11 @@ def select_threads(
 def discover_hits(grouped: dict[str, list[dict[str, Any]]]) -> list[ThreadHit]:
     """Dedup search matches into ThreadHits for watch enrollment.
 
-    ``eyes`` matches are handled by a separate pass in slack_poll (not here).
+    ``gear`` matches are handled by a separate pass in slack_poll (not here).
     """
     best: dict[str, ThreadHit] = {}
     for kind, matches in grouped.items():
-        if kind == "eyes":
+        if kind == "gear":
             continue
         for match in matches:
             # Skip non-DM for to_me/from_me unless channel flags say otherwise —
@@ -273,12 +275,12 @@ def enroll_watch(
             existing.channel_name = hit.channel_name
         if hit.permalink:
             existing.permalink = hit.permalink
-        # :eyes: must not overwrite dm/gdm/mention kind (same pin as legacy saved_later).
-        if hit.kind and hit.kind != "eyes":
+        # :gear: must not overwrite dm/gdm/mention kind (same pin as legacy saved_later).
+        if hit.kind and hit.kind != "gear":
             existing.kind = hit.kind
-        if reason and reason != "eyes":
+        if reason and reason != "gear":
             existing.reason = reason
-        elif reason == "eyes" and not existing.reason:
+        elif reason == "gear" and not existing.reason:
             existing.reason = reason
         # Do not advance latest_ts on re-enroll (that would skip the dump) —
         # boost sort priority when search sees newer activity (B5 / P).
@@ -296,7 +298,7 @@ def enroll_watch(
         channel_name=hit.channel_name,
         permalink=hit.permalink,
         boost_ts=hit.latest_ts if ts_float(hit.latest_ts) > ts_float(seed) else "",
-        eyes_message_ts="",
+        gear_message_ts="",
     )
     state.watch[key] = entry
     return entry
@@ -324,13 +326,13 @@ def watch_sort_ts(entry: WatchEntry) -> float:
 
 
 def select_watch_batch(state: PollState, *, limit: int = MAX_REFETCH_PER_TICK) -> list[str]:
-    """Non-ignored watch keys. Prefer pending :eyes: / empty rel, then newest activity."""
+    """Non-ignored watch keys. Prefer pending :gear: / empty rel, then newest activity."""
     keys = [k for k, e in state.watch.items() if not e.ignored]
 
     def sort_key(k: str) -> tuple[int, float]:
         e = state.watch[k]
-        # 0 = pending eyes or needs first dump → ahead of ordinary captured watches
-        tier = 0 if (e.eyes_message_ts or not e.rel) else 1
+        # 0 = pending gear or needs first dump → ahead of ordinary captured watches
+        tier = 0 if (e.gear_message_ts or not e.rel) else 1
         return (tier, -watch_sort_ts(e))
 
     keys.sort(key=sort_key)
@@ -399,7 +401,7 @@ def format_thread_markdown(
         "mention": "adresováno mně",
         "dm": "adresováno mně",
         "gdm": "adresováno mně",
-        "eyes": "označeno :eyes:",
+        "gear": "označeno :gear:",
         "saved_later": "uloženo na později",  # legacy dumps
         "watch": "sledované vlákno",
     }.get(hit.kind, "adresováno mně")

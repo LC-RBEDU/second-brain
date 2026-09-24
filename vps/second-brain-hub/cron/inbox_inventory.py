@@ -16,6 +16,7 @@ if str(_CRON) not in sys.path:
     sys.path.insert(0, str(_CRON))
 
 from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from inbox_scan import iter_inbox_items  # noqa: E402
 from triage_complexity import has_attachments_markers  # noqa: E402
 from triage_commitments import purge_dropped_sent_inbox  # noqa: E402
 from triage_slack_relevance import (  # noqa: E402
@@ -23,7 +24,6 @@ from triage_slack_relevance import (  # noqa: E402
     is_slack_inbox,
     stale_slack_rel_paths_from_items,
 )
-from triage_run import iter_inbox_items, _open_pending_source_files  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
@@ -37,9 +37,6 @@ def main() -> None:
 
     items = iter_inbox_items(vault)
     items = purge_dropped_sent_inbox(vault, items)
-    pending = _open_pending_source_files(vault)
-    if pending:
-        items = [(r, b) for r, b in items if r not in pending]
 
     now = datetime.now(TZ).isoformat()
     if not items:

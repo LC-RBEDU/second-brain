@@ -36,9 +36,8 @@ TZ=Europe/Prague
 9 */2 * * * /usr/local/bin/python3 /app/cron/lifecycle_github_rbu_closes.py >> /var/log/second-brain/lifecycle.log 2>&1
 
 # === TRIAGE ===
-# LLM běhy 7/14/20 (a víkend 7:00) vypnuty 2026-09-20 — triáž jen v chatu (agenda-triage).
-# triage_llm_run.py v image zůstává, cron ho nespouští.
-# Fallback inventory (Po 6:55 — log only, no proposals, bez LLM)
+# Cron batch / LLM writers removed 2026-09-24 — chat-only (agenda-triage BATCH/DEEP).
+# Fallback inventory (Po 6:55 — log only, no proposals)
 55 6 * * 1-5 /usr/local/bin/python3 /app/cron/inbox_inventory.py >> /var/log/second-brain/triage.log 2>&1
 
 # === EDU NEWS ===

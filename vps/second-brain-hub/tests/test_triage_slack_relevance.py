@@ -182,7 +182,7 @@ def test_inbound_sales_feed_thread_routes_deep_not_archive():
     assert not mod.extract_lukas_messages(SALES_FEED_INBOUND).strip()
 
 
-def test_eyes_capture_routes_batch_not_archive():
+def test_gear_capture_routes_batch_not_archive():
     rel = "01-INBOX/slack/2026-09-23_edu-owners_1789751718.016119_v1.md"
     body = """---
 source: slack
@@ -196,7 +196,7 @@ slack_ts: 1789751718.016119
 **Kanál:** edu-owners
 **Thread TS:** 1789751718.016119
 **Verze:** v1 ← AKTUÁLNÍ
-**Důvod zálohy:** označeno :eyes:
+**Důvod zálohy:** označeno :gear:
 
 **Honza** 19:15
 Domácí úkol do Mira
@@ -204,4 +204,4 @@ Domácí úkol do Mira
     result = mod.evaluate_slack_inbox_relevance(rel, body, guess_proj=_guess_proj)
     assert result is not None
     assert result.route == "batch"
-    assert any("eyes" in r for r in result.reasons)
+    assert any("gear" in r for r in result.reasons)

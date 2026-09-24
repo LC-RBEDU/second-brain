@@ -141,7 +141,7 @@ Z toho plyne (v README není):
 | Skill | Kdy zavolat |
 |-------|-------------|
 | `agenda-capture` | "zapiš si", "capture", "INBOX" |
-| `agenda-triage` | "projeď inbox", "schvál pending" |
+| `agenda-triage` | "projeď inbox", "udělejme triage" |
 | `agenda-co-ted` | "co teď", "co dnes", "co je urgentní" |
 | `agenda-work` | "jdeme na <slug>", "otevři <slug>" |
 | `agenda-status-update` | "označ X jako Done", "odlož na Y" |

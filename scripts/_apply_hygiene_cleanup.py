@@ -72,7 +72,7 @@ PREFERRED_FM_ORDER = [
 
 
 # ---------------------------------------------------------------------------
-# sanitize_title: replicate triage_run.py / rename_tasks_to_human_filenames.py
+# sanitize_title: replicate rename_tasks_to_human_filenames.py
 # ---------------------------------------------------------------------------
 
 def sanitize_title(title: str) -> str:
