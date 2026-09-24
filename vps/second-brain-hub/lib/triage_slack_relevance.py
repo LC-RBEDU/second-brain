@@ -6,7 +6,8 @@ Two source kinds land in the same folder:
    ``slack-cowork-inbox-with-attachments.json`` (``## Komentář``,
    ``## Forwardovaný obsah``, ``**Čas:**``).
 2. **thread_dump** — full thread export with ``**Vlákno:**`` and quoted
-   ``> **Name**`` messages (e.g. :cowork: reaction on a thread elsewhere).
+   ``> **Name**`` messages. Hub ``slack_poll`` :eyes: dumps use
+   ``Důvod zálohy: označeno :eyes:`` → route **batch**.
 
 Routes (always evaluated before default ``add_task`` for slack):
 
@@ -77,6 +78,14 @@ _SPEAKER_LINE_RE = re.compile(
 _ADDRESSED_TO_LUKAS_HEADER_RE = re.compile(
     r"\*\*Důvod\s+zálohy:\*\*\s*adresováno\s+mně",
     re.IGNORECASE,
+)
+_EYES_CAPTURE_HEADER_RE = re.compile(
+    r"\*\*Důvod\s+zálohy:\*\*\s*označeno\s+:eyes:",
+    re.IGNORECASE,
+)
+_KIND_EYES_FM_RE = re.compile(
+    r"^kind:\s*eyes\s*$",
+    re.IGNORECASE | re.MULTILINE,
 )
 _MENTION_LUKAS_RE = re.compile(r"@Lukáš\b|@lukas\b", re.IGNORECASE)
 _INBOUND_WORK_RE = re.compile(
@@ -261,6 +270,16 @@ def evaluate_slack_inbox_relevance(
 
     kind = classify_slack_source(rel_path, body)
     reasons: list[str] = []
+
+    # Intentional :eyes: capture (hub slack_poll) → batch, never silent archive.
+    if _EYES_CAPTURE_HEADER_RE.search(body) or _KIND_EYES_FM_RE.search(body):
+        reasons.append("záměrný capture :eyes:")
+        return SlackRelevanceResult(
+            route="batch",
+            source_kind=kind,
+            confidence=0.95,
+            reasons=reasons,
+        )
 
     if kind == "capture_n8n":
         komentar = extract_section(body, "Komentář")

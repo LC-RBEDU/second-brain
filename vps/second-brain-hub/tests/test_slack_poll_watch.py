@@ -211,3 +211,95 @@ def test_empty_rel_outranks_newer_captured():
     # stale still has empty rel
     batch = poll.select_watch_batch(state, limit=1)
     assert batch[0] == poll.thread_key("Cstale", "111.0")
+
+
+def test_eyes_ts_survives_newer_to_me_on_same_im():
+    """Separate eyes pass must stamp ts even when dm already owns the watch."""
+    state = poll.PollState(bootstrapped=True)
+    dm = poll.ThreadHit("D1", "u", poll.FLAT_THREAD_TS, "50.0", "dm")
+    poll.enroll_watch(state, dm, seed_latest_ts="50.0", reason="dm")
+    key = poll.thread_key("D1", poll.FLAT_THREAD_TS)
+    state.watch[key].rel = "already.md"
+    eyes_match = {
+        "channel": {"id": "D1", "name": "u", "is_im": True},
+        "ts": "40.0",
+        "text": "old starred",
+    }
+    # Simulate eyes pass after discover enroll
+    hit = poll.hit_from_match(eyes_match, "eyes")
+    assert hit is not None
+    assert hit.kind == "dm"
+    poll.enroll_watch(state, hit, seed_latest_ts="50.0", reason="eyes")
+    state.watch[key].eyes_message_ts = "40.0"
+    assert state.watch[key].kind == "dm"
+    assert state.watch[key].eyes_message_ts == "40.0"
+
+
+def test_eyes_pending_outranks_captured_in_batch():
+    state = poll.PollState(bootstrapped=True)
+    captured = poll.ThreadHit("Ca", "a", poll.FLAT_THREAD_TS, "99.0", "dm")
+    eyed = poll.ThreadHit("Cb", "b", "111.0", "10.0", "gdm")
+    poll.enroll_watch(state, captured, seed_latest_ts="99.0")
+    poll.enroll_watch(state, eyed, seed_latest_ts="10.0")
+    state.watch[poll.thread_key("Ca", poll.FLAT_THREAD_TS)].rel = "x.md"
+    state.watch[poll.thread_key("Cb", "111.0")].rel = "y.md"
+    state.watch[poll.thread_key("Cb", "111.0")].eyes_message_ts = "10.5"
+    batch = poll.select_watch_batch(state, limit=1)
+    assert batch[0] == poll.thread_key("Cb", "111.0")
+
+
+def test_ignored_eyes_not_stamped():
+    state = poll.PollState(bootstrapped=True)
+    hit = poll.ThreadHit("C1", "ch", "1.0", "1.0", "mention")
+    poll.enroll_watch(state, hit, seed_latest_ts="1.0")
+    poll.mark_ignored(state, "C1", "1.0")
+    entry = state.watch[poll.thread_key("C1", "1.0")]
+    assert entry.ignored is True
+    # eyes pass must skip — simulate by not writing when ignored
+    assert entry.eyes_message_ts == ""
+
+
+def test_format_reason_override_eyes():
+    hit = poll.ThreadHit("C1", "gdm", "1.0", "2.0", "dm")
+    md = poll.format_thread_markdown(
+        hit,
+        [{"user": "U1", "ts": "2.0", "text": "hi"}],
+        {"U1": "X"},
+        tz=TZ,
+        version=1,
+        reason_override="označeno :eyes:",
+    )
+    assert "**Důvod zálohy:** označeno :eyes:" in md
+    assert "kind: dm" in md
+
+
+def test_watch_entry_eyes_json_roundtrip():
+    e = poll.WatchEntry(
+        kind="dm", reason="dm", latest_ts="1", eyes_message_ts="9.9"
+    )
+    raw = e.to_json()
+    assert raw["eyes_message_ts"] == "9.9"
+    back = poll.WatchEntry.from_json(raw)
+    assert back.eyes_message_ts == "9.9"
+
+
+def test_discover_hits_skips_eyes_key():
+    grouped = {
+        "eyes": [
+            {
+                "channel": {"id": "C1", "name": "pub", "is_im": False},
+                "ts": "9.0",
+                "text": "x",
+            }
+        ],
+        "to_me": [
+            {
+                "channel": {"id": "D1", "name": "u", "is_im": True},
+                "ts": "10.0",
+                "text": "dm",
+            }
+        ],
+    }
+    hits = poll.discover_hits(grouped)
+    assert len(hits) == 1
+    assert hits[0].channel_id == "D1"

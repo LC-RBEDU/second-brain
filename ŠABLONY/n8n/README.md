@@ -8,7 +8,7 @@ Workflows. Každý JSON je importovatelný do n8n.
 
 | Podsložka | Účel |
 |-----------|------|
-| `slack/` | Slack Later (hub) + Cowork archiv |
+| `slack/` | Slack `:eyes:` capture (hub `slack_poll`) + Cowork archiv |
 | `sembly/` | Sembly webhook |
 | `email/` | Gmail hvězdičky (celé vlákno) |
 | `email/sent/` | Nové odeslané (ne reply) |
@@ -20,7 +20,7 @@ Workflows. Každý JSON je importovatelný do n8n.
 | Soubor | n8n ID | Co dělá |
 |--------|--------|---------|
 | `gmail-starred-to-inbox-workspace.json` | `xtnI0PYaTp8Ou2la` | Hvězdičky + refresh SB Saved → `01-INBOX/email/` (Workspace) |
-| `gmail-starred-to-inbox-personal.json` | `yuFyLHlioxuE2Jhj` | Totéž pro osobní Gmail — **neaktivní**, potřebuje OAuth |
+| `gmail-starred-to-inbox-personal.json` | `yuFyLHlioxuE2Jhj` | Totéž pro osobní Gmail — aktivní |
 | `workspace-sent-to-inbox.json` | `7fhDXThOaxl1yNtE` | Nové odeslané (ne reply) → `email/sent/` + SB Saved |
 | `slack-cowork-inbox-with-attachments.json` | `rCOoXlfbD1XcVmtn` | Slack capture + přílohy |
 | `mobile-capture-to-cowork.json` | `k5p32VUAgaPL0KPe` | Webhook → daily/ |

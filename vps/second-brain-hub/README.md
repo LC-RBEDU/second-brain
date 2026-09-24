@@ -78,7 +78,7 @@ git push origin main
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
 | `CURSOR_API_KEY` | volitelné — `cursor-agent` v `triage_llm_run.py` (cron triáže je vypnutý) |
-| `SLACK_USER_TOKEN` | `xoxp-` — Slack watchlist poll (`slack_poll.py`: DM/GDM + mentions + Later) |
+| `SLACK_USER_TOKEN` | `xoxp-` — Slack watchlist poll (`slack_poll.py`: DM/GDM + mentions + `:eyes:`) |
 | `SLACK_BOT_TOKEN` | `xoxb-` — připomínky (`reminders_dispatch.py`) |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
@@ -106,7 +106,7 @@ git push origin main
 | `triage_llm_run.py` | vypnuto (20. 9. 2026) | vypnuto |
 | `inbox_inventory.py` | Po 6:55 | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
-| `slack_poll.py` | každých 2 min, 08:00–23:59 — watchlist (DM/GDM + mention + Later → `_vN`) | stejně |
+| `slack_poll.py` | každých 2 min, 08:00–23:59 — watchlist (DM/GDM + mention + `:eyes:` → `_vN`) | stejně |
 
 EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalendář, assist). Skript `lifecycle_extra_edu_news.py` jen `--reset` markeru.
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Poll Slack into 01-INBOX/slack/ with a persistent watchlist.
 
-Discover (no on:date): to:/from: Lukáš in IM/MPIM, @mentions, is:saved.
+Discover (no on:date): to:/from: Lukáš in IM/MPIM, @mentions, hasmy::eyes:.
 Refetch non-ignored watches; write Cowork-compatible _vN dumps.
+:eyes: force-captures even on existing watches; reactions.remove after persist.
 Stop watching only when triage marks ignored (scripts/slack_watch_ignore.py).
 Archive/ZPRACOVÁNO does not clear the watch. Active 08:00–24:00 Europe/Prague.
 
@@ -29,6 +30,7 @@ from slack_client import (  # noqa: E402
     conversation_history,
     conversation_replies,
     download_private_file,
+    reactions_remove,
     search_messages,
     user_display_name,
 )
@@ -46,6 +48,7 @@ from slack_poll_core import (  # noqa: E402
     discover_hits,
     enroll_watch,
     format_thread_markdown,
+    hit_from_match,
     inbox_filename_vN,
     max_version_from_names,
     merge_channel_history_with_replies,
@@ -61,6 +64,7 @@ from slack_poll_core import (  # noqa: E402
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 LOCK = "/tmp/second-brain-slack-poll.lock"
 CAS_RETRIES = 3
+EYES_REASON = "označeno :eyes:"
 
 
 def _discover_queries() -> list[tuple[str, str]]:
@@ -70,7 +74,7 @@ def _discover_queries() -> list[tuple[str, str]]:
         ("to_me", f"to:<@{uid}>"),
         ("from_me", f"from:<@{uid}>"),
         ("mention", f"<@{uid}> -from:<@{uid}>"),
-        ("saved_later", "is:saved"),
+        ("eyes", "hasmy::eyes:"),
     ]
 
 
@@ -176,7 +180,6 @@ def _scan_max_v(vault: DriveVault, channel_id: str, thread_ts: str, entry: Watch
             names.append(meta.name)
     except Exception as exc:  # noqa: BLE001
         print(f"slack_poll: list INBOX skip: {exc}")
-    # Prefer cache miss only — light archive scan by year/month would be heavy; use rel basename hint
     if entry.rel:
         names.append(Path(entry.rel).name)
     return max_version_from_names(names, channel_id, thread_ts)
@@ -207,9 +210,10 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
                     if ts_float(entry.boost_ts or "0") > ts_float(ours.boost_ts or "0"):
                         ours.boost_ts = entry.boost_ts
                     ours.max_v = max(ours.max_v, entry.max_v)
-                    # Prefer whichever side has a dump path; keep newer max_v's rel
                     if entry.rel and (not ours.rel or entry.max_v >= ours.max_v):
                         ours.rel = entry.rel
+                    # eyes_message_ts: local-authoritative (including intentional clear "").
+                    # Do not copy remote.eyes_message_ts onto ours.
                 for uid, name in remote.names.items():
                     state.names.setdefault(uid, name)
                 if remote.bootstrapped:
@@ -220,10 +224,62 @@ def _write_state(vault: DriveVault, state: PollState, expect_mtime) -> object:
         except DriveNotFoundError:
             meta = vault.write_json(STATE_REL, state.to_json())
             return meta.modified_time
-    # Last resort: force write without CAS so empty-rel progress is not lost forever.
     print(f"slack_poll: state CAS exhausted ({last_exc}); force write")
     meta = vault.write_json(STATE_REL, state.to_json())
     return meta.modified_time
+
+
+def _apply_eyes_pass(token: str, state: PollState, matches: list[dict]) -> int:
+    """Stamp eyes_message_ts from hasmy::eyes: matches. Enroll if needed. Returns new enrolls."""
+    enrolled = 0
+    for match in matches:
+        hit = hit_from_match(match, "eyes")
+        if hit is None:
+            continue
+        key = thread_key(hit.channel_id, hit.thread_ts)
+        entry = state.watch.get(key)
+        if entry and entry.ignored:
+            continue
+        msg_ts = str(match.get("ts") or "")
+        if not msg_ts:
+            continue
+        if entry is None:
+            seed = _seed_latest(token, hit)
+            enroll_watch(state, hit, seed_latest_ts=seed, reason="eyes")
+            enrolled += 1
+            entry = state.watch.get(key)
+            if entry is None:
+                continue
+        entry.eyes_message_ts = msg_ts
+    return enrolled
+
+
+def _clear_eyes_after_unreact(
+    token: str,
+    vault: DriveVault,
+    state: PollState,
+    key: str,
+    channel_id: str,
+    eyes_ts: str,
+    state_mtime,
+):
+    """Remove :eyes: then clear pending ts. no_reaction counts as success."""
+    entry = state.watch.get(key)
+    if entry is None:
+        return state_mtime
+    try:
+        reactions_remove(token, channel_id, eyes_ts, name="eyes")
+    except SlackAPIError as exc:
+        if exc.error != "no_reaction":
+            print(f"slack_poll: reactions.remove {key} ts={eyes_ts}: {exc}")
+            return state_mtime
+        print(f"slack_poll: reactions.remove no_reaction {key} ts={eyes_ts} — clear anyway")
+    entry.eyes_message_ts = ""
+    try:
+        return _write_state(vault, state, state_mtime)
+    except Exception as exc:  # noqa: BLE001
+        print(f"slack_poll: state persist after eyes clear failed: {exc}")
+        return state_mtime
 
 
 def main() -> None:
@@ -287,6 +343,9 @@ def _run(now: datetime) -> None:
         if is_new:
             enrolled += 1
 
+    # Separate :eyes: pass — stamps eyes_message_ts even when dm/gdm already won kind.
+    enrolled += _apply_eyes_pass(token, state, grouped.get("eyes") or [])
+
     # --- Refetch watches ---
     written = 0
     budget = [MAX_REFETCH_PER_TICK]
@@ -295,14 +354,18 @@ def _run(now: datetime) -> None:
             break
         entry = state.watch[key]
         channel_id, thread_ts = parse_watch_key(key)
+        force_eyes = bool(entry.eyes_message_ts)
+        eyes_ts = entry.eyes_message_ts
         oldest = ""
         if (
-            thread_ts != FLAT_THREAD_TS
+            not force_eyes
+            and thread_ts != FLAT_THREAD_TS
             and entry.rel
             and ts_float(entry.latest_ts) > 0
         ):
             # Thread replies API: oldest is safe. Flat :0 history+replies must
             # still see reply_count bumps on older parents — no oldest filter.
+            # Force :eyes: always uses oldest="" so older reacted messages dump.
             oldest = entry.latest_ts
         try:
             messages = _fetch_watch_messages(
@@ -312,10 +375,10 @@ def _run(now: datetime) -> None:
             print(f"slack_poll: fetch {key}: {exc}")
             continue
         if not messages:
+            # Budget starved or empty — do not clear eyes / unreact (retry next tick).
             continue
         newest = newest_ts(messages)
-        # First capture (no rel yet) OR newer than seed/latest — archive must not block.
-        if entry.rel and not should_refetch(entry, newest):
+        if entry.rel and not force_eyes and not should_refetch(entry, newest):
             continue
         _fill_names(token, state, messages)
         scanned = _scan_max_v(vault, channel_id, thread_ts, entry)
@@ -340,6 +403,7 @@ def _run(now: datetime) -> None:
             tz=TZ,
             attachment_lines=attachments,
             version=version,
+            reason_override=EYES_REASON if force_eyes else None,
         )
         try:
             vault.write_text(rel, md)
@@ -348,13 +412,16 @@ def _run(now: datetime) -> None:
             continue
         advance_watch(state, key, latest_ts=newest, rel=rel, version=version)
         written += 1
-        print(f"slack_poll: wrote {rel} kind={entry.kind} key={key}")
-        # Persist after each dump so a mid-tick crash / CAS failure does not
-        # re-dump the same empty-rel watches forever.
+        print(f"slack_poll: wrote {rel} kind={entry.kind} key={key} eyes={bool(force_eyes)}")
         try:
             state_mtime = _write_state(vault, state, state_mtime)
         except Exception as exc:  # noqa: BLE001
             print(f"slack_poll: state persist after write failed: {exc}")
+            continue
+        if force_eyes and eyes_ts:
+            state_mtime = _clear_eyes_after_unreact(
+                token, vault, state, key, channel_id, eyes_ts, state_mtime
+            )
 
     try:
         state_mtime = _write_state(vault, state, state_mtime)

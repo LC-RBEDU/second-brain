@@ -220,6 +220,7 @@ n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí *
 **Ignorovat (přestat sledovat) — odděleně od ARCHIVE:**
 
 - `archive_only` / `ZPRACOVÁNO` **nesmí** stáhnout vlákno z VPS watchlistu (`slack_poll` dál hledá nové odpovědi).
+- Ruční Slack capture: reakce **`:eyes:`** (hub poll → INBOX s důvodem `označeno :eyes:` → route **batch**). Slack Later / `is:saved` poll nebere.
 - Teprve když Lukáš v triáži řekne **ignoruj / nesleduj toto vlákno**, zavolej:
 
 ```bash

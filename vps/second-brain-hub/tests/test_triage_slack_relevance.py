@@ -180,3 +180,28 @@ def test_inbound_sales_feed_thread_routes_deep_not_archive():
     assert result.source_kind == "thread_dump"
     assert any("@Lukáš" in r for r in result.reasons)
     assert not mod.extract_lukas_messages(SALES_FEED_INBOUND).strip()
+
+
+def test_eyes_capture_routes_batch_not_archive():
+    rel = "01-INBOX/slack/2026-09-23_edu-owners_1789751718.016119_v1.md"
+    body = """---
+source: slack
+kind: mention
+channel_id: C067Z5MPUTC
+thread_ts: 1789751718.016119
+slack_ts: 1789751718.016119
+---
+
+**Vlákno:** https://example
+**Kanál:** edu-owners
+**Thread TS:** 1789751718.016119
+**Verze:** v1 ← AKTUÁLNÍ
+**Důvod zálohy:** označeno :eyes:
+
+**Honza** 19:15
+Domácí úkol do Mira
+"""
+    result = mod.evaluate_slack_inbox_relevance(rel, body, guess_proj=_guess_proj)
+    assert result is not None
+    assert result.route == "batch"
+    assert any("eyes" in r for r in result.reasons)

@@ -211,6 +211,21 @@ def user_display_name(token: str, user_id: str, cache: dict[str, str] | None = N
     return name
 
 
+def reactions_remove(
+    token: str,
+    channel: str,
+    timestamp: str,
+    *,
+    name: str = "eyes",
+) -> None:
+    """Remove the caller's reaction. Raises SlackAPIError; error ``no_reaction`` if already gone."""
+    _post(
+        token,
+        "reactions.remove",
+        {"channel": channel, "timestamp": timestamp, "name": name},
+    )
+
+
 def download_private_file(token: str, url: str, *, max_bytes: int = 5_000_000) -> bytes:
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     try:

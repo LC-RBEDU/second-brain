@@ -53,9 +53,10 @@ User Token Scopes na stejné appce:
 - `mpim:write`
 - `users:read`
 - `users:read.email`
-- `search:read` — `search.messages` (Later + DM/mention discover v `slack_poll.py`)
+- `search:read` — `search.messages` (DM/mention/`hasmy::eyes:` discover v `slack_poll.py`)
 - `im:history`, `mpim:history`, `groups:history`, `channels:history` — `conversations.history` / `replies` pro continuous reply-watch
 - `im:read`, `mpim:read`, `groups:read`, `channels:read` — metadata konverzací
+- `reactions:write` — **user** token: po zápisu do INBOX sundat tvoji `:eyes:` (`reactions.remove`). Bot `reactions:write` (výše) = n8n ✅ na capture kanálu — to nestačí na unreact tvé reakce.
 
 Po Reinstall zkopíruj **User OAuth Token** (`xoxp-…`, ne `xoxb-`) do `~/.config/second-brain/slack.env`:
 
@@ -67,7 +68,7 @@ Soubor je mimo repo, do chatu token nepatří. Login keychain ani cookies Slack 
 
 ### Continuous Slack reply-watch (VPS) — Cowork pause
 
-`slack_poll.py` na VPS je SSOT pro dohledávání nových zpráv v DM/GDM a označených vláknech. **Předtím pauzni oba** Cowork scheduled Slack archive tasky (sdílejí prompt s `on:dnešní datum`):
+`slack_poll.py` na VPS je SSOT pro dohledávání nových zpráv v DM/GDM, @zmínkách a vláknech označených **`:eyes:`** (ne Slack Later / `is:saved`). **Předtím pauzni oba** Cowork scheduled Slack archive tasky (sdílejí prompt s `on:dnešní datum`):
 
 1. **3.4** weekday — `trig_01XxVzSAuZ5Qcsw3t6qdE6Rj`
 2. **3.3** weekend — „Daily slack threads to drive“ (So+Ne 22:00) — ID v Cowork UI
