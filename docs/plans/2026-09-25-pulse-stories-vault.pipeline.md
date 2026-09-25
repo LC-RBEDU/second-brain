@@ -1,16 +1,17 @@
 # Pipeline: Pulse stories vault
 
-Stav: IMPLEMENT
+Stav: DONE
 Plán: docs/plans/2026-09-25-pulse-stories-vault.md
 Schvalování plánu uživatelem: ne
-Architekt: agent ID cc1a4de1-5662-4bc3-aa2b-3448ded199cb, otevření plánu #1, generace v otevření k=1/3, kolo r=2/3
-Kritik SCHVÁLENO: agent ID 290d0cda-fe42-4e23-8827-900dc5dc4976 (r=2, 0 BLOCKER/MAJOR)
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): cdc28559444b41f0a9ac7c6cae049aab4024a326 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN — až po QA)
+Architekt: agent ID cc1a4de1-5662-4bc3-aa2b-3448ded199cb, otevření plánu #1, generace k=1/3, kolo r=2/3
+Kritik SCHVÁLENO: agent ID 290d0cda-fe42-4e23-8827-900dc5dc4976 (r=2)
+Review SCHVÁLENO: agent ID 8ffe05f9-c401-48f1-99ee-76bb16e30c94
+QA PASS: agent ID e7a6da0d-7530-4ddf-af50-a6ebbe625ce5
+Počítadla: návraty do PLAN 0/3 · REVIEW 1/5 · QA 1/5 · TESTER 0/5 · ENV 0/2
+Base (origin/main před pipeline): cdc28559444b41f0a9ac7c6cae049aab4024a326 · Kódový SHA (docs): 95ec0d7c709318802d4e0e381d2341e453cefd04 · Review SCHVÁLENO na: vault S96+S108 · QA PASS na: stejné · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete
 Profil: SECOND_BRAIN
-Stav: PLAN
 
 ## Zadání (doslovně)
 
@@ -22,40 +23,25 @@ Stav: PLAN
 
 ## Rozhodnutí z konverzace
 
-### RBU-S96 UI
-- Karta Tile pattern kolem těla sekce; accordion header beze změny; card jen když open.
-- Monthly: 5 finančních sekcí (P&L, Plán vs. realita, streamy, struktura nákladů, režie).
-- Weekly: `cash`, `pipeline`, `issued_invoicing`, `expected_invoicing`.
-- Mřížka = `border-t` mezi metric rows.
-- Kroky S96-1/2 forecast zůstávají; nový krok S96-3.
-
-### Quarterly story (parent RBU-E90)
-- Status Backlog, agent assist; ID z `next_task_id` (před startem: RBU-S108).
-- Cadence quarterly: hub→route+API, RBAC strategy; **bez** e-mail/Celery v1; **bez** sticky semaforů v1.
-- Přepínač: poslední uzavřený FY kvartál (default) vs poslední 3 uzavřené měsíce.
-- FY Q: Q1 bře–kvě, Q2 čer–srp, Q3 zář–lis, Q4 pro–úno; gate = monthly (1. Po po 15.).
-- P&L/streamy/náklady/režie: FY YTD (do konce okna) + okno.
-- Plán vs. realita: % OE a % fakturace za okno + YTD zvlášť.
-- P&C: headcount+FTE as_of / prům okno / prům FY (mezery vynechat); fakturace/FTE/měsíc = okno + FY YTD; FTE jmenovatel = **průměr FTE období**; výnosy÷prům FTE÷počet uzavřených měsíců.
-- Display title sjednotit s hubem Kvartální Pulse.
-
-### Mimo rozsah
-- Universe FE/BE, e-mail, Celery, deploy Coolify Universe.
-- Forecast implementace (S96-1/2).
+(viz historický ledger + plán — NEW-1…7, S96 UI IDs, Backlog, bez e-mail/Celery/sticky, FTE průměr, 3 uzavřené M, plán % okno+YTD, title Kvartální Pulse display)
 
 ## Průběh
-| # | Čas | Stav | Agent (ID) | Verdikt | BLOCKER/MAJOR/MINOR | Poznámka / přechod |
-|---|---|---|---|---|---|---|
-| 1 | 2026-09-25 ~22:55 | PLAN | — | — | — | Ledger založen; start architekt |
-| 2 | 2026-09-25 ~23:00 | PLAN | cc1a4de1… | plán R1–R7 B1–B10 | — | Plán zapsán do docs/plans |
-| 3 | 2026-09-25 | CRITIC | f2a590b9… | FAIL | C1–C3 MAJOR | DoD text / S96-3 / B5 frontmatter |
-| 4 | 2026-09-25 | PLAN | cc1a4de1… resume r=2 | — | — | Oprava C1–C5 |
+| # | Čas | Stav | Agent (ID) | Verdikt | Poznámka |
+|---|---|---|---|---|---|
+| 1 | 2026-09-25 | PLAN | cc1a4de1… | plán | r=1 |
+| 2 | 2026-09-25 | CRITIC | f2a590b9… | FAIL | C1–C3 MAJOR |
+| 3 | 2026-09-25 | PLAN | cc1a4de1… | plán r=2 | C1–C5 vyřešeno |
+| 4 | 2026-09-25 | CRITIC | 290d0cda… | SCHVÁLENO | 0 BLOCKER/MAJOR |
+| 5 | 2026-09-25 | IMPLEMENT | hlavní | — | S96-3 + S108 + context |
+| 6 | 2026-09-25 | REVIEW | 8ffe05f9… | SCHVÁLENO | B1–B10 |
+| 7 | 2026-09-25 | QA | e7a6da0d… | PASS | T1–T4 |
+| 8 | 2026-09-25 | DONE | — | — | TESTER přeskočeno |
 
 ## Otevřené nálezy
 | ID | Závažnost | Typ | Stav | Kolikrát |
 |---|---|---|---|---|
-| C1 (NEW-1) | MAJOR | PLAN | otevřený | 1 |
-| C2 (NEW-2) | MAJOR | PLAN | otevřený | 1 |
-| C3 (NEW-3) | MAJOR | PLAN | otevřený | 1 |
-| C4 (NEW-4) | MINOR | PLAN | otevřený | 1 |
-| C5 (NEW-5) | MINOR | PLAN | otevřený | 1 |
+| C1–C5 | MAJOR/MINOR | PLAN | vyřešeno v r=2 | 1 |
+
+## Výstup vault
+- **RBU-S96** — krok **RBU-S96-3** (UI karty)
+- **RBU-S108 — Vytvořit Quarterly Strategy Pulse** (Backlog, parent E90)
