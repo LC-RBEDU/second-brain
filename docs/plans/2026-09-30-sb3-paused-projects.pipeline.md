@@ -5,7 +5,7 @@ Plán: docs/plans/2026-09-30-sb3-paused-projects.md
 Schvalování plánu uživatelem: ne  
 Architekt: agent ID 33629e01-f89c-4ea2-b7d7-8001945888ab, otevření #1, k=1/3, r=2/3  
 Počítadla: návraty PLAN 0/3 · REVIEW 1/5 · QA 1/5 · TESTER 0/5 · ENV 0/2  
-Base (origin/main před pipeline): cdc28559444b41f0a9ac7c6cae049aab4024a326 · Kódový SHA: 06328a486f37e352f4e6b278ebab58c9a5ce5aa4 · Review SCHVÁLENO na: 06328a4 · QA PASS na: 06328a4 (lokál; B11 Coolify NEOVĚŘENO) · TESTER: přeskočeno (profil SECOND_BRAIN)  
+Base (origin/main před pipeline): cdc28559444b41f0a9ac7c6cae049aab4024a326 · Kódový SHA: 06328a486f37e352f4e6b278ebab58c9a5ce5aa4 · Review SCHVÁLENO na: 06328a4 · QA PASS na: 06328a4 · Deploy: coolify-dev image `c53de38` (2026-09-30 23:01) · T5 import OK (`should_refresh_hub_state` / `PAUSED`) · TESTER: přeskočeno (profil SECOND_BRAIN)  
 Goal: bez goalu (pipeline_gate recovery)
 
 ## Zadání (doslovně)
