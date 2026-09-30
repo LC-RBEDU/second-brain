@@ -68,8 +68,11 @@ from today_priority import (  # noqa: E402
     URGENCY_BONUS_TOMORROW,
     effective_due,
     enrich_task_dict,
+    exclude_paused_project_tasks,
+    is_active_project_status,
     is_queue_eligible,
     needs_decision,
+    paused_project_slugs,
     select_top_priority,
 )
 from agent_context_light import write_context_bundle  # noqa: E402
@@ -523,13 +526,17 @@ def build_snapshot(vault: Path) -> dict:
 
     open_tasks = [t for t in active_tasks if not is_terminal(t.status)]
     open_epics = [t for t in open_tasks if t.type == "epic"]
-    top_priority_today, top_priority = select_top_priority(open_tasks, today)
+    # Paused projects stay in projects[] / open counts, but their tasks must not
+    # compete for TOP, Rozhodni, due_soon, or focus suggestions (SB3).
+    paused_slugs = paused_project_slugs(projects)
+    queue_tasks = exclude_paused_project_tasks(open_tasks, paused_slugs)
+    top_priority_today, top_priority = select_top_priority(queue_tasks, today)
 
     focus_week = current_focus_week(today)
-    focused = [t for t in open_tasks if is_focus_current(t.focus, today)]
+    focused = [t for t in queue_tasks if is_focus_current(t.focus, today)]
     suggestion_pool = [
         t
-        for t in open_tasks
+        for t in queue_tasks
         if not is_focus_current(t.focus, today) and is_queue_eligible(t, today)
     ]
     focus_suggestions = select_focus_suggestions(
@@ -569,7 +576,7 @@ def build_snapshot(vault: Path) -> dict:
     no_review_deadline = []
     stale_focus = []
     soon = today + timedelta(days=7)
-    for t in open_tasks:
+    for t in queue_tasks:
         if t.deadline:
             try:
                 d = date.fromisoformat(t.deadline[:10])
@@ -603,6 +610,8 @@ def build_snapshot(vault: Path) -> dict:
 
     stale_hubs: list[dict] = []
     for p in projects:
+        if not is_active_project_status(p.status):
+            continue
         slug_tasks = [t for t in active_tasks if t.slug == p.slug]
         arch_slug = [t for t in archived if t.slug == p.slug]
         last_act = compute_last_task_activity(slug_tasks + arch_slug)
@@ -642,7 +651,7 @@ def build_snapshot(vault: Path) -> dict:
         "vault_path": str(vault),
         "today": today_str,
         "stats": {
-            "active_projects": sum(1 for p in projects if p.status in ("active", "")),
+            "active_projects": sum(1 for p in projects if is_active_project_status(p.status)),
             "total_open_tasks": len(open_tasks),
             "recently_done_7d": len(recently_done),
             "recently_cancelled_7d": len(recently_cancelled),

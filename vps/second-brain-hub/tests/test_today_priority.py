@@ -87,3 +87,53 @@ def test_needs_decision_skips_waiting_and_future():
     }
     assert needs_decision(waiting, TODAY) is False
     assert needs_decision(future, TODAY) is False
+
+
+def test_paused_project_helpers_exclude_from_queue():
+    from today_priority import (
+        exclude_paused_project_tasks,
+        is_active_project_status,
+        paused_project_slugs,
+        select_top_priority,
+    )
+
+    assert is_active_project_status("active") is True
+    assert is_active_project_status("") is True
+    assert is_active_project_status(None) is True
+    assert is_active_project_status("paused") is False
+
+    projects = [
+        {"slug": "finance", "status": "active"},
+        {"slug": "kratky-potlesk", "status": "paused"},
+    ]
+    paused = paused_project_slugs(projects)
+    assert paused == {"kratky-potlesk"}
+
+    tasks = [
+        {
+            "id": "KP1",
+            "slug": "kratky-potlesk",
+            "status": "Next",
+            "focus": "2026-W38",
+            "ice_i": 9,
+            "ice_c": 9,
+            "ice_e": 1,
+            "title": "paused project task",
+        },
+        {
+            "id": "F1",
+            "slug": "finance",
+            "status": "Next",
+            "focus": "2026-W38",
+            "ice_i": 5,
+            "ice_c": 5,
+            "ice_e": 5,
+            "title": "active project task",
+        },
+    ]
+    today = date(2026, 9, 16)  # W38
+    queue = exclude_paused_project_tasks(tasks, paused)
+    assert [t["id"] for t in queue] == ["F1"]
+    top_today, top = select_top_priority(queue, today)
+    assert [t["id"] for t in top_today] == ["F1"]
+    assert all(t["id"] != "KP1" for t in top)

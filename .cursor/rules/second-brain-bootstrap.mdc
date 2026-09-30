@@ -48,6 +48,9 @@ alwaysApply: true
 - **`ASAP` zrušeno.** Nahrazuje ho `focus: YYYY-Www`.
 - **`Cancelled`** = zrušeno / pohlceno jiným úkolem. Archivuje se jako `Done`, ale nepočítá se do „recently done".
 
+### Project status (hub)
+`active | paused` (prázdné = active). Pauznutý projekt zůstává ve snapshotu, ale jeho tasky nesoutěží o TOP / Rozhodni / due_soon / focus suggestions a cron nepřepisuje `## Stav (auto)`.
+
 ### focus a agent
 - **`focus: 2026-W32`** — ISO týden. **Nastavuje výhradně člověk**; žádný cron do toho pole nesmí zapsat. Vyprší sám přechodem na další týden.
 - Rituály (recurring) o místo ve fokusové pětici nesoutěží.

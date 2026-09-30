@@ -24,6 +24,7 @@ from typing import Any, Protocol
 
 from focus import STATUS_DOING, STATUS_NEXT, is_focus_current, is_terminal
 from hierarchy import is_epic
+from today_priority import is_active_project_status
 from today_priority import today_score as calc_today_score
 
 LEGACY_MARKERS = (
@@ -35,6 +36,19 @@ LEGACY_MARKERS = (
 STATE_SECTION = "## Stav (auto)"
 STALE_NARRATIVE_DAYS = 14
 STALE_AREA_WEEKS = 3
+
+
+def should_refresh_hub_state(fm: dict | None) -> bool:
+    """True when hub charter should get a rewritten ``## Stav (auto)`` block.
+
+    Paused (and any non-active) projects are skipped — read/parse still happens
+    in the cron, but build/upsert/write must not run (SB3).
+    """
+    if not isinstance(fm, dict):
+        return False
+    if (fm.get("type") or "").lower() != "project":
+        return False
+    return is_active_project_status(fm.get("status"))
 
 # The section runs from its heading to the next `## ` heading (or EOF).
 STATE_SECTION_RE = re.compile(

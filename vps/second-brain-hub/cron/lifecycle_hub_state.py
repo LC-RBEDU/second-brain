@@ -22,6 +22,7 @@ import yaml  # noqa: E402
 from drive_io import DriveNotFoundError, DriveVault, credentials_from_env  # noqa: E402
 from hub_state import (  # noqa: E402
     build_state_content,
+    should_refresh_hub_state,
     upsert_state_in_hub_body,
 )
 from task_io import FRONTMATTER_RE, iter_active_tasks, iter_archive_tasks  # noqa: E402
@@ -78,7 +79,8 @@ def main() -> None:
             continue
 
         fm, fm_yaml, body = _parse_hub(text)
-        if (fm.get("type") or "").lower() != "project":
+        if not should_refresh_hub_state(fm):
+            skipped += 1
             continue
 
         slug = str(fm.get("slug") or meta.name.removesuffix(".md"))

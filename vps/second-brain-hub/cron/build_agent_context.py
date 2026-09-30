@@ -57,8 +57,11 @@ from today_priority import (  # noqa: E402
     URGENCY_BONUS_TOMORROW,
     effective_due,
     enrich_task_dict,
+    exclude_paused_project_tasks,
+    is_active_project_status,
     is_queue_eligible,
     needs_decision,
+    paused_project_slugs,
     select_top_priority,
 )
 from agent_context_light import build_charters, project_light  # noqa: E402
@@ -359,14 +362,17 @@ def main() -> None:
 
     open_tasks = [t for t in active_dicts if not is_terminal(t["status"])]
     # Epics stay in open_tasks for charter counts; select_top_priority excludes them.
-    top_priority_today, top_priority = select_top_priority(open_tasks, today)
+    # Paused projects: keep in projects[] / counts, exclude from TOP / Rozhodni / focus (SB3).
+    paused_slugs = paused_project_slugs(projects)
+    queue_tasks = exclude_paused_project_tasks(open_tasks, paused_slugs)
+    top_priority_today, top_priority = select_top_priority(queue_tasks, today)
     open_epics = [t for t in open_tasks if t.get("type") == TYPE_EPIC]
 
     focus_week = current_focus_week(today)
-    focused = [t for t in open_tasks if is_focus_current(t.get("focus"), today)]
+    focused = [t for t in queue_tasks if is_focus_current(t.get("focus"), today)]
     suggestion_pool = [
         t
-        for t in open_tasks
+        for t in queue_tasks
         if not is_focus_current(t.get("focus"), today) and is_queue_eligible(t, today)
     ]
     focus_suggestions = select_focus_suggestions(
@@ -408,7 +414,7 @@ def main() -> None:
     no_review_deadline = []
     stale_focus = []
     soon = today + timedelta(days=7)
-    for t in open_tasks:
+    for t in queue_tasks:
         dl = t.get("deadline")
         if dl:
             try:
@@ -449,6 +455,8 @@ def main() -> None:
 
     stale_hubs: list[dict] = []
     for p in projects:
+        if not is_active_project_status(p.get("status")):
+            continue
         slug = p["slug"]
         slug_tasks = [t for t in active_dicts if t.get("slug") == slug]
         arch_slug = [t for t in archive_dicts if t.get("slug") == slug]
@@ -519,7 +527,7 @@ def main() -> None:
         "vault_path": "drive://" + root_id,
         "today": today_str,
         "stats": {
-            "active_projects": sum(1 for p in projects if p["status"] in ("active", "")),
+            "active_projects": sum(1 for p in projects if is_active_project_status(p["status"])),
             "total_open_tasks": len(open_tasks),
             "recently_done_7d": len(recently_done),
             "recently_cancelled_7d": len(recently_cancelled),

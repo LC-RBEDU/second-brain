@@ -24,8 +24,11 @@ _LIB = Path(__file__).resolve().parents[1] / "vps" / "second-brain-hub" / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from hub_state import build_state_content, upsert_state_in_hub_body  # noqa: E402
-from today_priority import today_score  # noqa: noqa — used via hub_state
+from hub_state import (  # noqa: E402
+    build_state_content,
+    should_refresh_hub_state,
+    upsert_state_in_hub_body,
+)
 
 DEFAULT_VAULT = Path(
     os.environ.get(
@@ -112,7 +115,7 @@ def main() -> int:
             continue
         text = hub.read_text(encoding="utf-8")
         fm, fm_yaml, body = _parse_hub(text)
-        if (fm.get("type") or "").lower() != "project":
+        if not should_refresh_hub_state(fm):
             continue
         slug = str(fm.get("slug") or hub.stem)
         hub_updated = fm.get("updated")

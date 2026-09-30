@@ -46,6 +46,39 @@ TOP_PRIORITY_LIMIT = 15
 
 QUEUE_STATUSES = frozenset({STATUS_DOING, STATUS_NEXT})
 
+# Project hub ``status`` (not task status). Empty/missing counts as active.
+ACTIVE_PROJECT_STATUSES = frozenset({"active", ""})
+
+
+def is_active_project_status(status: str | None) -> bool:
+    """True when a project hub should feed TOP / Rozhodni / focus suggestions."""
+    return str(status or "active").strip().lower() in ACTIVE_PROJECT_STATUSES
+
+
+def paused_project_slugs(projects: list[Any]) -> set[str]:
+    """Slugs whose hub ``status`` is not active (typically ``paused``)."""
+    out: set[str] = set()
+    for p in projects:
+        if isinstance(p, dict):
+            slug = p.get("slug")
+            status = p.get("status")
+        else:
+            slug = getattr(p, "slug", None)
+            status = getattr(p, "status", None)
+        if slug and not is_active_project_status(status):
+            out.add(str(slug))
+    return out
+
+
+def exclude_paused_project_tasks(
+    tasks: list[Any],
+    paused_slugs: set[str],
+) -> list[Any]:
+    """Drop tasks whose ``slug`` belongs to a paused (non-active) project."""
+    if not paused_slugs:
+        return list(tasks)
+    return [t for t in tasks if _task_get(t, "slug") not in paused_slugs]
+
 
 def _task_get(task: Any, key: str, default=None):
     if isinstance(task, dict):
