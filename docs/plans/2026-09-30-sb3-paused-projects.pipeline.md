@@ -15,8 +15,8 @@ Goal: bez goalu (pipeline_gate recovery)
 ## Rozhodnutí
 
 - Solo; Network nepauzovat; open_epics nefiltrovat; Waiting/overdue beze změny; agent-bootstrap ne.
-- **Push ne** (dokud uživatel neřekne) → výhrada QA B11 (Coolify T5) **přijata** jako důsledek rozhodnutí (ne blokuje DONE).
-- Critic r2 SCHVÁLENO; Diff reviewer SCHVÁLENO; QA PASS s výhradami (B11); TESTER přeskočeno.
+- **Push ano** (30. 9. 23:00) → `main` `cdc2855..c53de38`; Coolify image `c53de38`; B11 T5 PASS (import helpers v kontejneru).
+- Critic r2 SCHVÁLENO; Diff reviewer SCHVÁLENO; QA PASS (B11 uzavřeno po deploy); TESTER přeskočeno.
 
 ## Průběh
 
@@ -37,7 +37,7 @@ Goal: bez goalu (pipeline_gate recovery)
 | ID | Stav |
 |---|---|
 | C1–C3, critic MINOR NEW-1–3 | vyřešeno / accepted |
-| Q1 B11 Coolify | otevřené do push — accepted (push ne) |
+| Q1 B11 Coolify | uzavřeno — image c53de38, T5 import OK |
 
 ## Výsledek
 
