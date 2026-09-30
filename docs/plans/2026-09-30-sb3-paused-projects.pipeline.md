@@ -1,44 +1,44 @@
 # Pipeline: SB3 — Podpora statusu paused u projektů
 
-Stav: REVIEW  
+Stav: DONE  
 Plán: docs/plans/2026-09-30-sb3-paused-projects.md  
 Schvalování plánu uživatelem: ne  
-Architekt: agent ID 33629e01-f89c-4ea2-b7d7-8001945888ab, otevření plánu #1, generace k=1/3, kolo r=2/3  
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2  
-Base (origin/main před pipeline): cdc28559444b41f0a9ac7c6cae049aab4024a326 · Kódový SHA: 06328a486f37e352f4e6b278ebab58c9a5ce5aa4 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)  
-Plán schválen uživatelem: nevyžadováno  
+Architekt: agent ID 33629e01-f89c-4ea2-b7d7-8001945888ab, otevření #1, k=1/3, r=2/3  
+Počítadla: návraty PLAN 0/3 · REVIEW 1/5 · QA 1/5 · TESTER 0/5 · ENV 0/2  
+Base (origin/main před pipeline): cdc28559444b41f0a9ac7c6cae049aab4024a326 · Kódový SHA: 06328a486f37e352f4e6b278ebab58c9a5ce5aa4 · Review SCHVÁLENO na: 06328a4 · QA PASS na: 06328a4 (lokál; B11 Coolify NEOVĚŘENO) · TESTER: přeskočeno (profil SECOND_BRAIN)  
 Goal: bez goalu (pipeline_gate recovery)
 
 ## Zadání (doslovně)
 
-Z úkolu **SB3 — Podpora statusu paused u projektů v lifecycle a agent-contextu** (batch Rozhodni 30. 9. 2026, uživatel: „toto chci vyřešit — je to solo?“):
+**SB3 — Podpora statusu paused u projektů v lifecycle a agent-contextu** — vyloučit paused z TOP; asap N/A; konvence; hub state skip; ověřit potlesk/Network.
 
-- Projít skripty v `scripts/` a `vps/` — kde se čte `status` projektu.
-- Vyloučit tasky pauznutých projektů z `top_priority_today` a `top_priority`.
-- Vyloučit je z `asap_backfill` (pokud ještě existuje; jinak N/A).
-- Doplnit `paused` do konvencí — `second-brain-bootstrap.mdc` + `konvence-a-slovnik.md`.
-- Ověřit chování na Krátký potlesk (paused) a Red Button Network (active).
+## Rozhodnutí
 
-## Rozhodnutí z konverzace
-
-- Solo; asap_backfill N/A; Network nepauzovat; open_epics nefiltrovat; push ne; agent-bootstrap ne.
-- Critic r2 SCHVÁLENO (3 MINOR): NEW-1 active positive control v T6 **opraveno**; NEW-2 untracked přidáno do commitu; NEW-3 mirror stale — T3 smoke.
-- `.cursor/rules/second-brain-bootstrap.mdc` je gitignored — R4 v commitu přes ŠABLONY konvence + lokální bootstrap (due_soon wording).
+- Solo; Network nepauzovat; open_epics nefiltrovat; Waiting/overdue beze změny; agent-bootstrap ne.
+- **Push ne** (dokud uživatel neřekne) → výhrada QA B11 (Coolify T5) **přijata** jako důsledek rozhodnutí (ne blokuje DONE).
+- Critic r2 SCHVÁLENO; Diff reviewer SCHVÁLENO; QA PASS s výhradami (B11); TESTER přeskočeno.
 
 ## Průběh
 
-| # | Čas | Stav | Agent (ID) | Verdikt | Poznámka |
-|---|---|---|---|---|---|
-| 1–4 | 21:17–25 | PLAN/CRITIC | 33629e01 / 428d6458 | C1→oprava | |
-| 5 | 21:28 | CRITIC | 2bdd51a9… | SCHVÁLENO | 3 MINOR |
-| 6 | 21:30 | IMPLEMENT | hlavní | commit 06328a4 | T6+D5a+D2; NEW-1 fix |
-| 7 | 21:30 | REVIEW | (běží) | — | diff 06328a4^..06328a4 |
+| # | Stav | Agent | Verdikt |
+|---|---|---|---|
+| 1–2 | PLAN | 33629e01 | plán |
+| 3 | CRITIC | 428d6458 | C1 MAJOR → r2 |
+| 4 | PLAN r2 + IMPL delta | 33629e01 + hlavní | T6/D5a/D2 |
+| 5 | CRITIC | 2bdd51a9 | SCHVÁLENO |
+| 6 | IMPLEMENT | hlavní | commit 06328a4 |
+| 7 | REVIEW | 21ea8c1d | SCHVÁLENO |
+| 8 | QA | c417ff31 | PASS s výhradami (B11) |
+| 9 | testerGate | — | TESTER: přeskočeno (SECOND_BRAIN) |
+| 10 | DONE | hlavní | gate 265 passed |
 
 ## Otevřené nálezy
 
-| ID | Závažnost | Stav |
-|---|---|---|
-| C1–C3 | — | vyřešeno |
-| NEW-1 (critic r2) | MINOR | opraveno v T6 |
-| NEW-2 | MINOR | commit obsahuje test + ŠABLONY konvence |
-| NEW-3 | MINOR | T3 smoke (accepted) |
+| ID | Stav |
+|---|---|
+| C1–C3, critic MINOR NEW-1–3 | vyřešeno / accepted |
+| Q1 B11 Coolify | otevřené do push — accepted (push ne) |
+
+## Výsledek
+
+Paused huby (`kratky-potlesk`, `pipedrive-a-dalsi-nastroje`, `vibe-coding`) nejdou do TOP/Rozhodni/due_soon/focus_suggestions; `should_refresh_hub_state` skipuje Stav(auto); konvence v ŠABLONY; testy T1+T6. Push na `main` až na pokyn (pak T5 na Coolify).
