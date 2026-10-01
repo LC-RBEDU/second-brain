@@ -13,7 +13,7 @@ ice_i: 5
 ice_c: 5
 ice_e: 5
 deadline:  # jen reálný externí závazek
-review_deadline:  # kdy se k tomu vracím / chci to mít (vlastní měkké datum; ne závazek)
+review_deadline:  # jen když není deadline — kdy se k tomu vracím (měkké)
 waitUntil:
 created: {{date}}
 updated: {{date}}

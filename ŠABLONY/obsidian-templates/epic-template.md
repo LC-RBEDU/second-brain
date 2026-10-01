@@ -10,7 +10,7 @@ parent:
 focus:  # volitelné — téma týdne (ISO); ICE na epicu ne
 agent: none
 deadline:  # jen reálný externí závazek
-review_deadline:  # kdy se k epicu vrátím (měkké); ne závazek
+review_deadline:  # jen když není deadline — kdy se k epicu vrátím (měkké)
 created: {{date}}
 updated: {{date}}
 materials: []

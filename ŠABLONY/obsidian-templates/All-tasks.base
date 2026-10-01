@@ -1,13 +1,15 @@
 filters:
   and:
-    - type != "epic"
+    - or:
+        - type == "task"
+        - type == "story"
 formulas:
   priority_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0)
-  # due = min(deadline, review_deadline) — jediný klíč „kdy“
-  due: if(deadline, if(review_deadline, if(date(deadline) < date(review_deadline), date(deadline), date(review_deadline)), date(deadline)), if(review_deadline, date(review_deadline), null))
+  # due = deadline if set, else review_deadline (exclusive)
+  due: if(deadline, date(deadline), if(review_deadline, date(review_deadline), null))
   urgency_bonus: if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0)
   review_urgency: if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0)
-  today_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0) + if(if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0) > if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0), if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), 0), if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0))
+  today_score: if(ice_e, ((ice_i * ice_c) / ice_e).round(2), 0) + if(deadline, if((date(deadline) - today()).days < 0, 5, if((date(deadline) - today()).days == 0, 30, if((date(deadline) - today()).days == 1, 15, 0))), if(review_deadline, if((date(review_deadline) - today()).days < 0, 5, if((date(review_deadline) - today()).days == 0, 20, if((date(review_deadline) - today()).days == 1, 10, 0))), 0))
   task_title: file.asLink(if(title, title, file.basename))
 properties:
   formula.task_title:
@@ -161,8 +163,7 @@ views:
         - status != "Done"
         - status != "Cancelled"
         - status != "Waiting"
-        - formula.due && formula.due <= today() + 7d
-        - formula.due >= today()
+        - 'formula.due && formula.due >= today() && formula.due <= today() + "7d"'
     order:
       - formula.task_title
       - type
@@ -226,6 +227,7 @@ views:
     filters:
       and:
         - status != "Done"
+        - status != "Cancelled"
         - project != link("<HubFilename>")
     groupBy:
       property: project

@@ -28,8 +28,8 @@ V2 priority pořadí:
 
 **Nejdřív tahle lane**, pak fokus.
 
-- `due = min(deadline, review_deadline) < dnes` a status není Waiting / Done / Cancelled
-- U každé položky nabídni: hotovo / nové `review_deadline` (nebo `deadline` pokud je externí) / Waiting + blocker / Cancelled
+- `due = deadline` (pokud je), jinak `review_deadline` — `due < dnes` a status není Waiting / Done / Cancelled
+- U každé položky nabídni: hotovo / nové `review_deadline` (jen bez `deadline`) nebo posun `deadline` (externí) / Waiting + blocker / Cancelled
 - Když je `needs_decision` neprázdné, **nesmíš mlčet** — vypiš ji i když fokus je plný
 
 ## TOP priority dnes (SSOT: `top_priority_today`)
@@ -45,9 +45,9 @@ V2 priority pořadí:
 
 **Scoring:**
 - `priority_score = (ice_i * ice_c) / ice_e`
-- `today_score = priority_score + max(urgency_deadline, urgency_review)`:
+- `today_score = priority_score + urgency(deadline)` pokud je `deadline`, jinak `urgency(review_deadline)`:
   - **+30** / **+15** externí `deadline` dnes / zítra
-  - **+20** / **+10** `review_deadline` dnes / zítra
+  - **+20** / **+10** `review_deadline` dnes / zítra (jen bez `deadline`)
   - **+5** overdue (`due < dnes`) — jen rozřazovač, ne odměna za hnilobu
 - Sort: `today_score DESC`
 
@@ -56,7 +56,7 @@ V2 priority pořadí:
 ## Ostatní klasifikace
 
 - **ROZHODNI**: `needs_decision` — viz výše
-- **BEZ DATA**: `no_review_deadline` — otevřené bez `review_deadline` (doplň)
+- **BEZ DATA**: `no_review_deadline` — otevřené **bez** `deadline` i bez `review_deadline` (doplň review)
 - **DUE SOON**: `due_soon` — `due` v příštích 7 dnech
 - **PO TERMÍNU (externí)**: `deadline` < dnes && `status != Done`
 - **WAITING**: `status = Waiting` && `waitUntil >= dnes` — zobraz zvlášť, **nikdy v TOP**

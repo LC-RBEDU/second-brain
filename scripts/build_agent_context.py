@@ -592,6 +592,7 @@ def build_snapshot(vault: Path) -> dict:
         if (
             t.status not in (STATUS_DONE, STATUS_CANCELLED, "Waiting")
             and t.type != "epic"
+            and not t.deadline
             and not t.review_deadline
         ):
             no_review_deadline.append(t)
@@ -672,12 +673,12 @@ def build_snapshot(vault: Path) -> dict:
         "strategy_meeting_themes": strategy_meeting.get("themes", []),
         "priority_rules": {
             "model": (
-                "v2.1 — status / deadline (externí) / review_deadline (vlastní) / "
+                "v2.1 — status / deadline (externí) / review_deadline (vlastní, jen bez deadline) / "
                 "focus (na co teď)"
             ),
             "base": "priority_score = (ice_i * ice_c) / ice_e",
-            "due": "min(deadline, review_deadline)",
-            "today_score": "priority_score + max(urgency_deadline, urgency_review)",
+            "due": "deadline if set else review_deadline",
+            "today_score": "priority_score + urgency(deadline) else urgency(review_deadline)",
             "urgency_bonus": {
                 "overdue": URGENCY_BONUS_OVERDUE,
                 "deadline_today": URGENCY_BONUS_TODAY,

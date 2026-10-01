@@ -6,14 +6,14 @@ Priority model v2.1 — "what now" is answered by the focus week, not by a statu
   Nothing else qualifies, and no cron may add to it: focus is a human choice.
 - ``top_priority`` — the wider queue (focus + Doing + Next), sorted the same way.
 
-Dates:
-- ``deadline`` — external commitment only
-- ``review_deadline`` — own soft date ("when I revisit / want it done")
-- ``due = min(deadline, review_deadline)`` — single "when" key
+Dates (exclusive):
+- ``deadline`` — external commitment only; when set, ``review_deadline`` is ignored
+- ``review_deadline`` — own soft date ("when I revisit") — only when there is no ``deadline``
+- ``due`` — ``deadline`` if present, else ``review_deadline``
 
-Urgency bonuses (on top of priority_score = (I*C)/E); take the max of both axes:
-- external deadline today +30 / tomorrow +15 / overdue +5
-- review_deadline today +20 / tomorrow +10 / overdue +5
+Urgency bonuses (on top of priority_score = (I*C)/E):
+- with ``deadline``: external only — today +30 / tomorrow +15 / overdue +5
+- without ``deadline``: review — today +20 / tomorrow +10 / overdue +5
 
 The overdue bonus used to be +35, which made a task climb the list the longer it
 rotted. It now only breaks ties, so an expired date is visible without
@@ -104,16 +104,11 @@ def effective_due(
     deadline: str | None,
     review_deadline: str | None = None,
 ) -> date | None:
-    """``due = min(deadline, review_deadline)`` — single key for 'when'."""
-    dates = [
-        d
-        for d in (
-            parse_deadline(deadline),
-            parse_deadline(review_deadline),
-        )
-        if d is not None
-    ]
-    return min(dates) if dates else None
+    """``due`` = deadline if set, else review_deadline (exclusive axes)."""
+    dl = parse_deadline(deadline)
+    if dl is not None:
+        return dl
+    return parse_deadline(review_deadline)
 
 
 def _axis_bonus(
@@ -141,20 +136,20 @@ def urgency_bonus(
     today: date,
     review_deadline: str | None = None,
 ) -> float:
-    """Max of external and review urgency; external can outrank soft review."""
-    ext = _axis_bonus(
-        deadline,
-        today,
-        today_pts=URGENCY_BONUS_TODAY,
-        tomorrow_pts=URGENCY_BONUS_TOMORROW,
-    )
-    rev = _axis_bonus(
+    """External urgency when deadline set; otherwise review urgency only."""
+    if parse_deadline(deadline) is not None:
+        return _axis_bonus(
+            deadline,
+            today,
+            today_pts=URGENCY_BONUS_TODAY,
+            tomorrow_pts=URGENCY_BONUS_TOMORROW,
+        )
+    return _axis_bonus(
         review_deadline,
         today,
         today_pts=URGENCY_BONUS_REVIEW_TODAY,
         tomorrow_pts=URGENCY_BONUS_REVIEW_TOMORROW,
     )
-    return max(ext, rev)
 
 
 def today_score(

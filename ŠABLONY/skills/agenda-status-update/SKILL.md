@@ -54,11 +54,11 @@ Mapping user intent → frontmatter změna:
 | kanban / ruční Waiting bez data | cron `lifecycle_waiting_default_waituntil` (every 2h :02) doplní `waitUntil: dnes + 3` |
 | "zruš" / "cancel" | `status: Cancelled`, `waitUntil:` prázdné, `updated: <today>`, body append `- <today>: **ZRUŠENO** — <důvod>`. **Nemaž soubor** — cron ho archivuje jako Done a `Cancelled` drží rozdíl mezi splněným a odepsaným. |
 | "sloučeno do X" | totéž jako zruš, v logu wikilink na cílový úkol |
-| "deadline YYYY-MM-DD" | `deadline: <date>` (jen externí závazek), `updated: <today>` |
-| "review YYYY-MM-DD" / "vrať se k tomu" | `review_deadline: <date>` (vlastní měkké datum), `updated: <today>` |
+| "deadline YYYY-MM-DD" | `deadline: <date>` (jen externí závazek), **`review_deadline:` vymazat**, `updated: <today>` |
+| "review YYYY-MM-DD" / "vrať se k tomu" | jen když **není** `deadline`: `review_deadline: <date>`, `updated: <today>`. Má-li task `deadline`, nenastavuj review — posuň `deadline` nebo ho nejdřív vymaž. |
 | "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` (ne u epic) |
-| status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`). **`Next` / `Doing` bez `review_deadline` nezakládej ani neponechávej** — zeptej se na datum, kdy se k tomu vrátit. |
-| due po termínu (Rozhodni) | nabídni čtyři výstupy: Done / nové `review_deadline` (nebo `deadline`) / Waiting + blocker / Cancelled |
+| status → Next / Backlog / Doing | `waitUntil:` prázdné (pole platí **jen** pro `Waiting`). **`Next` / `Doing` bez `deadline` i bez `review_deadline` nezakládej** — zeptej se na datum návratu (nebo externí deadline). |
+| due po termínu (Rozhodni) | nabídni: Done / nové `review_deadline` (jen bez deadline) nebo posun `deadline` / Waiting + blocker / Cancelled |
 
 ### 4. Preview (povinné)
 

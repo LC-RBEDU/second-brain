@@ -88,7 +88,7 @@ ice_i: <1-10>   # u epic vynech
 ice_c: <1-10>
 ice_e: <1-10>
 deadline: <YYYY-MM-DD or empty>          # jen reálný externí závazek
-review_deadline: <YYYY-MM-DD or empty>   # kdy se k tomu vrátím (povinné u Next/Doing)
+review_deadline: <YYYY-MM-DD or empty>   # kdy se k tomu vrátím (povinné u Next/Doing **bez** deadline)
 waitUntil: <YYYY-MM-DD or empty>
 created: <YYYY-MM-DD>
 updated: <YYYY-MM-DD>
@@ -101,7 +101,7 @@ blocked_by: []
 
 `aliases: [<ID>]` zajišťuje, že `[[<ID>]]` z body resolvuje na soubor i po případné změně titulu.
 
-**`review_deadline`:** u `Next` / `Doing` vždy vyplň (i odhad). Bez něj položka zmizí z radaru. `deadline` nech prázdné, pokud nejde o externí závazek.
+**`review_deadline`:** u `Next` / `Doing` **bez** `deadline` vždy vyplň (i odhad). Má-li task `deadline`, `review_deadline` nech prázdné (a při zápisu deadline ho vymaž). `deadline` jen při reálném externím závazku.
 
 **RBU:** default nové doručení = `type: story` (+ `parent` pokud patří pod epic). Roadmap kontejner = `type: epic` ze `ŠABLONY/obsidian-templates/epic-template.md`. Konvence: `ŠABLONY/obsidian-templates/task-convention.md`.
 

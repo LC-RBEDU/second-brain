@@ -38,7 +38,7 @@ Default: B.
 
 **„Kandidát na projekt" = vlastník procesu, ne téma.** Skoro každý úkol jde popsat jako proces. Rozhoduje, kdo agendu reálně vlastní a tahá za nitky (např. karty / dobíjení / platby → Finance). Firemní procesy = sepsání návodu až jako druhý krok. Detail dřív: `LL-2026-09-07-kandidat-na-projekt-uri-vlastnik-procesu` (Superseded → tento skill).
 
-Pravidla Resources: `.cursor/rules/resources-para.mdc`. Přílohy: co-located binárka + sidecar `.md` v `materials/<téma>/` (viz PARA rule); parsuj `## Přílohy` z INBOX `.md`; po apply spusť `extract_material_text.py`.
+Pravidla Resources: `.cursor/rules/resources-para.mdc`. **Přílohy = povinné materiály:** při `add_task` / `update_task` / DEEP vždy zkopíruj relevantní binárky (+ sidecar) do `02-PROJEKTY/<slug>/materials/<téma>/`, index `.md` s `related_tasks:`, a `materials: [[…]]` na každém relevantním tasku. Archiv samotný nestačí — bez linku na task se o přílohy přijde. Parsuj `## Přílohy` z INBOX `.md`; po apply spusť `extract_material_text.py`.
 
 ## Spotify / podcasty — do fronty, ne do vaultu
 
@@ -104,7 +104,7 @@ U komplexních zdrojů v preview uveď `requires_deep_analysis` / důvody a zpra
    **přeskoč complex/DEEP**, i když je `## Přílohy`. False → pokračuj krokem 4.
 4. Pro ostatní položky (a e-maily kde krok 3 = False) zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
 5. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
-6. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo) + **`review_deadline`** (povinné u Next/Doing — kdy se k tomu vrátit; `deadline` jen při externím závazku). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
+6. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo) + datum: buď **`deadline`** (externí závazek → `review_deadline` prázdné), nebo **`review_deadline`** (povinné u Next/Doing bez deadline). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
 7. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
 8. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura).
    **Nad ~10 položek předkládej po blocích** — viz níže.
@@ -138,9 +138,20 @@ Implementace: `vps/second-brain-hub/lib/inbox_archive.py` · `list_colocated_att
 | `slack/` capture_n8n | `{YYYY-MM-DD-HHMM}-{slackFileId}-{název}` — sdílený prefix s `.md` capture |
 | `sembly/` · `daily/` | stejná logika jako email (`stem__`) pokud n8n přiloží binárku |
 
-Po apply s materiálem: binárku **volitelně** zkopíruj do `02-PROJEKTY/<slug>/materials/` + sidecar (`agenda-capture` / PARA rule); originál + přílohy stejně patří do `07-ARCHIV/inbox-processed/` vedle `.md`.
+### Materiály z příloh (povinné — ne jen archiv)
 
-**Post-flight:** po batchi spusť `--orphans` — chytí případy, kdy `.md` šel do archivu bez příloh.
+Když apply zakládá / aktualizuje task **a** zdroj má přílohy (co-located `stem__*` / Slack capture binárky / `## Přílohy` / flat dump s relevantními soubory):
+
+1. **Zkopíruj** relevantní binárky do `02-PROJEKTY/<slug>/materials/<YYYY-MM-DD — téma>/` + sidecar `.md` (`type: attachment`) — viz `resources-para.mdc`.
+2. **Index materiál** ve stejné složce: `type: material`, `related_tasks: ['[[ID — Title]]', …]`, seznam příloh.
+3. Na **každém** relevantním tasku doplň `materials: ['[[název materiálu]]']` (obousměrný link; apostrof v YAML zdvoj).
+4. Teprve pak (nebo souběžně) archivuj originál do `07-ARCHIV/inbox-processed/` přes `archive_inbox_item.py`.
+
+**Zákaz:** `archive_only` / `add_task` bez materials linku, když příloha nese pracovní obsah k tasku (seznam PE, smlouva, PDF k podpisu, offboarding podklady…). Archiv bez materials = ztráta informace v praxi (Bases / work context / agent-context přílohy neuvidí).
+
+**Výjimka:** čistý šum / drop / personal receipt flow (ten má vlastní cestu do personal Drive, ne project materials).
+
+**Post-flight:** po batchi spusť `--orphans` — chytí případy, kdy `.md` šel do archivu bez příloh. Kontrola materials: u každého nového/aktualizovaného tasku s přílohami ověř neprázdné `materials:`.
 
 ### Odeslané e-maily (`01-INBOX/email/sent/`)
 
@@ -284,9 +295,9 @@ Pro každou položku (přímo spuštěnou v DEEP módu **nebo** auto-routnutou z
 
 1. Read sourceFile naplno (ne jen prvních pár řádků).
 2. Shrnutí 3–5 bullety: o čem to je, klíčové entity, decision points.
-3. Návrh **více tasků** + případných **materiálů** + cross-linků (`materials: [[...]]`) — **při extrakci aplikuj Lukáš-only filter (viz níže)**.
+3. Návrh **více tasků** + **povinných materiálů z příloh** + cross-linků (`materials: [[...]]` + `related_tasks:`) — **při extrakci aplikuj Lukáš-only filter (viz níže)**. Přílohy jen v archivu = FAIL.
 4. Projdi s uživatelem po jednom: OK / uprav / přeskoč / drop.
-5. Zápis task `.md` + materiál `.md` souborů; archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` přes `scripts/archive_inbox_item.py` (`.md` + co-located přílohy).
+5. Zápis task `.md` + materiál `.md` (+ binárky do `materials/<téma>/`) dle sekce „Materiály z příloh“; archiv source → `07-ARCHIV/inbox-processed/YYYY/MM/` přes `scripts/archive_inbox_item.py` (`.md` + co-located přílohy).
 
 ### Osobní Gmail — platební doklad → Drive (`upload_personal_receipt`)
 
@@ -466,6 +477,10 @@ Po triage update `00-System/Index.md` — list aktivních projektů (Bases embed
 - `00-System/Index.md`
 - `00-System/Templates/konvence-a-slovnik.md`
 - `00-System/Templates/task-convention.md`
+
+## Nový podklad a víc úkolů na stejné téma
+
+Než zavřeš úkol jako „tohle je ta příprava“, ověř, který dokument člověk opravdu vyplnil a který task ho nese. Nový podklad nepřiřazuj na nejpodobnější otevřený task jen podle tématu a druhý neoznačuj za starý. Guard: `LL-2026-09-27-novy-podklad-spatny-task`.
 
 ## Zrušení místo zavření
 

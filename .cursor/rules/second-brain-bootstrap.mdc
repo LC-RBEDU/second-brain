@@ -38,10 +38,10 @@ alwaysApply: true
 |---|---|---|
 | Udělám to vůbec? | člověk | `status` |
 | Kdy to musí být hotové? | svět | `deadline` — **jen reálný externí závazek** |
-| Kdy se k tomu vrátím? | člověk | `review_deadline` — vlastní měkké datum |
+| Kdy se k tomu vrátím? | člověk | `review_deadline` — vlastní měkké datum **jen když není `deadline`** |
 | Na co se soustředím teď? | člověk | `focus` — ISO týden, max 5 |
 
-`due = min(deadline, review_deadline)`. Lane **Rozhodni** = `due < today` (mimo Waiting).
+`due = deadline` pokud existuje, jinak `review_deadline`. Když se nastaví `deadline`, `review_deadline` se **vymaže**. Lane **Rozhodni** = `due < today` (mimo Waiting).
 
 ### Statusy
 `Doing | Next | Backlog | Waiting | Done | Cancelled`
@@ -59,7 +59,7 @@ alwaysApply: true
 
 ### Priority score
 - `priority_score = (ice_i * ice_c) / ice_e` (Bases formula + agent-context.json)
-- **`today_score`**: `priority_score` + max(urgency z `deadline`, urgency z `review_deadline`)
+- **`today_score`**: `priority_score` + urgency z `deadline` (pokud je), jinak z `review_deadline`
   - deadline dnes +30, zítra +15; review_deadline dnes +20, zítra +10; **overdue jen +5**
   (dřív overdue +35, což znamenalo, že čím déle věc hnila, tím výš lezla)
 - **`top_priority_today`** (SSOT, max 5): jen úkoly s `focus` = aktuální ISO týden; nikdy `Waiting` / `Backlog` / `Cancelled`
@@ -99,7 +99,7 @@ Snapshot obsahuje:
 - `top_priority[]` — širší seznam (max 15, stejná pravidla)
 - `needs_decision[]` — `due < today` (lane Rozhodni)
 - `due_soon[]` — `due` v příštích 7 dnech
-- `no_review_deadline[]` — otevřené bez vlastního data
+- `no_review_deadline[]` — otevřené **bez** `deadline` i bez `review_deadline`
 - `open_epics[]` — otevřené `type: epic` (roadmap; ne fokus)
 - `recently_done[]` — last 7 days
 - `upcoming_deadlines[]` — next 7 days (jen externí `deadline`)

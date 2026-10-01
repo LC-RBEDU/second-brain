@@ -62,10 +62,10 @@ review_deadline:  # kdy se k tomu vracím
 |---|---|
 | Udělám to vůbec? | `status` |
 | Externí závazek? | `deadline` |
-| Kdy se k tomu vrátím? | `review_deadline` |
+| Kdy se k tomu vrátím? | `review_deadline` (jen když není `deadline`) |
 | Na co teď? | `focus` (ISO týden, max 5; člověk) |
 
-`due = min(deadline, review_deadline)`. Lane **Rozhodni** = `due < today` (mimo Waiting).
+`due = deadline` pokud existuje, jinak `review_deadline`. Při nastavení `deadline` se `review_deadline` vymaže. Lane **Rozhodni** = `due < today` (mimo Waiting).
 ## Hub page
 
 Hierarchický hub embeduje `All-tasks-hierarchy.base` (**ne** flat `All-tasks.base`, a to i u `ProjectRecentDone`):
