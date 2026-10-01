@@ -87,7 +87,9 @@ def resolve_channel(token: str, channel: str | None, emails: list[str]) -> str:
     return channel_id
 
 
-def upload_files(token: str, channel: str, paths: list[Path], text: str) -> None:
+def upload_files(
+    token: str, channel: str, paths: list[Path], text: str, thread_ts: str | None = None
+) -> None:
     staged = []
     for path in paths:
         data = path.read_bytes()
@@ -109,6 +111,8 @@ def upload_files(token: str, channel: str, paths: list[Path], text: str) -> None
         "channel_id": channel,
         "initial_comment": text,
     }
+    if thread_ts:
+        payload["thread_ts"] = thread_ts
     done = api(token, "files.completeUploadExternal", payload)
     for item in done.get("files") or []:
         link = item.get("permalink")
@@ -116,8 +120,11 @@ def upload_files(token: str, channel: str, paths: list[Path], text: str) -> None
             print(f"permalink {link}")
 
 
-def post_text(token: str, channel: str, text: str) -> None:
-    body = api(token, "chat.postMessage", {"channel": channel, "text": text, "unfurl_links": "false"})
+def post_text(token: str, channel: str, text: str, thread_ts: str | None = None) -> None:
+    payload = {"channel": channel, "text": text, "unfurl_links": "false"}
+    if thread_ts:
+        payload["thread_ts"] = thread_ts
+    body = api(token, "chat.postMessage", payload)
     print(f"ts {body.get('ts')}")
 
 
@@ -128,6 +135,10 @@ def main() -> None:
     parser.add_argument("--text", help="Text zprávy.")
     parser.add_argument("--text-file", type=Path, help="Soubor s textem zprávy.")
     parser.add_argument("--file", action="append", type=Path, default=[], help="Příloha, lze víckrát.")
+    parser.add_argument(
+        "--thread-ts",
+        help="Odpověď do vlákna (ts rodičovské zprávy).",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Jen auth + adresáti, nic neposílat.")
     args = parser.parse_args()
 
@@ -151,9 +162,9 @@ def main() -> None:
         print("dry-run")
         return
     if args.file:
-        upload_files(token, channel, args.file, text)
+        upload_files(token, channel, args.file, text, thread_ts=args.thread_ts)
     else:
-        post_text(token, channel, text)
+        post_text(token, channel, text, thread_ts=args.thread_ts)
     print("sent_ok")
 
 

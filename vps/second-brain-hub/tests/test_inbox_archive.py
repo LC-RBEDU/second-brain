@@ -55,7 +55,38 @@ def test_archive_inbox_capture_moves_md_and_attachments(tmp_path: Path):
     assert (archived_md.parent / att).exists()
 
 
-def test_archive_orphan_attachments(tmp_path: Path):
+def test_archive_sb_personal_with_attachment(tmp_path: Path):
+    email = tmp_path / "01-INBOX" / "email"
+    email.mkdir(parents=True)
+    md = "sb-personal-1a0c9afa016a622d.md"
+    att = "sb-personal-1a0c9afa016a622d__invoice.pdf"
+    (email / md).write_text(
+        '---\nsource: email\nmailbox: personal\ndate: "22 Sep 2026 15:15:22 +0000"\n---\n# Email\n',
+        encoding="utf-8",
+    )
+    (email / att).write_bytes(b"%PDF-1.4")
+
+    md_rel, atts = mod.archive_inbox_capture(tmp_path, f"01-INBOX/email/{md}")
+
+    assert md_rel == f"07-ARCHIV/inbox-processed/2026/09/email/{md}"
+    assert len(atts) == 1
+    assert not (email / md).exists()
+    assert not (email / att).exists()
+    assert (tmp_path / md_rel).exists()
+    assert (tmp_path / "07-ARCHIV/inbox-processed/2026/09/email" / att).exists()
+
+
+def test_inbox_archive_dest_sb_personal_iso_date(tmp_path: Path):
+    email = tmp_path / "01-INBOX" / "email"
+    email.mkdir(parents=True)
+    md = "sb-personal-abc123.md"
+    (email / md).write_text(
+        "---\ndate: 2026-08-31\n---\n# x\n",
+        encoding="utf-8",
+    )
+    dest = mod.inbox_archive_dest(tmp_path, f"01-INBOX/email/{md}")
+    assert dest == tmp_path / "07-ARCHIV/inbox-processed/2026/08/email" / md
+
     slack_in = tmp_path / "01-INBOX" / "slack"
     arch = tmp_path / "07-ARCHIV" / "inbox-processed" / "2026" / "06" / "slack"
     arch.mkdir(parents=True)

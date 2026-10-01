@@ -1,0 +1,110 @@
+{
+  "name": "n8n Error → Slack alerts",
+  "nodes": [
+    {
+      "id": "err-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "throttle-format",
+      "name": "Throttle + format Slack text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst THROTTLE_MS = 10 * 60 * 1000;\nconst items = $input.all();\nconst out = [];\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.lastNotifyByWorkflow) staticData.lastNotifyByWorkflow = {};\n\nfor (const item of items) {\n  const j = item.json || {};\n  const workflow = j.workflow || {};\n  const execution = j.execution || {};\n  const err = execution.error || j.error || {};\n  const wfId = String(workflow.id || 'unknown');\n  const wfName = String(workflow.name || wfId);\n  const execId = String(execution.id || '');\n  const lastNode = String(execution.lastNodeExecuted || '');\n  const msg = String(err.message || err.description || err || 'Unknown error').slice(0, 1200);\n  const now = Date.now();\n  const last = Number(staticData.lastNotifyByWorkflow[wfId] || 0);\n  if (now - last < THROTTLE_MS) {\n    continue; // throttle: max 1 notify / 10 min per workflow\n  }\n  staticData.lastNotifyByWorkflow[wfId] = now;\n\n  const execUrl = execution.url\n    || (execId ? `https://n8n.redbuttonedu.cz/workflow/${wfId}/executions/${execId}` : `https://n8n.redbuttonedu.cz/workflow/${wfId}`);\n  const lines = [\n    ':x: *n8n Error*',\n    `*Workflow:* ${wfName}`,\n    lastNode ? `*Node:* \\`${lastNode}\\`` : null,\n    execId ? `*Execution:* \\`${execId}\\`` : null,\n    msg ? `*Error:* ${msg}` : null,\n    `<${execUrl}|Open in n8n>`,\n  ].filter(Boolean);\n  out.push({ json: { slackText: lines.join('\\n'), workflowId: wfId, workflowName: wfName, executionId: execId } });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "slack-post",
+      "name": "Slack: post to alerts channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        820,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "authentication": "accessToken",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "C0C5VRU59UZ"
+        },
+        "messageType": "text",
+        "text": "={{ $json.slackText }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "zy0y2ClkZqpTOAE6",
+          "name": "Slack - Lukáš - RB EDU"
+        }
+      },
+      "webhookId": "9ee0a01b-48e1-4e7d-ab68-e5429c99a8d7"
+    },
+    {
+      "id": "sticky",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        240,
+        40
+      ],
+      "parameters": {
+        "content": "## n8n Error → Slack\n\n- Trigger: Error Trigger (nastav u workflow `settings.errorWorkflow`)\n- Throttle: max **1× / 10 min** per source workflow (staticData)\n- Channel: `C0C5VRU59UZ`\n- Credential: Slack - Lukáš - RB EDU\n\nNepřipojovat tento workflow sám na sebe jako errorWorkflow.",
+        "height": 220,
+        "width": 520,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Throttle + format Slack text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Throttle + format Slack text": {
+      "main": [
+        [
+          {
+            "node": "Slack: post to alerts channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id_note": "PCmXS1X3xB8hWfy0",
+  "notes": "Slack node + credential Slack - Lukáš - RB EDU (@claude_capture). Channel C0C5VRU59UZ. Throttle 10min/workflow."
+}

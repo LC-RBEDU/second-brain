@@ -2,7 +2,7 @@
   "updatedAt": "2026-09-21T22:00:40.017Z",
   "createdAt": "2026-09-21T21:51:11.623Z",
   "id": "xtnI0PYaTp8Ou2la",
-  "name": "SECOND BRAIN: Gmail starred \u2192 INBOX (workspace)",
+  "name": "SECOND BRAIN: Gmail starred → INBOX (workspace)",
   "description": null,
   "active": true,
   "isArchived": false,
@@ -13,13 +13,13 @@
           "interval": [
             {
               "field": "minutes",
-              "minutesInterval": 2
+              "minutesInterval": 5
             }
           ]
         }
       },
       "id": "507a4be3-47fa-46ed-bcf3-4963cb2b5824",
-      "name": "Every 2 min",
+      "name": "Every 5 min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -97,10 +97,10 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(pr\u00e1zdn\u00e9 t\u011blo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
+        "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(prázdné tělo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
       },
       "id": "e41b7d03-2a84-46a2-a4f4-6a0364f4643c",
-      "name": "Format thread \u2192 Markdown",
+      "name": "Format thread → Markdown",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -388,17 +388,6 @@
     }
   ],
   "connections": {
-    "Every 2 min": {
-      "main": [
-        [
-          {
-            "node": "Gmail: starred or recent SB Saved",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Gmail: starred or recent SB Saved": {
       "main": [
         [
@@ -425,14 +414,14 @@
       "main": [
         [
           {
-            "node": "Format thread \u2192 Markdown",
+            "node": "Format thread → Markdown",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format thread \u2192 Markdown": {
+    "Format thread → Markdown": {
       "main": [
         [
           {
@@ -577,6 +566,17 @@
           }
         ]
       ]
+    },
+    "Every 5 min": {
+      "main": [
+        [
+          {
+            "node": "Gmail: starred or recent SB Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -604,7 +604,7 @@
         "updatedAt": "2025-11-15T16:08:05.137Z",
         "createdAt": "2025-11-15T16:02:16.475Z",
         "id": "X3Gb83P3UZlojuge",
-        "name": "Michal \u0160rajer <michal@redbutton.cz>",
+        "name": "Michal Šrajer <michal@redbutton.cz>",
         "type": "personal",
         "icon": null,
         "description": null,
@@ -625,13 +625,13 @@
             "interval": [
               {
                 "field": "minutes",
-                "minutesInterval": 2
+                "minutesInterval": 5
               }
             ]
           }
         },
         "id": "507a4be3-47fa-46ed-bcf3-4963cb2b5824",
-        "name": "Every 2 min",
+        "name": "Every 5 min",
         "type": "n8n-nodes-base.scheduleTrigger",
         "typeVersion": 1.2,
         "position": [
@@ -709,10 +709,10 @@
       },
       {
         "parameters": {
-          "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(pr\u00e1zdn\u00e9 t\u011blo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
+          "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(prázdné tělo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
         },
         "id": "e41b7d03-2a84-46a2-a4f4-6a0364f4643c",
-        "name": "Format thread \u2192 Markdown",
+        "name": "Format thread → Markdown",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
@@ -1037,14 +1037,14 @@
         "main": [
           [
             {
-              "node": "Format thread \u2192 Markdown",
+              "node": "Format thread → Markdown",
               "type": "main",
               "index": 0
             }
           ]
         ]
       },
-      "Format thread \u2192 Markdown": {
+      "Format thread → Markdown": {
         "main": [
           [
             {
@@ -1191,7 +1191,7 @@
         ]
       }
     },
-    "authors": "Michal \u0160rajer",
+    "authors": "Michal Šrajer",
     "name": null,
     "description": null,
     "autosaved": false,

@@ -1,0 +1,121 @@
+{
+  "name": "Coolify / VPS → Slack alerts",
+  "nodes": [
+    {
+      "id": "038d036f-7606-4e8f-abcd-fb5bbef13f3e",
+      "name": "Coolify Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coolify-notifications",
+        "authentication": "none",
+        "responseMode": "onReceived",
+        "options": {
+          "noResponseBody": false,
+          "responseData": "{\"ok\":true}"
+        }
+      },
+      "webhookId": "b3d65859-1297-4f50-9e17-7fd58184606c"
+    },
+    {
+      "id": "filter-format",
+      "name": "Filter alerts + format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst raw = $input.first().json || {};\nconst b = raw.body ?? raw;\n\nconst event = String(b.event || '').toLowerCase();\nconst success = b.success;\nconst msg = String(b.message || '').toLowerCase();\n\nconst ERROR_EVENT_RE = /(fail|error|unreachable|critical|down|exception|timeout)/i;\nconst WARN_EVENT_RE = /(warn|disk|threshold|high.?usage|low.?space)/i;\n\nconst hasExplicitError = Boolean(\n  b.error_message || b.error_output || b.s3_error || b.exception\n);\nconst failed = success === false || success === 'false' || success === 0;\nconst diskWarn = b.disk_usage != null && b.threshold != null\n  && Number(b.disk_usage) >= Number(b.threshold);\nconst eventBad = ERROR_EVENT_RE.test(event) || WARN_EVENT_RE.test(event)\n  || ERROR_EVENT_RE.test(msg);\nconst isTest = event === 'test';\n\n// Only errors / warnings — skip success, info, test pings\nconst isAlert = !isTest && (failed || hasExplicitError || diskWarn || eventBad);\nif (!isAlert) {\n  return [];\n}\n\nconst severity = (failed || hasExplicitError || ERROR_EVENT_RE.test(event))\n  ? 'error'\n  : 'warning';\nconst emoji = severity === 'error' ? ':x:' : ':warning:';\n\nconst parts = [\n  `${emoji} *Coolify ${severity}* · \\`${b.event || 'unknown'}\\``,\n  b.message || '',\n];\nconst details = [];\nif (b.application_name) details.push(`*App:* ${b.application_name}`);\nif (b.project) details.push(`*Project:* ${b.project}`);\nif (b.environment) details.push(`*Env:* ${b.environment}`);\nif (b.server_name) details.push(`*Server:* ${b.server_name}`);\nif (b.database_name) details.push(`*DB:* ${b.database_name}`);\nif (b.task_name) details.push(`*Task:* ${b.task_name}`);\nif (b.container_name) details.push(`*Container:* ${b.container_name}`);\nif (b.fqdn || b.preview_fqdn) details.push(`*FQDN:* ${b.fqdn || b.preview_fqdn}`);\nif (b.disk_usage != null) {\n  details.push(`*Disk:* ${b.disk_usage}% (threshold ${b.threshold}%)`);\n}\nif (b.error_message) details.push(`*Error:* ${b.error_message}`);\nif (b.error_output) details.push(`*Error:* ${String(b.error_output).slice(0, 800)}`);\nif (b.s3_error) details.push(`*S3:* ${b.s3_error}`);\nif (b.output && failed) details.push(`*Output:* ${String(b.output).slice(0, 500)}`);\nif (details.length) parts.push(details.join(' · '));\nconst link = b.deployment_url || b.url;\nif (link) parts.push(`<${link}|Open in Coolify>`);\n\nreturn [{\n  json: {\n    slackText: parts.filter(Boolean).join('\\n'),\n    severity,\n    event: b.event || '',\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "41facf5f-d923-4e60-af85-094a9e33400d",
+      "name": "Slack: post to alerts channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        820,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "authentication": "accessToken",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "C0C5VRU59UZ"
+        },
+        "messageType": "text",
+        "text": "={{ $json.slackText }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "zy0y2ClkZqpTOAE6",
+          "name": "Slack - Lukáš - RB EDU"
+        }
+      },
+      "webhookId": "9f41af0b-7661-4762-bb50-7400332f96b0"
+    },
+    {
+      "id": "sticky",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        240,
+        40
+      ],
+      "parameters": {
+        "content": "## Coolify / VPS → Slack alerts\n\n**URL:** `https://n8n.redbuttonedu.cz/webhook/coolify-notifications`\n\nJen **error / warning** (fail, disk threshold, error_*). Success / info / test se zahodí.\n\nChannel: `C0C5VRU59UZ` · Bot: `@claude_capture` (credential Slack - Lukáš - RB EDU)",
+        "height": 240,
+        "width": 720,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Coolify Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter alerts + format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter alerts + format": {
+      "main": [
+        [
+          {
+            "node": "Slack: post to alerts channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "PCmXS1X3xB8hWfy0"
+  },
+  "id_note": "IuZgaUkHQJUXqfEP",
+  "notes": "Webhook coolify-notifications → filter errors/warnings only → Slack C0C5VRU59UZ via @claude_capture"
+}

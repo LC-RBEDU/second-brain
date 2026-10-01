@@ -4,9 +4,9 @@
     "hub_filename": "Strategy.md",
     "czech_name": "Strategy",
     "id_prefix": "S",
-    "area": "[[03-AREAS/Firemní strategie]]",
+    "area": "[[03-AREAS/Firemn\u00ed strategie]]",
     "skip": true,
-    "skip_reason": "F2 pilot — already migrated"
+    "skip_reason": "F2 pilot \u2014 already migrated"
   },
   {
     "slug": "allfred",
@@ -31,17 +31,17 @@
   },
   {
     "slug": "firemni-procesy",
-    "hub_filename": "Firemní procesy.md",
-    "czech_name": "Firemní procesy",
+    "hub_filename": "Firemn\u00ed procesy.md",
+    "czech_name": "Firemn\u00ed procesy",
     "id_prefix": "FP",
-    "area": "[[03-AREAS/Firemní strategie]]"
+    "area": "[[03-AREAS/Firemn\u00ed strategie]]"
   },
   {
     "slug": "kratky-potlesk",
-    "hub_filename": "Krátký potlesk.md",
-    "czech_name": "Krátký potlesk",
+    "hub_filename": "Kr\u00e1tk\u00fd potlesk.md",
+    "czech_name": "Kr\u00e1tk\u00fd potlesk",
     "id_prefix": "KP",
-    "area": "[[03-AREAS/Krátký potlesk]]"
+    "area": "[[03-AREAS/Kr\u00e1tk\u00fd potlesk]]"
   },
   {
     "slug": "ma-odyssey",
@@ -52,12 +52,12 @@
   },
   {
     "slug": "obecna-inspirace",
-    "hub_filename": "Obecná inspirace.md",
-    "czech_name": "Obecná inspirace",
+    "hub_filename": "Obecn\u00e1 inspirace.md",
+    "czech_name": "Obecn\u00e1 inspirace",
     "id_prefix": "OI",
     "area": "[[03-AREAS/Vibe coding]]",
     "skip": true,
-    "skip_reason": "F3.8 — projekt se ruší, OI1-OI11 migrace do 05-RESOURCES/inspirace"
+    "skip_reason": "F3.8 \u2014 projekt se ru\u0161\u00ed, OI1-OI11 migrace do 05-RESOURCES/inspirace"
   },
   {
     "slug": "operations",
@@ -68,10 +68,10 @@
   },
   {
     "slug": "osobni",
-    "hub_filename": "Osobní.md",
-    "czech_name": "Osobní",
+    "hub_filename": "Osobn\u00ed.md",
+    "czech_name": "Osobn\u00ed",
     "id_prefix": "OS",
-    "area": "[[03-AREAS/Osobní]]"
+    "area": "[[03-AREAS/Osobn\u00ed]]"
   },
   {
     "slug": "owners",
@@ -82,8 +82,8 @@
   },
   {
     "slug": "pipedrive-a-dalsi-nastroje",
-    "hub_filename": "Pipedrive a další nástroje.md",
-    "czech_name": "Pipedrive a další nástroje",
+    "hub_filename": "Pipedrive a dal\u0161\u00ed n\u00e1stroje.md",
+    "czech_name": "Pipedrive a dal\u0161\u00ed n\u00e1stroje",
     "id_prefix": "PD",
     "area": "[[03-AREAS/Pipedrive]]"
   },
@@ -114,5 +114,19 @@
     "czech_name": "Vibe coding",
     "id_prefix": "VC",
     "area": "[[03-AREAS/Vibe coding]]"
+  },
+  {
+    "slug": "it-ai-data",
+    "hub_filename": "IT AI Data.md",
+    "czech_name": "IT AI Data",
+    "id_prefix": "IAD",
+    "area": "[[03-AREAS/Technologie a n\u00e1stroje]]"
+  },
+  {
+    "slug": "marketing",
+    "hub_filename": "Marketing.md",
+    "czech_name": "Marketing",
+    "id_prefix": "MKT",
+    "area": "[[03-AREAS/Obchod a produkty]]"
   }
 ]

@@ -25,6 +25,7 @@ ALIASES: dict[str, list[str]] = {
     "Denisa Mášová": ["Denisa Mášová"],
     "Dominik Holíček": ["Dominik Holíček", "Domča"],
     "Eva Králová": ["Eva Králová"],
+    "Eva Cyprová": ["Eva Cyprová"],
     "Jan Lokajíček": ["Jan Lokajíček"],
     "Jan Mašek": ["Jan Mašek", "Honza Mašek", "Honza"],
     "Jana Kočová": ["Jana Kočová"],
@@ -52,7 +53,7 @@ ALIASES: dict[str, list[str]] = {
     "Mária Falterová": ["Mária Falterová", "Maria Falterová", "Maru Falterová", "Maru"],
     "Michaela Kosinerová": ["Michaela Kosinerová", "Míša Kosinerová"],
     "Michal Poppe": ["Michal Poppe"],
-    "Michal Šrajer": ["Michal Šrajer", "Srakyi", "Šraky"],
+    "Michal Šrajer": ["Michal Šrajer", "Srakyi"],
     "Ondra Suchý": ["Ondra Suchý", "Ondřej Suchý"],
     "Pavel Kroupa": ["Pavel Kroupa", "Pavel K."],
     "Pavel Pumprla": ["Pavel Pumprla"],
@@ -121,7 +122,7 @@ NICKNAMES: dict[str, list[str]] = {
     "Jan Mašek": ["Honza"],
     "Veronika Hanzalová": ["Verča"],
     "Lucie Přibylová": ["Lucky", "Lucie"],
-    "Michal Šrajer": ["Srakyi", "Šraky"],
+    "Michal Šrajer": ["Srakyi"],
     "Kateřina Bayerová": ["Káťa"],
     "Jakub Heikenwälder": ["Kuba"],
     "Alexandra Gallisová": ["Saša"],
@@ -129,6 +130,13 @@ NICKNAMES: dict[str, list[str]] = {
     "Jindřich Lukes": ["Jindra"],
     "Kamila Píchová": ["Kamča"],
     "Mária Falterová": ["Maru"],
+    "Eva Cyprová": ["Evča"],
+}
+
+# Alias strings to drop from person frontmatter on every rebuild (wrong / obsolete spellings).
+# Matching in ALIASES must not reintroduce them via NICKNAMES either.
+DEPRECATED_ALIASES: dict[str, list[str]] = {
+    "Michal Šrajer": ["Šraky", "Šrak", "Sraky"],
 }
 
 KNOWN_META: dict[str, dict[str, str | list[str]]] = {
@@ -270,8 +278,14 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "email": "michal.srajer@redbuttonedu.cz",
         # michal@redbutton.cz = Šrajer (10 hlaviček). michal@redbuttonedu.cz je Michal Poppe.
         "emails": ["michal.srajer@redbuttonedu.cz", "michal@redbutton.cz"],
-        "slack": "Šraky",
+        "slack": "Srakyi",
         "projects": ["Exponential Summit", "RB Universe development"],
+    },
+    "Eva Cyprová": {
+        "role": "Manželka Lukáše Cypry",
+        "org": "rodina",
+        "email": "eva.cyprova@gmail.com",
+        "projects": [],
     },
     "Michaela Valdéz": {
         "role": "Event management, produkce (Michaela González Valdés)",
@@ -646,7 +660,8 @@ def _emails_from_person_file(person: str, *, emails_from_fm) -> list[str]:
     if not isinstance(fm, dict):
         return []
     primary, emails = emails_from_fm(fm)
-    return emails or ([primary] if primary else [])
+    raw = emails or ([primary] if primary else [])
+    return [e for e in raw if e and e not in ("—", '""', "-", "–")]
 
 
 def match_aliases() -> dict[str, list[str]]:
@@ -675,7 +690,7 @@ def match_aliases() -> dict[str, list[str]]:
             if primary and primary not in extra:
                 extra = [primary, *extra]
             addrs = [e for e in extra if e]
-        out[person] = list(aliases) + list(addrs)
+        out[person] = list(aliases) + [e for e in addrs if e and e not in ("—", '""', "-")]
     return out
 
 
@@ -722,6 +737,7 @@ def rebuild_person_files(dry_run: bool) -> dict[str, int]:
                 mentions_rows=rows,
                 known_meta=KNOWN_META.get(person),
                 nicknames=NICKNAMES.get(person),
+                deprecated_aliases=DEPRECATED_ALIASES.get(person),
             )
         else:
             new_text = build_person_document(
@@ -729,6 +745,7 @@ def rebuild_person_files(dry_run: bool) -> dict[str, int]:
                 mentions_rows=rows,
                 known_meta=KNOWN_META.get(person),
                 nicknames=NICKNAMES.get(person),
+                deprecated_aliases=DEPRECATED_ALIASES.get(person),
             )
         if not dry_run:
             pf.write_text(new_text, encoding="utf-8")

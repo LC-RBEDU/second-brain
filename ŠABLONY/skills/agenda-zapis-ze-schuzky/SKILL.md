@@ -2,9 +2,10 @@
 name: agenda-zapis-ze-schuzky
 description: >-
   DEEP zápis ze schůzky (Sembly / Plaud): HTML brand RB EDU do ~/Downloads/ + MD
-  meeting_summary do 05-RESOURCES/vystupy/zapisy/YYYY-MM/, pak Lukášovy tasky.
-  Triggers: zápis ze schůzky, summary z meetingu, zpracuj Sembly/Plaud přepis,
-  DEEP triáž sembly/, nebo Plaud v daily/. Default varianta full.
+  meeting_summary do 05-RESOURCES/vystupy/zapisy/YYYY-MM/, pak rovnou založí
+  Lukášovy tasky (bez druhého schválení). Triggers: zápis ze schůzky, summary
+  z meetingu, zpracuj Sembly/Plaud přepis, DEEP triáž sembly/, nebo Plaud
+  v daily/. Default varianta full.
 ---
 
 # Zápis ze schůzky — HTML + MD (RB EDU)
@@ -25,14 +26,17 @@ jde jen to, co v přepisu explicitně zaznělo.
 3. Vyrobí **HTML** → `~/Downloads/YYYY-MM-DD_<slug>_zapis.html`.
 4. Vyrobí **MD** → `OBSIDIAN/05-RESOURCES/vystupy/zapisy/YYYY-MM/…_zapis.md`.
 5. U jasných projektů přidá **wikilink stub** do `02-PROJEKTY/<slug>/materials/`.
-6. Z tabulky úkolů navrhne **Lukášovy** tasky (Lukáš-only filter) → preview → apply.
+6. Z tabulky úkolů **rovnou založí** Lukášovy tasky (Lukáš-only filter) — bez druhého schválení.
 7. Archivuje zdroj přes `scripts/archive_inbox_item.py`.
 8. Interní schůzku rozešle na Slack (HTML + MD). Pravidlo: `.cursor/rules/internal-meeting-slack.mdc`.
 
-**Sdílená varianta** (`variant: shared`, sufix `_tym`) jen když uživatel řekne
-„pro tým“ / „sdílená verze“ — kratší, bez úkolů a citlivin (viz krok Varianta).
+**Sdílená / stručná varianta** jen když uživatel **výslovně** řekne „pro tým“ /
+„sdílená verze“ / „stručný zápis" — kratší, bez úkolů a citlivin (viz krok Varianta).
+**Default vždy = plná DEEP extrakce** z celého přepisu (viz „Hloubka zápisu").
 
-Zatím: **preview před zápisem** (jako triáž). Později přejde na rovnou HTML+MD.
+**Preview před zápisem** (HTML/MD) zůstává — včetně **konkrétní tabulky úkolů**
+(ne jen počty). Po „ano“ / „upiš“ zapisuj soubory **i** Lukášovy tasky ve stejném tahu.
+Preview **nesmí** omezit hloubku finálního zápisu — po schválení vždy znovu DEEP z přepisu.
 
 ---
 
@@ -97,6 +101,19 @@ Nesedí-li číslo: zapiš co zaznělo + v závorce co je v systému. Haléře �
 
 ## Krok 5 — obsah (povinné sekce)
 
+**Hloubka zápisu (default) — plná DEEP extrakce**
+
+- Default = `variant: full` + **plný** obsah z celého přepisu: husté „Co zaznělo“,
+  všechny projednané i neprojednané body osnovy, neshody, čísla, jména, kontext.
+- Kalibrace délky: poměr slov zápis/přepis typicky **≥ ~20–25 %** u hodinové schůzky;
+  u hlubokých synců (Town Hall prep, Wiki) klidně 40–50 %. **Ne** výčtové 5 karet
+  s 2–3 bulletů, když přepis má tisíce slov.
+- Preview v chatu smí být stručný (highlights + tabulka úkolů). **Finální HTML/MD
+  se nesmí generovat jen „roztažením“ preview** — po „ano“ / „upiš“ znovu projdi
+  přepis a napiš plný zápis.
+- Stručná / sdílená verze **jen na výslovné vyžádání** („stručný“, „shared“, „pro tým“
+  bez detailů). Bez toho vždy DEEP full.
+
 1. Highlights — 3 klíčové závěry (ne shrnutí agendy).
 2. Body osnovy — status, owner, key_people, „co zaznělo“, tasks.
 3. Konsolidovaná tabulka úkolů (všichni lidé — MD/HTML pro tým).
@@ -108,7 +125,7 @@ Nesedí-li číslo: zapiš co zaznělo + v závorce co je v systému. Haléře �
 Body `mentioned_only` / `not_discussed` **nevynechávej**.
 
 **Úkol** jen když byl explicitně zadán a přidělen člověku. Nabídka = úkol označený
-jako nabídka. „Měli bychom“ bez vlastníka = ne úkol.
+jako nabídka. „Měli bychom" bez vlastníka = ne úkol.
 
 ---
 
@@ -191,26 +208,34 @@ HTML ke sdílení: `~/Downloads/YYYY-MM-DD_<slug-schuzky>_zapis.html` (mimo vaul
 
 | Varianta | Kdy |
 |---|---|
-| **full** (default) | Vždy, pokud uživatel neřekne jinak — včetně úkolů, neshod, čísel |
-| **shared** | „pro tým“, „sdílená“ — očištěná **a zkrácená**; sufix `_tym`; `redacted: true` |
+| **full** (default) | **Vždy**, pokud uživatel neřekne jinak — plná DEEP extrakce včetně úkolů, neshod, čísel |
+| **shared** / stručná | Jen výslovně „pro tým“, „sdílená“, „stručný zápis“ — očištěná **a zkrácená**; sufix `_tym`; `redacted: true` |
 
-Sdílená: zachovej highlights + statusy; „co zaznělo“ 1–2 věty; **bez** úkolů
+Sdílená / stručná: zachovej highlights + statusy; „co zaznělo“ 1–2 věty; **bez** úkolů
 a tabulky úkolů; bez mezd, právních sporů, personálních rozhodnutí, citlivých čísel.
+**Bez výslovného požadavku shared/stručný nikdy nezkracuj finální zápis.**
 
 ---
 
-## Krok 8 — Lukášovy tasky (povinné po zápisu)
+## Krok 8 — Lukášovy tasky (povinné po zápisu — rovnou založit)
 
-Z konsolidované tabulky / `**tasks**` v MD:
+Z konsolidované tabulky / `**tasks**` v MD. **Nečekej na druhé „ano“** — po schválení
+zápisu (Krok Preview) tasky zakládej / updatuj ve stejném tahu jako HTML + MD.
 
 1. Aplikuj **Lukáš-only filter** (`agenda-triage`): task jen kde míček drží Lukáš;
    cizí akce zůstanou v zápisu; hraniční → `Waiting` / „Sledovat: …“.
-2. Preview návrhů (projekt, ICE, status, `agent`) — zatím jako triáž.
-3. Po schválení: file-per-task + `materials:` / `related_tasks:` na kanónický MD zápis
-   **a samonosný kontext ze zápisu** (viz níže — povinné).
-4. `python3 scripts/sync_lide_people.py --incremental --paths "…"`  
+2. **Drobná `solo` práce** (jedna věta, bez čekání na někoho) → nezakládej task;
+   v závěrečném shrnutí nabídni „řešit rovnou?“ (viz bootstrap `agent: solo`).
+3. Jinak **hned**: `python3 scripts/next_task_id.py <slug> [--type story|…]` → file-per-task
+   + `materials:` / `related_tasks:` na kanónický MD zápis **a samonosný kontext**
+   (viz níže — povinné). Update existujícího tasku stejně bez druhého schválení.
+4. Hotové úkoly ze schůzky (Lukáš už udělal / označil done) → v zápisu nech jako
+   **hotovo**; vault task nezakládej, nebo existující odškrtni / Done.
+5. Ve **finálním shrnutí** v chatu vždy vypiš tabulku založených / updatovaných tasků
+   (`#` | ID — title | projekt | status | 1 věta Cíl) — ať jde ověřit bez otevírání vaultu.
+6. `python3 scripts/sync_lide_people.py --incremental --paths "…"`  
    `python3 scripts/build_agent_context.py`
-5. Archiv zdroje: `python3 scripts/archive_inbox_item.py <source.md>`
+7. Archiv zdroje: `python3 scripts/archive_inbox_item.py <source.md>`
 
 ### Samonosný kontext v tasku (povinné)
 
@@ -236,9 +261,12 @@ U **nového** i **update** tasku ze zápisu vždy:
 s wikilinkem na zápis.
 
 **Ne:** holý checkbox „udělat X“ + jen `materials:` bez vět v těle.  
-**Ne:** kopírovat celou kartu „co zaznělo“ do tasku — zůstaň u zhuštění.
+**Ne:** kopírovat celou kartu „co zaznělo“ do tasku — zůstaň u zhuštění.  
+**Ne:** čekat na „schval tasky“ / druhé preview jen pro Lukášovy položky ze zápisu.
+**Ne:** v preview zápisu skrývat úkoly za počty („~4 Lukáš“) — viz Krok Preview.
 
-V **preview** tasků u každé položky uveď i návrh Cíl + 1 větu kontextu (ne jen ID a ICE).
+Detail **Cíl** + **Kontext ze zápisu** patří do založeného tasku + finální tabulky po zápisu;
+v preview stačí navrhovaný title + 1 věta o čem (editovatelný seznam před „ano“).
 
 ---
 
@@ -249,37 +277,66 @@ Až jsou HTML a MD na disku. Detail a tabulka kanálů: `.cursor/rules/internal-
 1. Účastníci z kalendáře. Všichni `@redbuttonedu.cz` / `@redbutton.cz` → Slack. Jinak e-mail.
 2. Týmová nebo opakovaná schůzka: kanál z pravidla. Není tam → zeptej se, neposílej.
 3. Jinak DM / skupinový DM účastníků.
-4. Jedna zpráva, oslovení Hoj / Hojte nebo vokativ z `05-RESOURCES/lide/` či historie Slacku. Přílohy: HTML i MD.
+4. Jedna zpráva, oslovení Hoj / Hojte nebo vokativ z `05-RESOURCES/lide/` či historie Slacku. Přílohy: HTML i MD. Na konec vždy kurzívou `_(jménem Lukáše posílá jeho AsIstent)_` — viz `.cursor/rules/asist-send-signature.mdc`.
 5. Známý kanál = pošli, nečekej na další schválení. Příkaz: `python3 scripts/slack_send_message.py`. Token jen z `~/.config/second-brain/slack.env` (user `xoxp-`). Do chatu ho nedávej, login keychain ani Slack cookies nečti.
 
 ---
 
-## Preview (zatím)
+## Preview (před „ano“ / „upiš“)
 
-Před zápisem do Downloads/vaultu ukaž krátce:
+Před zápisem do Downloads/vaultu ukaž:
 
 - název + datum + účastníci
 - 3 highlights
-- počet položek osnovy + počet úkolů (Lukáš vs ostatní)
+- počet položek osnovy (stačí číslo + 1 řádek témat)
+- **konkrétní úkoly** — tabulka níže (povinné; hlavní místo úprav před schválením)
 - cílové cesty HTML a MD
 - kam to půjde: Slack kanál / DM, nebo e-mail když je někdo mimo RB
 - navržené projekty pro `projects:` / materials stubs
 
-Až po „ano“ / „upiš“ zapisuj soubory a tasky.
+### Úkoly v preview (povinné)
+
+**Nestačí** „~4 Lukáš · ~2 Kateřina“. Vypiš **každý** řádek z konsolidované tabulky
+úkolů, který po „ano“ buď založíš / updatuješ ve vaultu, nebo necháš jen v zápisu.
+
+Tabulka (`#` povinné — ať jde říct „škrtni 3“, „uprav 1“):
+
+| # | Kdo | Navrhovaný title / znění | Vault? | Projekt (návrh) |
+|---|---|---|---|---|
+| 1 | Lukáš | … | založit | `rb-universe-development` |
+| 2 | Lukáš | … | update existujícího **ID — title** | … |
+| 3 | Kateřina | … | jen zápis | — |
+
+- **Vault?** = `založit` | `update **ID — title**` | `jen zápis` (cizí / nabídka bez Lukášova míčku) | `Waiting` (sledovat)
+- Title u Lukášových řádků = formulace, která půjde do `title:` task souboru (max ~80 znaků).
+- U cizích: stejně konkrétní znění — ať jde škrtnout / přepsat ownera / přesunout na Lukáše.
+- Drobná `solo` → řádek s Vault? = `nabídnout rovnou (bez tasku)`.
+- Žádný úkol → napiš explicitně „úkoly: žádné“.
+
+Úpravy uživatele („upiš“, „škrtni 2“, „3 na Waiting“) aplikuj **před** zápisem souborů
+a zakládáním tasků. Po „ano“ / „upiš“ zapisuj soubory **a rovnou** Lukášovy tasky (Krok 8)
+podle **upravené** tabulky, ne podle původního draftu v hlavě.
+
+**Po „ano“:** finální HTML/MD = **plná DEEP** z přepisu (Krok 5), ne roztažený preview.
+Preview slouží ke kontrole úkolů a routingu Slacku — ne jako šablona hloubky „Co zaznělo“.
 
 ---
 
 ## Checklist
 
 - [ ] Osnova = podklad nebo 4–8 vlastních bloků
+- [ ] **Plná DEEP** (default) — husté „Co zaznělo“; stručné jen na výslovné vyžádání
+- [ ] Finál ≠ roztažený preview
 - [ ] Neprojednané body se statusem, ne vynechané
 - [ ] Úkoly jen explicitní + přidělené
+- [ ] Preview: konkrétní tabulka úkolů (# | Kdo | title | Vault? | projekt) — ne jen počty
 - [ ] Jména + `name_aliases`
 - [ ] HTML bez vlastního CSS, přes `build_html.py`
 - [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material`
 - [ ] Stubs v `materials/` u jasných projektů
-- [ ] Lukášovy tasky preview → apply
+- [ ] Lukášovy tasky založené / updatované ve stejném tahu (bez druhého schválení)
+- [ ] Finální tabulka tasků v chatu (# | ID — title | projekt | status | Cíl)
 - [ ] Každý task/update ze zápisu: **Z:** + **Cíl** + **Kontext ze zápisu** + checkbox *proč/DoD* + `materials:` na zápis
 - [ ] Zdroj archivován
-- [ ] Interní zápis na Slacku (HTML + MD), kanál z pravidla nebo dotaz
-- [ ] Default = full (ne shared)
+- [ ] Interní zápis na Slacku (HTML + MD), kanál z pravidla nebo dotaz; podpis kurzívou
+- [ ] Default = full DEEP (ne shared / ne stručný)

@@ -13,6 +13,26 @@ from pathlib import Path
 
 CAPTURE_TS_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}-\d{4})")
 INBOX_DATE_PREFIX_RE = re.compile(r"^(\d{4})-(\d{2})-")
+SB_EMAIL_RE = re.compile(r"^sb-(personal|workspace)-.+\.md$", re.IGNORECASE)
+# Gmail/n8n date variants: ISO, "22 Sep 2026 …", RFC2822 "Mon, 22 Sep 2026 …"
+_FM_DATE_RE = re.compile(
+    r'(?im)^date:\s*["\']?(?:[A-Za-z]{3},\s*)?(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})'
+)
+_FM_ISO_RE = re.compile(r'(?im)^date:\s*["\']?(\d{4})-(\d{2})-(\d{2})')
+_MONTHS = {
+    "jan": "01",
+    "feb": "02",
+    "mar": "03",
+    "apr": "04",
+    "may": "05",
+    "jun": "06",
+    "jul": "07",
+    "aug": "08",
+    "sep": "09",
+    "oct": "10",
+    "nov": "11",
+    "dec": "12",
+}
 
 
 def capture_ts_prefix(name: str) -> str | None:
@@ -27,14 +47,57 @@ def email_attachment_prefix(md_name: str) -> str | None:
     return None
 
 
+def _year_month_from_sb_email(md_path: Path) -> tuple[str, str] | None:
+    """Resolve YYYY, MM for ``sb-personal-*`` / ``sb-workspace-*`` from frontmatter or mtime."""
+    try:
+        text = md_path.read_text(encoding="utf-8", errors="replace")[:4000]
+    except OSError:
+        text = ""
+    m = _FM_ISO_RE.search(text)
+    if m:
+        return m.group(1), m.group(2)
+    m = _FM_DATE_RE.search(text)
+    if m:
+        mon = _MONTHS.get(m.group(2).lower()[:3])
+        if mon:
+            return m.group(3), mon
+    try:
+        st = md_path.stat()
+        from datetime import datetime
+
+        dt = datetime.fromtimestamp(st.st_mtime)
+        return f"{dt.year:04d}", f"{dt.month:02d}"
+    except OSError:
+        return None
+
+
 def inbox_archive_dest(vault: Path, rel: str) -> Path:
     """Compute archive destination path for an INBOX relative path."""
     parts = Path(rel.replace("\\", "/")).parts
     name = parts[-1]
     m = INBOX_DATE_PREFIX_RE.match(name)
-    if not m:
+    if m:
+        year, month = m.group(1), m.group(2)
+    elif SB_EMAIL_RE.match(name):
+        md_path = vault.joinpath(*parts)
+        ym = _year_month_from_sb_email(md_path)
+        if ym is None:
+            raise ValueError(f"cannot parse date from {rel}")
+        year, month = ym
+    elif name.startswith("sb-personal-") or name.startswith("sb-workspace-"):
+        # Co-located ``sb-personal-{tid}__file.ext``
+        stem = name.split("__", 1)[0] if "__" in name else name.rsplit(".", 1)[0]
+        md_name = stem if stem.endswith(".md") else f"{stem}.md"
+        md_path = vault.joinpath(*parts[:-1], md_name)
+        ym = _year_month_from_sb_email(md_path) if md_path.is_file() else None
+        if ym is None:
+            att_path = vault.joinpath(*parts)
+            ym = _year_month_from_sb_email(att_path) if att_path.is_file() else None
+        if ym is None:
+            raise ValueError(f"cannot parse date from {rel}")
+        year, month = ym
+    else:
         raise ValueError(f"cannot parse date from {rel}")
-    year, month = m.group(1), m.group(2)
     kind = parts[1] if len(parts) > 2 else "misc"
     return vault / "07-ARCHIV" / "inbox-processed" / year / month / kind / name
 

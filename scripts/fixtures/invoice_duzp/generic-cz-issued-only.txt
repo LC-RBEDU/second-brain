@@ -1,0 +1,8 @@
+Faktura č. 2026-0042
+
+Dodavatel: ACME s.r.o.
+
+Datum vystavení: 01.08.2026
+Variabilní symbol: 99887766
+
+Celkem: 500 Kč

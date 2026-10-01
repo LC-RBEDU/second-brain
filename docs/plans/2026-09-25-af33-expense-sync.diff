@@ -1,0 +1,317 @@
+--- /Users/lukascypra/GitHub/Ad-hoc/Allfred_reporty EDU/allfred-haw-fy2026/AllfredExpensesFY2026.js	2026-07-13 18:16:49
++++ /Users/lukascypra/GitHub/Ad-hoc/Allfred_reporty EDU/allfred-expenses-fy2026/AllfredExpensesFY2026.gs	2026-09-25 01:24:31
+@@ -1,17 +1,15 @@
+ /**
+- * Allfred Expenses → Google Sheet (FY 2026) — varianta pro Happiness at Work s.r.o.
++ * Allfred Expenses → Google Sheet (FY 2026).
+  *
+  * Jedna synchronizace: schválené výdaje s date_of_supply ≥ MIN_DATE_OF_SUPPLY, jen doklady s Legal entity
+  * = workspace company dle Expense.workspace_company_id (název z API workspaceCompanies.name; u EDU workspace
+- * je to „Happiness at Work s.r.o.“, workspace_company_id = 2). Výchozí filtr ALLOW tedy mat­chuje
+- * „Happiness“ / „H@W“ / „H&W“ a EXCLUDE záměrně odřezává „RB Associates“ / „RB EDU“ (druhá entita v API).
+- * Jeden řádek v Sheetu = jeden ExpenseItem.
++ * typicky „RB Associates …“, v UI může být jiná značka — výchozí filtr proto toleruje i „RB EDU“), bez H@W apod.
++ * (stránkování API), jeden řádek = jeden ExpenseItem.
+  *
+  * Script properties: ALLFRED_WORKSPACE, ALLFRED_TOKEN nebo ALLFRED_API_KEY;
+  * volitelně SPREADSHEET_ID, SHEET_NAME,
+- * EXPENSE_EXPORT_BRAND_ALLOW (filtr Legal entity: podřetězec v workspaceCompanies.name;
+- *   výchozí „Happiness at Work,Happiness,H@W,H&W“),
+- * EXPENSE_EXPORT_BRAND_EXCLUDE (výchozí „RB Associates,RB EDU“ — druhá entita v API je „RB Associates s.r.o“).
++ * EXPENSE_EXPORT_BRAND_ALLOW (filtr Legal entity: podřetězec v workspaceCompanies.name; výchozí „RB Associates,RB EDU“),
++ * EXPENSE_EXPORT_BRAND_EXCLUDE (výchozí „Happiness,H@W,H&W“ — druhá entita v API je „Happiness at Work …“).
+  */
+ 
+ var PROP_SPREADSHEET_ID = 'SPREADSHEET_ID';
+@@ -22,16 +20,19 @@
+ var PROP_EXPENSE_EXPORT_BRAND_ALLOW = 'EXPENSE_EXPORT_BRAND_ALLOW';
+ var PROP_EXPENSE_EXPORT_BRAND_EXCLUDE = 'EXPENSE_EXPORT_BRAND_EXCLUDE';
+ 
+-var DEFAULT_SPREADSHEET_ID = '1lW8K-xhEqrdgTqkYWeQ3hGnkDtHBU9p1pa7HNmT4V6Y';
++var DEFAULT_SPREADSHEET_ID = '1pw1MZCqroBEuytHOCJes0VdoBS2PaWeuRd9zX_x0mug';
+ var DEFAULT_SHEET_NAME = 'Allfred_expenses_FY2026';
+ 
+ /** Výchozí filtr Legal entity = podřetězce v workspaceCompanies.name (API ≠ vždy stejný text jako v Allfred UI). */
+-var DEFAULT_EXPENSE_EXPORT_LEGAL_ENTITY_ALLOW = 'Happiness at Work,Happiness,H@W,H&W';
+-var DEFAULT_EXPENSE_EXPORT_LEGAL_ENTITY_EXCLUDE = 'RB Associates,RB EDU';
++var DEFAULT_EXPENSE_EXPORT_LEGAL_ENTITY_ALLOW = 'RB Associates,RB EDU';
++var DEFAULT_EXPENSE_EXPORT_LEGAL_ENTITY_EXCLUDE = 'Happiness,H@W,H&W';
+ 
+-/** Počet dokladů na stránku (expenses). */
+-var EXPENSES_PAGE_SIZE = 50;
++/** Počet dokladů na stránku (expenses). 100 = méně UrlFetch při ~1k dokladech. */
++var EXPENSES_PAGE_SIZE = 100;
+ 
++/** Max řádků na jeden setValues (velký write v GAS je pomalý). */
++var SHEET_WRITE_CHUNK_ROWS = 2000;
++
+ /** Minimální datum plnění (Expense.date_of_supply) — starší doklady se do exportu neberou (ISO YYYY-MM-DD). */
+ var MIN_DATE_OF_SUPPLY = '2026-03-01';
+ 
+@@ -300,15 +301,41 @@
+   '      amount_in_currency\n' +
+   '      project_id\n' +
+   '      accountingAccount { title }\n' +
++  '    }\n' +
++  '    projects {\n' +
++  '      id\n' +
++  '      title\n' +
++  '      code\n' +
++  '      start_date\n' +
++  '      expected_end_date\n' +
++  '      status\n' +
++  '      categories { name }\n' +
++  '      brand {\n' +
++  '        id\n' +
++  '        name\n' +
++  '        code\n' +
++  '        client {\n' +
++  '          id\n' +
++  '          name\n' +
++  '          workspaceCompany {\n' +
++  '            registration_no\n' +
++  '            tax_no\n' +
++  '            vat_no\n' +
++  '          }\n' +
++  '        }\n' +
++  '      }\n' +
++  '      projectManager { full_name email display_name }\n' +
+   '    }\n';
+ 
+ /**
+  * Stránka všech výdajů — bez serverového filtru STATUS (Allfred filtr APPROVED
+  * vrací neúplná data a duplicity; schválené + datum filtrujeme v fetchAllApprovedExpenses_).
++ * orderBy CREATED_AT ASC = stabilní stránkování (stejně jako RB Universe sync).
++ * projects[] na Expense = projektová metadata bez N+1 project(id) volání.
+  */
+ var EXPENSES_ALL_PAGE_QUERY =
+-  'query ExpensesPage($first: Int!, $page: Int!) {\n' +
+-  '  expenses(first: $first, page: $page) {\n' +
++  'query ExpensesPage($first: Int!, $page: Int!, $filters: ExpenseQueryArgs) {\n' +
++  '  expenses(first: $first, page: $page, filters: $filters) {\n' +
+   '    paginatorInfo {\n' +
+   '      hasMorePages\n' +
+   '      currentPage\n' +
+@@ -321,6 +348,10 @@
+   '  }\n' +
+   '}\n';
+ 
++var EXPENSES_STABLE_ORDER_FILTERS = {
++  orderBy: [{ column: 'CREATED_AT', order: 'ASC' }],
++};
++
+ function isApprovedExpenseStatus_(status) {
+   var s = String(status == null ? '' : status).toUpperCase();
+   return s === 'APPROVED';
+@@ -459,7 +490,27 @@
+   '  }\n' +
+   '}\n';
+ 
+-function fetchProjectsByIdsForExpense_(ids) {
++/**
++ * Mapa project_id → project z Expense.projects (už v list response).
++ */
++function projectMapFromExpenseProjects_(exp) {
++  var out = {};
++  var list = (exp && exp.projects) || [];
++  for (var i = 0; i < list.length; i++) {
++    var p = list[i];
++    if (p && p.id != null) {
++      out[String(p.id)] = p;
++    }
++  }
++  return out;
++}
++
++/**
++ * Doplní chybějící projekty jedním project(id) na unikátní id.
++ * cache = globální mapa napříč sync během (nesmí se volat per-expense bez cache).
++ */
++function fetchProjectsByIdsForExpense_(ids, cache) {
++  var out = cache || {};
+   var unique = [];
+   var seen = {};
+   for (var i = 0; i < ids.length; i++) {
+@@ -468,13 +519,12 @@
+       continue;
+     }
+     var sid = String(id);
+-    if (seen[sid]) {
++    if (seen[sid] || Object.prototype.hasOwnProperty.call(out, sid)) {
+       continue;
+     }
+     seen[sid] = true;
+     unique.push(sid);
+   }
+-  var out = {};
+   for (var j = 0; j < unique.length; j++) {
+     var pid = unique[j];
+     try {
+@@ -721,7 +771,11 @@
+   var seenIds = {};
+ 
+   while (true) {
+-    var data = allfredGraphql_(EXPENSES_ALL_PAGE_QUERY, { first: EXPENSES_PAGE_SIZE, page: page });
++    var data = allfredGraphql_(EXPENSES_ALL_PAGE_QUERY, {
++      first: EXPENSES_PAGE_SIZE,
++      page: page,
++      filters: EXPENSES_STABLE_ORDER_FILTERS,
++    });
+     var block = data.expenses;
+     if (!block || !block.data || block.data.length === 0) {
+       break;
+@@ -750,6 +804,18 @@
+   return all;
+ }
+ 
++function writeExpenseRowsInChunks_(sheet, rows, numCols) {
++  var total = rows.length;
++  var offset = 0;
++  while (offset < total) {
++    var end = Math.min(offset + SHEET_WRITE_CHUNK_ROWS, total);
++    var chunk = rows.slice(offset, end);
++    var startRow = 2 + offset;
++    sheet.getRange(startRow, 1, chunk.length, numCols).setValues(chunk);
++    offset = end;
++  }
++}
++
+ function getTargetSpreadsheetId_() {
+   var p = PropertiesService.getScriptProperties().getProperty(PROP_SPREADSHEET_ID);
+   return p && String(p).trim() ? String(p).trim() : DEFAULT_SPREADSHEET_ID;
+@@ -768,28 +834,60 @@
+ 
+ /**
+  * Plná synchronizace: schválené výdaje s date_of_supply ≥ MIN_DATE_OF_SUPPLY → jeden řádek na ExpenseItem.
++ *
++ * Projekty bereme z Expense.projects (už v list response). Chybějící id dohledáme
++ * přes project(id) s globální cache — dříve N+1 (~1700 UrlFetch) → timeout 30 min.
+  */
+ function syncAllApprovedExpensesToSheet() {
++  var started = Date.now();
+   var expenses = fetchAllApprovedExpenses_();
++  Logger.log(
++    'fetchAllApprovedExpenses_: %s dokladů za %s s',
++    expenses.length,
++    ((Date.now() - started) / 1000).toFixed(1)
++  );
+   var workspaceCompanyMap = fetchWorkspaceCompanyMap_();
+   var headers = getExpenseExportHeaders_();
+   var rows = [];
+   var cnbCache = {};
+   var vatIdx = 0;
++  var projectCache = {};
++  var projectFetches = 0;
++  var includedExpenses = 0;
+ 
+   for (var e = 0; e < expenses.length; e++) {
+     var exp = expenses[e];
+     if (!isExpenseIncludedForLegalEntityExport_(exp, workspaceCompanyMap)) {
+       continue;
+     }
++    includedExpenses++;
+     var items = exp.expenseItems || [];
+-    var projectIds = [];
++    var projectMap = projectMapFromExpenseProjects_(exp);
++    var missingIds = [];
+     for (var i = 0; i < items.length; i++) {
+-      if (items[i].project_id) {
+-        projectIds.push(items[i].project_id);
++      if (!items[i].project_id) {
++        continue;
+       }
++      var needId = String(items[i].project_id);
++      if (projectMap[needId]) {
++        continue;
++      }
++      if (projectCache[needId]) {
++        projectMap[needId] = projectCache[needId];
++        continue;
++      }
++      missingIds.push(needId);
+     }
+-    var projectMap = fetchProjectsByIdsForExpense_(projectIds);
++    if (missingIds.length) {
++      fetchProjectsByIdsForExpense_(missingIds, projectCache);
++      projectFetches += missingIds.length;
++      for (var m = 0; m < missingIds.length; m++) {
++        var mid = missingIds[m];
++        if (projectCache[mid]) {
++          projectMap[mid] = projectCache[mid];
++        }
++      }
++    }
+ 
+     for (var j = 0; j < items.length; j++) {
+       var it = items[j];
+@@ -799,11 +897,19 @@
+     }
+   }
+ 
++  Logger.log(
++    'build rows: expenses_in=%s rows=%s extra_project_fetches=%s (%s s)',
++    includedExpenses,
++    rows.length,
++    projectFetches,
++    ((Date.now() - started) / 1000).toFixed(1)
++  );
++
+   var sheet = getOrCreateTargetSheet_();
+   var numCols = headers.length;
+   sheet.getRange(1, 1, 1, numCols).setValues([headers]);
+   if (rows.length) {
+-    sheet.getRange(2, 1, rows.length, numCols).setValues(rows);
++    writeExpenseRowsInChunks_(sheet, rows, numCols);
+     var lastDataRow = 1 + rows.length;
+     var maxR = sheet.getMaxRows();
+     var clearRowCount = maxR - lastDataRow;
+@@ -818,46 +924,15 @@
+   }
+   sheet.setFrozenRows(1);
+   SpreadsheetApp.flush();
++  Logger.log('syncAllApprovedExpensesToSheet DONE in %s s', ((Date.now() - started) / 1000).toFixed(1));
+ }
+ 
+ function onOpen() {
+   var ui = SpreadsheetApp.getUi();
+-  ui.createMenu('HAW Expenses')
++  ui.createMenu('Allfred Expenses')
+     .addItem('Sync: všechny schválené výdaje', 'syncAllApprovedExpensesToSheet')
+-    .addSeparator()
+-    .addItem('Nainstalovat plánované triggery (4× denně)', 'installHawScheduleTriggers')
+-    .addItem('Smazat plánované triggery', 'clearHawScheduleTriggers')
+     .addToUi();
+-  ui.createMenu('HAW Invoices')
++  ui.createMenu('Allfred Invoices')
+     .addItem('Sync: všechny outgoing faktury + proformy', 'syncAllOutgoingInvoicesToSheet')
+     .addToUi();
+ }
+-
+-/** Pomocné funkce s názvy sync funkcí, na které triggery cílí. */
+-var HAW_SCHEDULED_HANDLER_FUNCTIONS = ['syncAllApprovedExpensesToSheet', 'syncAllOutgoingInvoicesToSheet'];
+-
+-/**
+- * Spouští HAW sync funkce 4× denně v 00:00, 06:00, 12:00, 18:00 (Europe/Prague).
+- * Před vytvořením smaže existující stejnojmenné triggery, aby se nehromadily duplicity.
+- */
+-function installHawScheduleTriggers() {
+-  clearHawScheduleTriggers();
+-  [0, 6, 12, 18].forEach(function (h) {
+-    HAW_SCHEDULED_HANDLER_FUNCTIONS.forEach(function (fn) {
+-      ScriptApp.newTrigger(fn)
+-        .timeBased()
+-        .everyDays(1)
+-        .atHour(h)
+-        .inTimezone('Europe/Prague')
+-        .create();
+-    });
+-  });
+-}
+-
+-function clearHawScheduleTriggers() {
+-  ScriptApp.getProjectTriggers().forEach(function (t) {
+-    if (HAW_SCHEDULED_HANDLER_FUNCTIONS.indexOf(t.getHandlerFunction()) >= 0) {
+-      ScriptApp.deleteTrigger(t);
+-    }
+-  });
+-}

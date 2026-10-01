@@ -18,6 +18,7 @@ meta.json (všechna pole kromě title/h1 jsou volitelná):
     ["Účastníci", "Luboš Malý, Jan Mašek, ..."],
     ["Zdroj", "přepis schůzky (Sembly, 14. 9. 2026)"]
   ],
+  # Párové objekty {"label","value"} jsou taky OK.
   "intro":   "Volitelný odstavec pod meta řádky v pravém sloupci hero.",
   "footer":  ["Odstavec 1 patičky.", "Odstavec 2 patičky."]
 }
@@ -48,6 +49,10 @@ def build_hero(meta: dict) -> str:
         if isinstance(item, (list, tuple)) and len(item) == 2:
             label, value = item
             right.append(f'      <p class="meta"><b>{esc(label)}:</b> {esc(value)}</p>')
+        elif isinstance(item, dict) and "label" in item and "value" in item:
+            right.append(
+                f'      <p class="meta"><b>{esc(item["label"])}:</b> {esc(item["value"])}</p>'
+            )
         else:
             right.append(f'      <p class="meta">{esc(item)}</p>')
     if meta.get("intro"):

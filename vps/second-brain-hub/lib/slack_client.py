@@ -216,7 +216,7 @@ def reactions_remove(
     channel: str,
     timestamp: str,
     *,
-    name: str = "eyes",
+    name: str = "gear",
 ) -> None:
     """Remove the caller's reaction. Raises SlackAPIError; error ``no_reaction`` if already gone."""
     _post(

@@ -98,7 +98,7 @@ def test_permalink_thread_ts_beats_reply_ts():
         "permalink": "https://slack.test/archives/C1/p1789970417435419?thread_ts=1789561381.924319",
         "text": "saved",
     }
-    hit = poll.hit_from_match(match, "eyes")
+    hit = poll.hit_from_match(match, "gear")
     assert hit is not None
     assert hit.thread_ts == "1789561381.924319"
     assert hit.latest_ts == "1789970417.435419"

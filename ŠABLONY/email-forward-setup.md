@@ -7,7 +7,7 @@
 | Účet | n8n workflow | Stav |
 |------|--------------|------|
 | `lukas@redbuttonedu.cz` | `xtnI0PYaTp8Ou2la` — Gmail starred → INBOX (workspace) | aktivní |
-| `lukas.cypra@gmail.com` | `yuFyLHlioxuE2Jhj` — Gmail starred → INBOX (personal) | **neaktivní** — potřebuje Gmail OAuth osobního účtu |
+| `lukas.cypra@gmail.com` | `yuFyLHlioxuE2Jhj` — Gmail starred → INBOX (personal) | aktivní |
 
 Query každých 2 min: `(is:starred -label:"SB Saved") OR (newer_than:2h label:"SB Saved")`.
 
@@ -18,14 +18,18 @@ Forward `lukas.cypra+cowork@gmail.com` je zrušený.
 
 ## Setup osobního účtu
 
-1. n8n → Credentials → Gmail OAuth2 → Sign in as **`lukas.cypra@gmail.com`**.
-2. Do všech Gmail nodů ve workflow `yuFyLHlioxuE2Jhj` vlož ten credential (Drive nech stávající).
-3. Activate.
+Hotovo (2026-09-22): credential `Gmail - lukas.cypra@gmail.com`, workflow Active, stejný Drive upsert jako workspace (staticData).
+
+## Přílohy + osobní doklady → Drive
+
+Personal starred (`yuFyLHlioxuE2Jhj`) stahuje MIME přílohy (B0 filtr) jako co-located `{sb-personal-{threadId}}__{name}` + sekce `## Přílohy` (→ DEEP triáž). Odkaz „stáhnout fakturu/doklad/PDF“ (B4) best-effort před HTML stripem; session-gated → ručně `~/Downloads`.
+
+Platební doklad po schválení v `agenda-triage` (`upload_personal_receipt`) → Drive složka [`1CpvJdkIgtzNqz33Bf61tseyyWXWySqDK`](https://drive.google.com/drive/folders/1CpvJdkIgtzNqz33Bf61tseyyWXWySqDK) / `MM-YYYY` dle DUZP. Config: `OBSIDIAN/00-System/personal-payment-docs.json`. Manifest: `00-System/Personal-Docs-Uploaded/manifest.json`.
 
 ## Odeslané (nové maily, ne odpovědi)
 
 - Workspace: `7fhDXThOaxl1yNtE` — jen nové odeslané bez `In-Reply-To`, bez OOO/kalendáře/šablon; po zápisu label SB Saved.
-- Osobní sent: až po OAuth výše — zatím jen Workspace.
+- Osobní sent: zatím ne — jen Workspace.
 
 Drop list SSOT: `ŠABLONY/n8n/workspace-sent-format-markdown.js` + `triage_commitments._SENT_INBOX_DROP_RULES`.
 

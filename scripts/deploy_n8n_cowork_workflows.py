@@ -37,6 +37,11 @@ DEPLOYS = [
         "format_node": "Format → Markdown (sent)",
     },
     {
+        "template": "gmail-starred-to-inbox-personal.json",
+        "workflow_id": "yuFyLHlioxuE2Jhj",
+        "action": "put",
+    },
+    {
         "template": "mobile-capture-to-cowork.json",
         "workflow_id": None,
         "action": "post",
@@ -257,16 +262,22 @@ def main() -> int:
         print(f"\n--- {spec['template']} ({spec['action']}) ---")
         results.append(deploy_one(host, key, spec, args.dry_run))
 
-    if args.dry_run or wanted is not None:
+    if args.dry_run:
         return 0
 
-    # Re-fetch and sync exports
-    sync_export("xtnI0PYaTp8Ou2la", TEMPLATES / "gmail-starred-to-inbox-workspace.json", host, key)
-    sync_export("7fhDXThOaxl1yNtE", TEMPLATES / "workspace-sent-to-inbox.json", host, key)
-    sync_export("yuFyLHlioxuE2Jhj", TEMPLATES / "gmail-starred-to-inbox-personal.json", host, key)
-    mobile = results[-1]
-    if mobile.get("id"):
-        sync_export(mobile["id"], TEMPLATES / "mobile-capture-to-cowork.json", host, key)
+    # Re-fetch and sync exports for deployed templates
+    sync_map = {
+        "gmail-starred-to-inbox-workspace.json": "xtnI0PYaTp8Ou2la",
+        "workspace-sent-to-inbox.json": "7fhDXThOaxl1yNtE",
+        "gmail-starred-to-inbox-personal.json": "yuFyLHlioxuE2Jhj",
+    }
+    for spec, res in zip(
+        [s for s in DEPLOYS if wanted is None or s["template"] in wanted],
+        results,
+    ):
+        tid = sync_map.get(spec["template"]) or res.get("id")
+        if tid:
+            sync_export(tid, TEMPLATES / spec["template"], host, key)
 
     return 0
 

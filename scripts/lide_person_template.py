@@ -96,18 +96,24 @@ def build_frontmatter(
     existing: dict | None = None,
     known_meta: dict | None = None,
     nicknames: list[str] | None = None,
+    deprecated_aliases: list[str] | None = None,
 ) -> str:
     existing = existing or {}
     known_meta = known_meta or {}
     today = date.today().isoformat()
+    drop = {a for a in (deprecated_aliases or []) if a}
 
     aliases: list[str] = []
     if person not in aliases:
         aliases.append(person)
     for a in existing.get("aliases") or []:
+        if a in drop:
+            continue
         if a not in aliases:
             aliases.append(a)
     for nick in nicknames or []:
+        if nick in drop:
+            continue
         if nick not in aliases:
             aliases.append(nick)
 
@@ -120,20 +126,29 @@ def build_frontmatter(
     # a sync by ji při každém běhu vrátil zpátky.
     org = known_meta.get("org") or existing.get("org") or "Red Button EDU"
     external_for = known_meta.get("external_for") or existing.get("external_for") or ""
-    email = known_meta.get("email") or existing.get("email") or "—"
+    # email: nikdy nepoužívej em dash "—" jako hodnotu — match aliases by to bral jako
+    # substring napříč vaultem (tisíce falešných zmínek).
+    raw_email = known_meta.get("email") if "email" in known_meta else existing.get("email")
+    if raw_email in (None, "", "—", '""'):
+        email = '""'
+    else:
+        email = raw_email
 
     # emails = všechny adresy téže osoby, primární (email) první. Jedna osoba mívá firemní
     # i domovskou adresu a matching zmínek musí trefit obě.
-    emails = known_meta.get("emails") or existing.get("emails") or []
+    emails = known_meta.get("emails") if "emails" in known_meta else existing.get("emails")
+    if not emails:
+        emails = []
     if isinstance(emails, str):
         emails = [emails]
-    emails = [e for e in emails if e and e != "—"]
-    if email and email != "—" and email not in emails:
+    emails = [e for e in emails if e and e not in ("—", '""')]
+    if email and email not in ("—", '""') and email not in emails:
         emails.insert(0, email)
     phone = existing.get("phone") if existing.get("phone") is not None else '""'
     if phone == "":
         phone = '""'
-    slack = existing.get("slack") or known_meta.get("slack") or '""'
+    # slack stejně jako email: KNOWN_META vyhrává (přezdívka v Slacku je kurátorovaná)
+    slack = known_meta.get("slack") or existing.get("slack") or '""'
     if slack == "":
         slack = '""'
     birthday = existing.get("birthday") if existing.get("birthday") is not None else '""'
@@ -209,6 +224,7 @@ def build_person_document(
     known_meta: dict | None = None,
     nicknames: list[str] | None = None,
     nickname_line: str | None = None,
+    deprecated_aliases: list[str] | None = None,
 ) -> str:
     sections = sections or {}
     fm_yaml = build_frontmatter(
@@ -216,6 +232,7 @@ def build_person_document(
         existing=existing_fm,
         known_meta=known_meta,
         nicknames=nicknames,
+        deprecated_aliases=deprecated_aliases,
     )
     parts = [f"---\n{fm_yaml}---\n\n", f"# {person}\n\n"]
     if nickname_line:
@@ -246,6 +263,7 @@ def normalize_person_file(
     mentions_rows: list[dict] | None = None,
     known_meta: dict | None = None,
     nicknames: list[str] | None = None,
+    deprecated_aliases: list[str] | None = None,
 ) -> str:
     text = path.read_text(encoding="utf-8")
     fm_raw, body = split_frontmatter(text)
@@ -260,4 +278,5 @@ def normalize_person_file(
         known_meta=known_meta,
         nicknames=nicknames,
         nickname_line=nickname_line,
+        deprecated_aliases=deprecated_aliases,
     )

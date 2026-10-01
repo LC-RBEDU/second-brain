@@ -1,0 +1,30 @@
+---
+description: Osobní Fio platby — po potvrzení údajů rovnou import ke schválení; default datum = poslední pracovní den před splatností
+alwaysApply: true
+---
+
+# Osobní / soukromé platby → Fio (ke schválení)
+
+## Osobní (default)
+
+Když Lukáš **potvrdí všechny potřebné údaje** platebního příkazu (částka, účet odesílatele, VS / účet příjemce, splatnost z dokladu, případně zpráva), agent **vždy rovnou nahraje příkaz do Fio banky** tak, aby skončil u **příkazů k podpisu** v IB (neprovede platbu bez podpisu).
+
+- Nestačí jen vygenerovat XML na disk (`output/fio-payment-orders/…`).
+- Tooling: `python3 scripts/fio_import_personal.py <xml>` (token z `~/.config/second-brain/fio-personal.env`, nikdy do chatu).
+- API: `POST https://fioapi.fio.cz/v1/rest/import/?type=xml` + multipart file → „Příkazy k podpisu“.
+- Po uploadu ověř úspěch (HTTP 200 + `errorCode=0` / `status=ok`, ideálně `idInstruction`) a stručně nahlásit důkaz — bez secrets. Classic Fio API neumí vypsat frontu k podpisu; důkaz = úspěšná odpověď importu.
+
+## Default datum platby v XML
+
+**Poslední pracovní den (Po–Pá, bez CZ státního svátku) striktně před** požadovaným datem splatnosti z dokladu / e-mailu.
+
+- Splatnost čt 15. 10. → platba st 14. 10.
+- Splatnost pátek → čtvrtek předtím.
+- Splatnost pondělí → pátek předtím (ne samotné pondělí).
+- Pokud splatnost padne na nepracovní den, pořád „před“ = poslední WD **před** tím dnem (ne „na“ due).
+
+Neplést s firemním Universe režimem (pondělí / cashflow mode) — tohle platí jen pro **osobní** příkazy.
+
+## Firemní platby
+
+Tudy **většinou neřeší**. Pokud ano, je to **výjimka** — Lukáš to musí **explicitně napsat**. Bez explicitního pokynu firemní Fio import nespouštěj.

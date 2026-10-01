@@ -32,7 +32,7 @@ description: >-
 
 1. Návrh textu podle playbooku Slack. **Ukaž text v chatu.**
 2. Pošli **až** po „pošli“ / „ano“ / ekvivalent. Bez potvrzení neposílej.
-3. Post jako Lukáš (user Slack / MCP s jeho účtem), ne bot, ne n8n.
+3. Post jako Lukáš (user Slack / MCP s jeho účtem), ne bot, ne n8n. Na konec odesílaného textu vždy kurzívou `_(jménem Lukáše posílá jeho AsIstent)_` — viz `.cursor/rules/asist-send-signature.mdc`.
 4. **Vault ve stejném tahu** (i když Cowork archiv ještě neběžel):
    - Zapiš vlákno do `01-INBOX/slack/` ve tvaru Cowork archivu (frontmatter `channel_id`, `thread_ts`, `kind`).
    - Dedup: jeden soubor na `channel_id` + `thread_ts` (večerní archiv nesmí udělat druhý).

@@ -13,7 +13,7 @@ alwaysApply: false
 - Project-specific: `02-PROJEKTY/<slug>/materials/<téma>/`
 - Cross-project: `05-RESOURCES/<kategorie>/`
 - Frontmatter: `type: material` nebo `type: attachment`
-- Propojení s tasky: `materials: ["[[název]]"]` ve frontmatter tasku
+- Propojení s tasky: `materials: ["[[název]]"]` ve frontmatter tasku **a** `related_tasks:` na materiálu (obousměrně)
 
 ## Přílohy (binárky)
 
@@ -23,16 +23,26 @@ alwaysApply: false
 - **Žádná** centrální `attachments/` složka
 - Extrakce: `python3 scripts/extract_material_text.py <path>`
 
-## INBOX → triage
+## INBOX → triage (povinné)
 
-- Kanonický blok `## Přílohy` v capture `.md` (Drive linky)
-- Triage flaguje `## Přílohy` jako DEEP
-- Apply: přesun binárky + sidecar do `materials/<téma>/`, propojení s taskem
+- Kanonický blok `## Přílohy` v capture `.md` (Drive linky / co-located binárky)
+- Triage (`agenda-triage`): `## Přílohy` → DEEP, pokud nejde o e-mail s `email_must_propose_task`
+- **Při apply vždy:** relevantní přílohy → `02-PROJEKTY/<slug>/materials/<téma>/` (+ sidecar + index material) **a** `materials:` na každém relevantním tasku
+- Archiv do `07-ARCHIV/inbox-processed/` **nestačí** — bez linku na task se o přílohy v praxi přijde (Bases, work context, další triáž)
+- Platí i pro `add_task` / `update_task` / DEEP; výjimka jen drop / čistý šum / personal receipt flow
+- Detail checklist: skill `agenda-triage` → sekce „Materiály z příloh“
 
 ## Topics (05-RESOURCES)
 
 - Frontmatter `topics: [slug1, slug2]` pro cross-project vynoření
 - Agent načítá podle `topics:` + task `materials:` + hub `sources:`
+
+## Nástroje (`05-RESOURCES/nastroje/`)
+
+- Provozní SaaS / produkty RB EDU (Leadspicker, Pipedrive, …) — **ne** AI návody (`ai-nastroje/`)
+- Struktura: `nastroje/<tool-kebab>/_index.md` + materiály ve stejné složce
+- Nový materiál o nástroji → podsložka nástroje; project hub `## Zdroje dat` odkáže na `_index`
+- Deal-/task-specific věci zůstávají v `02-PROJEKTY/<slug>/materials/` — hub nástroje na ně odkáže
 
 ## Work context
 

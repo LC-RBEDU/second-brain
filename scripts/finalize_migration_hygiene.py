@@ -68,14 +68,15 @@ def _source_id_from_name(filename: str) -> str:
 
 
 def _inbox_archive_dest(vault: Path, rel: str) -> Path:
-    parts = Path(rel).parts
-    name = parts[-1]
-    m = re.match(r"(\d{4})-(\d{2})-", name)
-    if not m:
-        raise ValueError(f"cannot parse date from {rel}")
-    year, month = m.group(1), m.group(2)
-    kind = parts[1] if len(parts) > 2 else "misc"
-    return vault / "07-ARCHIV" / "inbox-processed" / year / month / kind / name
+    """Delegate to SSOT ``inbox_archive.inbox_archive_dest`` (sb-personal + dated)."""
+    try:
+        from inbox_archive import inbox_archive_dest as _dest
+    except ImportError:
+        hub_lib = Path(__file__).resolve().parents[1] / "vps" / "second-brain-hub" / "lib"
+        if str(hub_lib) not in sys.path:
+            sys.path.insert(0, str(hub_lib))
+        from inbox_archive import inbox_archive_dest as _dest  # type: ignore
+    return _dest(vault, rel)
 
 
 def _resource_projects(rel: str, fm: dict) -> list[str]:
