@@ -46,7 +46,7 @@ Navrhované změny (N):
   [owners] OWN8 — …: review_deadline → 2026-09-24 (důvod: Rozhodni — due po termínu)
   ...
 
-Beze změny (TOP 5 podle today_score):
+Beze změny (TOP 5 v pořadí ze snapshotu):
   1. [strategy/S2] Hierarchie cílů — Next, today_score 8.3
   2. [rb-universe-development/RBU30] ... — fokus W32, today_score 64
   ...

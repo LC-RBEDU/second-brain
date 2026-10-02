@@ -119,6 +119,17 @@ def test_b8_within_bucket_deadline_asc():
     assert [t["id"] for t in top] == ["OLD", "NEAR"]
 
 
+
+
+def test_b8b_same_deadline_higher_score_first():
+    d = (TODAY + timedelta(days=2)).isoformat()
+    low = _task(id="LOW", deadline=d, ice_i=2, ice_c=2, ice_e=1)
+    low["priority_score"] = 4.0
+    high = _task(id="HIGH", deadline=d, ice_i=8, ice_c=8, ice_e=1, company_priorities=["[[CP1]]"])
+    high["priority_score"] = 64.0
+    _, top = select_top_priority([low, high], TODAY)
+    assert [t["id"] for t in top[:2]] == ["HIGH", "LOW"]
+
 def test_b9_hub_state_rank_key():
     from hub_state import build_state_content
 

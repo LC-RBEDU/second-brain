@@ -65,7 +65,7 @@ alwaysApply: true
 - **`top_priority_today`** (SSOT, max 5): jen úkoly s `focus` = aktuální ISO týden; nikdy `Waiting` / `Backlog` / `Cancelled`
 - **`focus_suggestions`**: když je fokus pod 5, `build_agent_context.py` nabídne kandidáty — **návrhy, ne povýšení**
 - **`needs_decision`**: `due < today` (mimo Waiting) — lane Rozhodni
-- **`top_priority`** (max 15): fokus + `Doing` + `Next`, sort `today_score DESC`
+- **`top_priority`** (max 15): fokus + `Doing` + `Next`, sort dle rank_key (pole pre-sorted; neresortuj)
 
 ### Konvence — vždy zachovej
 - **Chat o konkrétním tasku:** vždy `**ID — title**` z frontmatter (ne jen `SBD4`) — viz `task-mention-convention.mdc`.

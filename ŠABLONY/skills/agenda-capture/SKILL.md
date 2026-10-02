@@ -186,7 +186,7 @@ python3 scripts/build_agent_context.py
 
 ### 11. Hláška
 
-Krátká, akční: kolik task souborů, do kterých projektů, top podle today_score pokud je; `lide_sync: linkified=L profiles_rebuilt=P`.
+Krátká, akční: kolik task souborů, do kterých projektů, top v pořadí ze snapshotu pokud je; `lide_sync: linkified=L profiles_rebuilt=P`.
 
 ## Speciální případy
 
