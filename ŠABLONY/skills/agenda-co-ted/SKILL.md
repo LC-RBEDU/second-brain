@@ -29,6 +29,7 @@ V2 priority pořadí:
 **Nejdřív tahle lane**, pak fokus.
 
 - `due = deadline` (pokud je), jinak `review_deadline` — `due < dnes` a status není Waiting / Done / Cancelled
+- **Pořadí TOP / suggestions:** ber pořadí polí ze snapshotu (`top_priority_today`, `top_priority`, `focus_suggestions`) — **nesortuj** podle `today_score`. Hard deadline ≤7d je nahoře.
 - U každé položky nabídni: hotovo / nové `review_deadline` (jen bez `deadline`) nebo posun `deadline` (externí) / Waiting + blocker / Cancelled
 - Když je `needs_decision` neprázdné, **nesmíš mlčet** — vypiš ji i když fokus je plný
 
@@ -45,75 +46,5 @@ V2 priority pořadí:
 
 **Scoring:**
 - `priority_score = (ice_i * ice_c) / ice_e`
-- `today_score = priority_score + urgency(deadline)` pokud je `deadline`, jinak `urgency(review_deadline)`:
-  - **+30** / **+15** externí `deadline` dnes / zítra
-  - **+20** / **+10** `review_deadline` dnes / zítra (jen bez `deadline`)
-  - **+5** overdue (`due < dnes`) — jen rozřazovač, ne odměna za hnilobu
-- Sort: `today_score DESC`
-
-**Pole `agent`** — u každé položky zmiň, kdo ji udělá: `solo` (zvládnu sám a můžu se do toho pustit hned), `assist` (připravím podklad, rozhodneš ty), `none` (jen ty).
-
-## Ostatní klasifikace
-
-- **ROZHODNI**: `needs_decision` — viz výše
-- **BEZ DATA**: `no_review_deadline` — otevřené **bez** `deadline` i bez `review_deadline` (doplň review)
-- **DUE SOON**: `due_soon` — `due` v příštích 7 dnech
-- **PO TERMÍNU (externí)**: `deadline` < dnes && `status != Done`
-- **WAITING**: `status = Waiting` && `waitUntil >= dnes` — zobraz zvlášť, **nikdy v TOP**
-- **BLOKOVANÉ**: `blocked_by != []` — kromě "nic"
-
-## Zmínka tasků v chatu
-
-Vždy **`ID — title`** (z frontmatter / `agent-context.json`), ne jen zkratka ID. Příklad: **SBD4 — Česká spořitelna — rozšíření rámcovky (dodatek)**. Viz `.cursor/rules/task-mention-convention.mdc`.
-
-## Vrať dashboard
-
-```
-═══════════════════════════════════════════════
-CO TEĎ — DD/MM/YYYY
-═══════════════════════════════════════════════
-
-⚠️ ROZHODNI (N) — due po termínu
-  • [slug] ID — title — due=… deadline=… review=… status=…
-  → nabídni: hotovo / nové datum / Waiting / Cancelled
-
-🔥 TOP (z `top_priority_today`, sort today_score)
-  • [slug] ID — title — focus=2026-W32 agent=solo today_score=… due=…
-  ...
-
-📅 DUE ≤ 7 dní (N)
-  • …
-
-⏸ WAITING (N)
-  • [slug] ID — title — do YYYY-MM-DD
-
-📭 BEZ review_deadline (top ICE, max 5)
-  • …
-
-🚧 BLOKOVANÉ (N)
-  ...
-
-═══════════════════════════════════════════════
-📝 Lessons ke schválení: N (nebo vynech řádek) — „schval lessons“
-═══════════════════════════════════════════════
-Příkazy: ukliď | detail <slug> | revize priorit | schval lessons
-```
-
-## Subcommands
-
-- **`ukliď` / `clean`**:
-  - Najdi task soubory v `02-PROJEKTY/<slug>/tasks/` se `status: Done`
-  - Preview seznam → potvrzení
-  - Přesuň do `07-ARCHIV/tasks-done/<slug>/<filename>` (cron `archive_done_tasks.py` to dělá automaticky, ale tady manuální verze)
-  - Update `open_tasks_count` v hub `.md` frontmatteru
-  - Po batchi spusť `python3 scripts/build_agent_context.py`
-- **`detail <slug>`** → otevři `02-PROJEKTY/<HubName>.md` + briefing (Cíl, Scope, Kontext, Otevřené otázky, Aktivní úkoly)
-- **`revize priorit`** → deleguj na skill `agenda-priority-review`
-
-## Pravidla
-
-- Nikdy neukládej bez explicitního příkazu
-- Waiting / Backlog **nikdy** v TOP (ani v `top_priority_today`, ani v `top_priority`)
-- Cesty: `02-PROJEKTY/<slug>/tasks/` (ne `AGENDA/`, ne H3 v hubu)
-- Bases dashboard (`Dashboard.md`) je pro user oko, agent ho čte přes frontmatter parser
-- **Vault je single-user (Lukáš).** Co teď zobrazuje **Lukášovy priority** — všechny tasky v `02-PROJEKTY/<slug>/tasks/` jsou Lukášovy operativní akce (žádný explicit `owner` field, jeden majitel vault). Pokud task "Sledovat: <kdo> dodá <co>" má status `Waiting`, patří do sekce WAITING, ne do TOP 3.
+- `rank_score` / `today_score` = ICE + 5 pokud `company_priorities` neprázdné
+  - řazení: deadline bucket (≤7d) → deadline ASC → rank_score DESC; review bez vlivu

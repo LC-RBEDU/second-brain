@@ -59,9 +59,9 @@ alwaysApply: true
 
 ### Priority score
 - `priority_score = (ice_i * ice_c) / ice_e` (Bases formula + agent-context.json)
-- **`today_score`**: `priority_score` + urgency z `deadline` (pokud je), jinak z `review_deadline`
-  - deadline dnes +30, zítra +15; review_deadline dnes +20, zítra +10; **overdue jen +5**
-  (dřív overdue +35, což znamenalo, že čím déle věc hnila, tím výš lezla)
+- **`rank_score` / `today_score`**: `priority_score` + 5 pokud `company_priorities` neprázdné
+  - **řazení:** hard `deadline` ≤ 7 dní (vč. overdue) striktně nahoře (ASC), pak `rank_score`; `review_deadline` neovlivní pořadí
+  - snapshot pole pre-sorted — **nesortuj** podle `today_score`
 - **`top_priority_today`** (SSOT, max 5): jen úkoly s `focus` = aktuální ISO týden; nikdy `Waiting` / `Backlog` / `Cancelled`
 - **`focus_suggestions`**: když je fokus pod 5, `build_agent_context.py` nabídne kandidáty — **návrhy, ne povýšení**
 - **`needs_decision`**: `due < today` (mimo Waiting) — lane Rozhodni

@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from focus import FOCUS_LIMIT, is_focus_current
-from today_priority import today_score
+from today_priority import rank_key, rank_score
 
 DEFAULT_WAIT_UNTIL_DAYS = 3
 FOCUS_TARGET = FOCUS_LIMIT
@@ -43,12 +43,9 @@ def review_deadline_str(fm: dict[str, Any]) -> str | None:
 
 
 def task_today_score(fm: dict[str, Any], today: date) -> float:
-    return today_score(
-        priority_score_from_frontmatter(fm),
-        deadline_str(fm),
-        today,
-        review_deadline_str(fm),
-    )
+    """Legacy name: returns rank_score (ICE + company bonus)."""
+    del today
+    return rank_score(fm)
 
 
 def has_wait_until_value(value: Any) -> bool:
@@ -90,7 +87,6 @@ def select_focus_suggestions(
 
     ranked = sorted(
         candidates,
-        key=lambda t: task_today_score(_frontmatter(t), today),
-        reverse=True,
+        key=lambda t: rank_key(_frontmatter(t), today),
     )
     return ranked[:need]

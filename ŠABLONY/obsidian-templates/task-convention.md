@@ -66,6 +66,9 @@ review_deadline:  # kdy se k tomu vracím
 | Na co teď? | `focus` (ISO týden, max 5; člověk) |
 
 `due = deadline` pokud existuje, jinak `review_deadline`. Při nastavení `deadline` se `review_deadline` vymaže. Lane **Rozhodni** = `due < today` (mimo Waiting).
+
+**Ranking (co teď / top_priority):** hard `deadline` ≤ 7 dní (vč. overdue) striktně nahoře (uvnitř ASC); pak `rank_score` = ICE + 5 pokud `company_priorities` neprázdné. `review_deadline` neovlivní pořadí. Snapshot pole jsou pre-sorted — **nesortuj** podle `today_score`.
+Volitelné `company_priorities: ["[[CP8 — …]]"]` (prázdné OK). Index: `00-System/Memory/firemni-priority-2hy-2026.md`.
 ## Hub page
 
 Hierarchický hub embeduje `All-tasks-hierarchy.base` (**ne** flat `All-tasks.base`, a to i u `ProjectRecentDone`):

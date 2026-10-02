@@ -19,7 +19,7 @@ from lifecycle_promotion import (  # noqa: E402
     select_focus_suggestions,
     task_today_score,
 )
-from today_priority import URGENCY_BONUS_OVERDUE  # noqa: E402
+from today_priority import rank_key  # noqa: E402
 
 TODAY = date(2026, 8, 4)  # 2026-W32
 
@@ -86,20 +86,21 @@ def test_no_suggestions_when_focus_is_full():
     )
 
 
-def test_overdue_no_longer_dominates_score():
-    """Rot must not climb the list: overdue is a tiebreaker, not a jackpot."""
+def test_rank_score_ignores_deadline_urgency():
+    """rank_score is ICE (+ company bonus); deadline only affects rank_key bucket."""
     base = task_today_score({"ice_i": 5, "ice_c": 5, "ice_e": 5}, TODAY)
     overdue = task_today_score(
         {"ice_i": 5, "ice_c": 5, "ice_e": 5, "deadline": "2026-07-01"},
         TODAY,
     )
-    due_today = task_today_score(
-        {"ice_i": 5, "ice_c": 5, "ice_e": 5, "deadline": "2026-08-04"},
-        TODAY,
+    assert overdue == base
+    overdue_key = rank_key(
+        {"ice_i": 5, "ice_c": 5, "ice_e": 5, "deadline": "2026-07-01"}, TODAY
     )
-    assert overdue == base + URGENCY_BONUS_OVERDUE
-    assert URGENCY_BONUS_OVERDUE == 5
-    assert due_today > overdue
+    plain_key = rank_key({"ice_i": 9, "ice_c": 9, "ice_e": 1}, TODAY)
+    assert overdue_key[0] == 0
+    assert plain_key[0] == 1
+    assert overdue_key < plain_key
 
 
 if __name__ == "__main__":

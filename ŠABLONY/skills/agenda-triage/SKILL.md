@@ -104,7 +104,7 @@ U komplexních zdrojů v preview uveď `requires_deep_analysis` / důvody a zpra
    **přeskoč complex/DEEP**, i když je `## Přílohy`. False → pokračuj krokem 4.
 4. Pro ostatní položky (a e-maily kde krok 3 = False) zavolej **`is_complex_source(rel, body)`** (`vps/second-brain-hub/lib/triage_complexity.py`).
 5. Komplexní zdroj → automaticky DEEP flow pro ten jeden zdroj (viz níže), zbytek dál v BATCH.
-6. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo) + datum: buď **`deadline`** (externí závazek → `review_deadline` prázdné), nebo **`review_deadline`** (povinné u Next/Doing bez deadline). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
+6. Pro non-DEEP položku: extrahuj, navrhni projekt + ICE + status (Next/Backlog/Waiting) + `agent` (none/assist/solo) + datum: buď **`deadline`** (hard/externí → `review_deadline` prázdné), nebo **`review_deadline`** (povinné u Next/Doing bez deadline) + volitelné **`company_priorities`** (`[[CP#]]` z `firemni-priority-2hy-2026`; prázdné OK; při vazbě vyšší I/C). **`solo` lookup → nejdřív „řešit rovnou?“, ne `add_task` s podtasky** (viz Agent níže).
 7. Generuj ID (scan `02-PROJEKTY/<slug>/tasks/` + `07-ARCHIV/tasks-done/<slug>/`)
 8. Preview všech BATCH položek najednou + výpis DEEP candidates (skill agenda-capture struktura).
    **Nad ~10 položek předkládej po blocích** — viz níže.

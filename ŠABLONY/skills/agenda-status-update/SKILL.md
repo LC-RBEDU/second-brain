@@ -54,6 +54,7 @@ Mapping user intent → frontmatter změna:
 | kanban / ruční Waiting bez data | cron `lifecycle_waiting_default_waituntil` (every 2h :02) doplní `waitUntil: dnes + 3` |
 | "zruš" / "cancel" | `status: Cancelled`, `waitUntil:` prázdné, `updated: <today>`, body append `- <today>: **ZRUŠENO** — <důvod>`. **Nemaž soubor** — cron ho archivuje jako Done a `Cancelled` drží rozdíl mezi splněným a odepsaným. |
 | "sloučeno do X" | totéž jako zruš, v logu wikilink na cílový úkol |
+| "priorita CP#" / vazba na firemní prioritu | `company_priorities:` wikilink(y); prázdné = bez vazby |
 | "deadline YYYY-MM-DD" | `deadline: <date>` (jen externí závazek), **`review_deadline:` vymazat**, `updated: <today>` |
 | "review YYYY-MM-DD" / "vrať se k tomu" | jen když **není** `deadline`: `review_deadline: <date>`, `updated: <today>`. Má-li task `deadline`, nenastavuj review — posuň `deadline` nebo ho nejdřív vymaž. |
 | "ICE I8 C7 E5" | `ice_i: 8, ice_c: 7, ice_e: 5`, `updated: <today>` (ne u epic) |

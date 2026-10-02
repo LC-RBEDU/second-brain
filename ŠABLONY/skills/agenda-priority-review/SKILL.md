@@ -24,11 +24,9 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus
 ## Scoring (sjednoceno s `today_priority.py` / agent-context)
 
 - `priority_score = (ice_i * ice_c) / ice_e`
-- `due = deadline` pokud je, jinak `review_deadline` (při `deadline` se review ignoruje / maže)
-- `today_score = priority_score + urgency(deadline)` jinak `urgency(review_deadline)`:
-  - +30 / +15 externí `deadline` dnes / zítra
-  - +20 / +10 `review_deadline` dnes / zítra (jen bez `deadline`)
-  - +5 overdue (`due < today`) — jen rozřazovač (ne +35)
+- `due = deadline` pokud je, jinak `review_deadline` (při `deadline` se review maže)
+- řazení: hard deadline ≤7d striktně nahoře; pak `rank_score` = ICE + 5 při `company_priorities`
+- snapshot pole pre-sorted — **nesortuj** podle `today_score`
 - **TOP eligibility:** jen `focus` = aktuální ISO týden, max 5; nikdy Waiting/Backlog/Cancelled
 - **Do `focus` nezapisuj sám** — navrhni kandidáty a nech volbu na uživateli
 - **Waiting** — nepatří do TOP; zkontroluj `waitUntil` a smysl

@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from today_priority import today_score as compute_today_score
+from today_priority import rank_score as compute_rank_score
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:\|[^\]]+)?\]\]")
 
@@ -103,12 +103,11 @@ def _ids_from_list(items: Any) -> list[str]:
 def _slim_task(task: dict, today: date) -> dict:
     materials = task.get("materials") or []
     mats = materials if isinstance(materials, list) else []
+    del today  # ranking does not use calendar urgency
     ps = float(task.get("priority_score") or 0)
     ts = task.get("today_score")
     if ts is None:
-        ts = compute_today_score(
-            ps, task.get("deadline"), today, task.get("review_deadline")
-        )
+        ts = compute_rank_score(task)
     slim = {k: task.get(k) for k in LIGHT_TASK_KEYS}
     slim["priority_score"] = ps
     slim["today_score"] = float(ts)

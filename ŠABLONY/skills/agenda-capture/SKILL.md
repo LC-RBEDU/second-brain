@@ -95,11 +95,14 @@ updated: <YYYY-MM-DD>
 materials:
   - "[[<material-slug-or-filename>]]"
 source: "<zdroj — Slack/Sembly/email/manual>"
+company_priorities: []  # volitelné [[CP# — …]]; viz firemni-priority-2hy-2026
 blocked_by: []
 ---
 ```
 
 `aliases: [<ID>]` zajišťuje, že `[[<ID>]]` z body resolvuje na soubor i po případné změně titulu.
+
+**`company_priorities`:** pokud task patří k firemní prioritě 2HY, wikilink `[[CP# — …]]` (boost +5). Prázdné OK. Při vazbě navrhni vyšší I/C.
 
 **`review_deadline`:** u `Next` / `Doing` **bez** `deadline` vždy vyplň (i odhad). Má-li task `deadline`, `review_deadline` nech prázdné (a při zápisu deadline ho vymaž). `deadline` jen při reálném externím závazku.
 

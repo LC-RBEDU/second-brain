@@ -1,23 +1,25 @@
-"""TOP priority dnes — eligibility + today_score (SSOT for agent-context.json).
+"""TOP priority dnes — eligibility + rank_key (SSOT for agent-context.json).
 
-Priority model v2.1 — "what now" is answered by the focus week, not by a status:
+Priority model v2.2 — "what now" is answered by the focus week, not by a status:
 
 - ``top_priority_today`` — tasks whose ``focus`` is the current ISO week (max 5).
   Nothing else qualifies, and no cron may add to it: focus is a human choice.
 - ``top_priority`` — the wider queue (focus + Doing + Next), sorted the same way.
 
 Dates (exclusive):
-- ``deadline`` — external commitment only; when set, ``review_deadline`` is ignored
-- ``review_deadline`` — own soft date ("when I revisit") — only when there is no ``deadline``
-- ``due`` — ``deadline`` if present, else ``review_deadline``
+- ``deadline`` — hard external commitment only; when set, ``review_deadline`` is ignored
+- ``review_deadline`` — own soft date — only when there is no ``deadline``
+- ``due`` — ``deadline`` if present, else ``review_deadline`` (Rozhodni / due_soon)
 
-Urgency bonuses (on top of priority_score = (I*C)/E):
-- with ``deadline``: external only — today +30 / tomorrow +15 / overdue +5
-- without ``deadline``: review — today +20 / tomorrow +10 / overdue +5
+Ranking (not urgency bonuses):
+- Bucket 0: hard ``deadline`` <= today + DEADLINE_HORIZON_DAYS (incl. overdue)
+- Bucket 1: everything else (``review_deadline`` does not affect order)
+- Within bucket 0: deadline ASC, then rank_score DESC
+- Within bucket 1: rank_score DESC only (sentinel date on the date axis)
 
-The overdue bonus used to be +35, which made a task climb the list the longer it
-rotted. It now only breaks ties, so an expired date is visible without
-outranking work that is actually due.
+``rank_score`` = priority_score + company_bonus (+5 if company_priorities has a
+non-empty stripped string). Snapshot arrays are pre-sorted; do not re-sort by
+``today_score`` (alias of ``rank_score``).
 """
 from __future__ import annotations
 
@@ -35,6 +37,10 @@ from focus import (
 )
 from hierarchy import is_focusable
 
+DEADLINE_HORIZON_DAYS = 7
+COMPANY_PRIORITY_BONUS = 5.0
+
+# Legacy constants kept for importers / docs scrub; unused in ranking.
 URGENCY_BONUS_OVERDUE = 5
 URGENCY_BONUS_TODAY = 30
 URGENCY_BONUS_TOMORROW = 15
@@ -48,6 +54,8 @@ QUEUE_STATUSES = frozenset({STATUS_DOING, STATUS_NEXT})
 
 # Project hub ``status`` (not task status). Empty/missing counts as active.
 ACTIVE_PROJECT_STATUSES = frozenset({"active", ""})
+
+_EMPTY_MARKERS = frozenset({"", "—", "-", "~", "null", "none", "n/a"})
 
 
 def is_active_project_status(status: str | None) -> bool:
@@ -111,45 +119,49 @@ def effective_due(
     return parse_deadline(review_deadline)
 
 
-def _axis_bonus(
-    value: str | None,
-    today: date,
-    *,
-    today_pts: float,
-    tomorrow_pts: float,
-    overdue_pts: float = URGENCY_BONUS_OVERDUE,
-) -> float:
-    dl = parse_deadline(value)
-    if dl is None:
-        return 0.0
-    if dl < today:
-        return float(overdue_pts)
-    if dl == today:
-        return float(today_pts)
-    if dl == today + timedelta(days=1):
-        return float(tomorrow_pts)
+def company_priorities_list(task: Any) -> list[str]:
+    """Normalize ``company_priorities`` from task / frontmatter to a string list."""
+    raw = _task_get(task, "company_priorities")
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [raw]
+    if isinstance(raw, (list, tuple)):
+        return [str(x) for x in raw]
+    return []
+
+
+def company_bonus(task: Any) -> float:
+    """+COMPANY_PRIORITY_BONUS if any non-empty stripped entry (no FS check)."""
+    for item in company_priorities_list(task):
+        s = str(item).strip().strip("\"'")
+        if s.lower() in _EMPTY_MARKERS:
+            continue
+        if s:
+            return float(COMPANY_PRIORITY_BONUS)
     return 0.0
 
 
-def urgency_bonus(
-    deadline: str | None,
-    today: date,
-    review_deadline: str | None = None,
-) -> float:
-    """External urgency when deadline set; otherwise review urgency only."""
-    if parse_deadline(deadline) is not None:
-        return _axis_bonus(
-            deadline,
-            today,
-            today_pts=URGENCY_BONUS_TODAY,
-            tomorrow_pts=URGENCY_BONUS_TOMORROW,
-        )
-    return _axis_bonus(
-        review_deadline,
-        today,
-        today_pts=URGENCY_BONUS_REVIEW_TODAY,
-        tomorrow_pts=URGENCY_BONUS_REVIEW_TOMORROW,
-    )
+def in_deadline_bucket(deadline: str | None, today: date) -> bool:
+    """True when hard deadline is set and deadline <= today + horizon (incl. overdue)."""
+    dl = parse_deadline(deadline)
+    if dl is None:
+        return False
+    return dl <= today + timedelta(days=DEADLINE_HORIZON_DAYS)
+
+
+def rank_score(task: Any) -> float:
+    """priority_score + company_bonus (no urgency)."""
+    return round(_priority_score(task) + company_bonus(task), 2)
+
+
+def rank_key(task: Any, today: date) -> tuple[int, date, float]:
+    """Sort key: ascending — deadline bucket first, then deadline ASC, then score DESC."""
+    dl = parse_deadline(_task_get(task, "deadline"))
+    rs = rank_score(task)
+    if dl is not None and in_deadline_bucket(_task_get(task, "deadline"), today):
+        return (0, dl, -rs)
+    return (1, date.max, -rs)
 
 
 def today_score(
@@ -157,11 +169,27 @@ def today_score(
     deadline: str | None,
     today: date,
     review_deadline: str | None = None,
+    company_priorities: list[str] | None = None,
 ) -> float:
-    return round(
-        float(priority_score) + urgency_bonus(deadline, today, review_deadline),
-        2,
-    )
+    """Alias of rank_score for call sites that still pass ICE parts.
+
+    ``deadline`` / ``review_deadline`` / ``today`` ignored for ranking (kept for API).
+    """
+    del deadline, today, review_deadline
+    bonus = 0.0
+    if company_priorities:
+        bonus = company_bonus({"company_priorities": company_priorities})
+    return round(float(priority_score) + bonus, 2)
+
+
+def urgency_bonus(
+    deadline: str | None,
+    today: date,
+    review_deadline: str | None = None,
+) -> float:
+    """Deprecated: ranking no longer uses urgency. Always 0."""
+    del deadline, today, review_deadline
+    return 0.0
 
 
 def needs_decision(task: Any, today: date) -> bool:
@@ -211,30 +239,36 @@ def _priority_score(task: Any) -> float:
 
 
 def enrich_task_dict(task_dict: dict, today: date) -> dict:
-    ps = float(task_dict.get("priority_score") or 0)
-    dl = task_dict.get("deadline")
-    rd = task_dict.get("review_deadline")
     out = dict(task_dict)
+    out.setdefault("priority_score", _priority_score(out))
+    if "company_priorities" not in out:
+        out["company_priorities"] = company_priorities_list(out)
+    dl = out.get("deadline")
+    rd = out.get("review_deadline")
     due = effective_due(dl, rd)
     out["due"] = due.isoformat() if due else None
-    out["urgency_bonus"] = urgency_bonus(dl, today, rd)
-    out["today_score"] = today_score(ps, dl, today, rd)
+    cb = company_bonus(out)
+    rs = round(float(out["priority_score"]) + cb, 2)
+    out["company_bonus"] = cb
+    out["rank_score"] = rs
+    out["today_score"] = rs
+    out["in_deadline_bucket"] = in_deadline_bucket(dl, today)
+    out["urgency_bonus"] = 0.0
     return out
 
 
-def _to_enriched(task: Any, ts: float, today: date) -> dict:
+def _to_enriched(task: Any, today: date) -> dict:
     if isinstance(task, dict):
         base = dict(task)
         base.setdefault("priority_score", _priority_score(task))
+        if "company_priorities" not in base:
+            base["company_priorities"] = company_priorities_list(task)
     else:
         base = task.to_dict() if hasattr(task, "to_dict") else dict(task.frontmatter)
-    dl = base.get("deadline")
-    rd = base.get("review_deadline")
-    due = effective_due(dl, rd)
-    base["due"] = due.isoformat() if due else None
-    base["today_score"] = ts
-    base["urgency_bonus"] = urgency_bonus(dl, today, rd)
-    return base
+        base.setdefault("priority_score", _priority_score(task))
+        if "company_priorities" not in base:
+            base["company_priorities"] = company_priorities_list(task)
+    return enrich_task_dict(base, today)
 
 
 def select_top_priority(
@@ -249,27 +283,15 @@ def select_top_priority(
     ``top_priority_today`` holds only tasks focused on the current ISO week.
     When nothing is focused it stays empty on purpose — the suggester
     (``lifecycle_focus_suggest``) offers candidates instead of promoting them.
+    Arrays are pre-sorted by ``rank_key`` (ascending).
     """
 
-    def scored(tasks: list[Any]) -> list[tuple[Any, float]]:
-        pairs = [
-            (
-                t,
-                today_score(
-                    _priority_score(t),
-                    _task_get(t, "deadline"),
-                    today,
-                    _task_get(t, "review_deadline"),
-                ),
-            )
-            for t in tasks
-        ]
-        pairs.sort(key=lambda pair: -pair[1])
-        return pairs
+    def ranked(tasks: list[Any]) -> list[Any]:
+        return sorted(tasks, key=lambda t: rank_key(t, today))
 
-    focused = scored([t for t in open_tasks if is_focus_eligible(t, today)])
-    queued = scored([t for t in open_tasks if is_queue_eligible(t, today)])
+    focused = ranked([t for t in open_tasks if is_focus_eligible(t, today)])
+    queued = ranked([t for t in open_tasks if is_queue_eligible(t, today)])
 
-    top_today = [_to_enriched(t, ts, today) for t, ts in focused[:today_limit]]
-    top_general = [_to_enriched(t, ts, today) for t, ts in queued[:general_limit]]
+    top_today = [_to_enriched(t, today) for t in focused[:today_limit]]
+    top_general = [_to_enriched(t, today) for t in queued[:general_limit]]
     return top_today, top_general

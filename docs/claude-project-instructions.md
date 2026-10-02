@@ -94,7 +94,7 @@ GitHub SECOND_BRAIN (verzováno): `vps/second-brain-hub/`, `scripts/`, `ŠABLONY
 ### Priority model
 
 - `priority_score = (ice_i × ice_c) / ice_e`
-- `today_score` = priority + urgency (deadline dnes +30, zítra +15, overdue +5)
+- `rank_score` / `today_score` = ICE + company_bonus; hard deadline ≤7d striktně nahoře (snapshot pre-sorted)
 - `top_priority_today` = max 5, jen tasky s `focus` = aktuální ISO týden
 - `focus_suggestions` = návrhy, ne auto-nastavení
 

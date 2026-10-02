@@ -10,7 +10,7 @@ Follow ŠABLONY/skills/agenda-co-ted/SKILL.md and read OBSIDIAN/00-System/agent-
 Write the morning priority brief in this chat only. Do not write the vault or Slack.
 
 Order (never skip Rozhodni when non-empty):
-1. needs_decision — due (deadline if set, else review_deadline) is past. For each item offer: Done / new review_deadline (only if no deadline) or move deadline / Waiting + blocker / Cancelled. Always show ID — title.
+1. needs_decision — due (deadline if set, else review_deadline) is past. Use array order from snapshot; do not re-sort by today_score. For each item offer: Done / new review_deadline (only if no deadline) or move deadline / Waiting + blocker / Cancelled. Always show ID — title.
 2. Focus week count (X of 5) + top_priority_today. If under 5, list focus_suggestions — do not set focus yourself.
 3. due_soon (next 7 days).
 4. Waiting with waitUntil within 3 days.

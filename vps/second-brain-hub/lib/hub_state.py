@@ -24,8 +24,7 @@ from typing import Any, Protocol
 
 from focus import STATUS_DOING, STATUS_NEXT, is_focus_current, is_terminal
 from hierarchy import is_epic
-from today_priority import is_active_project_status
-from today_priority import today_score as calc_today_score
+from today_priority import is_active_project_status, rank_key, rank_score
 
 LEGACY_MARKERS = (
     "<!-- SB:STATE:BEGIN -->",
@@ -196,18 +195,14 @@ def build_state_content(
     epic_n = sum(1 for t in open_tasks if is_epic(t))
     story_n = len(open_tasks) - epic_n
 
-    scored: list[tuple[Any, float]] = []
+    scored: list[Any] = []
     for t in open_tasks:
         if is_epic(t):
             continue
         if _task_get(t, "status") not in (STATUS_DOING, STATUS_NEXT):
             continue
-        ps = _priority_score(t)
-        ts = calc_today_score(
-            ps, _task_get(t, "deadline"), today, _task_get(t, "review_deadline")
-        )
-        scored.append((t, ts))
-    scored.sort(key=lambda x: -x[1])
+        scored.append(t)
+    scored.sort(key=lambda t: rank_key(t, today))
     top3 = scored[:3]
 
     deadlines: list[tuple[date, Any]] = []
@@ -299,7 +294,7 @@ def build_state_content(
     table(
         "TOP 3 podle skóre",
         ["ID", "Název", "Skóre"],
-        [[*id_title(t), str(ts)] for t, ts in top3],
+        [[*id_title(t), str(rank_score(t))] for t in top3],
     )
 
     table(

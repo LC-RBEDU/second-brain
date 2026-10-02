@@ -61,11 +61,8 @@ from focus import (  # noqa: E402
 from hierarchy import parse_parent_id  # noqa: E402
 from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 from today_priority import (  # noqa: E402
-    URGENCY_BONUS_OVERDUE,
-    URGENCY_BONUS_REVIEW_TODAY,
-    URGENCY_BONUS_REVIEW_TOMORROW,
-    URGENCY_BONUS_TODAY,
-    URGENCY_BONUS_TOMORROW,
+    COMPANY_PRIORITY_BONUS,
+    DEADLINE_HORIZON_DAYS,
     effective_due,
     enrich_task_dict,
     exclude_paused_project_tasks,
@@ -121,6 +118,7 @@ class TaskInfo:
     updated: str | None = None
     materials: list[str] = None
     blocked_by: list[str] = None
+    company_priorities: list[str] = None
     source: str | None = None
     is_recurring: bool = False
     extra_module: str | None = None
@@ -155,6 +153,7 @@ class TaskInfo:
             "updated": self.updated,
             "materials": self.materials or [],
             "blocked_by": self.blocked_by or [],
+            "company_priorities": self.company_priorities or [],
             "source": self.source,
             "is_recurring": self.is_recurring,
             "extra_module": self.extra_module,
@@ -370,6 +369,7 @@ def collect_tasks(vault: Path, archive: bool = False) -> list[TaskInfo]:
                 updated=_date_str(fm.get("updated")),
                 materials=_list_str(fm.get("materials")),
                 blocked_by=_list_str(fm.get("blocked_by")),
+                company_priorities=_list_str(fm.get("company_priorities")),
                 source=fm.get("source"),
                 is_recurring=bool(fm.get("recurring")),
                 extra_module=fm.get("extra_module"),
@@ -539,11 +539,15 @@ def build_snapshot(vault: Path) -> dict:
         for t in queue_tasks
         if not is_focus_current(t.focus, today) and is_queue_eligible(t, today)
     ]
-    focus_suggestions = select_focus_suggestions(
+    focus_suggestions_raw = select_focus_suggestions(
         suggestion_pool,
         today=today,
         current_focus_count=len(focused),
     )
+    focus_suggestions = [
+        enrich_task_dict(t.to_dict() if hasattr(t, "to_dict") else dict(t), today)
+        for t in focus_suggestions_raw
+    ]
 
     week_ago = today - timedelta(days=7)
     recently_done = []
@@ -673,28 +677,28 @@ def build_snapshot(vault: Path) -> dict:
         "strategy_meeting_themes": strategy_meeting.get("themes", []),
         "priority_rules": {
             "model": (
-                "v2.1 — status / deadline (externí) / review_deadline (vlastní, jen bez deadline) / "
-                "focus (na co teď)"
+                "v2.2 — hard deadline bucket (≤7d) then ICE+company_bonus; "
+                "review_deadline soft only (Rozhodni/due, not ranking)"
             ),
             "base": "priority_score = (ice_i * ice_c) / ice_e",
             "due": "deadline if set else review_deadline",
-            "today_score": "priority_score + urgency(deadline) else urgency(review_deadline)",
-            "urgency_bonus": {
-                "overdue": URGENCY_BONUS_OVERDUE,
-                "deadline_today": URGENCY_BONUS_TODAY,
-                "deadline_tomorrow": URGENCY_BONUS_TOMORROW,
-                "review_today": URGENCY_BONUS_REVIEW_TODAY,
-                "review_tomorrow": URGENCY_BONUS_REVIEW_TOMORROW,
-            },
+            "rank_score": f"priority_score + {COMPANY_PRIORITY_BONUS} if company_priorities non-empty",
+            "today_score": "alias of rank_score",
+            "deadline_horizon_days": DEADLINE_HORIZON_DAYS,
+            "company_priority_bonus": COMPANY_PRIORITY_BONUS,
             "top_eligible": (
                 f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
                 "nikdy Waiting/Backlog/Done/Cancelled"
             ),
             "focus_owner": "člověk — žádný cron nesmí zapisovat do focus",
-            "sort": "today_score DESC",
+            "sort": (
+                "rank_key: deadline bucket (≤7d incl. overdue) first, "
+                "deadline ASC, then rank_score DESC; arrays pre-sorted — "
+                "do not re-sort by today_score"
+            ),
         },
         "focus_week": focus_week,
-        "focus_suggestions": [t.to_dict() for t in focus_suggestions],
+        "focus_suggestions": focus_suggestions,
         "top_priority_today": top_priority_today,
         "top_priority": top_priority,
         "open_epics": [t.to_dict() for t in open_epics],

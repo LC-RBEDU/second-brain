@@ -19,6 +19,7 @@ created: {{date}}
 updated: {{date}}
 materials: []
 source: manual
+company_priorities: []  # volitelné [[CP8 — …]]; prázdné OK
 blocked_by: []
 ---
 
