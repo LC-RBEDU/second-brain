@@ -5,7 +5,9 @@ Lokální scheduled task (Claude Desktop otevřený). Interval: **každý pracov
 ## Prompt (vlož do `/schedule`)
 
 ```
-Follow ŠABLONY/skills/agenda-co-ted/SKILL.md and read OBSIDIAN/00-System/agent-context.json (refresh with `python3 scripts/build_agent_context.py` if generated_at is older than 24h).
+Follow ŠABLONY/skills/agenda-co-ted/SKILL.md and read OBSIDIAN/00-System/agent-context.json.
+
+The 24h refresh and uklid from that skill do not apply here. Do not run build_agent_context.py. Do not move or write vault files. Do not write Slack. If generated_at is older than 24h, say so in the chat and still use the snapshot.
 
 Write the morning priority brief in this chat only. Do not write the vault or Slack.
 

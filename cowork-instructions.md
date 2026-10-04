@@ -4,6 +4,8 @@ Working folder is this repo (`SECOND_BRAIN/`), not only `OBSIDIAN/`.
 
 On every task, follow `ŠABLONY/skills/mrluc-loader/SKILL.md`: read `ŠABLONY/skills/*/SKILL.md` descriptions from disk and open the matching skill.
 
+Po loaderu otevři `OBSIDIAN/00-System/agent-guide-mimo-cursor.md` a řiď se jím. Když ten soubor nejde otevřít, do existujícího `.md` nezapisuj; smíš jen nový soubor do `01-INBOX/daily/`. Když skill a návod nesedí u skriptů, archivu, focus a `## Stav (auto)`, platí návod.
+
 ## E-mail a Slack odpovědi
 
 On-demand only — skill `agenda-reply`:
