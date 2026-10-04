@@ -249,13 +249,15 @@ def _decide_focus(req: Request) -> Decision:
         return _deny("deny_status_done_from_boxes", claimed_remote=remote)
     if req.touches_stav_auto:
         return _deny("deny_stav_auto", claimed_remote=remote)
+    if req.target_read in ("failed", "placeholder"):
+        return _deny("deny_read_failed", claimed_remote=False)
+    if not req.guide_readable:
+        return _deny("deny_existing_md", claimed_remote=False)
     if surface == "grok_phone":
         if req.reread == req.held and closed_frontmatter(req.held):
             return Decision("apply", "allow_focus", claimed_remote=True)
         return _deny("deny_stale_reread", claimed_remote=True)
     if surface.startswith("disk"):
-        if req.target_read in ("failed", "placeholder"):
-            return _deny("deny_read_failed", claimed_remote=False)
         if req.reread != req.held:
             if req.reread != "" and is_prefix_cut(req.held, req.reread):
                 return Decision("restore", "restore_original", req.held)

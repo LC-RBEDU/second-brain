@@ -449,6 +449,35 @@ def test_t9_focus_cap():
     )
     assert unread.reason == "deny_read_failed"
     assert unread.text is None
+    phone_unread = decide(
+        _req(
+            op="set_focus",
+            actor="Grok",
+            has_folder=False,
+            path=TASK,
+            held=HELD,
+            reread=HELD[:12],
+            target_read="failed",
+            user_said_focus=True,
+            focus_count=4,
+        )
+    )
+    assert phone_unread.reason == "deny_read_failed"
+    assert phone_unread.claimed_remote is False
+    assert phone_unread.text is None
+    hidden_guide = decide(
+        _req(
+            op="set_focus",
+            path=TASK,
+            held=HELD,
+            reread=HELD,
+            guide_readable=False,
+            user_said_focus=True,
+            focus_count=4,
+        )
+    )
+    assert hidden_guide.reason == "deny_existing_md"
+    assert hidden_guide.claimed_remote is False
     boxes = decide(
         _req(
             op="set_focus",
