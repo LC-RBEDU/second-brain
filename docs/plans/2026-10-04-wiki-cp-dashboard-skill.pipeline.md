@@ -1,15 +1,15 @@
 # Pipeline: Týmové karty CP na wiki + skill
 
-Stav: IMPLEMENT
+Stav: DONE
 Plán: docs/plans/2026-10-04-wiki-cp-dashboard-skill.md
 Schvalování plánu uživatelem: ne
 Profil: SECOND_BRAIN
 Architekt: přeskočen (plán schválen v předchozím chatu, kritik r6)
 Kritik: agent ID 4b5d45b9-4d76-441f-8501-d3115c5604a4 (r6 SCHVÁLENO, 0 nálezů); předchozí 98139ff3, 775f6714, 55c13b81, dbd3e345, 7670dee4
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): 7b7f67a24e4afe998dd5ebd6fae7e77f0a42aa11 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) — až v DONE auditu
+Base (origin/main před pipeline): 7b7f67a24e4afe998dd5ebd6fae7e77f0a42aa11 · Kódový SHA: 195bdaee7acc8f14e79578fde5f66c1da4cfdc00 · Review SCHVÁLENO na: 195bdaee7acc8f14e79578fde5f66c1da4cfdc00 · QA PASS na: 195bdaee7acc8f14e79578fde5f66c1da4cfdc00 · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno (uživatel řekl implementovat)
-Goal: aktivní
+Goal: complete
 
 ## Zadání (doslovně) a rozhodnutí
 
@@ -50,9 +50,12 @@ Pokyn v tomto chatu (doslovně): Chci, abys navázal na chat: 556327f9-40ab-4ae6
 |---|---|---|---|---|---|---|
 | 1 | 2026-10-04 | CRITIC r6 | 4b5d45b9-4d76-441f-8501-d3115c5604a4 | SCHVÁLENO | 0 | předchozí chat; plán beze změny chování |
 | 2 | 2026-10-04 | IMPLEMENT | hlavní | hotovo | | skill + balíček; wiki sekce + 9 karet + prehled + odstavec v kořeni. Stránky jsou draft, owner human:lukas. `generated` na wiki je objekt (boolean server odmítá). |
+| 3 | 2026-10-04 | REVIEW | 0b830a7b-b94b-45c0-b97f-2c73e080fe19 | SCHVÁLENO | 1 MINOR | NEW-1 → D1: po flagu skill výslovně nezakazuje ICE/ABC na kartě. Push přeskočen: diff nemění `vps/second-brain-hub/`. |
+| 4 | 2026-10-04 | QA | 4d149aa7-764c-4e29-accd-6b4656efbc4c | PASS | 0 | pytest 273; wiki_read 9 karet + přehled + kořen. Deploy se netýká. |
+| 5 | 2026-10-04 | DONE | hlavní | DONE | D1 MINOR otevřený | TESTER přeskočeno. Vlastní gate pytest 273 exit 0. |
 
 ## Otevřené nálezy
 
 | ID | Závažnost | Typ IMPL/PLAN/ENV | Stav | Kolikrát vznesen |
 |---|---|---|---|---|
-| | | | | |
+| D1 | MINOR | IMPL | otevřený | 1 |
