@@ -1,13 +1,13 @@
 # Pipeline: Návod pro agenty mimo Cursor
 
-Stav: REVIEW
+Stav: DONE
 Plán: docs/plans/2026-10-04-agent-guide-mimo-cursor.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 35f3b04a-72fb-4efd-9b91-069e7d1b4e0e, otevření plánu #2, generace v otevření 1/3, kolo 2/3
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): a0ea69a979a3ee0576411d0b14048291cdd8bc98 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN), až po QA
+Base (origin/main před pipeline): a0ea69a979a3ee0576411d0b14048291cdd8bc98 · Kódový SHA: 4a5b18de2ee88d006da90700eb72ac952ddb2697 · Review SCHVÁLENO na: 4a5b18de2ee88d006da90700eb72ac952ddb2697 · QA PASS na: 4a5b18de2ee88d006da90700eb72ac952ddb2697 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete
 
 ## Projekt
 
@@ -56,7 +56,10 @@ Uživatel chce otestovat režimy. Profil SECOND_BRAIN testera nespouští. Ově�
 | 3 | 2026-10-05 00:10 | CRITIC | [kritik](454e8c76-37c4-4e2e-b1b9-56be2d34e379) | K PŘEPRACOVÁNÍ | 6 BLOCKER, 3 MAJOR | C1 a C6 jsou blokující otázky. Přechod na AWAITING_USER. |
 | 4 | 2026-10-05 00:25 | PLAN | [architekt](35f3b04a-72fb-4efd-9b91-069e7d1b4e0e) | plán v2 | C1–C9 zapracovány | Žádné nové tasky. Telefon smí změnit řádek jen při shodném čtení. |
 | 5 | 2026-10-05 00:40 | CRITIC | [kritik](ef16d82e-a151-40f3-b501-aafc1df89794) | SCHVÁLENO | 0 | Pořadí kola 3. Schvalování plánu nevyžadováno. |
-| 6 | 2026-10-05 00:55 | IMPLEMENT | hlavní agent | testy zelené | — | Guard + pytest T1–T12. Celý gate 287 passed. Návod je jen na Drive. Přechod na REVIEW. |
+| 6 | 2026-10-05 00:55 | IMPLEMENT | hlavní agent | testy zelené | — | Guard + pytest T1–T12. Návod je jen na Drive. |
+| 7 | 2026-10-05 01:20 | REVIEW | [reviewer](5000395d-d822-4ce2-8b04-99f302b2ce17) | SCHVÁLENO | 0 | Na SHA 4a5b18d. |
+| 8 | 2026-10-05 01:25 | QA | [QA](f1b3be55-0053-4d58-98fd-3057a25cb373) | PASS | 0 | pytest 287 passed, exit 0. Coolify se netýká. |
+| 9 | 2026-10-05 01:26 | TESTER | — | přeskočeno | — | TESTER: přeskočeno (profil SECOND_BRAIN) |
 
 ## Otevřené nálezy
 
