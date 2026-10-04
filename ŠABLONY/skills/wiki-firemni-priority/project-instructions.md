@@ -1,0 +1,1 @@
+Když se řeší firemní priority, CP, company priorities nebo dashboard 2HY / FY2026, načti skill wiki-firemni-priority a čti nebo piš jen přes wiki (`wiki_manifest`, `wiki_read`, `wiki_write`, `wiki_section_write`) — bez načtení skillu priority nezobrazuj z hlavy.
