@@ -433,6 +433,22 @@ def test_t9_focus_cap():
         )
     )
     assert phone_stale.reason == "deny_stale_reread"
+    blank = decide(_req(op="set_focus", path=TASK, held=HELD, reread="", user_said_focus=True, focus_count=4))
+    assert blank.reason == "deny_stale_reread"
+    assert blank.text is None
+    unread = decide(
+        _req(
+            op="set_focus",
+            path=TASK,
+            held=HELD,
+            reread="",
+            target_read="placeholder",
+            user_said_focus=True,
+            focus_count=4,
+        )
+    )
+    assert unread.reason == "deny_read_failed"
+    assert unread.text is None
     boxes = decide(
         _req(
             op="set_focus",

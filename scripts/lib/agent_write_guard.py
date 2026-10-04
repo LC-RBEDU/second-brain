@@ -254,8 +254,10 @@ def _decide_focus(req: Request) -> Decision:
             return Decision("apply", "allow_focus", claimed_remote=True)
         return _deny("deny_stale_reread", claimed_remote=True)
     if surface.startswith("disk"):
+        if req.target_read in ("failed", "placeholder"):
+            return _deny("deny_read_failed", claimed_remote=False)
         if req.reread != req.held:
-            if is_prefix_cut(req.held, req.reread):
+            if req.reread != "" and is_prefix_cut(req.held, req.reread):
                 return Decision("restore", "restore_original", req.held)
             return _deny("deny_stale_reread")
         return Decision("apply", "allow_focus")
