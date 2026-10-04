@@ -115,9 +115,11 @@ def _norm_end(text: str) -> str:
 
 
 def is_prefix_cut(original: str, proposed: str) -> bool:
-    original_n = _norm_end(original)
-    proposed_n = _norm_end(proposed)
-    return proposed_n != original_n and proposed_n != "" and original_n.startswith(proposed_n)
+    if proposed == "":
+        return original != ""
+    if original.rstrip("\n") == proposed.rstrip("\n"):
+        return False
+    return original.startswith(proposed)
 
 
 def is_single_line_replace(original: str, proposed: str) -> bool:
@@ -312,7 +314,7 @@ def _decide_overwrite(req: Request) -> Decision:
     if not req.guide_readable:
         return _deny("deny_existing_md", claimed_remote=False)
     if req.reread != req.held:
-        if surface.startswith("disk") and is_prefix_cut(req.held, req.reread):
+        if surface.startswith("disk") and req.reread != "" and is_prefix_cut(req.held, req.reread):
             return Decision("restore", "restore_original", req.held)
         return _deny("deny_stale_reread", claimed_remote=remote)
     if is_prefix_cut(req.held, req.proposed):

@@ -204,6 +204,28 @@ def test_t5_phone_one_line_and_disk_prefix():
     prefix = decide(
         _req(op="overwrite", path=TASK, held=HELD, reread=HELD, proposed="---\nstatus: Next\n")
     )
+    mid = decide(
+        _req(op="overwrite", path=TASK, held=HELD, reread=HELD, proposed=HELD[:-3])
+    )
+    assert mid.reason == "deny_prefix_cut"
+    assert mid.text is None
+    empty = decide(_req(op="overwrite", path=TASK, held=HELD, reread=HELD, proposed=""))
+    assert empty.reason == "deny_prefix_cut"
+    assert empty.text is None
+    phone_mid = decide(
+        _req(
+            op="overwrite",
+            actor="Grok",
+            has_folder=False,
+            path=TASK,
+            held=HELD,
+            reread=HELD,
+            proposed=HELD[:-3],
+        )
+    )
+    assert phone_mid.reason == "deny_prefix_cut"
+    blank_reread = decide(_req(op="overwrite", path=TASK, held=HELD, reread="", proposed=""))
+    assert blank_reread.reason == "deny_stale_reread"
     assert prefix.reason == "deny_prefix_cut"
     assert prefix.text is None
     disk_line = decide(_req(op="overwrite", path=TASK, held=HELD, reread=HELD, proposed=changed))
