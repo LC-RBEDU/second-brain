@@ -12,6 +12,7 @@
 | `agenda-status-update` | Single-task status flip (hotovo / odlož / do fokusu / zruš) |
 | `agenda-analyze` | Rozbor materiálů → strukturovaný material `.md` |
 | `agenda-zapis-ze-schuzky` | DEEP Sembly/Plaud → HTML Downloads + MD `vystupy/zapisy/` + Lukášovy tasky |
+| `grammar-nazi` | Language pass pro zápisy (volá jen `agenda-zapis-ze-schuzky`; GN-1/GN-2 + fingerprint) |
 | `agenda-proces` | Firemní procesy pro RB Universe Procesní architekt |
 | `agenda-weekly-review` | Neděle: schválení weekly draftu |
 | `agenda-priority-review` | Ad-hoc revize priorit / ICE |

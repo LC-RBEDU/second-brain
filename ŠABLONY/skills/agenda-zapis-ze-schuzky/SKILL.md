@@ -108,13 +108,14 @@ Nesedí-li číslo: zapiš co zaznělo + v závorce co je v systému. Haléře �
 - Kalibrace délky: poměr slov zápis/přepis typicky **≥ ~20–25 %** u hodinové schůzky;
   u hlubokých synců (Town Hall prep, Wiki) klidně 40–50 %. **Ne** výčtové 5 karet
   s 2–3 bulletů, když přepis má tisíce slov.
-- Preview v chatu smí být stručný (highlights + tabulka úkolů). **Finální HTML/MD
-  se nesmí generovat jen „roztažením“ preview** — po „ano“ / „upiš“ znovu projdi
-  přepis a napiš plný zápis.
+- **DEEP#1 = úplný MD draft už před chat preview** (tmp OK, např. `/tmp/…_zapis.draft.md`).
+  Chat preview je jen **výpis** z post-GN-1 MD (highlights, počet osnovy, tabulka úkolů,
+  cesty) — ne náhrada hloubky. Po „ano“ / „upiš“ běží **DEEP#2 refresh** z přepisu + merge
+  (viz Krok Preview / grammar-nazi), ne první vznik plného zápisu.
 - Stručná / sdílená verze **jen na výslovné vyžádání** („stručný“, „shared“, „pro tým“
   bez detailů). Bez toho vždy DEEP full.
 
-1. Highlights — 3 klíčové závěry (ne shrnutí agendy).
+1. Highlights — pod `## 0. Meta` blok `### Highlights` + přesně 3 top-level `-` (viz `struktura-vystupu.md`).
 2. Body osnovy — status, owner, key_people, „co zaznělo“, tasks.
 3. Konsolidovaná tabulka úkolů (všichni lidé — MD/HTML pro tým).
 4. Plán dalších setkání (když padl).
@@ -126,6 +127,45 @@ Body `mentioned_only` / `not_discussed` **nevynechávej**.
 
 **Úkol** jen když byl explicitně zadán a přidělen člověku. Nabídka = úkol označený
 jako nabídka. „Měli bychom" bez vlastníka = ne úkol.
+
+### grammar-nazi (GN-1 / GN-2) — povinné před preview a před finálním HTML
+
+Skill: `ŠABLONY/skills/grammar-nazi/SKILL.md`. Cursor agent: `grammar-nazi` (readonly —
+vrátí MD; ty zapíšeš). Bez agenta / Claude: stejný pass **in-process**. Soft-fail
+nástroje → pokračuj bez blokace, fingerprint stejně spusť.
+
+**CLI fingerprint (exit 0 shoda/OK, 1 mismatch, 2 nevalidní):**
+
+```bash
+python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" capture --md <draft.md> --out <fp.json>
+python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" compare --before <fp.json> --md <draft.md>
+```
+
+**GN-1 (před chat preview):**
+
+1. Sestav úplný MD DEEP#1 → tmp.
+2. `capture` → GN-1 (agent nebo inline) → zapiš MD → `compare`.
+3. Exit 1 → 1× retry GN → znovu `compare`. Druhý fail → **1 věta uživateli + stop write**.
+4. Exit 0 → chat preview = výpis z **post-GN-1** MD.
+
+**Po „ano“ / „upiš“ (GN-2):**
+
+0. **Před** aplikací editací: snapshot **baseline keys** z post-GN-1 konsolidované tabulky /
+   card tasks (`normalize(Kdo)||normalize(title)`).
+1. Aplikuj editace preview → drž `deleted_keys`, `changed_map`, **finální routing tabulku**
+   (Vault? / Projekt / Waiting) — SSOT pro Krok 8.
+2. DEEP#2 z přepisu → **merge:** karty / Co zaznělo / status / owner / key_people / park /
+   meta rámec z DEEP#2; úkoly dle denylist: (a) `deleted_keys` nezapsat i když jsou v DEEP#2;
+   (b) `changed_map` → wording/Kdo z preview; (c) z DEEP#2 jen úkoly mimo baseline a mimo
+   `deleted_keys`; (d) úkoly jen v upraveném preview zůstanou. Nové z DEEP#2 bez řádku
+   v preview → default `Vault?=jen zápis` (+ 1 řádek ve shrnutí).
+3. `capture` → GN-2 → `compare` (stejný retry/stop).
+4. Až exit 0: odvoď `meta.json` + `body.html` **1:1 z post-GN MD** (bez druhého language pass)
+   → `build_html.py` → write MD/HTML → Krok 8 z **upraveného preview**.
+
+**meta.json (deterministicky, bez volného stylu):** `title`/`h1` ← frontmatter `title`;
+`kicker` ← prázdné nebo 1:1 první highlight; `stamp` ← `meeting_date` + typ; `meta_lines` ←
+participants/source; `intro`/`eyebrow`/`footer` jen 1:1 z MD/frontmatter pokud už existují.
 
 ---
 
@@ -142,7 +182,7 @@ Slug: kebab-case, latin, z oficiálního názvu schůzky (kalendář > přepis).
 
 ### HTML → `~/Downloads/`
 
-1. Napiš `meta.json` + `body.html` (jen obsah, **žádné** `<style>`).
+1. Po GN-2 + compare OK: napiš `meta.json` (viz výše) + `body.html` (jen obsah, **žádné** `<style>`; text 1:1 z post-GN MD).
 2. Spusť z rootu skillu:
 
 ```bash
@@ -219,12 +259,14 @@ a tabulky úkolů; bez mezd, právních sporů, personálních rozhodnutí, citl
 
 ## Krok 8 — Lukášovy tasky (povinné po zápisu — rovnou založit)
 
-Z konsolidované tabulky / `**tasks**` v MD. **Nečekej na druhé „ano“** — po schválení
-zápisu (Krok Preview) tasky zakládej / updatuj ve stejném tahu jako HTML + MD.
+**SSOT routingu** = **upravená chat preview tabulka** (sloupce Vault? / Projekt / Waiting /
+„jen zápis“ / „nabídnout rovnou“) — ne holá konsolidovaná tabulka z MD a ne čisté DEEP#2.
+**Wording** úkolů ber z **post-merge / post-GN-2 MD**. **Nečekej na druhé „ano“** — po
+schválení zápisu tasky zakládej / updatuj ve stejném tahu jako HTML + MD.
 
-1. Aplikuj **Lukáš-only filter** (`agenda-triage`): task jen kde míček drží Lukáš;
-   cizí akce zůstanou v zápisu; hraniční → `Waiting` / „Sledovat: …“.
-2. **Drobná `solo` práce** (jedna věta, bez čekání na někoho) → nezakládej task;
+1. Aplikuj **Lukáš-only filter** (`agenda-triage`) na řádky s Vault? ∈ {založit, update, Waiting};
+   `jen zápis` / cizí akce zůstanou v zápisu.
+2. **Drobná `solo` práce** (Vault? = nabídnout rovnou) → nezakládej task;
    v závěrečném shrnutí nabídni „řešit rovnou?“ (viz bootstrap `agent: solo`).
 3. Jinak **hned**: `python3 scripts/next_task_id.py <slug> [--type story|…]` → file-per-task
    + `materials:` / `related_tasks:` na kanónický MD zápis **a samonosný kontext**
@@ -242,7 +284,7 @@ zápisu (Krok Preview) tasky zakládej / updatuj ve stejném tahu jako HTML + MD
 Task musí jít otevřít **bez** nutnosti hned číst celý zápis a pochopit, čeho se týká a co je cíl.
 Zápis ve `05-RESOURCES/vystupy/zapisy/` zůstává kanón detailu („co zaznělo“); task nese zhuštěný kontext.
 
-**Zdroj textu:** konsolidovaná tabulka + karta v zápisu (`**Co zaznělo**`, owner, status) —
+**Zdroj textu:** wording z post-merge MD (tabulka + karta) + routing z upraveného preview —
 ne improvizace mimo zápis.
 
 U **nového** i **update** tasku ze zápisu vždy:
@@ -284,7 +326,7 @@ Až jsou HTML a MD na disku. Detail a tabulka kanálů: `.cursor/rules/internal-
 
 ## Preview (před „ano“ / „upiš“)
 
-Před zápisem do Downloads/vaultu ukaž:
+**Až po GN-1 + compare exit 0.** Před zápisem do Downloads/vaultu ukaž výpis z post-GN-1 MD:
 
 - název + datum + účastníci
 - 3 highlights
@@ -297,7 +339,7 @@ Před zápisem do Downloads/vaultu ukaž:
 ### Úkoly v preview (povinné)
 
 **Nestačí** „~4 Lukáš · ~2 Kateřina“. Vypiš **každý** řádek z konsolidované tabulky
-úkolů, který po „ano“ buď založíš / updatuješ ve vaultu, nebo necháš jen v zápisu.
+úkolů (post-GN-1), který po „ano“ buď založíš / updatuješ ve vaultu, nebo necháš jen v zápisu.
 
 Tabulka (`#` povinné — ať jde říct „škrtni 3“, „uprav 1“):
 
@@ -313,25 +355,31 @@ Tabulka (`#` povinné — ať jde říct „škrtni 3“, „uprav 1“):
 - Drobná `solo` → řádek s Vault? = `nabídnout rovnou (bez tasku)`.
 - Žádný úkol → napiš explicitně „úkoly: žádné“.
 
-Úpravy uživatele („upiš“, „škrtni 2“, „3 na Waiting“) aplikuj **před** zápisem souborů
-a zakládáním tasků. Po „ano“ / „upiš“ zapisuj soubory **a rovnou** Lukášovy tasky (Krok 8)
-podle **upravené** tabulky, ne podle původního draftu v hlavě.
+Úpravy uživatele („upiš“, „škrtni 2“, „3 na Waiting“) → nejdřív **baseline keys** z pre-edit
+preview, pak aplikuj edit → `deleted_keys` / `changed_map` + finální routing. Pak DEEP#2 +
+merge + GN-2 (viz Krok 5). Po úspěšném write **Krok 8** podle **upravené** preview tabulky
+(+ wording z post-merge MD), ne podle původního draftu v hlavě ani čistého DEEP#2.
 
-**Po „ano“:** finální HTML/MD = **plná DEEP** z přepisu (Krok 5), ne roztažený preview.
-Preview slouží ke kontrole úkolů a routingu Slacku — ne jako šablona hloubky „Co zaznělo“.
+**Po „ano“:** finální HTML/MD = DEEP#2 + merge + GN-2 z přepisu, ne roztažený preview.
+Preview = kontrola úkolů a **routing** (Vault?/Projekt) + Slack — ne šablona hloubky „Co zaznělo“.
 
 ---
 
 ## Checklist
 
 - [ ] Osnova = podklad nebo 4–8 vlastních bloků
+- [ ] **DEEP#1** úplný MD před GN-1; chat preview až po compare 0
+- [ ] GN-1 / GN-2 + `md_fingerprint` CLI (retry 1×; 2. fail = stop)
 - [ ] **Plná DEEP** (default) — husté „Co zaznělo“; stručné jen na výslovné vyžádání
-- [ ] Finál ≠ roztažený preview
+- [ ] Finál = DEEP#2 + merge (denylist), ≠ roztažený preview
+- [ ] Baseline keys před editací; škrtnuté řádky se z DEEP#2 nevrátí
 - [ ] Neprojednané body se statusem, ne vynechané
 - [ ] Úkoly jen explicitní + přidělené
 - [ ] Preview: konkrétní tabulka úkolů (# | Kdo | title | Vault? | projekt) — ne jen počty
+- [ ] Krok 8 routing z upraveného preview; wording z post-merge MD
+- [ ] `### Highlights` + 3× `-` (full); meta.json bez volného stylu
 - [ ] Jména + `name_aliases`
-- [ ] HTML bez vlastního CSS, přes `build_html.py`
+- [ ] HTML bez vlastního CSS, přes `build_html.py` (až po GN-2)
 - [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material`
 - [ ] Stubs v `materials/` u jasných projektů
 - [ ] Lukášovy tasky založené / updatované ve stejném tahu (bez druhého schválení)

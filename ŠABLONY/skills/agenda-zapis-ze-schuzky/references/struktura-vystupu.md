@@ -175,9 +175,28 @@ Task musí být **samonosný** (Cíl + Kontext ze zápisu + *proč/DoD* u kroků
 `materials:` na tento MD — detail ve skillu `agenda-zapis-ze-schuzky` → Krok 8.
 Zápis zůstává kanónem „co zaznělo“; task je zhuštěný závazek, ne kopie karty.
 
+### Meta — Highlights (povinné u `variant: full`)
+
+Pod `## 0. Meta` vždy blok `### Highlights` a **přesně 3** top-level odrážky `- …`
+(stejné tři teze jako v HTML). U `variant: shared` je blok povinný jen když ho
+vstupu už máš — pak také přesně 3.
+
+```markdown
+## 0. Meta
+
+Rámec: …
+
+### Highlights
+- První klíčový závěr.
+- Druhý klíčový závěr.
+- Třetí klíčový závěr.
+```
+
+Fingerprint (`grammar-nazi` / `md_fingerprint.py`) počítá jen tyto top-level `-`.
+
 ### Povinné sekce
 
-1. `## 0. Meta` — rámec schůzky, highlights
+1. `## 0. Meta` — rámec schůzky + `### Highlights` (3× `-` u full)
 2. `## 1.–N.` — oblasti a položky
 3. `## Co v prioritách vědomě není` (když to zaznělo)
 4. `## Mimo strukturu / Parkoviště`
