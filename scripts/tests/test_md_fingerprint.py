@@ -16,6 +16,7 @@ VALID = FIXTURES / "valid-full.md"
 BROKEN = FIXTURES / "broken-highlights.md"
 TASKS_NONE = FIXTURES / "valid-tasks-none.md"
 SHARED = FIXTURES / "valid-shared-no-hl.md"
+SHARED_HL = FIXTURES / "valid-shared-with-hl.md"
 
 
 def _run(*args: str) -> subprocess.CompletedProcess[str]:
@@ -133,3 +134,35 @@ def test_compare_shared_no_hl_stable(tmp_path: Path) -> None:
     mutated.write_text(text, encoding="utf-8")
     r = _run("compare", "--before", str(before), "--md", str(mutated))
     assert r.returncode == 0, r.stderr
+
+
+def test_capture_shared_with_highlights_ok(tmp_path: Path) -> None:
+    """B14 — shared s ### Highlights vyžaduje přesně 3."""
+    out = tmp_path / "fp.json"
+    r = _run("capture", "--md", str(SHARED_HL), "--out", str(out))
+    assert r.returncode == 0, r.stderr
+    fp = json.loads(out.read_text(encoding="utf-8"))
+    assert fp["variant"] == "shared"
+    assert fp["highlights_count"] == 3
+
+
+def test_capture_shared_with_wrong_highlights_exit_2(tmp_path: Path) -> None:
+    text = SHARED_HL.read_text(encoding="utf-8").replace("- Třetí teze shared.\n", "")
+    bad = tmp_path / "bad.md"
+    bad.write_text(text, encoding="utf-8")
+    out = tmp_path / "fp.json"
+    r = _run("capture", "--md", str(bad), "--out", str(out))
+    assert r.returncode == 2
+
+
+def test_compare_tasks_cardinality_exit_1(tmp_path: Path) -> None:
+    """B12 — změna tasks_count → exit 1."""
+    before = tmp_path / "fp.json"
+    assert _run("capture", "--md", str(VALID), "--out", str(before)).returncode == 0
+    text = VALID.read_text(encoding="utf-8")
+    text = text.replace("- [ ] Lukáš Cypra — doplnit matici.\n", "")
+    mutated = tmp_path / "mut.md"
+    mutated.write_text(text, encoding="utf-8")
+    r = _run("compare", "--before", str(before), "--md", str(mutated))
+    assert r.returncode == 1
+    assert "tasks_count" in r.stderr

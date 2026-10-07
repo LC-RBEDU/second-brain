@@ -23,11 +23,14 @@ Hlavní agent ti předá:
 2. Načti celý MD (z argumentu nebo z disku — jen read).
 3. Proveď tichý rewrite podle whitelist/blacklist ve skilu.
 4. Vrať **jen** celý opravený MD (žádný diff report). Hlavní agent zapíše soubor a spustí fingerprint compare.
-5. Při soft-fail vrať přesně: `soft-fail: <důvod>` a původní MD beze změny.
+5. Při soft-fail vrať přesně: `soft-fail: <důvod>` (a původní MD). Hlavní agent **nesmí**
+   tichy přeskočit language pass — musí udělat **in-process** GN dle skillu; teprve selhání
+   in-process → stop write.
 
 ## Soft-fail
 
-Když nemůžeš číst skill/MD: `soft-fail: <důvod>`. Hlavní agent pokračuje bez blokace.
+Když nemůžeš číst skill/MD: `soft-fail: <důvod>`. To znamená „bez agenta“ → in-process GN
+u hlavního agenta, ne pokračování bez language pass.
 
 ## Zakázáno
 

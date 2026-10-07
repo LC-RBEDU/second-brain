@@ -131,10 +131,12 @@ jako nabídka. „Měli bychom" bez vlastníka = ne úkol.
 ### grammar-nazi (GN-1 / GN-2) — povinné před preview a před finálním HTML
 
 Skill: `ŠABLONY/skills/grammar-nazi/SKILL.md`. Cursor agent: `grammar-nazi` (readonly —
-vrátí MD; ty zapíšeš). Bez agenta / Claude: stejný pass **in-process**. Soft-fail
-nástroje → pokračuj bez blokace, fingerprint stejně spusť.
+vrátí MD; ty zapíšeš). Bez agenta / Claude / soft-fail Cursor agenta: stejný pass
+**in-process** (A4). Soft-fail = „bez agenta“, ne skip language pass. Až když selže i
+in-process (nejde načíst skill/MD) → **1 věta + stop write** (ne tichý skip).
 
-**CLI fingerprint (exit 0 shoda/OK, 1 mismatch, 2 nevalidní):**
+**CLI fingerprint (exit 0 shoda/OK, 1 mismatch struktury/cardinality, 2 nevalidní after
+— např. full highlights ≠3):**
 
 ```bash
 python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" capture --md <draft.md> --out <fp.json>
@@ -144,14 +146,16 @@ python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" compare --befor
 **GN-1 (před chat preview):**
 
 1. Sestav úplný MD DEEP#1 → tmp.
-2. `capture` → GN-1 (agent nebo inline) → zapiš MD → `compare`.
-3. Exit 1 → 1× retry GN → znovu `compare`. Druhý fail → **1 věta uživateli + stop write**.
+2. `capture` → GN-1 (agent; při soft-fail → in-process) → zapiš MD → `compare`.
+3. Exit **1 nebo 2** → 1× retry GN (in-process OK) → znovu `compare`. Druhý fail
+   (1 nebo 2) → **1 věta uživateli + stop write** (žádný preview / zápis).
 4. Exit 0 → chat preview = výpis z **post-GN-1** MD.
 
 **Po „ano“ / „upiš“ (GN-2):**
 
 0. **Před** aplikací editací: snapshot **baseline keys** z post-GN-1 konsolidované tabulky /
-   card tasks (`normalize(Kdo)||normalize(title)`).
+   card tasks. Match key = `normalize(Kdo)||normalize(title)`; při kolizi stejného wording
+   přidej `#` z preview jako tie-break (A31).
 1. Aplikuj editace preview → drž `deleted_keys`, `changed_map`, **finální routing tabulku**
    (Vault? / Projekt / Waiting) — SSOT pro Krok 8.
 2. DEEP#2 z přepisu → **merge:** karty / Co zaznělo / status / owner / key_people / park /
@@ -159,7 +163,7 @@ python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" compare --befor
    (b) `changed_map` → wording/Kdo z preview; (c) z DEEP#2 jen úkoly mimo baseline a mimo
    `deleted_keys`; (d) úkoly jen v upraveném preview zůstanou. Nové z DEEP#2 bez řádku
    v preview → default `Vault?=jen zápis` (+ 1 řádek ve shrnutí).
-3. `capture` → GN-2 → `compare` (stejný retry/stop).
+3. `capture` → GN-2 → `compare` (stejný retry/stop pro exit 1 i 2).
 4. Až exit 0: odvoď `meta.json` + `body.html` **1:1 z post-GN MD** (bez druhého language pass)
    → `build_html.py` → write MD/HTML → Krok 8 z **upraveného preview**.
 
@@ -369,7 +373,7 @@ Preview = kontrola úkolů a **routing** (Vault?/Projekt) + Slack — ne šablon
 
 - [ ] Osnova = podklad nebo 4–8 vlastních bloků
 - [ ] **DEEP#1** úplný MD před GN-1; chat preview až po compare 0
-- [ ] GN-1 / GN-2 + `md_fingerprint` CLI (retry 1×; 2. fail = stop)
+- [ ] GN-1 / GN-2 + `md_fingerprint` CLI (compare exit 1 **nebo** 2 → retry 1×; 2. fail = stop)
 - [ ] **Plná DEEP** (default) — husté „Co zaznělo“; stručné jen na výslovné vyžádání
 - [ ] Finál = DEEP#2 + merge (denylist), ≠ roztažený preview
 - [ ] Baseline keys před editací; škrtnuté řádky se z DEEP#2 nevrátí

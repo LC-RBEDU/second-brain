@@ -170,7 +170,8 @@ stejné série schůzek drž stejné `id`, ať se dají porovnat v čase.
 
 ### Tasky odvozené ze zápisu
 
-Po zápisu jdou Lukášovy řádky z konsolidované tabulky do `02-PROJEKTY/…/tasks/`.
+Po zápisu jdou do `02-PROJEKTY/…/tasks/` řádky podle **upravené chat preview** tabulky
+(Vault? / Projekt / Waiting) — wording z **post-merge MD** (konsolidovaná tabulka + karta).
 Task musí být **samonosný** (Cíl + Kontext ze zápisu + *proč/DoD* u kroků) a mít
 `materials:` na tento MD — detail ve skillu `agenda-zapis-ze-schuzky` → Krok 8.
 Zápis zůstává kanónem „co zaznělo“; task je zhuštěný závazek, ne kopie karty.
