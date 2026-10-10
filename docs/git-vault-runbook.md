@@ -18,7 +18,7 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 
 | Položka | Stav |
 |---|---|
-| Import tip | `7aded9a` (initial) → live tip `84ba887` (+ další hub commits) |
+| Import tip | `7aded9a` (initial) → live tip sleduj `origin/main` (hub dirty-only push) |
 | Repo | `https://github.com/LC-RBEDU/second-brain-vault` (private) |
 | Coolify WC | host bind `/data/second-brain-vault` → `/data/vault` |
 | Deploy key | `coolify-second-brain-hub` (read-write) + `openssh-client` v image |
