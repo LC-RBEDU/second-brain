@@ -520,10 +520,16 @@ def main() -> None:
                 "open_tasks_in_area": len(open_in),
             })
 
+        backend = (os.environ.get("VAULT_BACKEND") or "drive").strip().lower()
+        if backend == "git":
+            vault_label = "git://" + (os.environ.get("GIT_VAULT_ROOT") or "/data/vault")
+        else:
+            vault_label = "drive://" + (os.environ.get("VAULT_DRIVE_ID") or "")
+
         snapshot = {
             "version": 2,
             "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
-            "vault_path": "drive://" + root_id,
+            "vault_path": vault_label,
             "today": today_str,
             "stats": {
                 "active_projects": sum(1 for p in projects if is_active_project_status(p["status"])),
