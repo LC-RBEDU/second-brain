@@ -12,12 +12,16 @@ from pydantic import BaseModel
 from app.auth_deps import AuthPrincipal
 from app.errors import BrainClientError, BrainVaultError
 from app.mcp_app import build_mcp
+from app.mcp_auth import McpAuthMiddleware
 from app.oauth_routes import router as oauth_router
 from app.tools import allocate_task_id as allocate_tool
 from app.tools import create_task as create_task_tool
 from app.tools import get_context as get_context_tool
+from app.tools import list_dir as list_dir_tool
 from app.tools import read_file as read_file_tool
 from app.tools import reminders_tools as reminders_tool
+from app.tools import set_focus as set_focus_tool
+from app.tools import update_task as update_task_tool
 
 
 def _push_ok() -> bool:
@@ -50,9 +54,11 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Second Brain Brain", version="0.2.0", lifespan=lifespan)
 app.include_router(oauth_router)
 
-# MCP streamable HTTP at /mcp (plugin SSOT URLs).
-_mcp = build_mcp()
-app.mount("/mcp", _mcp.streamable_http_app(streamable_http_path="/"))
+# MCP streamable HTTP at /mcp — auth middleware (cookie ∨ service Bearer).
+_mcp_asgi = McpAuthMiddleware(
+    build_mcp().streamable_http_app(streamable_http_path="/")
+)
+app.mount("/mcp", _mcp_asgi)
 
 
 @app.exception_handler(BrainVaultError)
@@ -78,6 +84,34 @@ def rest_get_context(_auth: AuthPrincipal) -> dict[str, Any]:
 @app.get("/v1/file")
 def rest_read_file(path: str, _auth: AuthPrincipal) -> dict[str, Any]:
     return read_file_tool.read_file(path)
+
+
+@app.get("/v1/dir")
+def rest_list_dir(
+    path: str,
+    _auth: AuthPrincipal,
+    pattern: str | None = None,
+    recursive: bool = False,
+) -> dict[str, Any]:
+    return list_dir_tool.list_dir(path, pattern=pattern, recursive=recursive)
+
+
+class UpdateTaskBody(BaseModel):
+    path: str
+    patch: dict[str, Any]
+    expect_oid: str | None = None
+
+
+@app.patch("/v1/tasks")
+def rest_update_task(body: UpdateTaskBody, _auth: AuthPrincipal) -> dict:
+    return update_task_tool.update_task(
+        path=body.path, patch=body.patch, expect_oid=body.expect_oid
+    )
+
+
+@app.post("/v1/set_focus")
+def rest_set_focus(_auth: AuthPrincipal) -> dict:
+    return set_focus_tool.set_focus()
 
 
 @app.get("/v1/allocate_task_id")

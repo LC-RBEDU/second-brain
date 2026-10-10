@@ -117,6 +117,35 @@ def test_brain_vault_dirty_start_no_retry():
     assert opens["n"] == 1
 
 
+def test_brain_vault_paused_on_mutate():
+    class _Paused:
+        skipped = False
+        push_enabled = True
+
+        def is_tip_ahead(self):
+            return False
+
+    vault = _Paused()
+    # Simulate factory wrapper name
+    vault.__class__ = type("_PausedVault", (_Paused,), {})
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            return False
+
+    with patch("app.vault_deps.open_vault", return_value=_CM()):
+        with pytest.raises(BrainVaultError) as ei:
+            with brain_vault(
+                mode="mutate",
+                env={"GIT_VAULT_PUSH": "1", "VAULT_WRITERS_PAUSED": "1"},
+            ):
+                pass
+    assert ei.value.error_reason == "vault_paused"
+
+
 def test_brain_vault_flock_busy_retries():
     vault = MagicMock()
     vault.skipped = True

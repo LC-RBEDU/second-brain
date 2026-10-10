@@ -10,8 +10,11 @@ from app.errors import BrainClientError, BrainVaultError
 from app.tools import allocate_task_id as allocate_tool
 from app.tools import create_task as create_task_tool
 from app.tools import get_context as get_context_tool
+from app.tools import list_dir as list_dir_tool
 from app.tools import read_file as read_file_tool
 from app.tools import reminders_tools as reminders_tool
+from app.tools import set_focus as set_focus_tool
+from app.tools import update_task as update_task_tool
 
 
 def _err_text(exc: BaseException) -> str:
@@ -45,6 +48,31 @@ def build_mcp() -> MCPServer:
     @mcp.tool(description="Read allowlisted vault file.")
     def read_file(path: str) -> str:
         return _call(read_file_tool.read_file, rel_path=path)
+
+    @mcp.tool(description="List allowlisted vault directory.")
+    def list_dir(path: str, pattern: str | None = None, recursive: bool = False) -> str:
+        return _call(
+            list_dir_tool.list_dir,
+            rel_path=path,
+            pattern=pattern,
+            recursive=recursive,
+        )
+
+    @mcp.tool(description="Patch task frontmatter (CAS expect_oid); focus denied.")
+    def update_task(
+        path: str, patch_json: str, expect_oid: str | None = None
+    ) -> str:
+        patch = json.loads(patch_json) if isinstance(patch_json, str) else patch_json
+        return _call(
+            update_task_tool.update_task,
+            path=path,
+            patch=patch,
+            expect_oid=expect_oid,
+        )
+
+    @mcp.tool(description="Denied — focus is human-owned (B6).")
+    def set_focus(task_path: str = "", focus_week: str = "") -> str:
+        return _call(set_focus_tool.set_focus, task_path=task_path, focus_week=focus_week)
 
     @mcp.tool(description="Preview next task ID (non-reserving).")
     def allocate_task_id(slug: str, level: str | None = None) -> str:

@@ -2,7 +2,9 @@
   "mcpServers": {
     "second-brain-brain": {
       "url": "https://BRAIN_PUBLIC_URL/mcp",
-      "headers": {}
+      "headers": {
+        "Authorization": "Bearer <only-for-machine; humans use OAuth session cookie via /oauth/authorize>"
+      }
     }
   }
 }
