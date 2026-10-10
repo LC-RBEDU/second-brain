@@ -24,7 +24,7 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 | Deploy key | `coolify-second-brain-hub` (read-write) + `openssh-client` v image |
 | Push | `git -c push.ff=only push` (Debian 2.39 nemá `push --ff-only`) |
 | Mac clone | `~/GitHub/second-brain-vault` — pull/read only |
-| Ruleset A17 | **otevřený dluh** — Free private → 403 Pro. Soft: deploy key write + README Write policy + `.github/PULL_REQUEST_TEMPLATE.md`. Hard ruleset až Pro/Team. |
+| Ruleset A17 | **otevřený dluh** — Free private → 403 Pro. Soft: deploy key + README + PR template. Po Pro: `bash scripts/vault_apply_ruleset_a17.sh` (PR required na `main`, DeployKey bypass). Upgrade: https://github.com/settings/billing/plans (účet `LC-RBEDU`). |
 
 ## Tooling před importem
 
