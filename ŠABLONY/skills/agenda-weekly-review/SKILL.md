@@ -3,6 +3,9 @@ name: agenda-weekly-review
 description: "Use when user asks for týdenní shrnutí, weekly review, schvál weekly draft, or after Sunday cron created 00-System/weekly/*-draft.md. Reads draft, enriches narrative, writes final YYYY-Www.md. Optionally updates ## Progress in 02-PROJEKTY hubs. ALWAYS preview before write."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-weekly-review
 
 > Nedělní rytmus: cron vytvoří faktický draft → ty schválíš a doplníš smysl v chatu.

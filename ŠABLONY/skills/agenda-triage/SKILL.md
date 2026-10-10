@@ -3,6 +3,9 @@ name: agenda-triage
 description: "INBOX triage in MrLUC Second Brain v2 vault or re-priority. Triggers: projeď inbox, apply batch, udělejme triage. Modes: BATCH, DEEP (chat-only; čte živý 01-INBOX). Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (human-readable filename, em-dash U+2014; subtasks číslované **<ID>-N**), archives to 07-ARCHIV/inbox-processed/. Spotify/podcast link or show title in Slack/email/inbox → queue via MCP spotify (not a vault task). ALWAYS preview before write. Heuristiky: vps/second-brain-hub/lib/triage_*.py."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-triage (v2)
 
 > Pravidelný průchod nasbíraného. Capture ukládá rychle, triage pročistí. **V2:** vytváří `task .md` soubory v `02-PROJEKTY/<slug>/tasks/` (file-per-task), Bases dashboard se aktualizuje sám. **Chat-only** — žádný cron pending batch; módy jen BATCH + DEEP.

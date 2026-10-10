@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural fingerprint for meeting-note markdown (grammar-nazi gate).
+"""Structural fingerprint for meeting-note markdown (rbedu-grammar-nazi gate).
 
 CLI (A33):
   capture --md PATH --out PATH.json   exit 0 OK, 2 invalid

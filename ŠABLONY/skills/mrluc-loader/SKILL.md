@@ -9,6 +9,9 @@ description: >-
   (using-n8n-skills-official and related) — not agenda skills alone.
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # MrLUC loader
 
 Working folder must be the repo root `SECOND_BRAIN/` (ŠABLONY + OBSIDIAN), not only `OBSIDIAN/`. Files need to be **Available offline** in Drive Desktop. Streaming placeholders are not a filesystem.

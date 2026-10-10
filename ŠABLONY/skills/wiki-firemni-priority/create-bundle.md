@@ -1,8 +1,11 @@
 # Create balíček — firemní priority 2HY
 
-Přepočet nejbližšího milníku v tomto souboru: **2026-10-04**.
+> **Šablona.** Tenhle balíček byl aplikován na wiki 4. 10. 2026. Aktuální stav priorit je vždy na wiki, ne tady.
+> Pro další pololetí ho zkopíruj, přepiš obsah a teprve pak spusť create.
+
+Přepočet nejbližšího milníku v tomto souboru: **2026-10-04** (CP7 a CP8 opraveny 4. 10. 2026).
 Řádek milníku: `- 2026-10-05 — text`. Tučný je jen nejbližší s datem ≥ dnes.
-Skill při create přepočet zopakuje. DoD se kopíruje doslova.
+Skill při create přepočet zopakuje. DoD se kopíruje doslova. Pole `generated` server doplní sám.
 
 <!-- page: strategicke-priority-rb-edu/cp1-identita-edu.md -->
 ---
@@ -51,7 +54,7 @@ Jan Mašek
 - Kateřina Bayerová
 - Martin Ruman
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 **Konkrétní artefakt = aktualizované, srozumitelné majitelské zadání.**
 
@@ -59,7 +62,7 @@ Vedení z něj komunikuje jednotně a posouvá operativní rozhodování co nejv
 
 Dokud není nová dohoda, platí stará.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -67,7 +70,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 V podkladu není milník s datem. Nejbližší termín proto není.
 
@@ -117,13 +120,13 @@ Mária Falterová
 
 - Kateřina Bayerová
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 Mizí dotazy „koho se mám zeptat“; organigram a role v životě; Huddle táhne tým; retro; team pulse.
 
 **DoD neuzavřené.** Znění výše je ze sheetu a platí, dokud strategický tým nedohodne přesnější cíl.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -131,7 +134,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 V podkladu není milník s datem. Nejbližší termín proto není.
 
@@ -183,7 +186,7 @@ Lukáš Cypra
 - Jindřich Lukes
 - Mária Falterová — propojení s ops a adopcí
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 - Tým s definovanými kapacitami, rozpočtem a charterem.
 - Kapacitní plán týmu i plán na onboarding/empowering uživatelů.
@@ -193,7 +196,7 @@ Lukáš Cypra
 
 Samotné výstupy wiki / Drive / agenti / nahrávky **nejsou** DoD této priority — to jsou **CP4** a **CP5**.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -201,7 +204,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 V podkladu není milník s datem. Nejbližší termín proto není.
 
@@ -259,11 +262,11 @@ Lukáš Cypra
 - Lucie Růžička
 - Mária Falterová
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 Tým používá AI agenty. Klesá množství dotazů (kde najdu / jak děláme / máme někde…) a duplicitních řešení, která vznikla, protože nikdo nenašel standard.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -271,7 +274,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 V podkladu není milník s datem. Nejbližší termín proto není.
 
@@ -328,7 +331,7 @@ Lukáš Cypra
 - Michal Šrajer
 - Mária Falterová
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 FY = do konce února 2027. Q3 FY2026 = do konce listopadu 2026.
 
@@ -336,7 +339,7 @@ FY = do konce února 2027. Q3 FY2026 = do konce listopadu 2026.
 2. Do konce **FY2026**: totéž na **80 %**.
 3. Do konce **Q3 / FY2026**: všichni členové obchodního týmu používají **RB Sales Feed** alespoň **1× týdně**.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -344,7 +347,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 - **2026-11-30 — alespoň 50 % obchodních schůzek má nahrávky, které jsou vytěžené a propsané do systému**
 - 2026-11-30 — všichni členové obchodního týmu používají RB Sales Feed alespoň 1× týdně
@@ -398,14 +401,14 @@ Lukáš Dzuroška
 - Michaela Kosinerová
 - Veronika Kuncová
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 - **20/20** account plánů v Universe; každý má 3 kvartální iniciativy a next best action.
 - **5+ QBR** zrealizovaných do **22. 2.**
 - Share of wallet změřený u **100 % TOP 20**.
 - Zpětná vazba od **30+ firem** předaná Strat. týmu.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -413,7 +416,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 - **2026-10-05 — rytmus a výchozí KAM model**
 - 2026-10-19 — next-best-action z Pipedrive, produktového portfolia, RB Universe a Market watch
@@ -469,7 +472,7 @@ Lukáš Dzuroška, Michal Poppe
 - Lucie Přibylová
 - Marek Musil
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 - **150 klientům** nabídnuta EDUtéka (ideálně face-to-face / živá diskuse).
 - **30–40 nových licencí** (zhruba zdvojnásobit stávající počet) do **28. 2. 2027**.
@@ -477,7 +480,7 @@ Lukáš Dzuroška, Michal Poppe
 
 Sheet 60+ licencí a DoD „neztrácíme zakázky po cestě“ **neplatí** jako závazek.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -485,10 +488,10 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
-- 2026-10-02 — balíky, ceník a sales kit
 - **2026-10-05 — seznam 150 v Pipedrive + owneri, plán obnovy, product/marketing plán**
+- 2026-10-09 — balíky, ceník a sales kit
 - 2026-11-02 — výběr 2–3 akademií na pilot; 50 oslovených
 - 2026-11-30 — 100 oslovených; 20+ licencí potvrzených nebo předpokládaných; start pilotů
 - 2027-02-28 — 30–40 nových licencí (nebo pipeline do 2–3 měsíců po FY)
@@ -511,7 +514,7 @@ id: CP8
 cp_owner: Lukáš Dzuroška
 period: 2026-H2
 nearest_milestone: "80 % speakerů, 10 partnerů a web"
-nearest_milestone_date: 2026-10-05
+nearest_milestone_date: 2026-10-19
 progress: neznámé
 ---
 
@@ -538,7 +541,7 @@ Lukáš Dzuroška
 - Michal Šrajer
 - Michaela Valdéz
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 - **80 % speakerů** a **10 partnerů** do **19. 10.**
 - Prodej lístků podle plánu.
@@ -546,7 +549,7 @@ Lukáš Dzuroška
 - Finální agenda v prosinci.
 - Do **2 týdnů po Summitu** má každý lead follow-up a next best action v Pipedrive.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -554,9 +557,9 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
-- **2026-10-05 — 80 % speakerů, 10 partnerů a web**
+- **2026-10-19 — 80 % speakerů, 10 partnerů a web**
 - 2026-10-19 — 80 % programu na webu
 - 2026-11-02 — seznam 150 lídrů na Exponential Circles a 100 na L&D, akce rozdělená v KAM týmu
 - 2026-11-16 — KAM packaging TOP 30
@@ -613,14 +616,14 @@ Mária Falterová, Martin Ruman
 - Lukáš Cypra
 - Pavel Kroupa
 
-## DoD + aktuální stav plnění
+## Definition of Done
 
 - Procesní mapa je v Universe a držíme se jí (případně ji tam aktualizujeme) napříč Sales–Delivery–Finance.
 - Jasno, jak vybírat lektory na zakázky a jaké mají finanční podmínky.
 - Pro lektory kompletní a srozumitelný balíček k fungování spolupráce.
 - Všichni spolupracovníci formálně podchycení smlouvou a NDA.
 
-### Stav plnění
+## Stav plnění
 
 Zatím bez hlášení.
 
@@ -628,7 +631,7 @@ Zatím bez hlášení.
 
 - 2026-10-04 — Lukáš Cypra — založení karty
 
-## Přehled milníků se zvýrazněním nejbližšího
+## Přehled milníků
 
 - **2026-10-19 — Průvodce hotový a zkomunikovaný; check mapy; nominační matice datově ready; klientský ceník interně schválený**
 - 2026-11-02 — matice a sazby vyrolované v PM a Sales; ceník funkční v Sales i Delivery
@@ -664,7 +667,7 @@ Devět aktivních priorit do konce února 2027. Jedna priorita = jedna karta. St
 | [CP5](cp5-vytezovani-dat-sales-kam.md) | Vytěžování dat pro Sales a KAM | Lukáš Cypra | alespoň 50 % obchodních schůzek má nahrávky, které jsou vytěžené a propsané do systému | 30. 11. 2026 | neznámé |
 | [CP6](cp6-key-account-management.md) | Key account management | Lukáš Dzuroška | rytmus a výchozí KAM model | 5. 10. 2026 | neznámé |
 | [CP7](cp7-eduteka.md) | EDUtéka | Lukáš Dzuroška, Michal Poppe | seznam 150 v Pipedrive + owneri, plán obnovy, product/marketing plán | 5. 10. 2026 | neznámé |
-| [CP8](cp8-exponential-summit.md) | Exponential Summit | Lukáš Dzuroška | 80 % speakerů, 10 partnerů a web | 5. 10. 2026 | neznámé |
+| [CP8](cp8-exponential-summit.md) | Exponential Summit | Lukáš Dzuroška | 80 % speakerů, 10 partnerů a web | 19. 10. 2026 | neznámé |
 | [CP9](cp9-procesni-jasnost-delivery.md) | Procesní jasnost Delivery | Mária Falterová, Martin Ruman | Průvodce hotový a zkomunikovaný; check mapy; nominační matice datově ready; klientský ceník interně schválený | 19. 10. 2026 | neznámé |
 
 ## Co teď není priorita

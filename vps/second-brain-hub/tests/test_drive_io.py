@@ -619,3 +619,11 @@ def test_matches_pattern_handles_interior_wildcard():
     assert _matches_pattern("x-batch.json", _glob_to_substr("*-batch.json")) is True
     assert _matches_pattern("waiting-42.json", _glob_to_substr("waiting-")) is True
     assert _matches_pattern("cokoliv.md", None) is True
+
+
+def test_mkdir_alias_and_oid_none_on_drive(vault):
+    # Bound methods are new objects each lookup — compare underlying function.
+    assert vault.mkdir.__func__ is vault.mkdir_p.__func__
+    vault.write_text("t9.md", "x")
+    _text, meta = vault.read_text("t9.md")
+    assert meta.oid is None

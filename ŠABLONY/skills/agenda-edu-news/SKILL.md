@@ -3,6 +3,9 @@ name: agenda-edu-news
 description: "Připraví návrh témat pro EDU News (~30s firemní video): zpět / dopředu + výjimečné schůzky z kalendáře (ne pravidelné rituály). Use when user says EDU news, OPS2, návrhy témat EDU, připrav EDU news, nebo když je na pořadu OPS2 — Nahrát EDU news. Assist — agent navrhne, člověk schválí před zápisem do OPS2."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-edu-news
 
 > EDU News = krátké video pro tým: **čemu jsem se věnoval** (tento / minulý týden) a **čemu se budu věnovat** (příští). Témata s dopadem pro parťáky — ne technické detaily ani admin maličkosti.

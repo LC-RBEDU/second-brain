@@ -3,6 +3,9 @@ name: agenda-lessons
 description: "Capture lessons = guardy proti třídám chyb (assist): návrh ze session → preview → schválení → zápis do 00-System/Lessons/. Triggers: ulož lessons, co jsme se naučili, lesson z téhle session, schval lessons. ALWAYS preview before write. Max 1–5 návrhů. Jen při škodě nebo opakování."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-lessons
 
 > Guard proti třídě chyby — ne záznam incidentu. Ty schvaluješ — agent jen připraví.

@@ -87,10 +87,9 @@ from vault_reference import (  # noqa: E402
 )
 
 DEFAULT_VAULT = Path(
-    os.environ.get(
-        "SECOND_BRAIN_VAULT",
-        str(Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"),
-    )
+    os.environ.get("SECOND_BRAIN_VAULT")
+    or os.environ.get("SB_VAULT_PATH")
+    or str(Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN")
 )
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)

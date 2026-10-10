@@ -3,6 +3,9 @@ name: agenda-status-update
 description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš (Cancelled), odlož, čekat do, do fokusu týdne. Reads 02-PROJEKTY/<slug>/tasks/<ID> — *.md frontmatter (human-readable filename, em-dash U+2014) and patches status/deadline/waitUntil. Subtask reference syntax: `<ID>-N` (např. PD4-3 = 3. checkbox v ## Operativní kroky). ALWAYS preview before write. Bulk operace řeší agenda-work / agenda-co-ted / agenda-priority-review; tohle je one-off tap."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-status-update (v2)
 
 > Rychlá změna stavu jednoho tasku. Pro hromadné operace použij `agenda-work` nebo `agenda-co-ted`. Pro re-prioritizaci napříč vault použij `agenda-priority-review`.

@@ -29,7 +29,11 @@ DEFAULT_VAULT = Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN
 def vault_path() -> Path:
     import os
 
-    return Path(os.environ.get("SECOND_BRAIN_VAULT", str(DEFAULT_VAULT)))
+    return Path(
+        os.environ.get("SECOND_BRAIN_VAULT")
+        or os.environ.get("SB_VAULT_PATH")
+        or str(DEFAULT_VAULT)
+    )
 
 
 def _refuse_git_write() -> int | None:

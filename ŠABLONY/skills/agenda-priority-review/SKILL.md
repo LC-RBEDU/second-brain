@@ -3,6 +3,9 @@ name: agenda-priority-review
 description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus/Next/Waiting in MrLUC Second Brain v2. Ad-hoc only. Scans all 02-PROJEKTY/<slug>/tasks/*.md frontmatters, proposes status/ICE/waitUntil changes. ALWAYS preview before write."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-priority-review (v2)
 
 > Ad-hoc srovnání priorit napříč vaultem. Ne cron — spouštíš, když cítíš chaos v prioritách. **V2:** čte task `.md` frontmattery (file-per-task), ne H3 v hubu.

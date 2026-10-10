@@ -19,9 +19,14 @@ meta.json (všechna pole kromě title/h1 jsou volitelná):
     ["Zdroj", "přepis schůzky (Sembly, 14. 9. 2026)"]
   ],
   # Párové objekty {"label","value"} jsou taky OK.
-  "intro":   "Volitelný odstavec pod meta řádky v pravém sloupci hero.",
+  "intro":   "Volitelný odstavec pod meta řádky (účastníci/zdroj) — ne do kickera.",
   "footer":  ["Odstavec 1 patičky.", "Odstavec 2 patičky."]
 }
+
+Pravidla (SSOT = skill agenda-zapis-ze-schuzky → HTML vzhled):
+- kicker = max 1 krátká úderná věta (ne celý highlight, ne „Rámec:“)
+- meta_lines + stamp + intro = pod hero (hero-meta), ne side-by-side s h1
+- body.html = skutečné HTML tagy; Rámec z MD ## 0. Meta do body nepatří
 """
 import argparse
 import html
@@ -38,36 +43,43 @@ def esc(value: str) -> str:
 
 
 def build_hero(meta: dict) -> str:
-    left = [f'      <h1>{esc(meta["h1"])}</h1>']
+    """Hero = full-width title+kicker; meta (participants/stamp) stacked below."""
+    main = [f'      <h1>{esc(meta["h1"])}</h1>']
     if meta.get("kicker"):
-        left.append(f'      <div class="kicker">{esc(meta["kicker"])}</div>')
-    if meta.get("stamp"):
-        left.append(f'      <div class="stamp">{esc(meta["stamp"])}</div>')
+        main.append(f'      <div class="kicker">{esc(meta["kicker"])}</div>')
 
-    right = []
+    meta_block = []
     for item in meta.get("meta_lines", []):
         if isinstance(item, (list, tuple)) and len(item) == 2:
             label, value = item
-            right.append(f'      <p class="meta"><b>{esc(label)}:</b> {esc(value)}</p>')
+            meta_block.append(f'      <p class="meta"><b>{esc(label)}:</b> {esc(value)}</p>')
         elif isinstance(item, dict) and "label" in item and "value" in item:
-            right.append(
+            meta_block.append(
                 f'      <p class="meta"><b>{esc(item["label"])}:</b> {esc(item["value"])}</p>'
             )
         else:
-            right.append(f'      <p class="meta">{esc(item)}</p>')
+            meta_block.append(f'      <p class="meta">{esc(item)}</p>')
     if meta.get("intro"):
-        right.append(f'      <p style="margin-top:14px">{esc(meta["intro"])}</p>')
+        meta_block.append(f'      <p style="margin-top:14px">{esc(meta["intro"])}</p>')
+    if meta.get("stamp"):
+        meta_block.append(f'      <div class="stamp">{esc(meta["stamp"])}</div>')
 
-    if not right:
-        return '  <section class="hero">\n    <div>\n' + "\n".join(left) + "\n    </div>\n  </section>"
-
-    return (
-        '  <section class="hero">\n    <div>\n'
-        + "\n".join(left)
-        + '\n    </div>\n    <div class="hero-right">\n'
-        + "\n".join(right)
-        + "\n    </div>\n  </section>"
-    )
+    parts = [
+        '  <section class="hero">',
+        '    <div class="hero-main">',
+        "\n".join(main),
+        "    </div>",
+    ]
+    if meta_block:
+        parts.extend(
+            [
+                '    <div class="hero-meta">',
+                "\n".join(meta_block),
+                "    </div>",
+            ]
+        )
+    parts.append("  </section>")
+    return "\n".join(parts)
 
 
 def build_footer(meta: dict) -> str:

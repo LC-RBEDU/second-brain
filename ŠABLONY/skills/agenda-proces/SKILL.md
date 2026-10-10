@@ -3,6 +3,9 @@ name: agenda-proces
 description: "Tvorba a úprava firemních procesů pro RB Universe Procesní architekt: Markdown ve 02-PROJEKTY/firemni-procesy/procesy/, konvence odrážek + Mermaid kontrola. Triggers: proces, procesní mapa, architekt, připrav proces, import do universe, přeformátuj proces. ALWAYS preview before write."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-proces
 
 > Draft procesu v Obsidianu → vizuální kontrola (Mermaid) → import do **RB Universe Procesní architekt** (`body_md` + *Vygenerovat kroky z Markdown těla*).

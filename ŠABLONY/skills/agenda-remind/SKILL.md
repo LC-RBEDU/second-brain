@@ -10,6 +10,8 @@ description: "Schedule Slack DM reminders at a specific date/time independent of
 **Vault:** `OBSIDIAN/00-System/Reminders-Pending/*.json`  
 **Cron (VPS):** `reminders_dispatch.py` každé **2 min** → `chat.postMessage` DM Lukášovi
 
+**F1 (git vault):** na git klonu **nespouštěj** `schedule` / `cancel` (`schedule_reminder` exit ≠0). Povoleno jen `list`. Nový reminder po cutoveru = GitHub web UI PR nebo počkat na F2; případně ruční Slack reminder.
+
 ## Kdy spouštět
 
 - „Připomeň mi … ve středu v 8“

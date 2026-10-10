@@ -12,6 +12,16 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 | F1-g smoke | git | 0 | pause | 1 | — |
 | F1-h live | git | 0 | live | 0 | 1 |
 
+## Tooling před importem
+
+```bash
+# Inventář blob / LFS / Drive-only (B9)
+python3 scripts/vault_import_inventory.py /path/to/OBSIDIAN --tsv /tmp/vault-inv.tsv
+
+# Secrets hard gate (B21) — fail = neimportovat
+bash scripts/vault_secrets_scan.sh /path/to/OBSIDIAN
+```
+
 ## Cutover (stručně)
 
 1. Freeze: Sync/Drive writer/n8n off; `PAUSED=1` + `CRONTAB_MODE=pause`.

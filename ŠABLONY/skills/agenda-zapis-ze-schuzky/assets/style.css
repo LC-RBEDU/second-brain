@@ -15,10 +15,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Rubik',Arial
 .logo{width:132px;height:auto;display:block}
 h1,h2,h3,h4,p{margin-top:0}
 h1{font-size:clamp(40px,5.4vw,74px);line-height:1;letter-spacing:-.045em;margin-bottom:18px;font-weight:900;max-width:1000px}
-.kicker{font-family:'Kalam',cursive;color:var(--red);font-weight:700;font-size:clamp(21px,2.4vw,34px);max-width:900px;line-height:1.2}
-.hero{display:grid;grid-template-columns:1.12fr .88fr;gap:56px;align-items:end;margin-bottom:56px}
-.hero-right{border-left:1px solid var(--line);padding-left:32px}
-.hero-right p{font-size:16px;max-width:560px}
+.kicker{font-family:'Kalam',cursive;color:var(--red);font-weight:700;font-size:clamp(21px,2.4vw,34px);max-width:100%;line-height:1.2;margin-bottom:8px}
+.hero{display:flex;flex-direction:column;gap:0;margin-bottom:56px;width:100%}
+.hero-main{width:100%;max-width:100%}
+.hero-meta{width:100%;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.hero-meta p{font-size:16px;max-width:none}
 .meta{font-size:13px;color:#8a837f;margin:0 0 6px}
 .meta b{color:var(--ink);font-weight:700}
 .stamp{display:inline-block;border:2px solid var(--red);border-radius:44% 56% 48% 52%;padding:8px 16px;color:var(--red);font-family:'Kalam',cursive;font-weight:700;transform:rotate(-1.5deg);margin-top:12px;font-size:15px}
@@ -74,8 +75,7 @@ td.who{font-weight:700;white-space:nowrap;width:190px}
 footer{margin-top:70px;border-top:1px solid var(--line);padding-top:24px;font-size:13px;color:#8a837f;max-width:900px}
 @media (max-width:980px){
   .page{padding:24px 20px 60px}
-  .hero,.big-thesis,.park{grid-template-columns:1fr;gap:26px}
-  .hero-right{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:20px}
+  .big-thesis,.park{grid-template-columns:1fr;gap:26px}
   .card-head,.area-head{grid-template-columns:1fr}
   .area-head .col{text-align:left}
   td.who{width:auto}

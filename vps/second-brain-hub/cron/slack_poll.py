@@ -79,6 +79,25 @@ def _discover_queries() -> list[tuple[str, str]]:
     ]
 
 
+def attachment_markdown_link(
+    *,
+    name: str,
+    rel: str,
+    meta: object,
+    permalink: str,
+    backend: str | None = None,
+) -> str:
+    """B14: Drive URL only on drive backend; git → permalink or vault-rel."""
+    be = (backend if backend is not None else os.environ.get("VAULT_BACKEND") or "drive")
+    be = be.strip().lower()
+    if be == "git" or getattr(meta, "oid", None):
+        link = permalink or rel
+    else:
+        file_id = getattr(meta, "id", "") or ""
+        link = f"https://drive.google.com/file/d/{file_id}/view"
+    return f"- [{name}]({link})"
+
+
 def _save_attachments(token: str, vault: DriveVault, messages: list[dict], stem: str) -> list[str]:
     lines: list[str] = []
     n = 0
@@ -99,13 +118,11 @@ def _save_attachments(token: str, vault: DriveVault, messages: list[dict], stem:
                 meta = vault.write_bytes(
                     rel, data, mime_type=str(file.get("mimetype") or "application/octet-stream")
                 )
-                # B14: Drive file URL only on drive backend; git → vault-rel or Slack permalink.
-                backend = (os.environ.get("VAULT_BACKEND") or "drive").strip().lower()
-                if backend == "git" or getattr(meta, "oid", None):
-                    link = permalink or rel
-                else:
-                    link = f"https://drive.google.com/file/d/{meta.id}/view"
-                lines.append(f"- [{name}]({link})")
+                lines.append(
+                    attachment_markdown_link(
+                        name=name, rel=rel, meta=meta, permalink=permalink
+                    )
+                )
             except Exception as exc:  # noqa: BLE001 — Drive HttpError must not abort the poll
                 print(f"slack_poll: attachment skip {name} ({rel}): {exc}")
                 if permalink:

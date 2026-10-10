@@ -8,6 +8,9 @@ description: >-
   v daily/. Default varianta full.
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # Zápis ze schůzky — HTML + MD (RB EDU)
 
 Zápis čte tým a berou si z něj úkoly. **Nevymýšlej a nepředjímej** — do zápisu
@@ -17,12 +20,13 @@ jde jen to, co v přepisu explicitně zaznělo.
 → běžný DEEP / `agenda-analyze`, ne tento skill.
 
 **Zdroj pravdy obsahu a HTML shellu:** tento skill + `references/` + `scripts/build_html.py`
-+ `assets/`. Kalibrace: Claude skill `zapis-ze-schuzky` (15. 9. 2026).
++ `assets/`; jazykový průchod: `ŠABLONY/skills/rbedu-grammar-nazi/`. Kalibrace: Claude skill `zapis-ze-schuzky` (15. 9. 2026).
 
 ## Co skill dělá
 
 1. Najde přepis + spáruje kalendář / přílohy osnovy.
 2. Napíše plný zápis (default `variant: full`).
+2a. Jazykový průchod draftu MD přes `rbedu-grammar-nazi` (GN-1 / GN-2, s fingerprint kontrolou) — Krok 5; běží u `full` i `shared`.
 3. Vyrobí **HTML** → `~/Downloads/YYYY-MM-DD_<slug>_zapis.html`.
 4. Vyrobí **MD** → `OBSIDIAN/05-RESOURCES/vystupy/zapisy/YYYY-MM/…_zapis.md`.
 5. U jasných projektů přidá **wikilink stub** do `02-PROJEKTY/<slug>/materials/`.
@@ -111,7 +115,7 @@ Nesedí-li číslo: zapiš co zaznělo + v závorce co je v systému. Haléře �
 - **DEEP#1 = úplný MD draft už před chat preview** (tmp OK, např. `/tmp/…_zapis.draft.md`).
   Chat preview je jen **výpis** z post-GN-1 MD (highlights, počet osnovy, tabulka úkolů,
   cesty) — ne náhrada hloubky. Po „ano“ / „upiš“ běží **DEEP#2 refresh** z přepisu + merge
-  (viz Krok Preview / grammar-nazi), ne první vznik plného zápisu.
+  (viz Krok Preview / rbedu-grammar-nazi), ne první vznik plného zápisu.
 - Stručná / sdílená verze **jen na výslovné vyžádání** („stručný“, „shared“, „pro tým“
   bez detailů). Bez toho vždy DEEP full.
 
@@ -128,25 +132,26 @@ Body `mentioned_only` / `not_discussed` **nevynechávej**.
 **Úkol** jen když byl explicitně zadán a přidělen člověku. Nabídka = úkol označený
 jako nabídka. „Měli bychom" bez vlastníka = ne úkol.
 
-### grammar-nazi (GN-1 / GN-2) — povinné před preview a před finálním HTML
+### rbedu-grammar-nazi (GN-1 / GN-2) — povinné před preview a před finálním HTML
 
-Skill: `ŠABLONY/skills/grammar-nazi/SKILL.md`. Cursor agent: `grammar-nazi` (readonly —
-vrátí MD; ty zapíšeš). Bez agenta / Claude / soft-fail Cursor agenta: stejný pass
-**in-process** (A4). Soft-fail = „bez agenta“, ne skip language pass. Až když selže i
-in-process (nejde načíst skill/MD) → **1 věta + stop write** (ne tichý skip).
+Skill: `ŠABLONY/skills/rbedu-grammar-nazi/SKILL.md` (volá ho tento skill, ne naopak).
+Režim **zápis** (skill ho pozná podle `## 0. Meta`); běží u `variant: full` i `shared`.
+Průchod běží **vždy in-process**, bez Cursor agenta: načti SKILL +
+`references/language-rules.md` + `references/meeting-language.md`, přepiš celý MD, vrať jen MD,
+zapiš ty. Nejde-li skill/MD načíst → **1 věta + stop write** (ne tichý skip).
 
 **CLI fingerprint (exit 0 shoda/OK, 1 mismatch struktury/cardinality, 2 nevalidní after
 — např. full highlights ≠3):**
 
 ```bash
-python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" capture --md <draft.md> --out <fp.json>
-python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" compare --before <fp.json> --md <draft.md>
+python3 "ŠABLONY/skills/rbedu-grammar-nazi/scripts/md_fingerprint.py" capture --md <draft.md> --out <fp.json>
+python3 "ŠABLONY/skills/rbedu-grammar-nazi/scripts/md_fingerprint.py" compare --before <fp.json> --md <draft.md>
 ```
 
 **GN-1 (před chat preview):**
 
 1. Sestav úplný MD DEEP#1 → tmp.
-2. `capture` → GN-1 (agent; při soft-fail → in-process) → zapiš MD → `compare`.
+2. `capture` → GN-1 (in-process) → zapiš MD → `compare`.
 3. Exit **1 nebo 2** → 1× retry GN (in-process OK) → znovu `compare`. Druhý fail
    (1 nebo 2) → **1 věta uživateli + stop write** (žádný preview / zápis).
 4. Exit 0 → chat preview = výpis z **post-GN-1** MD.
@@ -167,9 +172,42 @@ python3 "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py" compare --befor
 4. Až exit 0: odvoď `meta.json` + `body.html` **1:1 z post-GN MD** (bez druhého language pass)
    → `build_html.py` → write MD/HTML → Krok 8 z **upraveného preview**.
 
-**meta.json (deterministicky, bez volného stylu):** `title`/`h1` ← frontmatter `title`;
-`kicker` ← prázdné nebo 1:1 první highlight; `stamp` ← `meeting_date` + typ; `meta_lines` ←
-participants/source; `intro`/`eyebrow`/`footer` jen 1:1 z MD/frontmatter pokud už existují.
+### HTML vzhled — standard (Lucie & Luky / Claude Team, schváleno 2026-10-09)
+
+Platí pro **všechny** další zápisy (`full` i `shared`). Shell = `build_html.py` +
+`assets/style.css` (hero sloupec, celá šířka). Agent neskládá vlastní layout ani
+side-by-side hero.
+
+**meta.json (deterministicky, bez volného stylu):**
+
+| Pole | Pravidlo |
+|---|---|
+| `title` / `h1` | ← frontmatter `title` |
+| `kicker` | **max 1 krátká úderná věta**. Nesmí být celý highlight, odstavec ani text začínající „Rámec:“ |
+| `stamp` | ← `meeting_date` + typ schůzky |
+| `meta_lines` | participants + zdroj — v HTML **pod** `hero-main` (účastníci, stamp, zdroj), ne vedle nadpisu |
+| `intro` / `eyebrow` / `footer` | jen 1:1 z MD/frontmatter pokud už existují; `intro` ≠ Rámec |
+
+**body.html (povinné):**
+
+1. **Skutečné HTML tagy** — `<strong>`, `<b>`, `<em>`, `<ul>/<li>`. **Nikdy** literální
+   markdown (`**tučné**`, `- odrážka`) v body fragmentu.
+2. Blok `Rámec:` / meta šum z `## 0. Meta` **zůstává jen v MD vaultu**. Do HTML
+   **nepatří** jako `p.lead`, sekce „Rámec“, ani do kickera / hero.
+3. Lead v body (pokud vůbec) = max 1 krátká věta jiného účelu než Rámec; default = žádný
+   lead z Meta.
+4. Komponenty (teze, karty, badge, tabulky) dle `references/struktura-vystupu.md`.
+
+**Layout hero (shell):** kicker + h1 na **celou šířku** (`.hero-main`); účastníci + stamp
++ zdroj **pod** nimi (`.hero-meta`), ne side-by-side.
+
+### Checklist před `build_html.py`
+
+- [ ] `body.html` bez literálního `**` / MD syntaxe — jen HTML tagy
+- [ ] `kicker` = 1 krátká věta (ne highlight, ne „Rámec:“)
+- [ ] Rámec / `## 0. Meta` šum **není** v body ani v kickeru / `intro`
+- [ ] `meta_lines` + stamp jdou do shell meta (pod hero), ne do body leadu
+- [ ] žádné `<style>` v body; layout jen přes `build_html.py`
 
 ---
 
@@ -337,6 +375,7 @@ Až jsou HTML a MD na disku. Detail a tabulka kanálů: `.cursor/rules/internal-
 - počet položek osnovy (stačí číslo + 1 řádek témat)
 - **konkrétní úkoly** — tabulka níže (povinné; hlavní místo úprav před schválením)
 - cílové cesty HTML a MD
+- řádek „Jazykový průchod: proběhl / přeskočen (důvod)“
 - kam to půjde: Slack kanál / DM, nebo e-mail když je někdo mimo RB
 - navržené projekty pro `projects:` / materials stubs
 
@@ -373,7 +412,7 @@ Preview = kontrola úkolů a **routing** (Vault?/Projekt) + Slack — ne šablon
 
 - [ ] Osnova = podklad nebo 4–8 vlastních bloků
 - [ ] **DEEP#1** úplný MD před GN-1; chat preview až po compare 0
-- [ ] GN-1 / GN-2 + `md_fingerprint` CLI (compare exit 1 **nebo** 2 → retry 1×; 2. fail = stop)
+- [ ] GN-1 / GN-2 (`rbedu-grammar-nazi`, in-process) + `md_fingerprint` CLI (compare exit 1 **nebo** 2 → retry 1×; 2. fail = stop)
 - [ ] **Plná DEEP** (default) — husté „Co zaznělo“; stručné jen na výslovné vyžádání
 - [ ] Finál = DEEP#2 + merge (denylist), ≠ roztažený preview
 - [ ] Baseline keys před editací; škrtnuté řádky se z DEEP#2 nevrátí
@@ -382,6 +421,8 @@ Preview = kontrola úkolů a **routing** (Vault?/Projekt) + Slack — ne šablon
 - [ ] Preview: konkrétní tabulka úkolů (# | Kdo | title | Vault? | projekt) — ne jen počty
 - [ ] Krok 8 routing z upraveného preview; wording z post-merge MD
 - [ ] `### Highlights` + 3× `-` (full); meta.json bez volného stylu
+- [ ] HTML standard: kicker 1 věta; Rámec jen v MD; body = HTML tagy (ne `**`); hero full-width + meta pod ním
+- [ ] Checklist před `build_html.py` (výše) splněný
 - [ ] Jména + `name_aliases`
 - [ ] HTML bez vlastního CSS, přes `build_html.py` (až po GN-2)
 - [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material`

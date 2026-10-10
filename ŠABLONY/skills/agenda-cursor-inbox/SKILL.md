@@ -3,6 +3,9 @@ name: agenda-cursor-inbox
 description: "Uloží task, popis nebo plán z Cursor konverzace do MrLUC Second Brain: .md soubor v OBSIDIAN/01-INBOX/daily/ s odkazem na chat. Triggers: ulož do Second Brain, ulož do SB, zapiš do inboxu, ulož task/plán/popis do Obsidianu, capture konverzace, second brain inbox. ALWAYS preview before write."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-cursor-inbox
 
 > Rychlý capture **z Cursor chatu** do INBOX — bez rovnou zakládat task v `02-PROJEKTY/`. Triáž později přes `agenda-triage`.

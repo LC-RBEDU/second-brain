@@ -5,6 +5,18 @@
 Do `body.html` se píše **jen obsah**, žádné `<style>`. Shell (hlavička s logem, hero,
 patička) dělá `build_html.py` z `meta.json`.
 
+**Standard vzhledu (schváleno 2026-10-09, Lucie & Luky):** hero = kicker + h1 na celou
+šířku; účastníci / stamp / zdroj **pod** hero (ne vedle). Detail a checklist → skill
+`agenda-zapis-ze-schuzky` → „HTML vzhled — standard“.
+
+### body.html — markup (povinné)
+
+- Piš **skutečné HTML** (`<strong>`, `<b>`, `<em>`, `<ul>`, `<li>`, `<p>`).
+- **Zakázáno** nechat v body literální Markdown ze zdroje (`**tučné**`, `- ` jako text).
+- Blok **Rámec** / meta šum z MD `## 0. Meta` do body **nevkládej** (ani jako
+  `p.lead` / sekce „Rámec“). Patří jen do vault MD; HTML hero bere krátký `kicker`
+  z `meta.json` (1 věta), ne celý Rámec ani celý highlight.
+
 ### Highlights — tři teze
 
 Přesně tři bloky, jinak se rozbije barevný rytmus (červená / tmavá / zelená).
@@ -193,7 +205,10 @@ Rámec: …
 - Třetí klíčový závěr.
 ```
 
-Fingerprint (`grammar-nazi` / `md_fingerprint.py`) počítá jen tyto top-level `-`.
+`Rámec:` zůstává **jen v MD** (agentí kontext). Do HTML hero / lead / kicker se
+nekopíruje — viz skill „HTML vzhled — standard“.
+
+Fingerprint (`rbedu-grammar-nazi` / `md_fingerprint.py`) počítá jen tyto top-level `-`.
 
 ### Povinné sekce
 

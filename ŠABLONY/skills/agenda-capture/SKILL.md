@@ -3,6 +3,9 @@ name: agenda-capture
 description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new files in OBSIDIAN/01-INBOX/. Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (file-per-task + frontmatter, em-dash U+2014, human-readable filename), archives source to 07-ARCHIV/inbox-processed/. Triggers: capture, zapiš si, INBOX. Spotify/podcast URL or show title → queue via MCP spotify (not a listen-task). ALWAYS preview before write. Preserve subtask checklisty (číslované **<ID>-N**) + source links."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-capture (v2)
 
 > Bere libovolný střípek a integruje ho do živého systému jako **soubor-per-task** v `02-PROJEKTY/<slug>/tasks/`.

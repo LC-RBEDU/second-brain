@@ -3,6 +3,9 @@ name: agenda-analyze
 description: "Analyzuje materiály (URL, vault) k tématu/úkolu. Výstup: strukturovaný .md ve 02-PROJEKTY/<slug>/ — podle typu dokumentu, bullet-heavy, diagramy/tabulky kde pomůžou. Triggers: analyzuj, rozbor materiálů, deep dive, projdi k úkolu. Zapisuje rovnou; chat = wikilink + 2–3 bullets."
 ---
 
+**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+
+
 # agenda-analyze
 
 > Paralelní skill. Rozbor materiálů → **stručný, strukturovaný** `.md` ve výstupech — **ne** jedna fixní šablona, ale **tvar podle typu dokumentu**.
