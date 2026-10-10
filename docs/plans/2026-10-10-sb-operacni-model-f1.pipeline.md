@@ -19,7 +19,7 @@ Profil: SECOND_BRAIN
 - Coolify image: `…:9ed0da32b1bffdbfe9f6314c42bce6b8e0a417f4`
 - B1 smoke: `agent-context: projects=15 open=188 done7d=17 upcoming=4 → drive://00-System/agent-context.json`
 - A33: `supercronic … /app/crontab` (live); reminders + slack_poll job succeeded
-- Default stále `VAULT_BACKEND=drive` — cutover F1-e…h **neproveden** (runbook připraven)
+- Cutover F1-e…h **hotov** 2026-10-10: `VAULT_BACKEND=git` + `PUSH=1` + live crontab; tip `47e19de`; Mac `~/GitHub/second-brain-vault`; ruleset A17 odložen (GitHub Free)
 
 ## Průběh (zkráceně)
 
@@ -35,4 +35,4 @@ Profil: SECOND_BRAIN
 
 ## Poznámka
 
-Cutover živého vaultu (F1-e…h, SB15-2) = **operační krok mimo kódový DONE** — dle [docs/git-vault-runbook.md](../git-vault-runbook.md).
+Cutover živého vaultu (F1-e…h, **SB15-2**) = **hotovo** 2026-10-10 — [docs/git-vault-runbook.md](../git-vault-runbook.md).
