@@ -6,8 +6,8 @@ Schvalování plánu uživatelem: ano
 Architekt: hlavní · k=2/3, r=3/3
 Šťoural: 49b18383… g=5 · HOTOVÝ GRILL
 Kritik: 169843ee… · SCHVÁLENO
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): 674a82a9373cc02a790e24a2ecf48222ccd61719 · Kódový SHA: (po commit) · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main před pipeline): 674a82a9373cc02a790e24a2ecf48222ccd61719 · Kódový SHA: d7c561c6e96ea7bb324299d71aa52c328a8c1970 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: ano (B1–B25) 2026-10-10
 Goal: aktivní
 Profil: SECOND_BRAIN

@@ -327,6 +327,9 @@ def _run(now: datetime) -> None:
         return
 
     with open_vault() as vault:
+        if getattr(vault, "skipped", False):
+            print("slack_poll: vault session skipped — no Slack mutate / dumps")
+            return
         state_mtime = None
         try:
             raw, meta = vault.read_json(STATE_REL)

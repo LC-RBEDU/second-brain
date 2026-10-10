@@ -39,6 +39,10 @@ DEFAULT_AUTHOR_NAME = "Second Brain Hub"
 DEFAULT_AUTHOR_EMAIL = "second-brain-hub@noreply.redbuttonedu.cz"
 
 
+class VaultSessionSkipped(DriveVaultError):
+    """Session skipped (dirty WT / flock) — mutate refused (no silent success)."""
+
+
 def _env_flag(env: Mapping[str, str], key: str, default: bool = False) -> bool:
     raw = (env.get(key) or "").strip().lower()
     if not raw:
@@ -281,18 +285,18 @@ class GitVault:
         )
         return (proc.stdout or "").strip()
 
-    def _meta_for_path(self, rel_path: str) -> FileMeta:
+    def _meta_for_path(self, rel_path: str, *, compute_oid: bool = True) -> FileMeta:
         rel = _norm_rel(rel_path)
         path = self._abspath(rel)
         if not path.exists():
             raise DriveNotFoundError(f"Path not found: {rel!r}")
         is_dir = path.is_dir()
-        parent = path.parent
         parent_rel = ""
         if rel:
             segs = _split_rel(rel)
             parent_rel = "/".join(segs[:-1])
-        oid = None if is_dir else self._blob_oid_for_path(path)
+        # list_dir: skip hash-object (P10); CAS paths pass compute_oid=True
+        oid = None if is_dir or not compute_oid else self._blob_oid_for_path(path)
         size = None if is_dir else path.stat().st_size
         return FileMeta(
             id=rel or oid or "",
@@ -323,11 +327,11 @@ class GitVault:
             oid=oid,
         )
 
-    def _mutate_allowed(self) -> bool:
+    def _require_mutate(self) -> None:
         if self.skipped:
-            log.info("git_io: skipped session — mutate no-op")
-            return False
-        return True
+            raise VaultSessionSkipped(
+                "git vault session skipped (dirty WT or flock) — refusing mutate"
+            )
 
     def _check_cas(
         self,
@@ -398,10 +402,10 @@ class GitVault:
                     if recursive:
                         walk(entry, child_rel)
                     if include_folders and _matches_pattern(entry.name, needle):
-                        results.append(self._meta_for_path(child_rel))
+                        results.append(self._meta_for_path(child_rel, compute_oid=False))
                 else:
                     if _matches_pattern(entry.name, needle):
-                        results.append(self._meta_for_path(child_rel))
+                        results.append(self._meta_for_path(child_rel, compute_oid=False))
 
         walk(base, base_rel)
         results.sort(key=lambda m: m.rel_path)
@@ -461,8 +465,7 @@ class GitVault:
                 )
             return self._fake_meta(rel, data, mime_type=mime_type)
 
-        if not self._mutate_allowed():
-            return self._fake_meta(rel, data, mime_type=mime_type)
+        self._require_mutate()
 
         if path.exists():
             self._check_cas(rel, path, expect_oid=expect_oid, expect_mtime=expect_mtime)
@@ -500,8 +503,7 @@ class GitVault:
         if self.dry_run:
             log.info("git_io: would-mkdir %s", rel)
             return str(self._abspath(rel))
-        if not self._mutate_allowed():
-            return str(self._abspath(rel))
+        self._require_mutate()
         path = self._abspath(rel)
         if path.exists() and not path.is_dir():
             raise DriveVaultError(f"mkdir_p: {rel!r} exists and is not a folder")
@@ -522,8 +524,7 @@ class GitVault:
         if self.dry_run:
             log.info("git_io: would-move %s -> %s", src_n, dst_n)
             return self._meta_for_path(src_n)
-        if not self._mutate_allowed():
-            return self._meta_for_path(src_n)
+        self._require_mutate()
         dst.parent.mkdir(parents=True, exist_ok=True)
         if dst.exists():
             raise DriveVaultError(f"move: destination exists: {dst_n!r}")
@@ -539,8 +540,7 @@ class GitVault:
         if self.dry_run:
             log.info("git_io: would-delete %s", rel)
             return
-        if not self._mutate_allowed():
-            return
+        self._require_mutate()
         if path.is_dir():
             shutil.rmtree(path)
         else:

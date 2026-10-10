@@ -62,6 +62,10 @@ def main() -> None:
         return
 
     with open_vault() as vault:
+        # B22: dirty/flock skip — never Slack-mutate then fail vault archive
+        if getattr(vault, "skipped", False):
+            print("reminders_dispatch: vault session skipped — no Slack sends")
+            return
         now = datetime.now(TZ)
         pending = _list_pending(vault)
         if not pending:

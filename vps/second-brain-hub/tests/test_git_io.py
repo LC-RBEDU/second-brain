@@ -63,17 +63,47 @@ def test_cas_oid_passes(git_repo: Path):
 
 
 def test_dirty_skip_at_start_no_reset(git_repo: Path):
+    from git_io import VaultSessionSkipped
+
     (git_repo / "dirty.txt").write_text("uncommitted\n", encoding="utf-8")
     vault = GitVault(git_repo, dry_run=False, push=False)
     with vault:
         assert vault.skipped is True
-        vault.write_text("00-System/x.md", "nope\n")
+        with pytest.raises(VaultSessionSkipped):
+            vault.write_text("00-System/x.md", "nope\n")
         assert not (git_repo / "00-System" / "x.md").exists()
     cmds = [" ".join(c) for c in vault._git_cmds]
     assert not any("reset --hard" in c and "@{upstream}" not in c for c in cmds)
     assert not any(c.endswith("reset --hard HEAD") or "reset --hard HEAD" in c for c in cmds)
     # Dirty file still there (no clean/reset on start).
     assert (git_repo / "dirty.txt").exists()
+
+
+def test_flock_timeout_skips_session(git_repo: Path):
+    """B4: held flock → skipped; mutate raises (no silent write)."""
+    import fcntl
+    import threading
+    import time
+
+    from git_io import LOCK_NAME, VaultSessionSkipped
+
+    lock_path = git_repo / ".git" / LOCK_NAME
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    holder = open(lock_path, "a+", encoding="utf-8")
+    fcntl.flock(holder.fileno(), fcntl.LOCK_EX)
+
+    def release_later() -> None:
+        time.sleep(0.3)
+        fcntl.flock(holder.fileno(), fcntl.LOCK_UN)
+        holder.close()
+
+    threading.Thread(target=release_later, daemon=True).start()
+    vault = GitVault(git_repo, dry_run=False, push=False, flock_timeout=0.1)
+    with vault:
+        assert vault.skipped is True
+        with pytest.raises(VaultSessionSkipped):
+            vault.write_text("held.md", "x\n")
+    assert not (git_repo / "held.md").exists()
 
 
 def test_empty_commit_not_created(git_repo: Path):
