@@ -21,7 +21,8 @@ PAT7='sk-[A-Za-z0-9]{20,}'
 
 search() {
   if command -v rg >/dev/null 2>&1; then
-    rg -n --binary-files=without-match \
+    # macOS/homebrew rg uses --binary (not GNU --binary-files)
+    rg -n --binary \
       -e "$PAT1" -e "$PAT2" -e "$PAT3" -e "$PAT4" -e "$PAT5" -e "$PAT6" -e "$PAT7" \
       "$ROOT" || true
   else
