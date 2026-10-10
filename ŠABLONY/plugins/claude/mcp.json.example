@@ -2,7 +2,7 @@
   "mcpServers": {
     "second-brain-brain": {
       "type": "http",
-      "url": "https://brain.cyprovi.cz/mcp"
+      "url": "https://brain.cyprovi.cz/mcp/"
     }
   }
 }

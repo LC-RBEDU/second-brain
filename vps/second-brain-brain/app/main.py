@@ -10,6 +10,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.auth_deps import AuthPrincipal
 from app.errors import BrainClientError, BrainVaultError
@@ -85,7 +87,22 @@ async def lifespan(_app: FastAPI):
         yield
 
 
+class _HttpsRedirectFixMiddleware(BaseHTTPMiddleware):
+    """Behind Traefik, slash redirects must keep https (BRAIN_PUBLIC_URL)."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        public = (os.environ.get("BRAIN_PUBLIC_URL") or "").strip()
+        loc = response.headers.get("location")
+        if public.startswith("https://") and loc and loc.startswith("http://"):
+            response.headers["location"] = "https://" + loc[len("http://") :]
+        return response
+
+
 app = FastAPI(title="Second Brain Brain", version="0.2.0", lifespan=lifespan)
+# Trust X-Forwarded-Proto/Host from Coolify Traefik (fixes /mcp → http://…/mcp/).
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+app.add_middleware(_HttpsRedirectFixMiddleware)
 app.include_router(oauth_router)
 app.mount("/mcp", _mcp_asgi)
 

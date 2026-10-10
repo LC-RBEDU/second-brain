@@ -114,6 +114,7 @@ rovnou /rbu-pipeline na F2
 | 68 | 2026-10-11 | IMPLEMENT | — | B11 | — | REST create_task ×3 TEST OK; MCP 500 Task group → lifespan `session_manager.run()` |
 | 69 | 2026-10-11 | IMPLEMENT | — | B11 PASS | — | tip `005a47c`; MCP initialize+tools/list+`create_task`→T-S4; T-S1..4 Cancelled; B25 chat OK |
 | 70 | 2026-10-11 | DONE | — | — | — | SB15-3 odškrtnuto; F2 uzavřeno |
+| 71 | 2026-10-11 | IMPLEMENT | — | hotfix | — | /mcp → https Location + proxy-headers; Grok Bearer = BRAIN_SERVICE_TOKEN |
 
 ### Grill g=10 odpověď (2026-10-10)
 

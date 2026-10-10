@@ -89,6 +89,15 @@ Bez API = skip+log → Slack (A4). Kontrakt doplní F2-i po research; neblokuje 
 | `GIT_VAULT_ROOT` | `/data/vault` |
 | `GIT_VAULT_PUSH` | `1` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth |
-| `BRAIN_SERVICE_TOKEN` | machine only |
+| `BRAIN_SERVICE_TOKEN` | Coolify Brain env — Bearer pro MCP klienty bez OAuth cookie (Grok Bot, n8n). **Ne** do chatu. |
+
+## MCP klienti (Grok / Cursor / Claude)
+
+| Položka | Hodnota |
+|---|---|
+| URL | `https://brain.cyprovi.cz/mcp/` (s trailing slash; bez slash dřív hrozilo přesměrování na http — opraveno proxy headers) |
+| Auth hlavička | `Authorization: Bearer <token>` |
+| Token | Coolify → projekt **Second Brain** → app **second-brain-brain** → env `BRAIN_SERVICE_TOKEN` (Reveal). Stejný token jako service REST. |
+| OAuth (browser) | `https://brain.cyprovi.cz/oauth/authorize` → session cookie — remote MCP u Groku typicky **nepoužije**; proto Bearer. |
 
 Build context: `vps/` — image [`vps/second-brain-brain/Dockerfile`](../vps/second-brain-brain/Dockerfile).

@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "second-brain-brain": {
-      "url": "https://brain.cyprovi.cz/mcp",
+      "url": "https://brain.cyprovi.cz/mcp/",
       "headers": {
-        "Authorization": "Bearer <only-for-machine; humans use OAuth session cookie via /oauth/authorize>"
+        "Authorization": "Bearer <BRAIN_SERVICE_TOKEN from Coolify second-brain-brain>"
       }
     }
   }
