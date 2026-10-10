@@ -1,14 +1,14 @@
 # Pipeline: SB operační model F2
 
-Stav: AWAITING_USER (z: ENV F2-h / B25)
+Stav: IMPLEMENT (z: ENV F2-h Coolify Brain)
 Plán: docs/plans/2026-10-10-sb-operacni-model-f2.md
 Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
 Šťoural: 91285bfd… · g=13 HOTOVÝ
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 0/2
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 1/2
 Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: 494bda9 · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: 494bda9 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: paused-awaiting-user
+Goal: active
 Profil: SECOND_BRAIN
 
 ## Zadání (doslovně)
