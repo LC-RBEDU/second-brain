@@ -8,4 +8,4 @@ Skills žijí v [`ŠABLONY/skills/`](../skills/). Tento strom drží **manifesty
 | Claude | [`claude/mcp.json.example`](claude/mcp.json.example) |
 | Grok Bot | [`grok/mcp.json.example`](grok/mcp.json.example) |
 
-Po F2 Coolify: nahraď `https://BRAIN_PUBLIC_URL` skutečnou hodnotou. OAuth = user-bound (ne service token v lidském klientovi).
+Live Brain: `https://brain.cyprovi.cz/mcp` (v příkladech nahraď placeholder). OAuth = user-bound (ne service token v lidském klientovi).

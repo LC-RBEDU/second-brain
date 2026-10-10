@@ -11,7 +11,7 @@ Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md)
 | 2 | n8n INBOX writers | vypnuté do F3 (B17) |
 | 3 | Stale Slack INBOX | OK do F3 (B18) |
 | 4 | soft A17 Free | schváleno F1 (B19) |
-| 5 | `BRAIN_PUBLIC_URL` | Live (2026-10-10): `https://23c9620dbd341d2716acec9b.72.62.152.9.sslip.io` — callback = `{URL}/oauth/callback` (B37); později lze přepsat na `brain.redbuttonedu.cz` |
+| 5 | `BRAIN_PUBLIC_URL` | Live: `https://brain.cyprovi.cz` — callback = `{URL}/oauth/callback` (B37) |
 | 6 | OAuth Google | allowlist `lukas@redbuttonedu.cz` + `lukas.cypra@gmail.com`; lidský API key → 401/403 |
 | 7 | Service token | jen machine; audit `service:` |
 | 8 | Grok chat kontrakt | § níže — **hard gate před F2-i** (R22 / B36) |
@@ -84,7 +84,7 @@ Bez API = skip+log → Slack (A4). Kontrakt doplní F2-i po research; neblokuje 
 
 | Key | Value |
 |---|---|
-| `BRAIN_PUBLIC_URL` | `https://…` (doplní uživatel) |
+| `BRAIN_PUBLIC_URL` | `https://brain.cyprovi.cz` (Coolify app `second-brain-brain`) |
 | `VAULT_BACKEND` | `git` |
 | `GIT_VAULT_ROOT` | `/data/vault` |
 | `GIT_VAULT_PUSH` | `1` |

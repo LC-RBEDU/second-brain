@@ -107,6 +107,9 @@ rovnou /rbu-pipeline na F2
 | 61 | 2026-10-10 | TESTER | — | přeskočeno | — | profil SECOND_BRAIN |
 | 62 | 2026-10-10 | AWAITING_USER | — | ENV | — | F2 DONE blokuje: Coolify Brain + BRAIN_PUBLIC_URL + Grok webhook (B11/B25 hard) |
 | 63 | 2026-10-10 | IMPLEMENT | — | ENV F2-h | — | Coolify app `second-brain-brain` uuid `23c9620d…`; sslip FQDN; vault+SSH mounts; deploy fail = image bez curl → Dockerfile +curl |
+| 64 | 2026-10-10 | IMPLEMENT | — | ENV F2-h PASS | — | tip `f4514a6` healthy; `/healthz` 200; `BRAIN_PUBLIC_URL=https://23c9620dbd341d2716acec9b.72.62.152.9.sslip.io` |
+| 65 | 2026-10-10 | AWAITING_USER | — | ENV | — | B25: Grok routine webhook URL+key → hub env; Google OAuth redirect = `{BRAIN_PUBLIC_URL}/oauth/callback` |
+| 66 | 2026-10-10 | IMPLEMENT | — | ENV FQDN | — | `brain.cyprovi.cz` + LE; sslip pryč; OAuth redirect už v GCP; zbývá Grok webhook (B25) |
 
 ### Grill g=10 odpověď (2026-10-10)
 
