@@ -139,7 +139,7 @@ def create_task(
         hub = _hub_filename(vault, slug)
         rel_dir = f"02-PROJEKTY/{slug}/tasks"
         vault.mkdir_p(rel_dir)
-        fname = f"{task_id} — {title}.md"
+        fname = f"{task_id} — {_slugify_title(title)}.md"
         rel = f"{rel_dir}/{fname}"
         if vault.exists(rel):
             raise BrainClientError(

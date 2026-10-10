@@ -1,4 +1,4 @@
-"""Second Brain Brain API — healthz + REST vault tools (MCP plugin in F2-j)."""
+"""Second Brain Brain API — REST + MCP + Google OAuth."""
 from __future__ import annotations
 
 import os
@@ -7,10 +7,12 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.auth_deps import AuthPrincipal
 from app.errors import BrainClientError, BrainVaultError
+from app.mcp_app import build_mcp
+from app.oauth_routes import router as oauth_router
 from app.tools import allocate_task_id as allocate_tool
 from app.tools import create_task as create_task_tool
 from app.tools import get_context as get_context_tool
@@ -45,7 +47,12 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Second Brain Brain", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Second Brain Brain", version="0.2.0", lifespan=lifespan)
+app.include_router(oauth_router)
+
+# MCP streamable HTTP at /mcp (plugin SSOT URLs).
+_mcp = build_mcp()
+app.mount("/mcp", _mcp.streamable_http_app(streamable_http_path="/"))
 
 
 @app.exception_handler(BrainVaultError)
@@ -60,7 +67,7 @@ async def _brain_client_error(_request: Request, exc: BrainClientError) -> JSONR
 
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "mcp": "/mcp"}
 
 
 @app.get("/v1/context")
@@ -124,7 +131,6 @@ def rest_cancel(reminder_id: str, _auth: AuthPrincipal) -> dict:
 
 @app.api_route("/v1/f3/{name}", methods=["GET", "POST", "PUT", "DELETE"])
 def f3_stub(name: str, _auth: AuthPrincipal) -> JSONResponse:
-    """A10 / B12 — F3 tools return 501."""
     _ = name
     return JSONResponse(
         status_code=501,

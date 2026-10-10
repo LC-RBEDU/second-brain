@@ -1,6 +1,6 @@
 # Pipeline: SB operační model F2
 
-Stav: REVIEW
+Stav: IMPLEMENT
 Plán: docs/plans/2026-10-10-sb-operacni-model-f2.md
 Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
@@ -94,6 +94,8 @@ rovnou /rbu-pipeline na F2
 | 48 | 2026-10-10 | IMPLEMENT | — | F2-a+c+e | — | runbook Grok webhook; auth B37; get_context/read_file + REST stubs; commit b5f97d6; pytest 361 |
 | 49 | 2026-10-10 | IMPLEMENT | — | F2-e/f tools | — | create_task, allocate, reminders REST + service auth; F3 501; brain venv tests 17 |
 | 50 | 2026-10-10 | IMPLEMENT | — | F2-i+j | — | reminders_dispatch Grok→Claude→Slack (C4); plugin manifest examples; hub pytest 351 |
+| 51 | 2026-10-10 | REVIEW | d5ed336d… | K OPRAVĚ | 2B / 6M / 3m | NEW-1 MCP; NEW-2 OAuth → IMPLEMENT |
+| 52 | 2026-10-10 | IMPLEMENT | — | review fixes | — | MCP /mcp + OAuth + agenda-remind; brain tests 20 |
 
 ### Grill g=10 odpověď (2026-10-10)
 

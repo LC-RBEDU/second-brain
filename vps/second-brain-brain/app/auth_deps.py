@@ -1,29 +1,31 @@
-"""FastAPI auth dependencies — service token now; OAuth session later."""
+"""FastAPI auth dependencies — OAuth session (human) or service token (machine)."""
 from __future__ import annotations
 
 import os
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException
 
 from app.auth_service import (
     ServicePrincipal,
     authenticate_service_token,
     reject_human_api_key,
 )
+from app.oauth_routes import _COOKIE, read_session_email
 
 
-def require_service_or_dev(
+def require_auth(
     authorization: Annotated[str | None, Header()] = None,
     x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+    session: Annotated[str | None, Cookie(alias=_COOKIE)] = None,
 ) -> ServicePrincipal | str:
-    """B1/B2b/B15 — machine Bearer service token; reject human API keys.
-
-    When ``BRAIN_ALLOW_NO_PUSH=1`` (local tests) and no token configured,
-    allow anonymous ``dev`` principal so unit tests can hit routes.
-    """
+    """B1/B2/B2b/B15 — OAuth cookie or machine Bearer; reject human API keys."""
     if reject_human_api_key("X-API-Key", x_api_key):
         raise HTTPException(status_code=401, detail="human API keys are not accepted")
+
+    email = read_session_email(session)
+    if email:
+        return f"oauth:{email}"
 
     presented: str | None = None
     if authorization and authorization.lower().startswith("bearer "):
@@ -47,4 +49,4 @@ def require_service_or_dev(
     raise HTTPException(status_code=401, detail="authentication required")
 
 
-AuthPrincipal = Annotated[ServicePrincipal | str, Depends(require_service_or_dev)]
+AuthPrincipal = Annotated[ServicePrincipal | str, Depends(require_auth)]

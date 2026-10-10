@@ -62,7 +62,12 @@ def _tip_ahead(vault: Any) -> bool:
 def _gate_after_open(vault: Any, *, mode: VaultMode, env: Mapping[str, str]) -> None:
     """A60 steps (1)–(4). Raises BrainVaultError → 503."""
     if bool(getattr(vault, "skipped", False)):
-        reason = getattr(vault, "skip_reason", None) or "vault_dirty_start"
+        reason = getattr(vault, "skip_reason", None)
+        if not reason:
+            raise vault_error(
+                "vault_dirty_start",
+                "vault.skipped without skip_reason — misconfigured session (A56)",
+            )
         raise vault_error(str(reason))
 
     if mode in ("mutate", "rebuild"):

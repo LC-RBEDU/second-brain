@@ -1,99 +1,60 @@
 ---
 name: agenda-remind
-description: "Schedule Slack DM reminders at a specific date/time independent of Cursor chat. Writes JSON to 00-System/Reminders-Pending/; VPS cron reminders_dispatch.py sends via Slack bot. Triggers: připomeň mi, remind me, Slack připomínka, reminder v ..., v pondělí v 8. Prefer over Google Calendar for agent-scheduled pings. ALWAYS preview before write."
+description: "Schedule chat reminders (Grok → Claude → Slack) via Brain MCP tools schedule_reminder / cancel_reminder / list_reminders. Triggers: připomeň mi, remind me, Slack připomínka, reminder v .... ALWAYS preview before write."
 ---
 
 # agenda-remind
 
-> Naplánuj **Slack DM** na konkrétní čas. Doručení běží na **VPS cron** — nezávisle na tom, jestli jsi v Cursoru.
+> Naplánuj připomínku na konkrétní čas. Doručení = **zpráva do chatu** (Grok Bot → Claude → Slack). OS push = nastavení appky u tebe.
 
-**Vault:** `OBSIDIAN/00-System/Reminders-Pending/*.json`  
-**Cron (VPS):** `reminders_dispatch.py` každé **2 min** → `chat.postMessage` DM Lukášovi
-
-**F1 (git vault):** na git klonu **nespouštěj** `schedule` / `cancel` (`schedule_reminder` exit ≠0). Povoleno jen `list`. Nový reminder po cutoveru = GitHub web UI PR nebo počkat na F2; případně ruční Slack reminder.
+**F2:** zakládej jen přes **Brain MCP** (`schedule_reminder` / `cancel_reminder` / `list_reminders`).  
+Lokální `scripts/schedule_reminder.py schedule|cancel` na Mac git klonu **nepoužívej** (readonly).  
+Hub cron `reminders_dispatch.py` (*/2) volá chat řetězec; kontrakt Grok webhook: [`docs/brain-api-runbook.md`](../../../docs/brain-api-runbook.md).
 
 ## Kdy spouštět
 
 - „Připomeň mi … ve středu v 8“
 - „Reminder v pondělí 14:00: …“
-- „Za 2 hodiny mi pošli Slack …“
 - Zrušení: „zruš připomínku …“ / „co mám naplánované?“
 
-**Nepoužívat** pro task `waitUntil` / lifecycle — to je probuzení úkolu ve vaultu, ne Slack ping.
+**Nepoužívat** pro task `waitUntil` / lifecycle.
 
-## Jak to funguje
-
-1. Agent parsuje **Europe/Prague** (`deliver_at` musí být v budoucnosti).
-2. Zápis JSON do `00-System/Reminders-Pending/{id}.json` (Drive sync → VPS).
-3. Cron na coolify-dev pošle Slack DM a přesune soubor do `Reminders-Sent/`.
-
-## Workflow agenta
+## Workflow
 
 ### 1. Preview (povinné)
 
 ```
-Navrhuju Slack připomínku:
+Navrhuju připomínku (chat Grok→Claude→Slack):
 
   Kdy: 2026-09-02 08:00 (Europe/Prague)
   Zpráva: …
-  Task ref (volitelně): S12-16 — H2 rozpočty a forecast — urgovat u Domči tabulky fakturace Honzy a Luboše za 06–07/2026
+  Task ref (volitelně): S12-16 — H2 rozpočty a forecast — …
 
 OK? (ano / uprav / cancel)
 ```
 
-### 2. Zápis
+### 2. Zápis (po ano)
 
-```bash
-python3 scripts/schedule_reminder.py schedule \
-  --at "2026-09-02 08:00" \
-  --message "Urgovat u Domči tabulky fakturace Honzy a Luboše (06–07/2026)." \
-  --task-ref "S12-16 — H2 rozpočty a forecast — urgovat u Domči tabulky fakturace Honzy a Luboše za 06–07/2026"
-```
+Brain MCP tool `schedule_reminder`:
 
-Výstup: `id`, `deliver_at`, cesta k JSON.
+- `message` — text
+- `deliver_at` — ISO nebo `YYYY-MM-DD HH:MM` (Europe/Prague)
+- `task_ref` — vždy `ID — title` když jde o task
 
-### 3. Potvrzení uživateli
+REST ekvivalent (machine): `POST /v1/reminders` + service token.
 
-- **ID připomínky** + přesný čas + že doručení jde **Slack DM** (ne Cursor chat).
-- Pokud cron ještě není nasazený / chybí token → říct explicitně (viz Setup).
+### 3. Seznam / zrušení
 
-### Seznam / zrušení
-
-```bash
-python3 scripts/schedule_reminder.py list
-python3 scripts/schedule_reminder.py cancel 2026-09-02-0800-rem-abc123
-```
+- `list_reminders`
+- `cancel_reminder` s `reminder_id`
 
 ## Formát zprávy
 
-- Stručně, registr A (kolega sám sobě).
-- U tasku vždy **`ID — title`** v `--task-ref` (ne samotné ID).
-- Slack text = `message` + volitelný řádek `↳ {task_ref}`.
+- Stručně, registr A.
+- U tasku vždy **`ID — title`** v `task_ref`.
 
-## Setup (jednorázově na VPS)
+## Setup
 
-1. **Slack app** (stejná jako Cowork Capture) — přidat bot scopes:
-   - `chat:write`
-   - `im:write`
-   - `users:read.email` (lookup DM přes email)
-   - → Reinstall to Workspace
-2. **Coolify env** na second-brain-hub:
-   - `SLACK_BOT_TOKEN=xoxb-...` (Bot User OAuth Token)
-   - `SLACK_REMINDER_USER_EMAIL=lukas@redbuttonedu.cz` (default)
-   - volitelně `SLACK_REMINDER_DM_USER_ID=U...` (přeskočí lookup)
-3. **Deploy** repo + crontab řádek `reminders_dispatch.py` (už v repu).
-4. Ověření: test JSON s `deliver_at` za 1 min → log `/var/log/second-brain/reminders.log`.
-
-Detail: `vps/second-brain-hub/docs/slack-reminders-setup.md`
-
-## Fallback
-
-- Google Calendar = OK pro osobní blok v kalendáři, ale **agent default = tento skill** (Slack + audit trail ve vaultu).
-- Cursor chat **nedokáže** sám poslat zprávu bez běžící session.
-
-## Pravidla
-
-- **Preview před zápisem** — stejně jako u capture/triage.
-- **Nepiš secrets** do vault JSON.
-- Max délka zprávy ~3000 znaků (Slack limit).
-- Duplicitní `--at` + stejná zpráva → zeptej se, jestli nejde o update (cancel + nový).
+1. Coolify Brain: `BRAIN_PUBLIC_URL`, OAuth, MCP `/mcp`.
+2. Coolify Hub: `GROK_BOT_REMINDER_WEBHOOK_URL` + `KEY` (runbook); `SLACK_BOT_TOKEN` jen jako fallback po Grok/Claude.
+3. Plugin: [`ŠABLONY/plugins/`](../../plugins/README.md).
