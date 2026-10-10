@@ -19,7 +19,8 @@ Profil: SECOND_BRAIN
 - Coolify image: `…:9ed0da32b1bffdbfe9f6314c42bce6b8e0a417f4`
 - B1 smoke: `agent-context: projects=15 open=188 done7d=17 upcoming=4 → drive://00-System/agent-context.json`
 - A33: `supercronic … /app/crontab` (live); reminders + slack_poll job succeeded
-- Cutover F1-e…h **hotov** 2026-10-10: `VAULT_BACKEND=git` + `PUSH=1` + live crontab; tip `47e19de`; Mac `~/GitHub/second-brain-vault`; ruleset A17 odložen (GitHub Free)
+- Cutover F1-e…h **hotov** 2026-10-10: `VAULT_BACKEND=git` + `PUSH=1` + live crontab; tip `84ba887`; Mac `~/GitHub/second-brain-vault`
+- **A17 ruleset:** GitHub Free private → API 403 Pro — soft control (deploy-key-only write + PR template + README policy); hard ruleset až Pro/Team
 
 ## Průběh (zkráceně)
 

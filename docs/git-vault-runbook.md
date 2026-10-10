@@ -18,13 +18,13 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 
 | Položka | Stav |
 |---|---|
-| Import tip | `7aded9a` (initial) → live tip na `origin/main` (hub commits) |
+| Import tip | `7aded9a` (initial) → live tip `84ba887` (+ další hub commits) |
 | Repo | `https://github.com/LC-RBEDU/second-brain-vault` (private) |
 | Coolify WC | host bind `/data/second-brain-vault` → `/data/vault` |
 | Deploy key | `coolify-second-brain-hub` (read-write) + `openssh-client` v image |
 | Push | `git -c push.ff=only push` (Debian 2.39 nemá `push --ff-only`) |
 | Mac clone | `~/GitHub/second-brain-vault` — pull/read only |
-| Ruleset A17 | **blokováno** — GitHub Free private repo nemá branch protection / rulesets (403 Pro). Soft control: write = jen Coolify deploy key; lidé = PR až bude Pro/Team |
+| Ruleset A17 | **otevřený dluh** — Free private → 403 Pro. Soft: deploy key write + README Write policy + `.github/PULL_REQUEST_TEMPLATE.md`. Hard ruleset až Pro/Team. |
 
 ## Tooling před importem
 
