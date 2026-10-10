@@ -96,6 +96,10 @@ rovnou /rbu-pipeline na F2
 | 50 | 2026-10-10 | IMPLEMENT | — | F2-i+j | — | reminders_dispatch Grok→Claude→Slack (C4); plugin manifest examples; hub pytest 351 |
 | 51 | 2026-10-10 | REVIEW | d5ed336d… | K OPRAVĚ | 2B / 6M / 3m | NEW-1 MCP; NEW-2 OAuth → IMPLEMENT |
 | 52 | 2026-10-10 | IMPLEMENT | — | review fixes | — | MCP /mcp + OAuth + agenda-remind; brain tests 20 |
+| 53 | 2026-10-10 | REVIEW | ee0c0d0a… | K OPRAVĚ | 1B MCP auth | NEW-3 → IMPLEMENT |
+| 54 | 2026-10-10 | IMPLEMENT | — | MCP auth+tools | — | McpAuthMiddleware; list_dir/update_task/set_focus; B34b+paused tests; → REVIEW |
+| 55 | 2026-10-10 | REVIEW | 35945c7e… | K OPRAVĚ | 0B / 3M / 2m | B35b/CAS/T# → IMPLEMENT |
+| 56 | 2026-10-10 | IMPLEMENT | — | MAJOR fixes | — | get_context→503; CAS 409; tip/B34 skipped tests; pytest brain 28 / hub 354 |
 
 ### Grill g=10 odpověď (2026-10-10)
 

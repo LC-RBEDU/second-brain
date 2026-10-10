@@ -22,7 +22,9 @@ from agent_context_build import (  # noqa: E402
 from drive_io import DriveNotFoundError  # noqa: E402
 
 from app.context_freshness import needs_rebuild  # noqa: E402
+from app.errors import BrainVaultError, vault_error  # noqa: E402
 from app.vault_deps import brain_vault  # noqa: E402
+
 
 def _read_json(vault: Any, rel: str) -> dict[str, Any] | None:
     try:
@@ -51,10 +53,24 @@ def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
             return {"mode": "warm", "context": full}
 
     # needs_rebuild — mutate/rebuild gates (tip/PUSH) apply.
-    with brain_vault(mode="rebuild", env=env) as vault:
-        snapshot = build_and_write_context_bundle(vault, side_failure="raise")
-        light2 = _read_json(vault, OUTPUT_LIGHT_REL)
-        charters2 = _read_json(vault, OUTPUT_CHARTERS_REL)
-        if needs_rebuild(snapshot, light2, charters2):
-            raise RuntimeError("post-rebuild verify failed (trio timestamps)")
-        return {"mode": "rebuild", "context": snapshot}
+    # Dual session (read probe → rebuild) is intentional for tip-ahead warm (R30).
+    try:
+        with brain_vault(mode="rebuild", env=env) as vault:
+            snapshot = build_and_write_context_bundle(vault, side_failure="raise")
+            light2 = _read_json(vault, OUTPUT_LIGHT_REL)
+            charters2 = _read_json(vault, OUTPUT_CHARTERS_REL)
+            if needs_rebuild(snapshot, light2, charters2):
+                raise vault_error(
+                    "vault_push_reset_failed",
+                    "post-rebuild verify failed (trio timestamps)",
+                )
+            return {"mode": "rebuild", "context": snapshot}
+    except BrainVaultError:
+        raise
+    except Exception as exc:
+        # B35b — builder side_failure raise → 503 + A57, not bare 500
+        raise vault_error(
+            "vault_push_reset_failed",
+            f"context rebuild failed: {exc}",
+        ) from exc
+
