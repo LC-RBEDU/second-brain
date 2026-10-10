@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "second-brain-brain": {
+      "url": "https://BRAIN_PUBLIC_URL/mcp",
+      "headers": {}
+    }
+  }
+}
