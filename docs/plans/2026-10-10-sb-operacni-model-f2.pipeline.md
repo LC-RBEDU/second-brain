@@ -1,14 +1,14 @@
 # Pipeline: SB operační model F2
 
-Stav: QA
+Stav: AWAITING_USER (z: ENV F2-h / B25)
 Plán: docs/plans/2026-10-10-sb-operacni-model-f2.md
 Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
 Šťoural: 91285bfd… · g=13 HOTOVÝ
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: 4d8ab9f · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: 494bda9 · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: 494bda9 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: paused-awaiting-user
 Profil: SECOND_BRAIN
 
 ## Zadání (doslovně)
@@ -102,6 +102,10 @@ rovnou /rbu-pipeline na F2
 | 56 | 2026-10-10 | IMPLEMENT | — | MAJOR fixes | — | get_context→503; CAS 409; tip/B34 skipped tests; pytest brain 28 / hub 354 |
 | 57 | 2026-10-10 | REVIEW | 23c7ece6… | K OPRAVĚ | 0B / 3M | T3/B5/A56 tests → IMPLEMENT |
 | 58 | 2026-10-10 | IMPLEMENT | — | T3/B5/A56 | — | B35b+CAS pytest; A56 misconfig≠dirty; runbook dual-session; brain 30 / hub 354 |
+| 59 | 2026-10-10 | REVIEW | 9ba70927… | SCHVÁLENO | 0B / 0M / 2m | tip 4d8ab9f → push/QA |
+| 60 | 2026-10-10 | QA | 68fe5424… | PASS | — | hub Coolify `494bda9`; pytest 354+28; B# gate OK |
+| 61 | 2026-10-10 | TESTER | — | přeskočeno | — | profil SECOND_BRAIN |
+| 62 | 2026-10-10 | AWAITING_USER | — | ENV | — | F2 DONE blokuje: Coolify Brain + BRAIN_PUBLIC_URL + Grok webhook (B11/B25 hard) |
 
 ### Grill g=10 odpověď (2026-10-10)
 
