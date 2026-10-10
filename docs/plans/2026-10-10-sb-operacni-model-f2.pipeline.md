@@ -1,6 +1,6 @@
 # Pipeline: SB operační model F2
 
-Stav: AWAITING_USER (z: ENV B25 Grok webhook + OAuth redirect)
+Stav: IMPLEMENT (z: MCP lifespan fix B11)
 Plán: docs/plans/2026-10-10-sb-operacni-model-f2.md
 Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
@@ -110,7 +110,8 @@ rovnou /rbu-pipeline na F2
 | 64 | 2026-10-10 | IMPLEMENT | — | ENV F2-h PASS | — | tip `f4514a6` healthy; `/healthz` 200; `BRAIN_PUBLIC_URL=https://23c9620dbd341d2716acec9b.72.62.152.9.sslip.io` |
 | 65 | 2026-10-10 | AWAITING_USER | — | ENV | — | B25: Grok routine webhook URL+key → hub env; Google OAuth redirect = `{BRAIN_PUBLIC_URL}/oauth/callback` |
 | 66 | 2026-10-10 | IMPLEMENT | — | ENV FQDN | — | `brain.cyprovi.cz` + LE; sslip pryč; OAuth redirect už v GCP; zbývá Grok webhook (B25) |
-| 67 | 2026-10-11 | IMPLEMENT | — | B25 hub | — | hub redeploy + smoke `B25-smoke-20261011T000551` → `grok=ok http=200` → Reminders-Sent; čeká potvrzení zprávy v Bot chatu + B11 MCP |
+| 67 | 2026-10-11 | IMPLEMENT | — | B25 hub | — | hub redeploy + smoke `B25-smoke-20261011T000551` → `grok=ok http=200` → Reminders-Sent; chat potvrzen uživatelem |
+| 68 | 2026-10-11 | IMPLEMENT | — | B11 | — | REST create_task ×3 TEST OK; MCP 500 Task group → lifespan `session_manager.run()` |
 
 ### Grill g=10 odpověď (2026-10-10)
 

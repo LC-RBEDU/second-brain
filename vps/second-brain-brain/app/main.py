@@ -4,9 +4,11 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel
 
 from app.auth_deps import AuthPrincipal
@@ -42,22 +44,49 @@ def _allow_no_push() -> bool:
     )
 
 
+def _mcp_transport_security() -> TransportSecuritySettings:
+    """Allow Host/Origin for BRAIN_PUBLIC_URL (+ localhost for TestClient)."""
+    hosts = ["localhost", "127.0.0.1", "testserver"]
+    origins = [
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://testserver",
+    ]
+    public = (os.environ.get("BRAIN_PUBLIC_URL") or "").strip()
+    if public:
+        parsed = urlparse(public)
+        if parsed.netloc:
+            hosts.append(parsed.netloc)
+            origins.append(f"{parsed.scheme}://{parsed.netloc}")
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=hosts,
+        allowed_origins=origins,
+    )
+
+
+# MCP streamable HTTP — session manager must run inside FastAPI lifespan
+# (otherwise RuntimeError: Task group is not initialized).
+_mcp = build_mcp()
+_mcp_http = _mcp.streamable_http_app(
+    streamable_http_path="/",
+    transport_security=_mcp_transport_security(),
+)
+_mcp_asgi = McpAuthMiddleware(_mcp_http)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     if not _push_ok() and not _allow_no_push():
         raise RuntimeError(
             "Brain requires GIT_VAULT_PUSH=1 (set BRAIN_ALLOW_NO_PUSH=1 only for tests)"
         )
-    yield
+    async with _mcp.session_manager.run():
+        yield
 
 
 app = FastAPI(title="Second Brain Brain", version="0.2.0", lifespan=lifespan)
 app.include_router(oauth_router)
-
-# MCP streamable HTTP at /mcp — auth middleware (cookie ∨ service Bearer).
-_mcp_asgi = McpAuthMiddleware(
-    build_mcp().streamable_http_app(streamable_http_path="/")
-)
 app.mount("/mcp", _mcp_asgi)
 
 
