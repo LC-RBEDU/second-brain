@@ -563,14 +563,16 @@ class GitVault:
     def _push_ff_only(self) -> None:
         if self.dry_run or not self.push_enabled:
             return
+        # Debian bookworm git (2.39.x) has no `git push --ff-only` flag;
+        # `push.ff=only` rejects non-ff updates equivalently (B6).
         proc = self._git(
-            ["push", "--ff-only", "origin", self.branch],
+            ["-c", "push.ff=only", "push", "origin", self.branch],
             check=False,
         )
         if proc.returncode == 0:
             return
         log.error(
-            "git_io: push --ff-only rejected (rc=%s); resetting hard to @{upstream}",
+            "git_io: push ff-only rejected (rc=%s); resetting hard to @{upstream}",
             proc.returncode,
         )
         # B6: reset --hard @{upstream} ONLY after failed ff-only push

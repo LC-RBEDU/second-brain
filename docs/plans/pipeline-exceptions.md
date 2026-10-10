@@ -4,7 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
-| 2026-10-10 | `vps/second-brain-hub/Dockerfile` | jednořádkový fix s jasnou příčinou — image má git+LFS, ale chybí `openssh-client`; bez něj deploy key nemůže `git fetch/push` (F1 cutover) | agent (cutover F1-f/g) |
+| 2026-10-10 | `vps/second-brain-hub/Dockerfile`, `lib/git_io.py`, `tests/test_git_io.py` | jednořádkové/jasná příčina cutover hotfixy: (1) chybějící `openssh-client`, (2) Debian git 2.39 bez `git push --ff-only` → `push.ff=only` | agent (cutover F1-f/h) |
 | 2026-10-10 | `docs/plans/2026-10-10-sb-operacni-model-f0.md` (+ vault materiál SB15) | F0 jen dokument (cílová architektura + rozpad fází) — REVIEW/QA/deploy přeskočeny; Tester přeskočen (profil SECOND_BRAIN + F0). Pipeline běží jen PLAN→GRILL→CRITIC→schválení uživatelem | uživatel (plán F0 /rbu-pipeline) |
 | 2026-10-09 | `ŠABLONY/skills/agenda-zapis-ze-schuzky/SKILL.md`, `…/references/struktura-vystupu.md`, `…/scripts/build_html.py` (docstring) | čistě docs/skill — zakotvení schváleného HTML standardu zápisu (kicker, Rámec jen MD, HTML tagy v body, hero layout); bez nové runtime logiky | agent (uživatel: standard pro všechny další zápisy) |
 | 2026-10-09 | `ŠABLONY/skills/agenda-zapis-ze-schuzky/assets/style.css`, `…/scripts/build_html.py`, `…/SKILL.md` (+ Downloads HTML zápisu) | čistě skill layout/copy — hero/kicker na celou šířku, meta pod ním; bez runtime vault cron | agent (uživatel: feedback Lucie zápis) |

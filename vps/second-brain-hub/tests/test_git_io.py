@@ -155,7 +155,10 @@ def test_push_ff_reject_resets_upstream(git_repo: Path, monkeypatch: pytest.Monk
     real_git = GitVault._git
 
     def flaky_git(self, args, **kwargs):  # noqa: ANN001
-        if args[:2] == ["push", "--ff-only"]:
+        if args[:3] == ["-c", "push.ff=only", "push"] or args[:2] == [
+            "push",
+            "--ff-only",
+        ]:
             return subprocess.CompletedProcess(args, 1, "", "rejected")
         return real_git(self, args, **kwargs)
 
