@@ -1,14 +1,14 @@
 # Pipeline: SB operační model F2
 
-Stav: IMPLEMENT (z: MCP lifespan fix B11)
+Stav: DONE
 Plán: docs/plans/2026-10-10-sb-operacni-model-f2.md
 Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
 Šťoural: 91285bfd… · g=13 HOTOVÝ
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 1/2
-Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: f4514a6 · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: 494bda9 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: 005a47c · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: 494bda9 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: paused-awaiting-user
+Goal: complete
 Profil: SECOND_BRAIN
 
 ## Zadání (doslovně)
@@ -112,6 +112,8 @@ rovnou /rbu-pipeline na F2
 | 66 | 2026-10-10 | IMPLEMENT | — | ENV FQDN | — | `brain.cyprovi.cz` + LE; sslip pryč; OAuth redirect už v GCP; zbývá Grok webhook (B25) |
 | 67 | 2026-10-11 | IMPLEMENT | — | B25 hub | — | hub redeploy + smoke `B25-smoke-20261011T000551` → `grok=ok http=200` → Reminders-Sent; chat potvrzen uživatelem |
 | 68 | 2026-10-11 | IMPLEMENT | — | B11 | — | REST create_task ×3 TEST OK; MCP 500 Task group → lifespan `session_manager.run()` |
+| 69 | 2026-10-11 | IMPLEMENT | — | B11 PASS | — | tip `005a47c`; MCP initialize+tools/list+`create_task`→T-S4; T-S1..4 Cancelled; B25 chat OK |
+| 70 | 2026-10-11 | DONE | — | — | — | SB15-3 odškrtnuto; F2 uzavřeno |
 
 ### Grill g=10 odpověď (2026-10-10)
 
