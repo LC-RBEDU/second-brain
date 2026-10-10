@@ -1,14 +1,14 @@
 # Pipeline: SB operační model F2
 
-Stav: IMPLEMENT (z: ENV F2-h Coolify Brain)
+Stav: AWAITING_USER (z: ENV B25 Grok webhook + OAuth redirect)
 Plán: docs/plans/2026-10-10-sb-operacni-model-f2.md
 Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
 Šťoural: 91285bfd… · g=13 HOTOVÝ
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 1/2
-Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: 494bda9 · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: 494bda9 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: f4514a6 · Review SCHVÁLENO na: 4d8ab9f · QA PASS na: 494bda9 · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: active
+Goal: paused-awaiting-user
 Profil: SECOND_BRAIN
 
 ## Zadání (doslovně)
@@ -106,6 +106,7 @@ rovnou /rbu-pipeline na F2
 | 60 | 2026-10-10 | QA | 68fe5424… | PASS | — | hub Coolify `494bda9`; pytest 354+28; B# gate OK |
 | 61 | 2026-10-10 | TESTER | — | přeskočeno | — | profil SECOND_BRAIN |
 | 62 | 2026-10-10 | AWAITING_USER | — | ENV | — | F2 DONE blokuje: Coolify Brain + BRAIN_PUBLIC_URL + Grok webhook (B11/B25 hard) |
+| 63 | 2026-10-10 | IMPLEMENT | — | ENV F2-h | — | Coolify app `second-brain-brain` uuid `23c9620d…`; sslip FQDN; vault+SSH mounts; deploy fail = image bez curl → Dockerfile +curl |
 
 ### Grill g=10 odpověď (2026-10-10)
 
