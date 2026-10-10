@@ -4,6 +4,11 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-10 | `vps/second-brain-hub/Dockerfile` | jednořádkový fix s jasnou příčinou — image má git+LFS, ale chybí `openssh-client`; bez něj deploy key nemůže `git fetch/push` (F1 cutover) | agent (cutover F1-f/g) |
+| 2026-10-10 | `docs/plans/2026-10-10-sb-operacni-model-f0.md` (+ vault materiál SB15) | F0 jen dokument (cílová architektura + rozpad fází) — REVIEW/QA/deploy přeskočeny; Tester přeskočen (profil SECOND_BRAIN + F0). Pipeline běží jen PLAN→GRILL→CRITIC→schválení uživatelem | uživatel (plán F0 /rbu-pipeline) |
+| 2026-10-09 | `ŠABLONY/skills/agenda-zapis-ze-schuzky/SKILL.md`, `…/references/struktura-vystupu.md`, `…/scripts/build_html.py` (docstring) | čistě docs/skill — zakotvení schváleného HTML standardu zápisu (kicker, Rámec jen MD, HTML tagy v body, hero layout); bez nové runtime logiky | agent (uživatel: standard pro všechny další zápisy) |
+| 2026-10-09 | `ŠABLONY/skills/agenda-zapis-ze-schuzky/assets/style.css`, `…/scripts/build_html.py`, `…/SKILL.md` (+ Downloads HTML zápisu) | čistě skill layout/copy — hero/kicker na celou šířku, meta pod ním; bez runtime vault cron | agent (uživatel: feedback Lucie zápis) |
+| 2026-10-08 | `ŠABLONY/n8n/gmail-starred-to-inbox-workspace.json`, `scripts/deploy_n8n_cowork_workflows.py` | uživatel: fixni stahování příloh; port existující větve z personal inbox workflow (stejné uzly, mailbox workspace). Stejné soubory 2026-10-01 šly rovnou bez rbu pipeline | uživatel |
 | 2026-10-07 | `ŠABLONY/skills/rbe-writing-style/`, `scripts/install_agenda_skills.sh` | čistě text skillu — port z Claude ZIP; jen firemní/veřejná audience, ne chat/git/SB | agent (+ uživatel) |
 | 2026-10-07 | `ŠABLONY/skills/agenda-strategy-dialog/SKILL.md` | čistě text skillu — sjednocení s verzí z Claude Team (širší trigger, hranice vůči grilling) | uživatel |
 | 2026-10-07 | `ŠABLONY/skills/tymovy-disk/SKILL.md`, `ŠABLONY/skills/tymovy-disk/templates.md` | čistě text skillu — úkoly/ file-per-task (0.6); grill + architect hotové, uživatel: pusť se do toho | agent (+ uživatel) |
@@ -20,3 +25,4 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 | 2026-10-01 | scripts/fio_import_personal.py + .cursor/rules/fio-personal-payments.mdc | utility skript (Fio personal import, nemění vault) + čistě rule text; jednorázový upload Twisto | agent |
 | 2026-10-01 | today_priority + build_agent_context + Bases + skills (deadline vs review_deadline) | uživatel: 1–4 ano, 5 rovnou | uživatel |
 | 2026-10-04 | scripts/tests/test_wiki_firemni_priority_bundle.py | čistě text skillu: test jen zrcadlí přejmenované nadpisy v create-bundle (Definition of Done, Stav plnění jako H2, Přehled milníků), žádná nová logika | agent |
+| 2026-10-08 | scripts/sync_lide_people.py (role Míša Kosinerová) | jednořádkový fix / data | agent |

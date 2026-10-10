@@ -3,7 +3,7 @@ FROM python:3.12-slim-bookworm
 ARG SUPERCRONIC_VERSION=v0.2.33
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl procps tini git git-lfs \
+    && apt-get install -y --no-install-recommends ca-certificates curl procps tini git git-lfs openssh-client \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-amd64" \
       -o /usr/local/bin/supercronic \
