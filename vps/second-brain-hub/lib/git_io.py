@@ -42,6 +42,18 @@ DEFAULT_AUTHOR_EMAIL = "second-brain-hub@noreply.redbuttonedu.cz"
 class VaultSessionSkipped(DriveVaultError):
     """Session skipped (dirty WT / flock) — mutate refused (no silent success)."""
 
+    def __init__(self, message: str = "", *, skip_reason: str | None = None) -> None:
+        super().__init__(message or "vault session skipped (dirty WT or flock)")
+        self.skip_reason = skip_reason
+
+
+class GitPushError(DriveVaultError):
+    """ff-only push failed after reset to @{upstream} (Brain strict_push)."""
+
+    def __init__(self, message: str = "", *, error_reason: str = "vault_push_reset_ok") -> None:
+        super().__init__(message or "git push ff-only failed")
+        self.error_reason = error_reason
+
 
 def _env_flag(env: Mapping[str, str], key: str, default: bool = False) -> bool:
     raw = (env.get(key) or "").strip().lower()
@@ -77,6 +89,8 @@ class GitVault:
         env: Mapping[str, str] | None = None,
         flock_timeout: float = FLOCK_TIMEOUT_S,
         require_git: bool = True,
+        strict_push: bool = False,
+        discard_dirty_on_error: bool = False,
     ) -> None:
         env_map = env if env is not None else os.environ
         self._env = env_map
@@ -107,9 +121,12 @@ class GitVault:
             or DEFAULT_AUTHOR_EMAIL
         )
         self.flock_timeout = flock_timeout
+        self.strict_push = strict_push
+        self.discard_dirty_on_error = discard_dirty_on_error
 
         self._session_active = False
         self.skipped = False
+        self.skip_reason: str | None = None
         self._lock_fh = None
         self._git_cmds: list[list[str]] = []  # test spy
 
@@ -134,6 +151,7 @@ class GitVault:
         if self._session_active:
             return
         self.skipped = False
+        self.skip_reason = None
         self._session_active = True
         if not self._acquire_lock():
             log.warning(
@@ -142,6 +160,7 @@ class GitVault:
                 self.flock_timeout,
             )
             self.skipped = True
+            self.skip_reason = "vault_flock_busy"
             return
         try:
             self._git(["fetch", "origin"], check=False)
@@ -154,6 +173,7 @@ class GitVault:
                 self.root,
             )
             self.skipped = True
+            self.skip_reason = "vault_dirty_start"
 
     def end_session(self, *, exc_type=None) -> None:
         if not self._session_active:
@@ -165,6 +185,16 @@ class GitVault:
             if committed and self.push_enabled:
                 self._push_ff_only()
         finally:
+            if (
+                self.discard_dirty_on_error
+                and exc_type is not None
+                and not self.skipped
+                and self._lock_fh is not None
+            ):
+                try:
+                    self._git(["reset", "--hard", "HEAD"], check=False)
+                except Exception as exc:  # noqa: BLE001
+                    log.error("git_io: discard_dirty_on_error reset failed: %s", exc)
             self._release_lock()
             self._session_active = False
 
@@ -329,9 +359,24 @@ class GitVault:
 
     def _require_mutate(self) -> None:
         if self.skipped:
+            reason = self.skip_reason or "vault_dirty_start"
             raise VaultSessionSkipped(
-                "git vault session skipped (dirty WT or flock) — refusing mutate"
+                f"git vault session skipped ({reason}) — refusing mutate",
+                skip_reason=reason,
             )
+
+    def is_tip_ahead(self) -> bool:
+        """True when HEAD has commits not in @{upstream} (or compare fails)."""
+        proc = self._git(
+            ["rev-list", "--count", "@{upstream}..HEAD"],
+            check=False,
+        )
+        if proc.returncode != 0:
+            return True
+        try:
+            return int((proc.stdout or "0").strip() or "0") > 0
+        except ValueError:
+            return True
 
     def _check_cas(
         self,
@@ -576,4 +621,15 @@ class GitVault:
             proc.returncode,
         )
         # B6: reset --hard @{upstream} ONLY after failed ff-only push
-        self._git(["reset", "--hard", "@{upstream}"], check=False)
+        reset = self._git(["reset", "--hard", "@{upstream}"], check=False)
+        if not self.strict_push:
+            return
+        if reset.returncode == 0 and not self._is_dirty() and not self.is_tip_ahead():
+            raise GitPushError(
+                "git push ff-only failed; reset to @{upstream} OK",
+                error_reason="vault_push_reset_ok",
+            )
+        raise GitPushError(
+            "git push ff-only failed; reset to @{upstream} failed or tip still ahead",
+            error_reason="vault_push_reset_failed",
+        )

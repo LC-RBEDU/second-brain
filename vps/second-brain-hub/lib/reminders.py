@@ -10,8 +10,10 @@ from zoneinfo import ZoneInfo
 PENDING_DIR = "00-System/Reminders-Pending"
 SENT_DIR = "00-System/Reminders-Sent"
 CANCELLED_DIR = "00-System/Reminders-Cancelled"
+FAILED_DIR = "00-System/Reminders-Failed"
 
 VALID_STATUSES = frozenset({"pending", "sent", "cancelled", "failed"})
+_DUE_STATUSES = frozenset({"pending", "failed"})
 
 
 def default_tz() -> ZoneInfo:
@@ -49,6 +51,18 @@ def slugify_filename(reminder_id: str) -> str:
     return f"{safe}.json"
 
 
+def reminder_error(reminder: dict[str, Any]) -> str | None:
+    """Dual-read last_error || error (legacy)."""
+    for key in ("last_error", "error"):
+        val = reminder.get(key)
+        if val is None:
+            continue
+        text = str(val).strip()
+        if text:
+            return text
+    return None
+
+
 def build_reminder(
     *,
     message: str,
@@ -76,6 +90,7 @@ def build_reminder(
         "message": msg,
         "target": target or {"type": "dm"},
         "source": source,
+        "attempt_count": 0,
     }
     if task_ref:
         payload["task_ref"] = task_ref.strip()
@@ -92,8 +107,21 @@ def format_slack_text(reminder: dict[str, Any]) -> str:
 
 
 def is_due(reminder: dict[str, Any], now: datetime, tz: ZoneInfo | None = None) -> bool:
-    if reminder.get("status") != "pending":
+    """True when pending|failed, deliver_at ≤ now, and next_attempt_at absent or ≤ now.
+
+    Legacy ``status=failed`` still in Pending remains retryable (A51).
+    """
+    status = str(reminder.get("status") or "").strip().lower()
+    if status not in _DUE_STATUSES:
         return False
     tz = tz or default_tz()
+    now_local = now.astimezone(tz)
     deliver = parse_deliver_at(str(reminder["deliver_at"]), tz=tz)
-    return deliver <= now.astimezone(tz)
+    if deliver > now_local:
+        return False
+    next_raw = reminder.get("next_attempt_at")
+    if next_raw:
+        next_at = parse_deliver_at(str(next_raw), tz=tz)
+        if next_at > now_local:
+            return False
+    return True

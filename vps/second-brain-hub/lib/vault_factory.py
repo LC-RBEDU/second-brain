@@ -56,11 +56,17 @@ def _flag(env: Mapping[str, str], key: str) -> bool:
     return raw in ("1", "true", "yes", "on")
 
 
-def open_vault(*, env: Mapping[str, str] | None = None):
+def open_vault(
+    *,
+    env: Mapping[str, str] | None = None,
+    strict_push: bool = False,
+    discard_dirty_on_error: bool = False,
+):
     """Return DriveVault or GitVault according to VAULT_BACKEND (default drive).
 
     Prefer: ``with open_vault() as vault:``.
     When ``VAULT_WRITERS_PAUSED=1``, mutate methods raise ``VaultPausedError``.
+    ``strict_push`` / ``discard_dirty_on_error`` apply only to GitVault (Brain).
     """
     env_map = env if env is not None else os.environ
     backend = (env_map.get("VAULT_BACKEND") or "drive").strip().lower() or "drive"
@@ -68,7 +74,11 @@ def open_vault(*, env: Mapping[str, str] | None = None):
     if backend == "git":
         from git_io import GitVault
 
-        vault: Any = GitVault(env=env_map)
+        vault: Any = GitVault(
+            env=env_map,
+            strict_push=strict_push,
+            discard_dirty_on_error=discard_dirty_on_error,
+        )
     elif backend == "drive":
         from drive_io import DriveVault, credentials_from_env
 

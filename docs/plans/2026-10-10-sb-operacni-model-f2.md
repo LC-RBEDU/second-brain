@@ -1,7 +1,7 @@
 # Plán: F2 — Brain API + skilly plugin
 
-> Architekt: **k=1 · r=1**  
-> Stav: **DRAFT** (k zápisu do `docs/plans/2026-10-10-sb-operacni-model-f2.md`)  
+> Architekt: **otevření #2 · k=2 · r=2** (critic 7db484d6: §2=brain_vault+A60; F2-b/e; T6/T16 A62; g=1–g=12)
+> Stav: **SCHVÁLENO** (critic 482a6562 · k=2 r=2)  
 > Pipeline ledger: [2026-10-10-sb-operacni-model-f2.pipeline.md](2026-10-10-sb-operacni-model-f2.pipeline.md)  
 > Parent F0 (SCHVÁLENO): [2026-10-10-sb-operacni-model-f0.md](2026-10-10-sb-operacni-model-f0.md) · F1 DONE cutover  
 > Vault: **SB15 — Nový operační model SB — multi-klient, Grok orchestrace, GitHub vault** (**SB15-3**)  
@@ -9,31 +9,76 @@
 
 ## Zadání a požadavky
 
-R1 — Po F0 SCHVÁLENO (B1–B22) a F1 cutover DONE (2026-10-10, soft A17 Free) spustit F2 pipeline. (uživatel „rovnou /rbu-pipeline na F2“ + kontext)
+R1 — Po F0 SCHVÁLENO (B1–B22) a F1 cutover DONE (2026-10-10, soft A17 Free) spustit F2 pipeline. (uživatel „rovnou /rbu-pipeline na F2“)
 
-R2 — F2 scope z F0 tabulky F2: **Brain API**; klienti vault **MCP write**; **plugin SSOT**; **serverová policy**; **FM kontrakt ID/slug**. (F0 F2 výstupy + brief)
+R2 — F2 scope z F0 tabulky F2: **Brain API**; klienti vault **MCP write**; **plugin SSOT**; **serverová policy**; **FM kontrakt ID/slug**. (F0 F2 + brief)
 
-R3 — Brain API = **nová HTTPS služba na Coolify** (ne cron process hubu); remote MCP + tenké REST pro n8n a Claude artifact. (F0 A2)
+R3 — Brain API = **nová HTTPS služba na Coolify**; remote MCP + tenké REST pro n8n a Claude artifact. `BRAIN_PUBLIC_URL` = MCP + OAuth + REST (ne dashboard). (F0 A2)
 
-R4 — Po F2: zapisovatelé vaultu = Brain API + VPS crony přes `GitVault` (deploy key). Klienti vault **jen MCP**. Dev-bypass default **neexistuje**. Mac clone zůstává fetch/pull; **žádný FS write** do klonu ze skills. (F0 A3, R23, R25; brief R23/A3)
+R4 — Po F2: zapisovatelé vaultu = Brain API + VPS crony přes `GitVault`. Klienti vault **jen MCP**. Dev-bypass default **neexistuje**. Mac clone = fetch/pull; žádný FS write ze skills. (F0 A3, R23, R25)
 
-R5 — Auth: Google OAuth = IdP; klient→Brain **user-bound OAuth**. Scopes F2 = vault; Gmail scopes až F3. (F0 A19)
+R5 — Auth: Google OAuth = IdP; allowlist `lukas@redbuttonedu.cz` + `lukas.cypra@gmail.com`. **Lidští klienti (Cursor / Claude / Grok) = jen user-bound OAuth** — F0 fail-path „API key pro lidské klienty“ **zrušen**. Service token **jen** machine; audit `service:`. Gmail scopes až F3. (F0 A19 + grill g=1 Q5 + g=2 Q4)
 
-R6 — Fail-path Grok plugin: **Claude + Cursor first**. Grok private plugin smoke **není** doložen PASS → MVP = Claude + Cursor; Grok opt-in po smoke. (F0 F2 fail-path + brief)
+R6 — **Stejná vault tool sada** pro Cursor, Claude/Cowork a **Grok Bot** (vč. `create_task`). Grok = součást F2 DONE: private plugin smoke + MCP write + reminder chat delivery. (grill g=1 Q3 + g=2 Q1)
 
-R7 — F1–F2: n8n INBOX writers **zůstávají vypnuté**; stale Slack INBOX OK do F3 (R26). (F0 R13, R26 + brief)
+R7 — F1–F2: n8n INBOX writers **vypnuté**; stale Slack INBOX OK do F3 (R26). (F0)
 
-R8 — Pokryté F0 R# z F2 tabulky: **R2–R6, R10, R16, R19, R23** (+ vazby R4 autonomie vault, R25 writers, R8 model md). (F0)
+R8 — Pokryté F0 R#: **R2–R6, R10, R16, R19, R23** (+ R25, R8 model). Reminder **doručení v F2** = chat zpráva. Odchylka od F0 A11: F2 = chat delivery, ne VPS→OS push. (grill g=1 Q1 + g=2)
 
-R9 — Soft A17 Free (hard ruleset odložen) **neblokuje** F2. (brief + F1 A17 amend)
+R9 — Soft A17 Free neblokuje F2.
 
-R10 — Schvalování plánu uživatelem: **ne**. (brief / ledger)
+R10 — Schvalování plánu uživatelem: **ne**.
 
-R11 — Po implementaci + QA: posunout vault krok **SB15-3**. (brief)
+R11 — Po QA: odškrtnout **SB15-3**.
 
-R12 — Lokální gate: `python3 -m pytest vps/second-brain-hub/tests scripts/tests -q` (+ nové testy Brain). TESTER: přeskočeno (profil SECOND_BRAIN). (brief)
+R12 — Gate: `python3 -m pytest vps/second-brain-hub/tests scripts/tests -q` (+ Brain tests). TESTER: přeskočeno.
 
-R13 — Mimo rozsah: F3 Slack/Sembly/živá triáž/Gmail hybrid/OS push; F4 úklid Obsidian/Drive/poll + artifact dashboard jako samostatná pipeline; F5 boti; zapnutí n8n INBOX; hard GitHub ruleset / Pro; un-ignore `OBSIDIAN/` v tooling. (brief)
+R13 — Reminder store Brain MCP: `schedule_reminder`, `cancel_reminder`, `list_reminders`. Skill `agenda-remind` → tyto tools. (grill g=1 Q1)
+
+R14 — Připomínka = **zpráva do chatu** Grok → Claude → Slack. OS push = user setting. PASS = jeden chat kanál; primary = Grok chat. Cursor mimo řetězec; systémové To-do mimo F2. (grill g=2)
+
+R15 — `get_context` **needs_rebuild** (sjednoceno s §3 / A32 / A37 / **C2**):  
+missing full ∨ **bad `generated_at` ∨ stale = `generated_at` starší než přesně 15 minut** ∨ light/charters chybí ∨ `light.generated_at ≠ full.generated_at` (charters stejně) → sync rebuild **celým** shared builderem; busy → 503; nikdy tichý stale TOP. (grill g=1 Q2 + g=5 A37 + critic d28e95c7 C2)
+
+R16 — Live smoke jen projekt **TEST**. (grill g=1 Q4)
+
+R17 — `BRAIN_PUBLIC_URL`; OAuth callback = `{BRAIN_PUBLIC_URL.rstrip('/')}/oauth/callback`. (grill g=1 Q6)
+
+R18 — Bez bulk FM v F2 DONE. (grill g=1 Q7)
+
+R19 — Brain: 503 s `error_reason` z **`skip_reason`** (ne holé `skipped`). Retry 1–2× **jen** `vault_flock_busy` (**A62**); `vault_dirty_start` → okamžitě 503. Hub cron retry policy beze změny. (grill g=1 Q8 + NEW-1 + g=12)
+
+R20 — Notify-first; at-least-once; double ping OK. (grill g=2 Q2)
+
+R21 — All-fail: pending + `last_error` (+ dual-read `error`) + backoff; K=5; pak `Reminders-Failed/`; `attempt_count` default 0. (grill g=2 Q3)
+
+R22 — F2-a hard exit: Grok chat send kontrakt v runbooku před F2-i; jinak eskalace; B25 neoslabovat. (grill + A28)
+
+R23 — Brain každý MCP/REST request = **request-scoped** `brain_vault` → uvnitř `open_vault` (enter→ops→commit/push→exit). Zakázán process-global vault a přímý `open_vault` z tools/rest. Coolify Brain `GIT_VAULT_PUSH=1`; mutate bez úspěšného push → **503**.  
+**Brain `strict_push=True` (C1):** po fail ff-only push nejdřív `git reset --hard @{upstream}` (stejně jako dnešní hub B6 v `lib/git_io.py` `_push_ff_only` L563–580), **pak** raise `GitPushError` (nebo ekvivalent) → HTTP 503. Po **úspěšném** resetu nesmí zůstat dirty WT.  
+**Hub bez `strict_push`:** jen log+reset (beze změny F1) — žádný raise.  
+**Po selhání resetu** viz A52 (ahead/divergent ≠ B42).
+
+R24 — `allocate_task_id` = ceiling logika z `scripts/next_task_id.py` portovaná do `lib/` nad vault API, pod flock. (A40; preview = A43)
+
+R25 — Plugin SSOT: `ŠABLONY/skills/` + plugin manifesty Cursor / Claude / Grok; F2-j; B11/T12.
+
+R26 — Brain session: dirty na startu = skip→503 **bez** reset (g=7 Q1=b), `skip_reason=vault_dirty_start`. Flock busy = `skip_reason=vault_flock_busy` (B14). Discard jen po vlastní výjimce v non-skipped session. Atomické trio + guarded error-path `reset --hard HEAD`. **B42 = jen porcelain dirty** — ne tip ahead, **ne** flock. Holé `skipped` nestačí (**NEW-1** / A59).
+
+R27 — Brain otevírá vault **jen** přes `open_vault(..., strict_push=, discard_dirty_on_error=)` ve `vault_factory.py` (kwargs do `GitVault` **před** `_PausedVault`).
+
+R28 — Reminder schema/helpers v `lib/reminders.py`: `FAILED_DIR`, `attempt_count=0` při create, `is_due` respektuje `next_attempt_at`, dual-read `last_error||error`; status normalizace (A51). (R21)
+
+R29 — Shared builder **bez session**: `lib/agent_context_build.py` neobsahuje `open_vault` / `begin_session` / `end_session`. Caller (thin cron i Brain) drží **jednu** session a volá `build_and_write_context_bundle(vault, …)`. (critic 6bf34c5e NEW-1)
+
+R30 — **Brain tip-ahead gate (g=9 Q1=b + g=10 Q1=a):** při `strict_push`, pokud `HEAD ≠ @{upstream}`:
+- **mutate** (vč. `create_task`, schedule/cancel reminder, a **`get_context` když `needs_rebuild=true`**) → HTTP **503**, `error_reason=vault_tip_ahead`, **žádný** commit, **žádný** rebuild, **žádný** tichý stale TOP;
+- **read-only** vč. warm `get_context` (`needs_rebuild=false`) → **smí**.
+Ops = manuální SSH uklidění tipu (runbook). Formát chyb → **A57**; úplný seznam reasons → **A55+A58**. Gate tip+PUSH **centrálně** v `vault_deps` (A60).
+
+R31 — **F2-i PAUSED před HTTP (NEW-2):** před krokem 0b (Grok/Claude/Slack HTTP) zjistit `VAULT_WRITERS_PAUSED` → **0 sends**, **no attempt++**, žádný 0b. Stejně jako vault skipped (A34).
+
+Mimo rozsah: F3 Slack live / Sembly / Gmail hybrid / R18 triggery; F4 dashboard; F5 boti; n8n INBOX on; hard ruleset; un-ignore `OBSIDIAN/`; bulk FM; VPS→OS push; systémové To-do; API key pro lidské MCP; sjednocení Mac `scripts/build_agent_context.py` s hub builderem (mimo F2 DONE); start-of-session `git reset`.
 
 Netýká se: Alembic, RBAC Universe, frontend subnav, `qa_gate.mjs`, Playwright-T6, Celery.
 
@@ -41,33 +86,183 @@ Netýká se: Alembic, RBAC Universe, frontend subnav, `qa_gate.mjs`, Playwright-
 
 ## Předpoklady
 
-A1 — F1 live platí dle [docs/git-vault-runbook.md](../git-vault-runbook.md): `VAULT_BACKEND=git`, Coolify WC host bind `/data/second-brain-vault` → `/data/vault`, deploy key write, Mac `~/GitHub/second-brain-vault` pull/read only, soft A17.
+A1 — F1 live: `VAULT_BACKEND=git`, WC `/data/vault`, deploy key, soft A17.
 
-A2 — Brain = **samostatná Coolify app** (base dir `vps/second-brain-brain/`), sdílí **stejný persistent volume** `/data/vault` s hubem, aby `GitVault` flock (`second-brain-vault.lock`, timeout 5 s) serializoval dual-writer hub↔Brain. Oddělený clone = nepřijatelný race na `main`.
+A2 — Brain Coolify `vps/second-brain-brain/`, **sdílený** volume s hubem. Oddělený clone zakázán.
 
-A3 — Grok private plugin smoke ≠ PASS → F2 MVP **bez** Grok pluginu / bez tvrzení B# pro Grok write. Skills text může zmínit Grok jako opt-in; enforce write = MCP (který Grok zatím nepřipojuje).
+A3 — Grok chat delivery = hard gate F2 DONE. F2-a bez Grok chat API → eskalace (R22), ne oslabení B25.
 
-A4 — Claude routines MCP bug (F0 A8): proaktivita zůstává na VPS (F3+ push); F2 nevyžaduje Claude Schedules/routines. Interaktivní Claude Desktop/Cowork + remote MCP stačí.
+A4 — Claude chat chybí → skip+log → Slack.
 
-A5 — Privacy / no-train (Cursor + Claude Team): považováno za **preflight checklist** F2-a; pokud fail → blokovat napojení klientů, ne blokovat vývoj služby. Grok Privacy = součást Grok opt-in.
+A5 — Privacy preflight F2-a.
 
-A6 — Objem vaultu: F0 A7 (~782 MB / ~7432 souborů) zůstává řádově platný po F1; P rozpočet F0 P1/P2/P7 platí. Exact recount = QA T# inventář `du`/`find` na Coolify WC.
+A6 — Objem ~ F0 A7; T9 `du -sh /data/vault`.
 
-A7 — **FM kontrakt (R10) v F2** = (i) dokumentovaný kontrakt, (ii) dual-read starých wikilinků ve FM + nových `slug`/`id`, (iii) **nové zápisy** bez `aliases` a bez wikilinku v `project:` / `parent:` (jen slug / ID). **Hromadná migrace** všech existujících task FM = až když čtenáři (Brain + snapshot + skills) umí ID/slug (F0 migrace krok 10) — F2 dodá čtenáře + kontrakt; bulk rewrite = volitelný F2-late skript se dry-run, default **ne** auto-apply na celý vault.
+A7 — FM dual-read; nové bez `aliases`; bez bulk.
 
-A8 — Allowlist OAuth subjektů F2: `lukas@redbuttonedu.cz` (primární). `lukas.cypra@gmail.com` = stejný člověk, povolen jako alternativní Google účet pro IdP (stejný Brain user). Žádní další uživatelé.
+A8 — OAuth allowlist: oba e-maily.
 
-A9 — Machine REST (artifact / budoucí n8n): **service token** (Bearer) s scope `vault` — oddělený od user OAuth. F2 nenasazuje n8n writers; token připraven, n8n off.
+A9 — `BRAIN_SERVICE_TOKEN` jen machine; lidský API key → 401/403.
 
-A10 — F2 MCP tool surface = **vault** (+ get_context). F3 tool stubs (`ingest_sembly`, `get_triage_candidates`, `propose_external_send` / mailbox mutate) vrací **501** s jasnou hláškou — žádná tichá no-op „úspěch“.
+A10 — F3 stubs → 501. Reminder tools nejsou stub.
 
-A11 — Mac: skills po F2 **píší jen přes Brain MCP**; lokální `git pull` + read klonu zůstává povolený pro rychlé čtení (snapshot, preview). `scripts/build_agent_context.py` a `schedule_reminder` schedule/cancel zůstávají fail-on-git-clone (F1 B23/B24); reminder schedule → Brain tool.
+A11 — Mac write jen Brain MCP.
 
-A12 — Rozpočet ≤50: F2 nesmí zavést nové usage-based bez explicitního OK; Coolify app + Google OAuth client = existující / provozní base mimo strop (F0 A6/A20). Žádný nový placený MCP hosting.
+A12 — Rozpočet: žádné nové usage-based bez OK.
 
-A13 — Doména Brain: `brain.redbuttonedu.cz` (nebo Coolify generated HTTPS) — veřejné HTTPS nutné pro OAuth redirect (F0 riziko 2). Konkrétní hostname potvrdí deploy; plán počítá s veřejným TLS.
+A13 — `BRAIN_PUBLIC_URL`; callback `{BRAIN_PUBLIC_URL.rstrip('/')}/oauth/callback`.
 
-A14 — `agent_write_guard` (Cowork/Grok FS policy) **nezaniká** hned: F2 server policy ho **superseduje** pro vault write path; guard zůstane pro případný legacy FS, ale skills default = MCP-only.
+A14 — `agent_write_guard` supersedován server policy.
+
+A15 — Cursor / Claude / Grok rovnocenní vault tools.
+
+A16 — Reminder store = Brain MCP; dispatch = hub cron `*/2`.
+
+A17 — Hub TEST / slug `test`.
+
+A18 — F2 nestaví VPS→OS push stack.
+
+A19 — At-least-once: po success v ticku další kanály ne; race OK.
+
+A20 — Backoff: `attempt_count` default 0; `last_error || error`; K=5; `Reminders-Failed/`.
+
+A21 — Mutate tombstone = `delete_if_exists` ×3 (full/light/charters); žádný marker.
+
+A22 — REST min: `healthz` + vault tools za service token.
+
+A23 — Backoff `next_attempt_at = now + min(60, 2^attempt) min`; env `REMINDER_MAX_ATTEMPTS`.
+
+A24 — P7 lazy: mutate = tombstone; rebuild při get_context; mutate ≤5 s.
+
+A25 — Grok chat = stejný Bot jako plugin.
+
+A26 — Supersede návodů „Cowork/Grok nezakládají task“; F2-j.
+
+A27 — **Chybějící Slack token (C4):** early-return / skip **jen pro Slack krok**, a **až po** pokusu Grok a Claude. Nesmí abortovat celý dispatch před Grok/Claude (dnešní `reminders_dispatch.py` L59–62 early-return na startu je **zakázaný vzor** pro F2 chat dispatch). B33.
+
+A28 — B11+B25 hard gate pro DONE; runtime fallback B26–B30.
+
+A29 — **Shared context builder — bez session (critic 6bf34c5e + C3 + a218008b NEW-2):** do `lib/agent_context_build.py` přesunout:  
+- konstanty **`LESSON_TAKEAWAY_RE` L51** + **L80–84** (`OUTPUT_REL`, `OUTPUT_LIGHT_REL`, `OUTPUT_CHARTERS_REL`, `HUB_TITLE_RE`, `FRONTMATTER_RE`) + `TZ` dle potřeby;  
+- helpers **L87–330** (`parse_frontmatter` … `collect_areas`) — včetně použití `LESSON_TAKEAWAY_RE` ~L246;  
+- tělo **uvnitř** dnešního `with open_vault` — tj. logika **L333–619** (collect → snapshot → in-memory light/charters → write), **ne** řádek `with open_vault()` L332 ani jakýkoli `begin_session`/`end_session`/`open_vault`.  
+
+Veřejné API: `build_and_write_context_bundle(vault, *, tz=…, side_failure: "warn"|"raise" = "warn") -> snapshot_dict`.  
+- **Pořadí výpočtu:** (1) spočítat v paměti `snapshot`, pak `light`/`charters` se **sdíleným `generated_at`** při úspěšném dopočtu (`agent_context_light.py` L136–137, L171–173); (2) teprve pak zápis.  
+- **„Trio“** = tři soubory se stejným `generated_at` **jen když** light i charters úspěšně dopočítány a zapsány.  
+- **`side_failure="warn"` (hub):** zachovat dnešní soft chování (`build_agent_context.py` **L600–612**): **vždy zapsat full**; fail light/charters = WARNING, full zůstane zapsaný i bez light/charters.  
+- **`side_failure="raise"` (Brain):** fail light/charters → raise; post-verify timestamps → jinak 503 (A36).  
+- **Hub thin cron:** `with open_vault() as vault: build_and_write_context_bundle(vault, side_failure="warn")`.  
+- **Brain rebuild:** uvnitř již otevřené request session: `build_and_write_context_bundle(vault, side_failure="raise")` — **žádná** druhá session.  
+- Zakázáno: lib volá `open_vault` / nestuje session.  
+Mac `scripts/build_agent_context.py` mimo F2 DONE.
+
+A30 — Vault skip gate před chat send; no attempt++ (A34).
+
+A31 — Grok chat kontrakt v runbooku před F2-i.
+
+A32 — Tombstone delete-if-exists ×3; **needs_rebuild** = §3 (včetně A37 + **TTL 15 min C2**); žádný prázdný/marker.
+
+A33 — PAUSED → 0 sends; B34b.
+
+A34 — Skip/PAUSED ≠ pokus (no attempt++ / no backoff).
+
+A35 — Docker context `vps/`; `COPY second-brain-hub/lib/ /app/lib/`; zakázán `COPY ../`.
+
+A36 — Soft/hard side files: hub soft WARNING (full zapisuje i bez light/charters — A29); Brain hard raise + post-verify timestamps → jinak 503.
+
+A37 — Warm: vyžaduj `light.generated_at == full.generated_at` (charters stejně); nesoulad → needs_rebuild (B3d).
+
+A38 — **Request-scoped vault:** Brain MCP/REST: `with brain_vault(mode=…) as vault:` (uvnitř `open_vault`). Hub cron: `with open_vault()`. Zakázán process-global vault. Důkaz session: `git_io.py` L133–169.
+
+A39 — **Brain push + strict_push (C1, zamčeno):**  
+- `GIT_VAULT_PUSH=1`; Brain `open_vault(strict_push=True, …)`.  
+- `_push_ff_only` po fail ff-only: **vždy** `git reset --hard @{upstream}` (důkaz dnešní hub B6: `git_io.py` L563–580 — reset už existuje, raise ne).  
+- **`strict_push=True`:** po **úspěšném** resetu + porcelain clean (A52 větev 1) **raise `GitPushError`** → Brain mapuje na HTTP 503.  
+- **`strict_push=False` (hub default):** po resetu jen log, **bez** raise — F1 chování beze změny.  
+- Reset `@{upstream}` po fail push ≠ start-of-session reset (R26 / g=7 Q1=b zůstává).  
+- Pozn.: A46 `reset --hard HEAD` je error-path po body výjimce (A53); C1 reset `@{upstream}` je fail-push path uvnitř `_push_ff_only` — A46 se na `GitPushError` nespouští.  
+- **Mezistav po `commit_if_dirty` + fail push (před resetem):** WT je typicky **porcelain clean**, lokální tip **ahead of @{upstream}** — `_is_dirty` (`git status --porcelain`, L267–269) to **neskipne**. Viz A52.
+
+A40 — **Task ID ceiling v lib:** `lib/task_id_allocate.py` port z `scripts/next_task_id.py` L61–162 přes vault API.
+
+A41 — **Plugin SSOT:** `ŠABLONY/skills/` + `ŠABLONY/plugins/{cursor,claude,grok}/`; F2-j + T12.
+
+A42 — Brain `requirements.txt` ⊇ hub lib deps + FastAPI/MCP.
+
+A43 — **Allocate preview (g=6):** non-reserving; B8/T6 = concurrent `create_task`.
+
+A44 — **strict_push jen Brain (g=6).**
+
+A45 — **Rebuild = mutate (g=6 + g=10 Q1=a)** v **stejné** request session jako `get_context` (volá `bundle(vault)`).  
+- `needs_rebuild=false` + tip ahead → warm OK (B3b).  
+- `needs_rebuild=true` + tip ahead → **503 `vault_tip_ahead`** (B45); **ne** rebuild, **ne** návrat stale snapshotu jako success (B3e).  
+Tip sync → teprve pak rebuild dle R15.
+
+A46 — **Error-path discard — úzký guard:**  
+`discard_dirty_on_error and exc_type is not None and not self.skipped` **a** lock držen → `git reset --hard HEAD` před unlock.  
+**Nikdy** při dirty-start / flock-busy / `skipped=True` / hub.  
+**Ano** při vlastní raise po čistém startu → WT clean (B41).  
+Fail-push path řeší **A39/C1** (`@{upstream}`), ne tento HEAD discard.
+
+A47 — **`GIT_VAULT_PUSH≠1` = runtime fail:** 503 na mutate vč. rebuild. B40 = runtime B#.
+
+A48 — **F2-i flock scope:** flock jen read pending+due + archive; HTTP mimo session.
+
+A49 — **Dirty na startu (g=7 Q1 = b):** skip+log, žádný reset → Brain 503, `error_reason=vault_dirty_start` (B42). **B42 = výhradně porcelain dirty na begin_session** — ne ahead tip (B45).
+
+A50 — **Factory kwargs:** `open_vault(..., strict_push=, discard_dirty_on_error=)` → `GitVault` **před** `_PausedVault`. Brain jen přes factory. (`vault_factory.py` L59–85 dnes bez kwargs.)
+
+A51 — **`is_due` / status normalizace (NEW-2):** Dnes `is_due` vyžaduje `status == "pending"` (`lib/reminders.py` L94–96). F2:  
+- **Výchozí:** `is_due` true když `status in {"pending", "failed"}` ∧ deliver_at≤now ∧ (`next_attempt_at` chybí ∨ ≤now). Tím pádem legacy JSON se `status=failed` ještě v Pending zůstane retryable.  
+- **Nové zápisy** po all-fail v Pending: držet `status=pending` + `last_error` + `next_attempt_at` (R21); po K → move `FAILED_DIR` se `status=failed`.  
+- Alternativa (ekvivalentní T15): při read migrace `failed`→`pending`+zachovat `last_error` — pokud implementace zvolí migraci, `is_due` smí zůstat jen `pending`, ale T15 musí pokrýt legacy soubor.  
+Výchozí předpoklad plánu = větev `status in {pending, failed}` (bez povinné migrace na disku).
+
+A52 — **C1 recovery + tip-ahead follow-up (a218008b + g=9):**  
+Po `commit_if_dirty` + fail ff-only: WT typicky **clean**, tip **ahead**. `_is_dirty` (L267–269) ahead **neskipne** — **≠ B42**.  
+
+| Větev | Podmínka | Výsledek (Brain `strict_push`) |
+|---|---|---|
+| **(1) reset OK** | `reset --hard @{upstream}` OK + porcelain clean + tip=upstream | 503, `error_reason=vault_push_reset_ok` (+ lidská message); tip sync |
+| **(2) reset fail** | reset rc≠0 / tip stále ahead nebo divergent | 503, `error_reason=vault_push_reset_failed`; kritický log; tip zůstane ahead; **ne** B42; **ne** auto start reset |
+
+**Po větvi (2) / jakémkoli `HEAD ≠ @{upstream}` na Brainu:** další **mutate** i **`get_context` needs_rebuild** → **503** `vault_tip_ahead` (B45/B3e); warm read/`get_context` smí; ops = manuální SSH (runbook). Hub: F1 log+reset, bez tip-ahead gate.
+
+
+A53 — **C1 vs A46 (g=8):** A46 `reset --hard HEAD` jen při body `exc_type is not None` ∧ `discard_dirty_on_error` ∧ `not skipped` ∧ lock. Fail-push běží při `exc_type is None` (tělo OK → commit → `_push_ff_only`); po C1 raise z `end_session` se A46 **nesmí** spouštět kvůli `GitPushError`. Důkaz pořadí: `git_io.py` L158–169.
+
+A54 — **C4 vs B29 (g=8):** Chybějící Slack token = skip jen Slack po Grok i Claude. Když Grok+Claude fail/skip a Slack skip (no token) → bez success = **B29** (attempt++, backoff, po K → Failed). Neplést s A34 (vault skip/PAUSED = 0 sends, no attempt++). T13: B33 + all-fail bez tokenu.
+
+A55 — **Základní `error_reason` čtveřice (g=9 Q2):** `vault_dirty_start` | `vault_push_reset_ok` | `vault_push_reset_failed` | `vault_tip_ahead`. Příklad tip_ahead: „Vault tip není sync s remote (HEAD ≠ @{upstream}). Mutate/rebuild blokováno — ukliď tip přes SSH dle runbooku.“ Úplný set → **A58**. Formát → **A57**.
+
+A56 — **Dirty vs flock vs tip (NEW-1 + g=10):**  
+Dnes `begin_session` nastaví jen `skipped=True` pro flock i dirty (`git_io.py` L138–156) bez reason. F2:  
+
+| Stav | `skipped` | `skip_reason` | Brain |
+|---|---|---|---|
+| flock busy | True | `vault_flock_busy` | 503 B14 |
+| porcelain dirty begin | True | `vault_dirty_start` | 503 B42 |
+| tip ahead, not skipped | False | `None` | warm OK; mutate/rebuild → 503 `vault_tip_ahead` (A60) |
+
+**Zakázáno:** `if vault.skipped → vault_dirty_start`. Mapovat **výhradně** podle `skip_reason`.
+
+A57 — **Error transport (g=10 Q2=a):** MCP `isError=true` + **content text** s `error_reason` i `message`. REST 503 JSON `{ "error_reason", "message" }`. B46.
+
+A58 — **Úplný stabilní set `error_reason` (g=10/g=11):** ⊇ A55 + `vault_flock_busy` + `vault_push_disabled` + `vault_paused`. B46 = všechny Brain vault 503. **T16 assertuje celý set včetně `vault_paused` (NEW-4)**.
+
+A59 — **`skip_reason` na `GitVault` (NEW-1):** `self.skip_reason` vedle `skipped`. begin_session: flock → `"vault_flock_busy"`; dirty → `"vault_dirty_start"`. `VaultSessionSkipped` nese reason. `_PausedVault` forwarduje `skipped`/`skip_reason`.
+
+A60 — **Centrální pre-tool gate tip+PUSH ve `vault_deps` (NEW-3):** tools jen přes `brain_vault(mode: read|mutate|rebuild)`. Po open: (1) skipped → 503(`skip_reason`); (2) PAUSED mutate/rebuild → `vault_paused`; (3) mode mutate/rebuild: PUSH≠1 → `vault_push_disabled`; tip ahead → `vault_tip_ahead`; (4) mode=read: tip/PUSH gate ne. Zakázáno per-tool tip/PUSH bez společného helperu. B47.
+
+A61 — **F2-i PAUSED gate před HTTP (NEW-2):** před 0b pokud `VAULT_WRITERS_PAUSED` nebo 0a skipped → 0 sends, no attempt++. A33/B34b/T13.
+
+A62 — **Retry jen flock (g=12):** Brain retry 1–2× **jen** při `skip_reason == "vault_flock_busy"`; `vault_dirty_start` (a jiné skip) → okamžitě 503 bez retry. (R19)
+
+A63 — **PAUSED detekce v brain_vault (g=12):** env `VAULT_WRITERS_PAUSED` (nebo `isinstance(_PausedVault)`) ve kroku A60 (2) **před** tip/PUSH; ne až catch po mutate.
+
+A64 — **§2 / request scope (g=12 + critic 7db484d6):** v Návrh §2 **jen** `brain_vault(mode=…)` (A60 + A62 + A63). Zakázáno: bare `with open_vault` v Brain app; bare `if vault.skipped → dirty_start`. `vault_deps.py` = `brain_vault`, ne holý re-export `open_vault`.
+
 
 ---
 
@@ -75,167 +270,125 @@ A14 — `agent_write_guard` (Cowork/Grok FS policy) **nezaniká** hned: F2 serve
 
 | Fakt | Důkaz |
 |---|---|
-| F1 cutover live, `VAULT_BACKEND=git`, Mac pull-only, soft A17 | [docs/git-vault-runbook.md](../git-vault-runbook.md) L15–27, L59–71 |
-| `GitVault` + flock + CAS `expect_oid` + dirty-only commit/push | `vps/second-brain-hub/lib/git_io.py` L1–4, L36–37, L133–169, L336–365, L443–479, L551–579 |
-| Factory `open_vault()` + `VAULT_WRITERS_PAUSED` | `vps/second-brain-hub/lib/vault_factory.py` L59–85 |
-| Hub Dockerfile: supercronic + git/lfs, `/data/vault`, **bez** HTTP/MCP serveru | `vps/second-brain-hub/Dockerfile` L1–38 |
-| Brain / MCP pod `vps/` **neexistuje** | glob `vps/**` = jen `second-brain-hub/` |
-| Skills SSOT + Cursor symlink only | `scripts/install_agenda_skills.sh` L1–22; F0 L157 |
-| Skills F1 banner: pull/read only, write až F2 | např. `ŠABLONY/skills/agenda-work/SKILL.md` L12; `agenda-capture/SKILL.md` L6 |
-| Mac write guard git clone | `scripts/lib/vault_readonly.py` L8–21; `scripts/build_agent_context.py` L740–747 |
-| Client write policy (FS, ne I/O) | `scripts/lib/agent_write_guard.py` L1–50 |
-| Task FM šablona: `project: "[[…]]"`, `aliases: [ID]` | `ŠABLONY/obsidian-templates/task-template.md` L5–7 |
-| `task_io.update_task` CAS přes `cas_from_meta` | `vps/second-brain-hub/lib/task_io.py` L132–169 |
-| `next_task_id.py` skenuje lokální `OBSIDIAN/` (legacy path) | `scripts/next_task_id.py` L36–38 |
-| Focus: cron nikdy, limit 5 | `vps/second-brain-hub/lib/focus.py` L1–20 |
-| Light context helper | `vps/second-brain-hub/lib/agent_context_light.py` L1–36 |
-| F0 Brain tools (cíl) + P1/P2/P7 | F0 L256, L399–406 |
-| Claude project instructions stále Drive SSOT (legacy text) | `docs/claude-project-instructions.md` L9–19 |
-| Hub requirements: Google auth + PyYAML, **bez** FastAPI/MCP | `vps/second-brain-hub/requirements.txt` |
+| F1 cutover live | [docs/git-vault-runbook.md](../git-vault-runbook.md) |
+| Session lifecycle | `lib/git_io.py` L4, L133–169, L551–580 |
+| Dirty start → skip, bez reset | `git_io.py` L150–156 |
+| **`skip_reason` dnes neexistuje** — flock i dirty jen `skipped=True` | `git_io.py` L112, L144, L156; `_require_mutate` L330–334 |
+| `end_session` + `exc_type` → no commit | `git_io.py` L158–169 |
+| Flock busy → skipped | `git_io.py` L138–145 |
+| `_is_dirty` = jen porcelain (`status --porcelain`), **ne** ahead tip | `git_io.py` **L267–269** |
+| Push fail = **log + `reset --hard @{upstream}`**, **ne raise** | `git_io.py` `_push_ff_only` **L563–580** (B6 hub) |
+| `GitPushError` / `strict_push` dnes **neexistují** | grep hub: žádný hit |
+| `main` full write L600 vždy; light/charters try/WARN L602–612 | `cron/build_agent_context.py` |
+| `open_vault()` bez kwargs | `vault_factory.py` L59–85 |
+| `LESSON_TAKEAWAY_RE` | `cron/build_agent_context.py` **L51**; použití ~**L246** |
+| OUTPUT_* + HUB/FRONTMATTER regex | `cron/build_agent_context.py` **L80–84** |
+| Helpers | `cron/build_agent_context.py` L87–330 |
+| `main`: **`with open_vault()` L332**, tělo L333–619 (write full L600, light/charters WARN L602–612) | `cron/build_agent_context.py` |
+| Light/charters `generated_at` z full | `lib/agent_context_light.py` L136–137, L171–173 |
+| Reminders: bez FAILED_DIR; `is_due` jen `pending` | `lib/reminders.py` L10–12, L94–99 |
+| Dispatch: **early-return pokud chybí `SLACK_BOT_TOKEN` před jakoukoli prací** | `cron/reminders_dispatch.py` **L59–62** (C4: tento vzor nesmí F2 chat dispatch opakovat) |
+| Dispatch fail → pole `error` | `cron/reminders_dispatch.py` L104–114 |
+| next_task_id ceiling | `scripts/next_task_id.py` L61–162 |
+| Brain / plugin manifests chybí | jen `second-brain-hub/` |
+| Grill g=1 Q2 | stale **>15 min** → sync rebuild (ledger F2) |
 
-### Mapa zapisovatelů po F2 (cíl)
+### Zapisovatelé po F2
 
 | # | Actor | Mechanismus |
 |---|---|---|
-| W-cron | Lifecycle / agent-context / slack_poll / … | `GitVault` na shared WC, deploy key (beze změny F1) |
-| W-brain | Cursor / Claude (+ Grok opt-in) přes MCP | Brain → `GitVault` stejný WC + flock |
-| W-web | Člověk | GitHub web UI PR → Merge (soft A17) |
-| W-n8n | — | vypnuto do F3 |
-| W-mac-fs | Cursor/Cowork/Grok FS do klonu | **zakázáno** (skills + readonly scripts) |
+| W-cron | Lifecycle / context / slack_poll / reminder | `open_vault()` → ops / `bundle(vault)` |
+| W-brain | OAuth MCP/REST | `brain_vault(mode=…)` → A60 → `open_vault(strict_push=True, discard_dirty_on_error=True)` → tools / `bundle(vault)` |
+| W-web | Člověk | GitHub web UI PR |
+| W-machine | service token | stejný `brain_vault` / vault_deps |
+| W-n8n inbox / W-mac-fs | — | off / zakázáno |
 
 ---
 
 ## Návrh
 
-### 0) Preflight (R6, A4, A5) — bez změny vault dat
+### 0) Preflight (F2-a)
 
-- Checklist Privacy Mode / no-train (Cursor, Claude Team); výsledek do ledgeru.  
-- Grok plugin smoke: pokud stále ne PASS → explicitní „Grok deferred“ v runbooku + B# mimo MVP.  
-- Google Cloud OAuth client (Web) pro Brain: redirect `https://<brain-host>/oauth/callback`, scopes `openid email profile` (F2 vault identity only).
+Privacy; `BRAIN_PUBLIC_URL`; OAuth; Claude research; **Grok chat kontrakt** (R22).
 
-### 1) Sdílená vault vrstva (R3, R4)
+### 1) Shared lib extrakce
 
-| Soubor / místo | Co | Proč | R# |
-|---|---|---|---|
-| Reuse `git_io.py`, `vault_factory.py`, `drive_io.py` (errors/FileMeta), `task_io.py`, `focus.py`, `agent_context_light.py`, `hierarchy.py`, … | Brain image `COPY` z `vps/second-brain-hub/lib/` (ne fork logiky) | jedna CAS/flock pravda | R4, R19 |
-| Coolify Brain volume | mount **stejný** host path jako hub → `/data/vault` | flock serializace | R4 |
-| Env Brain | `VAULT_BACKEND=git`, `GIT_VAULT_*` stejně jako hub live; `GIT_AUTHOR_NAME=Second Brain Brain` | audit commit author | R4 |
-| `VAULT_WRITERS_PAUSED` | Brain respektuje stejný kill-switch přes `open_vault()` | F1 A19 zachovat | R4 |
+| Soubor | Změna | R# |
+|---|---|---|
+| `lib/agent_context_build.py` (**nový**) | Konstanty **L51 `LESSON_TAKEAWAY_RE` + L80–84** + helpers L87–330 + tělo L333–619 jako `build_and_write_context_bundle(vault,…)`; in-memory trio→write; `side_failure`; **žádný** import/volání `open_vault` / session API | R15, R29, C3 |
+| `lib/context_tombstone.py` | tombstone ×3 | A21 |
+| `lib/task_id_allocate.py` (**nový**) | ceiling nad vault API | R24 |
+| `lib/reminders.py` | `FAILED_DIR`; `attempt_count=0`; `is_due` + `next_attempt_at` + A51 status; `reminder_error` dual-read | R21, R28 |
+| `cron/build_agent_context.py` | Thin: `with open_vault() as vault: build_and_write_context_bundle(vault, side_failure="warn")` | R15, R29 |
+| `scripts/next_task_id.py` | Thin CLI → lib | R24 |
+| `git_io.py` | `strict_push`; `GitPushError`; `_push_ff_only`; guarded discard; **`skip_reason` A59** | R23, R26, C1, NEW-1 |
+| `vault_factory.py` | kwargs → `GitVault` před `_PausedVault` | R27 |
 
-Úprava hubu jen pokud nutná pro sdílení (např. README dual-app); **žádná** změna cron chování.
+### 2) Služba Brain
 
-### 2) Nová služba `vps/second-brain-brain/` (R2, R3, R5)
-
-Struktura (nová):
+Coolify context = `vps/`.
 
 ```
 vps/second-brain-brain/
-  Dockerfile
-  requirements.txt          # fastapi, uvicorn, mcp, authlib/httpx, PyJWT, PyYAML, …
-  config.example.env
-  README.md
+  Dockerfile / requirements.txt / config.example.env / README.md
   app/
-    main.py                 # FastAPI + MCP mount
-    auth_google.py          # OAuth + allowlist A8
-    auth_service.py         # machine Bearer
-    policy.py               # serverová policy (viz §4)
-    fm_contract.py          # ID/slug normalize + dual-read
-    tools/
-      get_context.py
-      vault_read.py
-      task_ops.py           # allocate_id, create, update, get
-      capture_daily.py
-      stubs_f3.py
-    rest.py                 # tenké REST zrcadlo tools
-  tests/                    # pytest (temp git repo, jako test_git_io)
+    main.py                  # PUSH=1 assert; no global vault
+    vault_deps.py            # brain_vault(mode=read|mutate|rebuild) — A60/A62/A63/A64; uvnitř open_vault(strict_push=True, discard_dirty_on_error=True)
+    # tools/rest: jen přes brain_vault; zakázán přímý open_vault
+    auth_google.py / auth_service.py / policy.py / fm_contract.py
+    flock_retry.py / context_freshness.py   # TTL = 15 min exact (C2)
+    tools/… / rest.py
+  tests/
 ```
 
-**Transport**
+**Request scope (A60 + A64 — žádný bare `open_vault` / bare `skipped`):**
 
-- MCP: Streamable HTTP (remote) na `/mcp` (nebo SDK default) — Cursor + Claude Desktop connectors.  
-- REST: `/v1/context`, `/v1/tasks`, `/v1/capture/daily`, health `/healthz`.  
-- OAuth: `/oauth/login`, `/oauth/callback`, token refresh.
+```
+with brain_vault(mode="read"|"mutate"|"rebuild") as vault:
+    # A60: (1) skipped → 503(skip_reason); A62 retry jen flock_busy
+    # (2) A63 PAUSED mutate|rebuild → vault_paused
+    # (3) mutate|rebuild: PUSH≠1 / tip ahead → 503
+    # (4) read: tip/PUSH gate ne
+    … tools …
+    build_and_write_context_bundle(vault, side_failure="raise")  # mode=rebuild
+# push fail: reset @{upstream} then GitPushError → 503 (C1)
+```
 
-**Auth (R5, A8, A9)**
-
-- User: Google OAuth → session/JWT s `sub`+email; deny mimo allowlist → 403.  
-- Machine: `BRAIN_SERVICE_TOKEN` Bearer, scope `vault:read|vault:write`.  
-- **Žádný** default dev-bypass; volitelně `BRAIN_AUTH_DISABLED=1` jen v pytest.
-
-### 3) MCP / REST tool kontrakt F2 (R2, R4, A10)
+### 3) MCP / REST tools
 
 | Tool | Chování | R# |
 |---|---|---|
-| `get_context` | Čte `00-System/agent-context.json` (+ light volitelně). Pokud `generated_at` > 15 min → 1× refresh přes sdílenou logiku hub `build_agent_context` **nebo** vrátit stale + `stale: true` a doporučit pull (prefer: sync refresh pod flock, budget P1/P4). Payload light ≤ 256 KB. | R2, R15 F0 |
-| `read_file` / `list_dir` | Path API přes `GitVault` read (bez commit). Deny path escape. | R4 |
-| `allocate_task_id` | Server-side ceiling (port logiky `next_task_id.py`) nad vault WC pod flock; `--type` epic\|story\|task. | R8, R10 |
-| `create_task` | Preview payload → write FM dle FM kontraktu + body; 1 session → 1 commit; CAS N/A (create). Filename `<ID> — <title>.md`. | R4, R8, R10 |
-| `update_task` | Patch FM/body; CAS `expect_oid` povinné když klient poslal oid; retry ≤ 3. Zakázané: `focus` bez `user_said_focus`; zápis `## Stav (auto)`; Done jen z checkboxů bez explicit status. | R4, F0 focus |
-| `capture_daily` | Append/create pod `01-INBOX/daily/`; policy jako allow_daily_create. | R4 |
-| `write_material` | materials/ + sidecar konvence (R9 F0); bez `files/`. | R9 F0 |
-| `set_focus` | Jen při `user_said_focus` + focus_count &lt; 5; jinak deny. | F0 focus |
-| F3 stubs | `ingest_sembly`, `get_triage_candidates`, `propose_external_send`, mailbox mutate → **501** | A10, R13 |
+| `get_context` | §3 (+ TTL 15 min); rebuild = `bundle(vault)` v request session; post-verify; PUSH | R15, R23, R29 |
+| `read_file` / `list_dir` | allowlist | R4 |
+| `allocate_task_id` | preview | R24, A43 |
+| `create_task` | re-ceiling; tombstone; push | R6, R23 |
+| `update_task` / capture / material / set_focus | CAS/policy + push | R4 |
+| `schedule_reminder` | attempt_count=0; push | R13, R28 |
+| `cancel_reminder` / `list_reminders` | + push u mutate | R13 |
+| F3 stubs | 501 | A10 |
 
-Commit message: `brain: <tool> <short>` (odlišit od `hub:`).
+**Freshness §3 (C2):**  
+(1) full missing  
+(2) bad `generated_at` **nebo stale = `now - generated_at > 15 minut` přesně** (pražská/UTC konzistentně s builderem; dokumentovat v `context_freshness.py`)  
+(3) light/charters missing  
+(4) timestamp mismatch B3d  
+(5) else warm ≤256 KB.  
+Žádný marker. Nikdy tichý TOP ze stale snapshotu.
 
-Po úspěšném mutate: invalidace kontextu — buď inline refresh snapshotu (P7), nebo bump marker `agent-context.stale`; `get_context` musí nevracet tiše starý TOP po create_task bez upozornění.
+### 4) Reminder chat delivery (A48, A51, **C4**)
 
-### 4) Serverová policy (R2, R4, A14)
+| Krok | Session? | Chování |
+|---|---|---|
+| 0a | short | list due; pokud skipped → exit 0 sends |
+| 0a′ | — | **PAUSED gate (A61)** před 0b → 0 HTTP, no attempt++ |
+| 0b | — | HTTP **Grok → Claude → Slack** mimo flock. Chybějící Slack token = **skip Slack až v tomto kroku**, po Grok/Claude (A27/C4). Zakázáno: abort na startu kvůli Slack tokenu. |
+| 0c | short | Sent / pending+last_error+backoff / FAILED_DIR po K |
 
-Port + zpřísnění `agent_write_guard` do `policy.py` (SSOT pro Brain):
+### 5) Policy + FM + Plugin SSOT (A41)
 
-- Deny: FS escape, zápis mimo allowlist kořenů (`01-INBOX/`, `02-PROJEKTY/`, `05-RESOURCES/`, `07-ARCHIV/…` dle operace, `00-System/` jen povolené podsložky).  
-- Deny: `## Stav (auto)`, `focus` bez user flag, new task create mimo `create_task` tool, prefix-cut overwrite, Done-from-checkboxes-only bez explicit.  
-- Allow: vault writes autonomně (F0 R4) — **bez** druhého „preview gate“ na serveru; preview zůstává ve skillu (klient). Server důvěřuje OAuth user + tool args.  
-- Externí Slack/Gmail mutate: **ne v F2** (501).  
-- Audit log (JSON lines): actor, tool, paths, oid, commit sha, deny reason — rotace na volume nebo stdout Coolify.
+### 6) Docs / Coolify / SB15
 
-### 5) FM kontrakt ID/slug (R2, R8/R10 F0)
-
-| Položka | F2 pravidlo |
-|---|---|
-| `id` | povinné, kanonické |
-| `slug` | povinné u task/hub |
-| `project` | **nové zápisy:** bare slug string (ne `[[Hub]]`); dual-read: pokud `[[…]]`, rozparsovat na hub filename → slug |
-| `parent` | **nové:** bare ID (`RBU-E23`); dual-read wikilink |
-| `aliases` | **nové zápisy:** pole vynechat / prázdné; dual-read ignorovat |
-| Body wikilinky | beze změny (lidský text); migrace FM ≠ mazání body odkazů |
-| Šablony | `ŠABLONY/obsidian-templates/task-template.md` + vault kopie dokumentovat v runbooku (vault edit = Brain/web UI) |
-| Snapshot | `build_agent_context` umí číst dual FM (minimální patch hub pokud dnes předpokládá jen wikilink) |
-
-Bulk migrátor: `scripts/fm_migrate_id_slug.py --dry-run` (tooling); ostrý běh jen po T# dual-read PASS — default mimo auto cutover.
-
-### 6) Plugin SSOT (R2, R6, R16 F0)
-
-| Klient | Distribuce F2 MVP |
-|---|---|
-| **Cursor** | `install_agenda_skills.sh` symlink beze změny zdroje; skills přepsat: write → Brain MCP tools; read = pull klonu OK. `~/.cursor/mcp.json` (nebo projekt) → remote Brain URL + OAuth. |
-| **Claude** | Plugin/marketplace v tooling (`ŠABLONY/claude-plugin/` nebo `.claude-plugin/`): skills balík + odkaz na managed MCP URL; instructions nahradit Drive SSOT → git vault + Brain (`docs/claude-project-instructions.md`). |
-| **Grok** | Dokumentovaný opt-in po smoke; do PASS neblokuje F2 DONE. |
-
-Skill rewrite (všechny F1 bannery → F2):
-
-- „Vault write jen Brain MCP tools X/Y; FS write do `SECOND_BRAIN_VAULT` zakázán.“  
-- `next_task_id.py` lokálně: jen diagnostika / offline; **create** vždy `allocate_task_id` + `create_task` na Brain.  
-- `agenda-remind`: schedule přes Brain tool (ne Mac script).  
-- Cowork guide (`agent-guide-mimo-cursor`): denní capture může jít přes `capture_daily` MCP; nové tasky smí Cowork přes Brain `create_task` (ruší F1 „jen daily text“) — **A15**: po F2 Cowork/Claude rovnocenní Cursoru vůči vault write (F0 R2).
-
-### 7) Docs / runbook / SB15 (R11)
-
-| Soubor | Co |
-|---|---|
-| `docs/brain-api-runbook.md` | deploy Coolify, OAuth, env, dual volume, smoke, rollback |
-| `docs/git-vault-runbook.md` | doplnit W-brain + shared volume |
-| `docs/claude-project-instructions.md` | git vault + MCP |
-| Vault **SB15-3** | odškrtnout po QA PASS |
-| F0 sync-architecture odkaz | Brain vrstva |
-
-### 8) Coolify / deploy (R3, R12)
-
-- Nová app Auto Deploy z `main`, base `vps/second-brain-brain`.  
-- Env z `config.example.env` (OAuth client id/secret, allowlist, service token, `GIT_SSH_COMMAND` stejný deploy key mount).  
-- Healthcheck `/healthz`.  
-- Hub app **neměnit** crontab při Brain deployi.
+Runbook: session vs bundle; discard A46; **strict_push A52 (1) clean+503 / (2) ahead≠B42**; factory+PAUSED; F2-i flock; reminder status; g=7 Q1=b; **TTL 15 min**; hub soft full (A29). SB15-3.
 
 ---
 
@@ -243,66 +396,78 @@ Skill rewrite (všechny F1 bannery → F2):
 
 | B# | Vstup / stav | Očekávaný výsledek | R# | Test T# |
 |---|---|---|---|---|
-| B1 | Neautentizovaný MCP/REST mutate | 401 | R5 | T2 |
-| B2 | OAuth email mimo allowlist | 403 | R5, A8 | T2 |
-| B3 | Platný user OAuth + `get_context` | JSON snapshot; P1 latence; při stale &gt;15 min refresh nebo explicit `stale` | R2 | T3, T10 |
-| B4 | `create_task` validní payload | soubor v `02-PROJEKTY/<slug>/tasks/`; FM bez `aliases`; `project`=slug; 1 git commit+push; author Brain | R4, R10 | T4 |
-| B5 | `update_task` se špatným `expect_oid` | konflikt (409 / structured error); žádný commit | R4 | T4 |
-| B6 | `update_task` `focus` bez `user_said_focus` | deny policy; žádný zápis | R4 | T5 |
-| B7 | Pokus zapsat `## Stav (auto)` | deny | R4 | T5 |
-| B8 | `allocate_task_id` 2× paralelně (flock) | unikátní ID, žádná kolize | R8 | T6 |
-| B9 | Skill na Macu provede FS write do git klonu | zakázáno skill textem + readonly scripts fail; write cesta = MCP | R4, R23 | T7 |
-| B10 | Cursor + Claude připojení na remote MCP | list tools obsahuje F2 sadu; create_task smoke OK | R2, R6, R16 | T8 |
-| B11 | Grok bez smoke PASS | není požadavek na B10; dokument deferred | R6 | T1 |
-| B12 | F3 stub tool | 501 + zpráva „F3“ | A10 | T2 |
-| B13 | `VAULT_WRITERS_PAUSED=1` | Brain mutate → VaultPausedError / 503 | R4 | T4 |
-| B14 | Hub cron běží + Brain write současně | jeden flock holder; druhý skip/retry; žádný rozbitý push | R4 | T6, T9 |
-| B15 | Service token REST `GET /v1/context` | 200; write s tokenem OK; bez tokenu 401 | A9 | T2 |
-| B16 | FM dual-read: starý `project: "[[Hub]]"` | update_task/get najde task; nový create už slug | R10, A7 | T5 |
-| B17 | n8n INBOX stále off | žádný Brain ingest z n8n v F2 | R7 | T1 |
-| B18 | Stale Slack INBOX | akceptováno; žádná F2 povinnost čistit | R7 / R26 | T1 |
-| B19 | Soft A17 | F2 nepožaduje hard ruleset | R9 | T1 |
-| B20 | SB15-3 po DONE | checkbox odškrtnut | R11 | T11 |
-| B21 | Computer use zápis souborů klonu | stále zakázán; vault jen MCP | R3 F0 / R25 | T7 |
-| B22 | Externí Slack send přes Brain F2 | 501 (ne tichý send) | R4 F0 autonomie | T2 |
+| B1 | Neautentizovaný mutate | 401 | R5 | T2 |
+| B2 | OAuth mimo allowlist | 403 | R5 | T2 |
+| B2b | Lidský API key | 401/403 | R5 | T2 |
+| B3 | needs_rebuild ∧ tip sync | sync rebuild `bundle(vault)`; busy→`vault_flock_busy`; nikdy tichý stale TOP | R15, R29, **C2** | T3 |
+| B3e | needs_rebuild ∧ tip ahead | **503 `vault_tip_ahead`**; žádný rebuild; **žádný** success se stale TOP | R30, A45, A56, g=10 | T16 |
+| B3b | trio OK + timestamps match + **age ≤ 15 min** | warm | R15 | T3, T10 |
+| B3c | light/charters chybí | needs_rebuild | A32 | T3 |
+| B3d | timestamp mismatch | needs_rebuild | A37 | T3 |
+| B4 | create_task OK | FM + commit + push; push fail→A52/B44 | R6, R23, **C1** | T4, T8, T9, **T16** |
+| B5 | špatný expect_oid | konflikt; no commit | R4 | T4 |
+| B6 / B7 | focus / Stav auto | deny | R4 | T5 |
+| B8 | paralel `create_task` | unikátní ID | R24, A43 | T6 |
+| B9 / B21 | Mac FS / CU write | zakázáno | R4 | T7 |
+| B10 | live smoke | jen TEST | R16 | T8 |
+| B11 | Grok plugin + MCP write | PASS DONE | R6, R25 | T8, T12 |
+| B12 / B22 | F3 stub / Slack send tool | 501 | A10 | T2 |
+| B13 | PAUSED přes factory | mutate/rebuild → 503 `vault_paused`; warm read smí | R27, A58, A60 | T4, T16 |
+| B14 | flock busy | 503 `vault_flock_busy` z `skip_reason` (≠ dirty_start); **no** reset | R19, A46, A56, A59 | T6, T16 |
+| B15 | service token | OK + `service:` | R5 | T2 |
+| B16 | dual-read FM | OK | R18 | T5 |
+| B17–B19 | n8n off; stale Slack; soft A17 | OK | R7, R9 | T1 |
+| B20 | SB15-3 | odškrtnuto | R11 | T11 |
+| B23 | schedule_reminder | attempt_count=0; push | R13, R28 | T14, T9 |
+| B24 | cancel_reminder | Cancelled + push | R13 | T14 |
+| B25 | Grok chat OK | Sent; PASS důkaz | R14 | T13 |
+| B26 | Grok fail | → Claude | R14 | T13 |
+| B27 | Grok+Claude fail/skip | → Slack | R14, A27 | T13 |
+| B28 | první success | Sent; další kanály ne | R14, A19 | T13 |
+| B29 | all fail | Pending (nebo failed legacy); attempt++; last_error; next_attempt_at | R21, A51 | T13, T15 |
+| B30 | attempt ≥ K | `Reminders-Failed/` | R21 | T13, T15 |
+| B31 | mutate | tombstone ×3 | A21 | T3 |
+| B32 | double ping | docs OK | R20 | T1 |
+| B33 | no Slack token | **Grok i Claude se spustí**; Slack skip až po nich; dispatch neabortuje na startu | A27, **C4** | T13 |
+| B34 / B34b | skipped **nebo** PAUSED před 0b | 0 HTTP sends; no attempt++ | A30–A34, A61, NEW-2 | T13 |
+| B35 | hub `side_failure=warn`, light/charters fail | **full zapsán**; WARNING; light/charters chybí OK | A29, A36, **NEW-2** | T3 |
+| B35b | Brain `side_failure=raise`, light/charters fail | raise → 503; žádný tichý partial warm | A29, A36 | T3 |
+| B35c | úspěšný dopočet light+charters | sdílený `generated_at` na full/light/charters („trio“) | A29 | T3 |
+| B36 | F2-a bez Grok kontraktu | eskalace | R22 | T1 |
+| B37 | OAuth callback | rstrip | R17 | T2 |
+| B38 | process-global vault | zakázáno | R23 | T16 |
+| B39 | hub ∥ Brain | Brain 503 | R23 | T16 |
+| B40 | PUSH≠1 | runtime 503 `vault_push_disabled` vč. rebuild | A47, A58 | T4, T9, T16 |
+| B41 | vlastní raise, skipped=False | WT clean (`reset --hard HEAD`) | A46 | T3, T16 |
+| B42 | porcelain dirty-start | 503, `error_reason=vault_dirty_start`; porcelain beze změny; **≠ tip ahead** | A49, A55, R26 | T16 |
+| B43 | `agent_context_build` modul | neimportuje/nevolá `open_vault` / session API; obsahuje `LESSON_TAKEAWAY_RE` | R29, **C3** | T3 |
+| B44 | fail push strict_push | **(1)** reset OK → 503 `vault_push_reset_ok`; **(2)** reset fail → 503 `vault_push_reset_failed` + tip ahead; hub jen log+reset | R23, A52, A55, C1 | T16 |
+| B45 | tip ahead ∧ (mutate ∨ `get_context` needs_rebuild) | 503 `vault_tip_ahead` + message (A57); **žádný** commit/rebuild; warm get_context OK; **ne** stale TOP | R30, A45, A56, g=10 | T16 |
+| B46 | jakýkoli Brain vault 503 | MCP isError text i REST JSON mají `error_reason`+`message` (A57); reason ∈ A58 (vč. vault_paused) | R30, A55, A57, A58 | T16 |
+| B47 | tip/PUSH gate | pouze v `vault_deps` (A60); tools bez vlastní tip/PUSH logiky | NEW-3 | T16 |
 
-Checklist A (RB Universe) — SECOND_BRAIN mapování:
-
-1. Prázdná data — B3 prázdný/missing context → jasná chyba.  
-2. None hodnoty — B5/B16 chybějící oid/FM.  
-3. Hranice období — `focus` ISO week Europe/Prague (B6).  
-4. Měny/DPH — **netýká se**.  
-5. Oprávnění — B1/B2/B15 (Google allowlist + service token), ne Universe RBAC.  
-6. Stav syncu — B3 stale snapshot / P7.  
-7. Smazané entity — Cancelled/archiv ID ceiling v allocate (B8).  
-8. Duplicitní akce — B8/B14 flock; idempotentní capture dle path.  
-9. Chyba externí služby — Google OAuth down → 503 login; git push fail → error klientovi (ne tichý OK).  
-10. Zpětná kompatibilita — B16 dual FM; Mac pull read.  
-11. Konzistence systémů — **netýká se** Pipedrive/Allfred.
-
-CAS/idempotence/focus — B5–B7, B13–B14.
+**Checklist A (chování — SECOND_BRAIN profil):** sync rebuild B3 (+ TTL 15 min); CAS/`expect_oid` B5; TZ Prague; auth; ID B8; flock; chat B25–B30 + B33 pořadí; FM; push B40/B44; discard B41 vs B42; builder session boundary B43.  
+**CAS:** mutate tools s `expect_oid` / mtime dle vault API (Git blob SHA).  
+**Idempotence cronu:** thin builder + reminder dispatch at-least-once.  
+**Měny / Pipedrive / Alembic / RBAC Universe / FE:** netýká se, protože profil SECOND_BRAIN + Brain API bez Universe stacku.
 
 ---
 
 ## Výkonový rozpočet (P)
 
-Objem (A6): ~7–8k souborů / &lt;1 GB WC — ověřit `du -sh /data/vault` na Coolify (T9).
-
-| Tělo | 1 Objem | 2 Dotazy | 3 Load | 4 Externí | 5 Stránkování | 6 Payload | 7 Cache | 8 Násobení | 9 FE | 10 Worker | 11 Cíl měření |
+| Tělo | 1 Objem | 2 SQL | 3 Load | 4 Externí | 5 Page | 6 Payload | 7 Cache | 8 Násobení | 9 FE | 10 Worker | 11 Cíl |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P1 `get_context` | 1× JSON snapshot | 0 SQL; 1 file read (+ opt 1 rebuild) | jen agent-context(+light) | ne | N/A | ≤256 KB light | TTL align 15 min; invalidace po Brain write | 1 req | N/A | uvicorn | cold ≤2 s, warm ≤500 ms (F0 P1) |
-| P2 `create/update_task` | 1–N file ops | 0 SQL | task file + id scan omezený na prefix cesty | ne | N/A | request &lt; 1 MB text | N/A | 1 session/commit | N/A | flock ≤5 s; CAS retry ≤3; 1 push | wall ≤5 s typicky (F0 P2) |
-| P3 hub cron | beze změny F1 | — | — | — | — | — | — | — | — | — | F0 P3 |
-| P4 refresh context | celý vault scan jako dnes | — | — | — | — | — | — | max 1 / get_context když stale | — | — | &lt;30 s VPS (F0 P4) |
-| P5 triáž Gmail/Slack live | **netýká se F2** (F3) | | | | | | | | | | |
-| P6 Sembly | **netýká se F2** | | | | | | | | | | |
-| P7 invalidace | po mutate | — | — | — | — | — | povinná | — | — | — | get_context po create vidí nový task nebo `stale` |
-| P8 SQL | netýká se | | | | | | | | | | |
-| P9 binárky | materials dle F1 LFS gate | — | — | — | — | odmítnout &gt;40 MiB | — | — | — | — | 413 |
-| P10 idempotence | capture stejná cesta | — | — | — | — | — | — | — | — | — | druhý zápis CAS/overwrite dle tool |
-| P11 | netýká se F2 push | | | | | | | | | | |
+| P1 get_context | snapshot (+rebuild) | 0 | scan při rebuild | ne | — | ≤256 KB | §3; **TTL 15 min**; delete ×3 | 1 session | — | flock | warm ≤500 ms; rebuild ≤P4 |
+| P2 mutate (+push) | 1–N | 0 | cesty | git push | — | &lt;1 MB | — | 1 session | — | retry 1–2 | ≤5 s + push |
+| P3 hub cron | F1 | — | — | — | — | — | — | — | — | — | F0 P3 |
+| P4 rebuild | vault | 0 | bundle L333–619 logika (bez open_vault) | ne | — | — | — | ≤1 / needs_rebuild; **0** vnořených session | — | — | &lt;30 s |
+| P5–P6 / P8 | netýká se (žádný FE/Universe SQL) | | | | | | | | | | |
+| P7 | mutate | — | delete ×3 | ne | — | — | disk | — | — | flock | B31 |
+| P9 | LFS | — | — | — | — | &gt;40MiB 413 | — | — | — | — | 413 |
+| P10 | reminders | — | — | — | — | — | — | at-least-once | — | — | R20 |
+| P11 dispatch | N due | 0 | JSON | HTTP mimo flock | — | brief | — | 2× short session | — | `*/2` | &lt;30 s |
 
-Anti-patterny Universe PERF — netýká se (žádný SQL/Allfred). Anti-pattern SB: full-repo walk na každý `read_file` = zakázán; `allocate_task_id` skenuje jen relevantní stropy (jako `next_task_id`).
+Objem: T9 `du -sh /data/vault` + size `agent-context.json`. (Hlavní agent ověří na Coolify; odhad F0 A7 pokud SSH readonly.)
 
 ---
 
@@ -310,68 +475,153 @@ Anti-patterny Universe PERF — netýká se (žádný SQL/Allfred). Anti-pattern
 
 | T# | Typ | Owner | Soubor | B# |
 |---|---|---|---|---|
-| T1 | ruční checklist | gate | runbook + ledger preflight (Privacy, Grok deferred, n8n off, A17 soft) | B11, B17–B19 |
-| T2 | pytest | gate | `vps/second-brain-brain/tests/test_auth_policy_stubs.py` | B1, B2, B12, B15, B22 |
-| T3 | pytest | gate | `…/test_get_context.py` (temp vault) | B3 |
-| T4 | pytest | gate | `…/test_task_ops_cas.py` | B4, B5, B13 |
-| T5 | pytest | gate | `…/test_policy_fm.py` | B6, B7, B16 |
-| T6 | pytest | gate | `…/test_allocate_id_flock.py` | B8, B14 |
-| T7 | pytest + ruční | gate | skills grep F2 banner; `vault_readonly` beze regrese | B9, B21 |
-| T8 | ruční smoke | gate | Cursor + Claude Desktop → OAuth → `create_task` na tip vaultu (nebo dry-run env) | B10 |
-| T9 | QA Coolify | gate | deploy image; `/healthz`; shared volume flock; `du` objem; log commit `brain:` | B14, P* |
-| T10 | smoke latence | gate | měření get_context cold/warm proti P1 | B3, P1 |
-| T11 | ruční vault | gate | SB15-3 odškrtnuto | B20 |
-| T12 | pytest hub regress | gate | stávající `vps/second-brain-hub/tests` + `scripts/tests` | regrese F1 |
+| T1 | ruční | gate | Privacy, URL, n8n, Grok kontrakt | B17–B19, B32, B36 |
+| T2 | pytest | gate | auth + callback | B1, B2, B2b, B12, B15, B22, B37 |
+| T3 | pytest | gate | hub warn **full bez light/charters (B35)**; Brain raise (B35b); sdílený generated_at (B35c); §3/**TTL 15 min**/B3d; tombstone; B41; **`assert` `agent_context_build` nevolá `open_vault` + obsahuje `LESSON_TAKEAWAY_RE` (B43)** | B3*, B31, B35*, B41, **B43** |
+| T4 | pytest | gate | CAS; PAUSED+factory kwargs; PUSH=0→503 | B4, B5, B13, B40 |
+| T5 | pytest | gate | policy + FM | B6, B7, B16 |
+| T6 | pytest | gate | paralel create_task; flock → skip_reason=vault_flock_busy, no reset; **A62: retry 1–2× jen flock_busy; dirty_start → 0 retry** | B8, B14, A62 |
+| T7 | pytest/ruční | gate | skills readonly | B9, B21 |
+| T8 | ruční TEST | gate | 3× OAuth create | B4, B10, B11 |
+| T9 | QA Coolify | gate | deploy; PUSH=1; remote tip | B4, B23, B40 |
+| T10 | smoke | gate | P1 latence | B3b |
+| T11 | ruční | gate | SB15-3 | B20 |
+| T12 | ruční | gate | Grok plugin | B11 |
+| T13 | pytest+smoke | gate | B25–B30; B33; **B34b: PAUSED i skipped → 0 HTTP před 0b, no attempt++** | B25–B30, B33, B34* |
+| T14 | pytest | gate | reminder MCP; attempt_count=0 | B23, B24 |
+| T15 | pytest | gate | `is_due`+`next_attempt_at`; dual-read; FAILED_DIR po K; **legacy `status=failed` v Pending je due (A51)** | R21, R28, B29, B30, A51 |
+| T16 | pytest | gate | Assert celý A58 vč. vault_paused; dirty vs flock z skip_reason; **A62 retry jen flock_busy**; tip_ahead mutate+needs_rebuild; warm tip OK; push_disabled; B46/A57; B47 tip/PUSH jen brain_vault; A64 | B3e, B13, B14, B38–B42, B44–B47, A62, A64 |
 
-TESTER: přeskočeno (profil SECOND_BRAIN).  
-Playwright-T6-full: netýká se.
+TESTER: přeskočeno (profil SECOND_BRAIN).
 
 ---
 
 ## Pořadí implementace
 
-F2-a — Preflight Privacy + Grok deferred zápis; OAuth client; hostname.  
-F2-b — Scaffold `vps/second-brain-brain/` + Dockerfile + shared lib COPY + healthz.  
-F2-c — Auth Google allowlist + service token.  
-F2-d — Policy + FM contract dual-read/write.  
-F2-e — Tools: get_context, read/list, allocate, create/update, capture_daily, set_focus; F3 stubs 501.  
-F2-f — REST zrcadlo + audit log.  
-F2-g — Pytest T2–T6, T12 zelená lokálně.  
-F2-h — Coolify app + shared volume + deploy key mount; T9.  
-F2-i — Skill rewrite + `install_agenda_skills.sh` (beze změny mechanismu) + Claude plugin/instructions + Cursor MCP config docs.  
-F2-j — Šablony FM + runbooky; volitelný `fm_migrate_id_slug.py --dry-run`.  
-F2-k — T8 klient smoke Cursor+Claude; T10 latence; T11 SB15-3.  
-F2-l — Grok opt-in (mimo MVP DONE) až po samostatném smoke.
-
-Závislosti: F2-b→c→d→e; F2-h po F2-g; F2-i po F2-h (URL); F2-k uzavírá.
+F2-a — Privacy; URL; OAuth; Grok kontrakt.  
+F2-b — Extrahovat `agent_context_build` (**L51 + L80–84 + L87–330 + L333–619**, bez session); tombstone; task_id_allocate; reminders R28+A51; thin cron `open_vault`→`bundle`; vault_factory kwargs; git_io flags + **GitPushError/strict_push (C1)** + **`skip_reason` (A59)**; Brain scaffold; **`vault_deps.brain_vault` = A60 + A62 + A63 + A64** — ne holý factory wrapper.  
+F2-c — Auth + B37.  
+F2-d — Policy + FM.  
+F2-e — Tools **jen** přes `brain_vault(mode=…)`; get_context: warm=`read`, rebuild=`rebuild` + `bundle(vault)`; **freshness TTL 15 min (C2)**; zakázán přímý `open_vault` v tools/rest.  
+F2-f — REST (stejně přes `brain_vault`).  
+F2-g — Pytest T2–T6, T14–T16 (T3 B43; T15 A51; **T16 B44 + A58 + A62**; **T6 skip_reason + A62**).  
+F2-h — Coolify; T9.  
+F2-i — Dispatch flock scope; **Grok→Claude→Slack; Slack token skip až po Grok/Claude (C4)**; T13.  
+F2-j — Skills + plugins; agenda-remind.  
+F2-k — T8; T10; T12; cleanup; T11.
 
 ---
 
 ## Rizika a zpětná kompatibilita
 
-1. **Dual-writer hub↔Brain** — mitigace shared volume + flock; při skip Brain retry; monitoring dirty-WT skip (F1 A18).  
-2. **OAuth / veřejné HTTPS** — bez TLS klienti nepřípojí; fail = jen Cursor service token dočasně **ne** (dev-bypass zakázán) → blokovat cutover klientů.  
-3. **Grok plugin** — odloženo; riziko F0 #1 akceptováno fail-pathem.  
-4. **Claude routines bug** — F2 neřeší proaktivitu; A4.  
-5. **FM dual-read drift** — staré wikilinky vs nové slug; bulk migrate odložen (A7) → dokumentovat.  
-6. **Mac agents obejdou MCP FS writem** — skill + readonly scripts; CU zákaz zůstává; soft A17 nechrání před lokálním commitem pokud někdo přidá push URL (F1 riziko).  
-7. **Snapshot race** — create_task vs cron build_agent_context; P7 invalidace.  
-8. **Service token únik** — Coolify secret; rotace v runbooku.  
-9. **Legacy `next_task_id.py` path `OBSIDIAN/`** — po F1 klon jinde → skript musí respektovat `SECOND_BRAIN_VAULT` (součást F2-i), jinak špatný ceiling.  
-10. **Návod 2026-10-04** — po F2 MCP write superseded (F0 riziko 10); aktualizovat guide.  
-11. **Rozpočet** — žádné nové usage-based v F2 (A12).
+1. Grok API — F2-a; B25 hard.  
+2. Dual-writer flock — B14/B38/B39.  
+3. Push fail → Brain 503 po resetu (C1); hub dál jen log+reset.  
+4. Claude skip+log.  
+5. FM dual-read.  
+6. Mac FS bypass.  
+7. Double ping OK.  
+8. Backoff K=5; legacy `status=failed` — A51.  
+9. next_task_id Path vs vault.  
+10. Extrakce builderu — regres hub; T3/T15; **LESSON_TAKEAWAY_RE musí jít s modulem (C3)**.  
+11. **Vnořená session v lib** by rozbila flock/discard — R29/B43 to zakazuje.  
+12. Plugin drift — T12.  
+13. Hub soft WARNING → B3d.  
+14. TEST cleanup.  
+15. Dirty po vlastním raise bez discard → permanent skip; A46.  
+16. Discard nesmí mazat cizí dirty (g=7 Q1=b) — `not self.skipped`.  
+17. F2-i split session — R20 OK.  
+18. Brain mimo factory — R27/T4.  
+19. **TTL 15 min** vs cron frekvence — častější rebuild při idle get_context; P1/P4.  
+20. **C4:** refactor dispatch nesmí znovu early-return na Slack token před chat kanály.
 
 ---
 
 ## Otevřené otázky pro uživatele
 
-1. **Hostname Brain** — předpoklad `brain.redbuttonedu.cz` (A13). Jiná subdoména → jen DNS/Coolify, plán toolů beze změny.  
-2. **OAuth allowlist** — default Workspace + osobní Gmail (A8). Jen Workspace → osobní Claude login nesmí; plán auth zúžit.  
-3. **Cowork `create_task` rovnocenně Cursoru** — A15 ano (F0 R2). Ne → policy deny create pro actor≠Cursor a návrat k daily-only pro Cowork.  
-4. **get_context při stale** — prefer sync rebuild pod flock (P1/P4). Alternativa: vždy vracet stale JSON + flag (rychlejší, slabší UX) → změna B3/T3.  
-5. **Bulk FM migrace v F2** — default ne (A7). Ano → přibude F2-m ostrý migrátor + T# na vzorek vaultu.  
-6. **Grok opt-in termín** — mimo F2 DONE; až bude smoke PASS, malá pipeline na plugin wiring bez změny Brain tools.
+Žádné blokující (grill g=1–g=7 uzavřen; C1–C4 zamčeny hlavním agentem po stropu d28e95c7).
+
+| # | Uzavření |
+|---|---|
+| Chat / double ping / backoff / OAuth-only | R14, R20, R21, R5 |
+| F2-a bez Grok API | R22, B36 |
+| Tombstone / freshness / PAUSED / Docker / trio | A32–A36 |
+| **stale TTL = přesně 15 min** | R15, §3, B3, **C2** |
+| Warm timestamp | A37, B3d |
+| Request-scoped + PUSH=1 | A38–A39 |
+| **strict_push: reset @{upstream} pak raise** | A39, B44, **C1** |
+| Allocate preview | A43, B8 |
+| Rebuild = mutate v **stejné** session + bundle(vault) | A45, A29, R29 |
+| Discard guard | A46, B41 |
+| PUSH≠1 runtime | A47, B40 |
+| F2-i flock | A48 |
+| **g=7 Q1=(b)** dirty-start skip+503, no reset | A49, B42 |
+| Factory kwargs před PAUSED | A50 |
+| Legacy reminder `status=failed` | A51 (default: is_due accepts failed) |
+| Slack token po Grok/Claude | A27, B33, **C4** |
+| LESSON_TAKEAWAY_RE v shared builderu | A29, **C3** |
+| **g=8 A52–A54** (opraveno r=2: ahead≠B42) | A52, A53, A54 |
+| Hub full bez sides | A29, B35, **NEW-2** |
+| **g=9 tip-ahead mutate→503; read OK; SSH ops; error do chatu** | R30, A52, A55, B45, B46 |
+
+Volitelné: `REMINDER_MAX_ATTEMPTS` ∈ {3,4,5}.
 
 ---
 
-*Profil SECOND_BRAIN: po SCHVÁLENO kritika → implementace na `main`, gate pytest, Coolify deploy Brain + hub regress, TESTER přeskočen.*
+## C# → vyřešeno (critic a218008b · k=1 r=2)
+
+| ID | Závažnost | Stav | Kde |
+|---|---|---|---|
+| **NEW-1** | MAJOR | **vyřešeno** | A52/B44/T16: reset fail = ahead/divergent ≠ B42 |
+| **NEW-2** | MINOR | **vyřešeno** | A29/A36/B35*: hub warn = full vždy; trio = sdílený generated_at při úspěchu |
+
+---
+
+## C1–C4 → jak vyřešeno (d28e95c7 · otevření #2)
+
+| ID | Závažnost | Stav | Kam v plánu |
+|---|---|---|---|
+| **C1** | BLOCKER | **vyřešeno** | R23 + A39 přepsány: fail ff-only → `reset --hard @{upstream}` (důkaz L563–580) **pak** `GitPushError`→503 při `strict_push=True`; hub beze změny. Nové **B44** + T16. Návrh `git_io.py` + request-scope komentář. |
+| **C2** | MAJOR | **vyřešeno** | R15: stale = `generated_at` starší než **přesně 15 minut**. Freshness §3 bod (2) explicitní. B3/B3b s TTL. P1 cache řádek TTL 15 min. |
+| **C3** | MAJOR | **vyřešeno** | A29 + Současný stav: `LESSON_TAKEAWAY_RE` L51 (+ použití ~L246) v seznamu přesunu vedle L80–84. B43/T3 assert existence konstanty. F2-b pořadí. |
+| **C4** | MINOR | **vyřešeno** | A27 + §4 dispatch + B33: chybějící Slack token = skip Slack **až po** Grok a Claude; zákaz early-return vzoru `reminders_dispatch.py` L59–62. T13 pokrývá B33. |
+
+---
+
+## Delta pro implementaci (jen C1–C4 oproti předchozí verzi k=3 r=3)
+
+1. **C1 / `git_io._push_ff_only`:** po fail push vždy `reset --hard @{upstream}` (už dnes); **nově** při `strict_push=True` po resetu raise `GitPushError` (Brain→503). Hub default `strict_push=False` = jen log+reset. Test T16/B44: po simulovaném fail push je WT clean a Brain dostane 503.  
+2. **C2 / `context_freshness`:** `needs_rebuild` když `generated_at` age **> 15 minut** (ne „bad/stale“ bez čísla). Warm path jen pokud age ≤ 15 min a timestamps match.  
+3. **C3 / `agent_context_build`:** přesunout i `LESSON_TAKEAWAY_RE` z L51 (ne jen OUTPUT_*/HUB/FRONTMATTER L80–84).  
+4. **C4 / reminder chat dispatch:** nevolat early-return na chybějící Slack token před Grok/Claude; Slack skip jen ve třetím kroku kanálového řetězce.
+
+---
+
+## NEW → zapracováno (critic d28e95c7 · otevření #2)
+
+| ID | Závažnost | Kam | Stav |
+|---|---|---|---|
+| **C1 / NEW-1** | BLOCKER | R23, A39, B44, T16 | **zapracováno** |
+| **C2 / NEW-2** | MAJOR | R15, §3, B3, B3b, P1 | **zapracováno** |
+| **C3 / NEW-3** | MAJOR | A29, B43, T3 | **zapracováno** |
+| **C4 / NEW-4** | MINOR | A27, B33, §4, T13 | **zapracováno** |
+
+---
+
+## g=9 → zapracováno (r=3)
+
+| ID | Stav | Kam |
+|---|---|---|
+| Q1=(b) | zapracováno | R30, A52, B45 |
+| Q2 / chat error | zapracováno | A55, B46, T16 |
+| A56 dirty vs tip | zapracováno | A56 |
+
+---
+
+## g=10 → zapracováno
+
+| ID | Stav | Kam |
+|---|---|---|
+| Q1=(a) | zapracováno | R30, A45, A56, B3e, B45 |
+| Q2=(a) A57 | zapracováno | A57, B46 |
+| Q3=(a) A58 | zapracováno | A58, B14, B40 |

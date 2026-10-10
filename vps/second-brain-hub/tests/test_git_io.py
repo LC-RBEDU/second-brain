@@ -69,8 +69,10 @@ def test_dirty_skip_at_start_no_reset(git_repo: Path):
     vault = GitVault(git_repo, dry_run=False, push=False)
     with vault:
         assert vault.skipped is True
-        with pytest.raises(VaultSessionSkipped):
+        assert vault.skip_reason == "vault_dirty_start"
+        with pytest.raises(VaultSessionSkipped) as excinfo:
             vault.write_text("00-System/x.md", "nope\n")
+        assert excinfo.value.skip_reason == "vault_dirty_start"
         assert not (git_repo / "00-System" / "x.md").exists()
     cmds = [" ".join(c) for c in vault._git_cmds]
     assert not any("reset --hard" in c and "@{upstream}" not in c for c in cmds)
@@ -101,8 +103,10 @@ def test_flock_timeout_skips_session(git_repo: Path):
     vault = GitVault(git_repo, dry_run=False, push=False, flock_timeout=0.1)
     with vault:
         assert vault.skipped is True
-        with pytest.raises(VaultSessionSkipped):
+        assert vault.skip_reason == "vault_flock_busy"
+        with pytest.raises(VaultSessionSkipped) as excinfo:
             vault.write_text("held.md", "x\n")
+        assert excinfo.value.skip_reason == "vault_flock_busy"
     assert not (git_repo / "held.md").exists()
 
 
@@ -167,6 +171,27 @@ def test_push_ff_reject_resets_upstream(git_repo: Path, monkeypatch: pytest.Monk
         vault.write_text("00-System/c.md", "z\n")
     cmds = [" ".join(c) for c in vault._git_cmds]
     assert any("reset --hard @{upstream}" in c for c in cmds)
+
+
+def test_strict_push_raises_after_reset_ok(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
+    from git_io import GitPushError
+
+    vault = GitVault(git_repo, dry_run=False, push=True, strict_push=True)
+    real_git = GitVault._git
+
+    def flaky_git(self, args, **kwargs):  # noqa: ANN001
+        if args[:3] == ["-c", "push.ff=only", "push"] or args[:2] == [
+            "push",
+            "--ff-only",
+        ]:
+            return subprocess.CompletedProcess(args, 1, "", "rejected")
+        return real_git(self, args, **kwargs)
+
+    monkeypatch.setattr(GitVault, "_git", flaky_git)
+    with pytest.raises(GitPushError) as excinfo:
+        with vault:
+            vault.write_text("00-System/strict.md", "z\n")
+    assert excinfo.value.error_reason == "vault_push_reset_ok"
 
 
 def test_mkdir_alias_equals_mkdir_p(git_repo: Path):

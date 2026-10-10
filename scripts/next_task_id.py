@@ -5,165 +5,32 @@
     python3 scripts/next_task_id.py <slug> --why    # + where the ceiling came from
     python3 scripts/next_task_id.py --check         # report duplicate IDs, exit 1 if any
 
-Why this exists as a script and not as prose in a spec: every duplicate ID in
-this vault was created by hand during triage, by a human or an agent following
-the algorithm from memory. The rules were right; nothing enforced them. A
-command that answers "what is the next ID" removes the step where the mistake
-happens.
-
-Two failure modes it has to survive, both observed:
-
-1. **An earlier task already sits in the archive.** Scanning only
-   `02-PROJEKTY/<slug>/tasks/` reuses the ID of anything already closed.
-2. **The task file no longer exists at all.** A deleted task (S21, PD5) leaves
-   no frontmatter to scan, so max+1 hands its ID to something else while
-   wikilinks and generated notes still point at the old meaning. Ceiling is
-   therefore taken from *any* mention of the ID in the vault — wikilink targets
-   and filenames included — not just from live frontmatter.
-
-Rule of thumb that keeps this cheap: cancel tasks (`status: Cancelled`), do not
-delete them. A cancelled task stays in the archive and defends its own ID.
+Logic lives in vps/second-brain-hub/lib/task_id_allocate.py (shared with Brain).
 """
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import sys
-from collections import defaultdict
 from pathlib import Path
 
+_LIB = Path(__file__).resolve().parents[1] / "vps" / "second-brain-hub" / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
+
+from task_id_allocate import (  # noqa: E402
+    PathVault,
+    find_duplicates,
+    next_id,
+    with_level,
+)
+
 VAULT = Path(__file__).resolve().parents[1] / "OBSIDIAN"
-TASK_DIRS = ("02-PROJEKTY", "07-ARCHIV")
-MAPPING_REL = "00-System/migration-mapping.json"
-
-# The level letter is not part of the counter: RBU-E69 and RBU-S70 share one
-# sequence, so promoting a story to an epic never frees a number for reuse.
-ID_RE = re.compile(r"^([A-Z]+)(?:-[EST])?(\d+)[a-z]?$")
-
-
-def _frontmatter(path: Path) -> dict:
-    try:
-        text = path.read_text(encoding="utf-8", errors="ignore")
-    except OSError:
-        return {}
-    m = re.match(r"^---\s*\n(.*?\n)---", text, re.S)
-    if not m:
-        return {}
-    try:
-        import yaml
-
-        return yaml.safe_load(m.group(1)) or {}
-    except Exception:
-        return {}
-
-
-def prefix_for_slug(slug: str) -> str:
-    """Prefix from migration-mapping.json; fall back to initials of the slug."""
-    mapping_path = VAULT / MAPPING_REL
-    if mapping_path.exists():
-        try:
-            for entry in json.loads(mapping_path.read_text(encoding="utf-8")):
-                if entry.get("slug") == slug and entry.get("id_prefix"):
-                    return entry["id_prefix"]
-        except Exception:
-            pass
-    return "".join(part[0] for part in slug.split("-") if part).upper()[:3]
-
-
-def ceiling_for_prefix(prefix: str) -> tuple[int, str]:
-    """Highest number ever used with this prefix, and where it was seen.
-
-    Looks at frontmatter ids, task filenames and wikilink targets, so an ID
-    survives even when its file is gone.
-    """
-    best, where = 0, "(nic nenalezeno)"
-    # (?:-[EST])? — strop musí zahrnout i RBU-S70, jinak by se jeho číslo
-    # po smazání souboru přidělilo znovu, což je přesně to, čemu tenhle scan brání.
-    exact = re.compile(rf"\b{re.escape(prefix)}(?:-[EST])?(\d+)\b")
-
-    def consider(n: int, src: str) -> None:
-        nonlocal best, where
-        if n > best:
-            best, where = n, src
-
-    for top in TASK_DIRS:
-        for path in (VAULT / top).rglob("*.md"):
-            m = exact.match(path.name)
-            if m:
-                consider(int(m.group(1)), f"soubor {path.name}")
-            tid = str(_frontmatter(path).get("id") or "")
-            m = ID_RE.match(tid)
-            if m and m.group(1) == prefix:
-                consider(int(m.group(2)), f"frontmatter {path.name}")
-
-    # Wikilink targets only — catches IDs whose task file was deleted without
-    # treating bare prose (e.g. n8n workflow "ES2027 Ti.to") as a task ID.
-    # Skipping a number costs nothing; inventing from a year-slug costs an
-    # afternoon of link repair the other way.
-    mention_re = re.compile(
-        rf"\[\[{re.escape(prefix)}(?:-[EST])?(\d+)(?:[\s|\]—-]|\s+[—-])"
-    )
-    for path in VAULT.rglob("*.md"):
-        try:
-            text = path.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-        for m in mention_re.finditer(text):
-            consider(int(m.group(1)), f"wikilink v {path.relative_to(VAULT)}")
-
-    return best, where
-
-
-def next_id(slug: str) -> tuple[str, str]:
-    prefix = prefix_for_slug(slug)
-    ceiling, where = ceiling_for_prefix(prefix)
-    return f"{prefix}{ceiling + 1}", where
-
-
-def find_duplicates() -> dict[str, list[Path]]:
-    """IDs claimed by more than one task file.
-
-    Rotated rituals legitimately share an ID across archived instances
-    (`<ID>-YYYY-MM-DD.md`), so at most one non-rotation file may claim it.
-    """
-    rotation = re.compile(r"^[A-Z]+(?:-[EST])?\d+-\d{4}-\d{2}-\d{2}\.md$")
-    claims: dict[str, list[Path]] = defaultdict(list)
-    for top in TASK_DIRS:
-        for path in (VAULT / top).rglob("*.md"):
-            if "/tasks" not in str(path.parent) and "tasks-done" not in str(path.parent):
-                continue
-            tid = str(_frontmatter(path).get("id") or "")
-            if tid:
-                claims[tid].append(path)
-
-    out = {}
-    for tid, paths in claims.items():
-        if len(paths) < 2:
-            continue
-        if sum(1 for p in paths if not rotation.match(p.name)) <= 1:
-            continue  # ritual rotation, fine
-        out[tid] = sorted(paths)
-    return out
-
-
-LEVEL_LETTER = {"epic": "E", "story": "S", "task": "T"}
-
-
-def with_level(task_id: str, level: str) -> str:
-    """Insert the hierarchy level into an ID: RBU73 + story -> RBU-S73.
-
-    The number is not re-derived per level; one counter serves all three, so a
-    story promoted to an epic keeps its number and frees nothing for reuse.
-    """
-    m = re.match(r"^([A-Z]+)(?:-[EST])?(\d+)$", task_id)
-    if not m:
-        return task_id
-    return f"{m.group(1)}-{LEVEL_LETTER[level]}{m.group(2)}"
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("slug", nargs="?", help="project slug, e.g. finance")
     ap.add_argument("--why", action="store_true", help="show where the ceiling came from")
     ap.add_argument("--check", action="store_true", help="report duplicate IDs and exit 1 if any")
@@ -174,8 +41,10 @@ def main() -> int:
     )
     args = ap.parse_args()
 
+    vault = PathVault(VAULT)
+
     if args.check:
-        dups = find_duplicates()
+        dups = find_duplicates(vault)
         if not dups:
             print("✓ žádné duplicitní task ID")
             return 0
@@ -183,13 +52,13 @@ def main() -> int:
         for tid, paths in sorted(dups.items()):
             print(f"  {tid}")
             for p in paths:
-                print(f"    {p.relative_to(VAULT)}")
+                print(f"    {p}")
         return 1
 
     if not args.slug:
         ap.error("chybí slug (nebo použij --check)")
 
-    new_id, where = next_id(args.slug)
+    new_id, where = next_id(vault, args.slug)
     if args.type:
         new_id = with_level(new_id, args.type)
     print(new_id if not args.why else f"{new_id}   (strop podle: {where})")
