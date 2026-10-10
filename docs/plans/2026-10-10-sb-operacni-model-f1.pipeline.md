@@ -19,8 +19,8 @@ Profil: SECOND_BRAIN
 - Coolify image: `…:9ed0da32b1bffdbfe9f6314c42bce6b8e0a417f4`
 - B1 smoke: `agent-context: projects=15 open=188 done7d=17 upcoming=4 → drive://00-System/agent-context.json`
 - A33: `supercronic … /app/crontab` (live); reminders + slack_poll job succeeded
-- Cutover F1-e…h **hotov** 2026-10-10: `VAULT_BACKEND=git` + `PUSH=1` + live crontab; Mac `~/GitHub/second-brain-vault`
-- **A17 ruleset — jediný otevřený blocker cíle:** Free private → 403 Pro (ověřeno opakovaně). Soft control hotov. Po Pro na `LC-RBEDU`: `bash scripts/vault_apply_ruleset_a17.sh` → teprve pak goal complete.
+- Cutover F1-e…h **hotov** 2026-10-10: `VAULT_BACKEND=git` + `PUSH=1` + live crontab; tip `a664231`; Mac `~/GitHub/second-brain-vault`
+- **A17:** uživatel 2026-10-10 zvolil Free + soft A17 (hard ruleset odložen do Pro). Cutover goal **complete**.
 
 ## Průběh (zkráceně)
 
@@ -36,4 +36,4 @@ Profil: SECOND_BRAIN
 
 ## Poznámka
 
-Cutover živého vaultu (F1-e…h, **SB15-2**) = **hotovo** 2026-10-10 — [docs/git-vault-runbook.md](../git-vault-runbook.md).
+Cutover živého vaultu (F1-e…h, **SB15-2**) = **hotovo** 2026-10-10 — [docs/git-vault-runbook.md](../git-vault-runbook.md). A17 soft (Free) schváleno uživatelem.

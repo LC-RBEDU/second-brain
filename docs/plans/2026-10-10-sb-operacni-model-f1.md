@@ -91,7 +91,8 @@ A15 — **Pre-import secrets scan = hard gate F1-f (Q6a):** gitleaks a/nebo `rg`
 
 A16 — Potvrzené defaults: Mac one-shot import + revoke; volume ≥ ~3 GB; Obsidian Sync **off** po F1; Mac clone `~/GitHub/second-brain-vault`. **Writers na `main`:** viz A17 (Q7a).
 
-A17 — **GitHub ruleset `main` (Q7a):** require pull request pro **human** actors; **deploy key / Coolify = bypass** → direct `git push` na `main` (B2). Lidé: nová branch → PR → **Merge v GitHub web UI** (B11 / R25); ne direct push, ne `gh`/API push z Macu.
+A17 — **GitHub ruleset `main` (Q7a):** require pull request pro **human** actors; **deploy key / Coolify = bypass** → direct `git push` na `main` (B2). Lidé: nová branch → PR → **Merge v GitHub web UI** (B11 / R25); ne direct push, ne `gh`/API push z Macu.  
+**Amend 2026-10-10 (uživatel „2 — zůstanu zatím na free“):** hard ruleset na Free private **nedostupný** (API 403 Pro). Dočasně platí **soft A17** = jediný write deploy key Coolify + README Write policy + PR template + lidský proces PR→Merge. Hard ruleset = opt-in po Pro: `bash scripts/vault_apply_ruleset_a17.sh`. Cutover F1 tímto považován za kompletní.
 
 A18 — **Dirty WT na startu jobu:** po `fetch`, pokud WT dirty vůči `HEAD` → **výhradně skip+log**. **Zakázáno** jakékoli auto `git reset --hard` (včetně `HEAD`) a `git clean` na startu. Crash → dirty WT → skip až do manuálního clean (runbook + log alert). **Nikdy** `reset --hard @{upstream}` na startu. Reset na upstream **jen** po failed `push --ff-only` (B6).
 

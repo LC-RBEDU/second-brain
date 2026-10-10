@@ -24,7 +24,7 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 | Deploy key | `coolify-second-brain-hub` (read-write) + `openssh-client` v image |
 | Push | `git -c push.ff=only push` (Debian 2.39 nemá `push --ff-only`) |
 | Mac clone | `~/GitHub/second-brain-vault` — pull/read only |
-| Ruleset A17 | **otevřený dluh** — Free private → 403 Pro. Soft: deploy key + README + PR template. Po Pro: `bash scripts/vault_apply_ruleset_a17.sh` (PR required na `main`, DeployKey bypass). Upgrade: https://github.com/settings/billing/plans (účet `LC-RBEDU`). |
+| Ruleset A17 | **soft A17 schváleno** (2026-10-10, Free): deploy key + README Write policy + PR template. Hard ruleset odloženo do Pro → `bash scripts/vault_apply_ruleset_a17.sh`. |
 
 ## Tooling před importem
 
@@ -39,7 +39,7 @@ bash scripts/vault_secrets_scan.sh /path/to/OBSIDIAN
 ## Cutover (stručně)
 
 1. Freeze: Sync/Drive writer/n8n off; `PAUSED=1` + `CRONTAB_MODE=pause`.
-2. Secrets scan hard gate → založit `LC-RBEDU/second-brain-vault` + ruleset (PR humans, deploy-key bypass).
+2. Secrets scan hard gate → založit `LC-RBEDU/second-brain-vault` + A17 (soft na Free; hard ruleset až Pro).
 3. Mac one-shot import; revoke Mac push; Coolify deploy key.
 4. Volume `/data/vault` → `git clone` + LFS; `HEAD` == import tip.
 5. Coolify `VAULT_BACKEND=git` (ještě PAUSED).
