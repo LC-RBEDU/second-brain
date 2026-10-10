@@ -24,7 +24,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from hierarchy import is_epic  # noqa: E402
 from task_io import iter_active_tasks, update_task, all_checkboxes_done  # noqa: E402
 
@@ -32,46 +32,41 @@ TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
 
 def main() -> None:
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
+    with open_vault() as vault:
+        today = datetime.now(TZ).date().isoformat()
+        flipped = 0
+        skipped = 0
+        skipped_epic = 0
 
-    today = datetime.now(TZ).date().isoformat()
-    flipped = 0
-    skipped = 0
-    skipped_epic = 0
+        for task in iter_active_tasks(vault):
+            if task.is_terminal:
+                continue
+            if is_epic(task):
+                # Epics never auto-close from checkbox state.
+                if all_checkboxes_done(task.body):
+                    skipped_epic += 1
+                continue
+            if not all_checkboxes_done(task.body):
+                continue
 
-    for task in iter_active_tasks(vault):
-        if task.is_terminal:
-            continue
-        if is_epic(task):
-            # Epics never auto-close from checkbox state.
-            if all_checkboxes_done(task.body):
-                skipped_epic += 1
-            continue
-        if not all_checkboxes_done(task.body):
-            continue
+            log = f"- {today}: Done — auto (všechny operativní kroky [x]). [lifecycle_done_from_checkboxes]\n"
+            ok = update_task(
+                vault,
+                task,
+                new_status="Done",
+                today_str=today,
+                body_append=log,
+            )
+            if ok:
+                flipped += 1
+                print(f"  ✓ {task.rel_path} → Done")
+            else:
+                skipped += 1
 
-        log = f"- {today}: Done — auto (všechny operativní kroky [x]). [lifecycle_done_from_checkboxes]\n"
-        ok = update_task(
-            vault,
-            task,
-            new_status="Done",
-            today_str=today,
-            body_append=log,
+        print(
+            f"lifecycle_done_from_checkboxes: flipped={flipped}, "
+            f"conflicts/skipped={skipped}, epic_skipped={skipped_epic}"
         )
-        if ok:
-            flipped += 1
-            print(f"  ✓ {task.rel_path} → Done")
-        else:
-            skipped += 1
-
-    print(
-        f"lifecycle_done_from_checkboxes: flipped={flipped}, "
-        f"conflicts/skipped={skipped}, epic_skipped={skipped_epic}"
-    )
 
 
 if __name__ == "__main__":

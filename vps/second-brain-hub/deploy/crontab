@@ -1,6 +1,7 @@
 # Second Brain v2 — Europe/Prague (supercronic)
-# Stateless: vault I/O via Google Drive API (lib/drive_io.py).
-# VAULT_DRIVE_ID + GOOGLE_DRIVE_OAUTH_JSON + GOOGLE_DRIVE_SA_JSON injected by Coolify.
+# Vault: VAULT_BACKEND=drive|git (factory open_vault). Default drive until F1-h cutover.
+# Git: GIT_VAULT_ROOT=/data/vault + deploy key; dirty-only commit/push (A25).
+# Pause schedule: deploy/crontab.pause when CRONTAB_MODE=pause or VAULT_WRITERS_PAUSED=1.
 #
 # V2 architecture (since F6/F7):
 # - File-per-task in 02-PROJEKTY/<slug>/tasks/*.md (not H3 in hub anymore)

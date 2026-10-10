@@ -137,12 +137,12 @@ class DriveNotFoundError(DriveVaultError):
 
 
 class DriveConflictError(DriveVaultError):
-    """CAS mismatch: file modified externally since `expect_mtime`."""
+    """CAS mismatch: file modified externally since `expect_mtime` / `expect_oid`."""
 
 
 @dataclass(frozen=True)
 class FileMeta:
-    """Stable metadata view of a Drive file as exposed to callers."""
+    """Stable metadata view of a Drive/git vault file as exposed to callers."""
 
     id: str
     name: str
@@ -151,10 +151,25 @@ class FileMeta:
     size: int | None  # None for native Google docs / folders
     parent_id: str | None  # one parent (vault layout is single-parent tree)
     rel_path: str  # path inside vault, e.g. "02-PROJEKTY/Finance.md"
+    oid: str | None = None  # git blob SHA; Drive always None
 
     @property
     def is_folder(self) -> bool:
         return self.mime_type == FOLDER_MIME
+
+
+def cas_from_meta(meta: FileMeta | None) -> dict:
+    """Build write_* CAS kwargs from a prior FileMeta (mtime and/or oid)."""
+    if meta is None:
+        return {}
+    out: dict = {}
+    mtime = getattr(meta, "modified_time", None)
+    if mtime is not None:
+        out["expect_mtime"] = mtime
+    oid = getattr(meta, "oid", None)
+    if oid:
+        out["expect_oid"] = oid
+    return out
 
 
 def _parse_iso8601(raw: str) -> datetime:
@@ -338,6 +353,12 @@ class DriveVault:
             self._svc = build("drive", "v3", credentials=credentials, cache_discovery=False)
         self._meta_cache: _LRU = _LRU(cache_size)
 
+    def __enter__(self) -> "DriveVault":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
     # ------------------------------------------------------------------ helpers
 
     def _meta_from_api(self, payload: dict, rel_path: str) -> FileMeta:
@@ -353,6 +374,7 @@ class DriveVault:
             size=size,
             parent_id=parent_id,
             rel_path=_norm_rel(rel_path),
+            oid=None,
         )
 
     def _root_meta(self) -> FileMeta:
@@ -522,13 +544,17 @@ class DriveVault:
         text: str,
         *,
         expect_mtime: datetime | None = None,
+        expect_oid: str | None = None,
         mime_type: str = "text/markdown",
         encoding: str = "utf-8",
     ) -> FileMeta:
+        # expect_oid is GitVault CAS; DriveVault ignores it (mtime CAS stays).
+        _ = expect_oid
         return self.write_bytes(
             rel_path,
             text.encode(encoding),
             expect_mtime=expect_mtime,
+            expect_oid=None,
             mime_type=mime_type,
         )
 
@@ -538,8 +564,11 @@ class DriveVault:
         data: bytes,
         *,
         expect_mtime: datetime | None = None,
+        expect_oid: str | None = None,
         mime_type: str = "application/octet-stream",
     ) -> FileMeta:
+        # expect_oid is GitVault CAS; DriveVault ignores it (mtime CAS stays).
+        _ = expect_oid
         rel = _norm_rel(rel_path)
         if not rel:
             raise ValueError("rel_path cannot be empty")
@@ -623,6 +652,7 @@ class DriveVault:
         obj: Any,
         *,
         expect_mtime: datetime | None = None,
+        expect_oid: str | None = None,
         indent: int | None = 2,
     ) -> FileMeta:
         text = json.dumps(obj, ensure_ascii=False, indent=indent)
@@ -630,6 +660,7 @@ class DriveVault:
             rel_path,
             text,
             expect_mtime=expect_mtime,
+            expect_oid=expect_oid,
             mime_type="application/json",
         )
 
@@ -741,6 +772,9 @@ class DriveVault:
 
         _retry(call)
         self._meta_cache.pop(meta.rel_path, None)
+
+    # Alias for call-sites that use mkdir (API parity with GitVault / pathlib).
+    mkdir = mkdir_p
 
     # ------------------------------------------------------------------ debug
 

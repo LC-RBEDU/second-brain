@@ -9,6 +9,8 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 **Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
 
+**F1 (git vault):** pokud `SECOND_BRAIN_VAULT` ukazuje na git klon (`~/GitHub/second-brain-vault`), skills = **pull + read only**. Žádný FS zápis do klonu (tasky, capture, snapshot). Snapshot píše VPS; lidský zápis = GitHub web UI PR. Až F2 Brain MCP.
+
 ## Kdy spouštět
 
 - "Jdeme na <slug>" / "Pracujeme na <slug>" / "Otevři <slug>"

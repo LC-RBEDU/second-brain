@@ -32,7 +32,25 @@ def vault_path() -> Path:
     return Path(os.environ.get("SECOND_BRAIN_VAULT", str(DEFAULT_VAULT)))
 
 
+def _refuse_git_write() -> int | None:
+    """B24: schedule/cancel must fail on git-clone vault."""
+    import os
+
+    _lib = Path(__file__).resolve().parent / "lib"
+    if str(_lib) not in sys.path:
+        sys.path.insert(0, str(_lib))
+    from vault_readonly import READONLY_MSG, vault_forbids_local_write
+
+    if vault_forbids_local_write(vault_path(), env=os.environ):
+        print(f"error: {READONLY_MSG}", file=sys.stderr)
+        return 2
+    return None
+
+
 def cmd_schedule(args: argparse.Namespace) -> int:
+    refused = _refuse_git_write()
+    if refused is not None:
+        return refused
     deliver = parse_deliver_at(args.at, tz=TZ)
     reminder = build_reminder(
         message=args.message,
@@ -72,6 +90,9 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 
 def cmd_cancel(args: argparse.Namespace) -> int:
+    refused = _refuse_git_write()
+    if refused is not None:
+        return refused
     pending = vault_path() / PENDING_DIR
     matches = list(pending.glob(f"*{args.id}*.json"))
     if not matches:

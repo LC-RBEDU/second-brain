@@ -64,7 +64,8 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+from drive_io import DriveNotFoundError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from task_io import (  # noqa: E402
     iter_active_tasks,
     parse_task_text,
@@ -251,93 +252,88 @@ def reset_body(body: str, reset_sections: list[str], preserve_sections: list[str
 
 
 def main() -> None:
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
+    with open_vault() as vault:
+        today = datetime.now(TZ).date()
+        today_str = today.isoformat()
+        rotated = 0
+        skipped = 0
 
-    today = datetime.now(TZ).date()
-    today_str = today.isoformat()
-    rotated = 0
-    skipped = 0
+        for task in iter_active_tasks(vault):
+            if not task.is_done:
+                continue
+            rec = task.frontmatter.get("recurring")
+            if not rec or not isinstance(rec, dict):
+                continue
 
-    for task in iter_active_tasks(vault):
-        if not task.is_done:
-            continue
-        rec = task.frontmatter.get("recurring")
-        if not rec or not isinstance(rec, dict):
-            continue
+            slug = task.slug or "unknown"
+            task_id = task.task_id
+            if not task_id:
+                print(f"  ! skipping recurring task without id: {task.rel_path}")
+                continue
 
-        slug = task.slug or "unknown"
-        task_id = task.task_id
-        if not task_id:
-            print(f"  ! skipping recurring task without id: {task.rel_path}")
-            continue
+            # 1. Archive current instance
+            archive_filename = f"{task_id}-{today_str}.md"
+            archive_path = f"{ARCHIV_DIR}/{slug}/{archive_filename}"
+            vault.mkdir_p(f"{ARCHIV_DIR}/{slug}")
 
-        # 1. Archive current instance
-        archive_filename = f"{task_id}-{today_str}.md"
-        archive_path = f"{ARCHIV_DIR}/{slug}/{archive_filename}"
-        vault.mkdir_p(f"{ARCHIV_DIR}/{slug}")
+            try:
+                existing = vault.stat(archive_path)
+                if existing:
+                    print(f"  - archive exists: {archive_path}")
+            except DriveNotFoundError:
+                pass
 
-        try:
-            existing = vault.stat(archive_path)
-            if existing:
-                print(f"  - archive exists: {archive_path}")
-        except DriveNotFoundError:
-            pass
+            # 2. Compute next deadline
+            last_dl = parse_iso_date(task.frontmatter.get("deadline"))
+            next_dl = compute_next_deadline(rec, last_dl, today)
+            next_wu = next_dl - timedelta(days=resolve_lead_days(rec))
 
-        # 2. Compute next deadline
-        last_dl = parse_iso_date(task.frontmatter.get("deadline"))
-        next_dl = compute_next_deadline(rec, last_dl, today)
-        next_wu = next_dl - timedelta(days=resolve_lead_days(rec))
+            # 3. Reset body
+            reset_sections = rec.get("reset_body_sections") or [
+                "## Operativní kroky",
+                "## Poznámky / log",
+            ]
+            preserve_sections = rec.get("preserve_body_sections") or []
+            new_body = reset_body(task.body, reset_sections, preserve_sections, task_id=task_id)
 
-        # 3. Reset body
-        reset_sections = rec.get("reset_body_sections") or [
-            "## Operativní kroky",
-            "## Poznámky / log",
-        ]
-        preserve_sections = rec.get("preserve_body_sections") or []
-        new_body = reset_body(task.body, reset_sections, preserve_sections, task_id=task_id)
+            # 4. Build new frontmatter
+            new_fm = dict(task.frontmatter)
+            new_fm["status"] = "Waiting" if next_wu > today else "Next"
+            new_fm["deadline"] = next_dl.isoformat()
+            new_fm["waitUntil"] = next_wu.isoformat() if new_fm["status"] == "Waiting" else None
+            new_fm["updated"] = today_str
+            new_fm["created"] = today_str
+            # Rituals never occupy a focus slot — the next instance starts unfocused.
+            if "focus" in new_fm:
+                new_fm["focus"] = None
+            new_text = serialize_task(new_fm, new_body)
 
-        # 4. Build new frontmatter
-        new_fm = dict(task.frontmatter)
-        new_fm["status"] = "Waiting" if next_wu > today else "Next"
-        new_fm["deadline"] = next_dl.isoformat()
-        new_fm["waitUntil"] = next_wu.isoformat() if new_fm["status"] == "Waiting" else None
-        new_fm["updated"] = today_str
-        new_fm["created"] = today_str
-        # Rituals never occupy a focus slot — the next instance starts unfocused.
-        if "focus" in new_fm:
-            new_fm["focus"] = None
-        new_text = serialize_task(new_fm, new_body)
+            # 5. Move current → archive, then write new at original path
+            try:
+                vault.move(task.rel_path, archive_path)
+            except Exception as e:
+                print(f"  ! archive move failed: {e}")
+                skipped += 1
+                continue
 
-        # 5. Move current → archive, then write new at original path
-        try:
-            vault.move(task.rel_path, archive_path)
-        except Exception as e:
-            print(f"  ! archive move failed: {e}")
-            skipped += 1
-            continue
+            try:
+                vault.write_text(task.rel_path, new_text)
+            except Exception as e:
+                print(f"  ! new instance write failed: {e}")
+                skipped += 1
+                continue
 
-        try:
-            vault.write_text(task.rel_path, new_text)
-        except Exception as e:
-            print(f"  ! new instance write failed: {e}")
-            skipped += 1
-            continue
+            rotated += 1
+            print(
+                f"  ↻ {task.rel_path}: archived {today_str}, next deadline {next_dl.isoformat()}, "
+                f"status={new_fm['status']}"
+            )
 
-        rotated += 1
-        print(
-            f"  ↻ {task.rel_path}: archived {today_str}, next deadline {next_dl.isoformat()}, "
-            f"status={new_fm['status']}"
-        )
+            extra = task.frontmatter.get("extra_module")
+            if extra:
+                print(f"    extra_module: {extra} (handled by lifecycle_extra_{extra}.py)")
 
-        extra = task.frontmatter.get("extra_module")
-        if extra:
-            print(f"    extra_module: {extra} (handled by lifecycle_extra_{extra}.py)")
-
-    print(f"lifecycle_recurring: rotated={rotated}, skipped={skipped}")
+        print(f"lifecycle_recurring: rotated={rotated}, skipped={skipped}")
 
 
 if __name__ == "__main__":

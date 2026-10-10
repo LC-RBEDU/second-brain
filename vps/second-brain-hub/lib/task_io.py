@@ -18,7 +18,7 @@ from typing import Any, Iterator
 
 import yaml
 
-from drive_io import DriveVault, DriveNotFoundError, FileMeta
+from drive_io import DriveVault, DriveNotFoundError, FileMeta, cas_from_meta
 
 PROJEKTY_DIR = "02-PROJEKTY"
 ARCHIV_DIR = "07-ARCHIV/tasks-done"
@@ -161,11 +161,7 @@ def update_task(
 
     text = serialize_task(fm, body)
     try:
-        vault.write_text(
-            task.rel_path,
-            text,
-            expect_mtime=task.meta.modified_time if task.meta else None,
-        )
+        vault.write_text(task.rel_path, text, **cas_from_meta(task.meta))
         return True
     except Exception as e:
         # DriveConflictError or transient — caller may retry

@@ -23,7 +23,8 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from assistant_window import in_active_window  # noqa: E402
-from drive_io import DriveConflictError, DriveNotFoundError, DriveVault, credentials_from_env  # noqa: E402
+from drive_io import DriveConflictError, DriveNotFoundError, DriveVault  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from run_lock import try_lock  # noqa: E402
 from slack_client import (  # noqa: E402
     SlackAPIError,
@@ -98,7 +99,12 @@ def _save_attachments(token: str, vault: DriveVault, messages: list[dict], stem:
                 meta = vault.write_bytes(
                     rel, data, mime_type=str(file.get("mimetype") or "application/octet-stream")
                 )
-                link = f"https://drive.google.com/file/d/{meta.id}/view"
+                # B14: Drive file URL only on drive backend; git → vault-rel or Slack permalink.
+                backend = (os.environ.get("VAULT_BACKEND") or "drive").strip().lower()
+                if backend == "git" or getattr(meta, "oid", None):
+                    link = permalink or rel
+                else:
+                    link = f"https://drive.google.com/file/d/{meta.id}/view"
                 lines.append(f"- [{name}]({link})")
             except Exception as exc:  # noqa: BLE001 — Drive HttpError must not abort the poll
                 print(f"slack_poll: attachment skip {name} ({rel}): {exc}")
@@ -299,139 +305,135 @@ def main() -> None:
 
 def _run(now: datetime) -> None:
     token = (os.environ.get("SLACK_USER_TOKEN") or "").strip()
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
     if not token:
         print("slack_poll: SLACK_USER_TOKEN not set — skip")
         return
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
 
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
-    state_mtime = None
-    try:
-        raw, meta = vault.read_json(STATE_REL)
-        state = PollState.from_json(raw if isinstance(raw, dict) else {})
-        state_mtime = meta.modified_time
-    except DriveNotFoundError:
-        state = PollState()
-
-    if not state.bootstrapped:
-        state = bootstrap_state(now)
-        state_mtime = _write_state(vault, state, None)
-        print(f"slack_poll: bootstrapped watermark={state.watermark_ts} (no backfill)")
-        return
-
-    # --- Discover + enroll ---
-    grouped: dict[str, list] = {}
-    for kind, query in _discover_queries():
+    with open_vault() as vault:
+        state_mtime = None
         try:
-            grouped[kind] = search_messages(token, query, count=100, max_pages=3)
-        except SlackAPIError as exc:
-            print(f"slack_poll: search {kind} failed: {exc}")
-            grouped[kind] = []
+            raw, meta = vault.read_json(STATE_REL)
+            state = PollState.from_json(raw if isinstance(raw, dict) else {})
+            state_mtime = meta.modified_time
+        except DriveNotFoundError:
+            state = PollState()
 
-    hits = discover_hits(grouped)
-    enrolled = 0
-    for hit in hits:
-        key = thread_key(hit.channel_id, hit.thread_ts)
-        if key in state.watch and state.watch[key].ignored:
-            continue
-        is_new = key not in state.watch
-        seed = _seed_latest(token, hit) if is_new else state.watch[key].latest_ts
-        enroll_watch(state, hit, seed_latest_ts=seed, reason=hit.kind)
-        if is_new:
-            enrolled += 1
+        if not state.bootstrapped:
+            state = bootstrap_state(now)
+            state_mtime = _write_state(vault, state, None)
+            print(f"slack_poll: bootstrapped watermark={state.watermark_ts} (no backfill)")
+            return
 
-    # Separate :gear: pass — stamps gear_message_ts even when dm/gdm already won kind.
-    enrolled += _apply_gear_pass(token, state, grouped.get("gear") or [])
+        # --- Discover + enroll ---
+        grouped: dict[str, list] = {}
+        for kind, query in _discover_queries():
+            try:
+                grouped[kind] = search_messages(token, query, count=100, max_pages=3)
+            except SlackAPIError as exc:
+                print(f"slack_poll: search {kind} failed: {exc}")
+                grouped[kind] = []
 
-    # --- Refetch watches ---
-    written = 0
-    budget = [MAX_REFETCH_PER_TICK]
-    for key in select_watch_batch(state, limit=MAX_REFETCH_PER_TICK):
-        if budget[0] <= 0:
-            break
-        entry = state.watch[key]
-        channel_id, thread_ts = parse_watch_key(key)
-        force_gear = bool(entry.gear_message_ts)
-        gear_ts = entry.gear_message_ts
-        oldest = ""
-        if (
-            not force_gear
-            and thread_ts != FLAT_THREAD_TS
-            and entry.rel
-            and ts_float(entry.latest_ts) > 0
-        ):
-            # Thread replies API: oldest is safe. Flat :0 history+replies must
-            # still see reply_count bumps on older parents — no oldest filter.
-            # Force :gear: always uses oldest="" so older reacted messages dump.
-            oldest = entry.latest_ts
-        try:
-            messages = _fetch_watch_messages(
-                token, channel_id, thread_ts, oldest=oldest, budget=budget
+        hits = discover_hits(grouped)
+        enrolled = 0
+        for hit in hits:
+            key = thread_key(hit.channel_id, hit.thread_ts)
+            if key in state.watch and state.watch[key].ignored:
+                continue
+            is_new = key not in state.watch
+            seed = _seed_latest(token, hit) if is_new else state.watch[key].latest_ts
+            enroll_watch(state, hit, seed_latest_ts=seed, reason=hit.kind)
+            if is_new:
+                enrolled += 1
+
+        # Separate :gear: pass — stamps gear_message_ts even when dm/gdm already won kind.
+        enrolled += _apply_gear_pass(token, state, grouped.get("gear") or [])
+
+        # --- Refetch watches ---
+        written = 0
+        budget = [MAX_REFETCH_PER_TICK]
+        for key in select_watch_batch(state, limit=MAX_REFETCH_PER_TICK):
+            if budget[0] <= 0:
+                break
+            entry = state.watch[key]
+            channel_id, thread_ts = parse_watch_key(key)
+            force_gear = bool(entry.gear_message_ts)
+            gear_ts = entry.gear_message_ts
+            oldest = ""
+            if (
+                not force_gear
+                and thread_ts != FLAT_THREAD_TS
+                and entry.rel
+                and ts_float(entry.latest_ts) > 0
+            ):
+                # Thread replies API: oldest is safe. Flat :0 history+replies must
+                # still see reply_count bumps on older parents — no oldest filter.
+                # Force :gear: always uses oldest="" so older reacted messages dump.
+                oldest = entry.latest_ts
+            try:
+                messages = _fetch_watch_messages(
+                    token, channel_id, thread_ts, oldest=oldest, budget=budget
+                )
+            except SlackAPIError as exc:
+                print(f"slack_poll: fetch {key}: {exc}")
+                continue
+            if not messages:
+                # Budget starved or empty — do not clear gear / unreact (retry next tick).
+                continue
+            newest = newest_ts(messages)
+            if entry.rel and not force_gear and not should_refetch(entry, newest):
+                continue
+            _fill_names(token, state, messages)
+            scanned = _scan_max_v(vault, channel_id, thread_ts, entry)
+            version = next_version(entry, scanned)
+            when = datetime.fromtimestamp(float(newest), tz=timezone.utc).astimezone(TZ)
+            filename = inbox_filename_vN(when, entry.channel_name or channel_id, thread_ts, version)
+            rel = f"{INBOX_DIR}/{filename}"
+            hit = ThreadHit(
+                channel_id=channel_id,
+                channel_name=entry.channel_name or channel_id,
+                thread_ts=thread_ts,
+                latest_ts=newest,
+                kind=entry.kind,
+                permalink=entry.permalink,
             )
-        except SlackAPIError as exc:
-            print(f"slack_poll: fetch {key}: {exc}")
-            continue
-        if not messages:
-            # Budget starved or empty — do not clear gear / unreact (retry next tick).
-            continue
-        newest = newest_ts(messages)
-        if entry.rel and not force_gear and not should_refetch(entry, newest):
-            continue
-        _fill_names(token, state, messages)
-        scanned = _scan_max_v(vault, channel_id, thread_ts, entry)
-        version = next_version(entry, scanned)
-        when = datetime.fromtimestamp(float(newest), tz=timezone.utc).astimezone(TZ)
-        filename = inbox_filename_vN(when, entry.channel_name or channel_id, thread_ts, version)
-        rel = f"{INBOX_DIR}/{filename}"
-        hit = ThreadHit(
-            channel_id=channel_id,
-            channel_name=entry.channel_name or channel_id,
-            thread_ts=thread_ts,
-            latest_ts=newest,
-            kind=entry.kind,
-            permalink=entry.permalink,
-        )
-        stem = Path(rel).stem
-        attachments = _save_attachments(token, vault, messages, stem)
-        md = format_thread_markdown(
-            hit,
-            messages,
-            state.names,
-            tz=TZ,
-            attachment_lines=attachments,
-            version=version,
-            reason_override=GEAR_REASON if force_gear else None,
-        )
-        try:
-            vault.write_text(rel, md)
-        except Exception as exc:  # noqa: BLE001
-            print(f"slack_poll: write {rel} failed ({exc})")
-            continue
-        advance_watch(state, key, latest_ts=newest, rel=rel, version=version)
-        written += 1
-        print(f"slack_poll: wrote {rel} kind={entry.kind} key={key} gear={bool(force_gear)}")
+            stem = Path(rel).stem
+            attachments = _save_attachments(token, vault, messages, stem)
+            md = format_thread_markdown(
+                hit,
+                messages,
+                state.names,
+                tz=TZ,
+                attachment_lines=attachments,
+                version=version,
+                reason_override=GEAR_REASON if force_gear else None,
+            )
+            try:
+                vault.write_text(rel, md)
+            except Exception as exc:  # noqa: BLE001
+                print(f"slack_poll: write {rel} failed ({exc})")
+                continue
+            advance_watch(state, key, latest_ts=newest, rel=rel, version=version)
+            written += 1
+            print(f"slack_poll: wrote {rel} kind={entry.kind} key={key} gear={bool(force_gear)}")
+            try:
+                state_mtime = _write_state(vault, state, state_mtime)
+            except Exception as exc:  # noqa: BLE001
+                print(f"slack_poll: state persist after write failed: {exc}")
+                continue
+            if force_gear and gear_ts:
+                state_mtime = _clear_gear_after_unreact(
+                    token, vault, state, key, channel_id, gear_ts, state_mtime
+                )
+
         try:
             state_mtime = _write_state(vault, state, state_mtime)
         except Exception as exc:  # noqa: BLE001
-            print(f"slack_poll: state persist after write failed: {exc}")
-            continue
-        if force_gear and gear_ts:
-            state_mtime = _clear_gear_after_unreact(
-                token, vault, state, key, channel_id, gear_ts, state_mtime
-            )
-
-    try:
-        state_mtime = _write_state(vault, state, state_mtime)
-    except Exception as exc:  # noqa: BLE001
-        print(f"slack_poll: final state write failed: {exc}")
-        raise
-    print(
-        f"slack_poll: done enrolled={enrolled} written={written} "
-        f"watch={len(state.watch)} ({now.isoformat()})"
-    )
+            print(f"slack_poll: final state write failed: {exc}")
+            raise
+        print(
+            f"slack_poll: done enrolled={enrolled} written={written} "
+            f"watch={len(state.watch)} ({now.isoformat()})"
+        )
 
 
 if __name__ == "__main__":

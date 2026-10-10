@@ -20,7 +20,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 CATALOG_REL = "00-System/Zdroje-katalog.md"
@@ -49,24 +49,19 @@ def parse_catalog(text: str) -> dict[str, dict]:
 
 
 def main() -> None:
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
-
-    catalog_text, _ = vault.read_text(CATALOG_REL)
-    routes = parse_catalog(catalog_text)
-    payload = {
-        "version": 1,
-        "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
-        "catalog_path": CATALOG_REL,
-        "catalog_sha256": catalog_sha256(catalog_text),
-        "tags": sorted(routes.keys()),
-        "routes": routes,
-    }
-    vault.write_text(OUTPUT_REL, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-    print(f"sources-routing: {len(routes)} tags → {OUTPUT_REL}")
+    with open_vault() as vault:
+        catalog_text, _ = vault.read_text(CATALOG_REL)
+        routes = parse_catalog(catalog_text)
+        payload = {
+            "version": 1,
+            "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
+            "catalog_path": CATALOG_REL,
+            "catalog_sha256": catalog_sha256(catalog_text),
+            "tags": sorted(routes.keys()),
+            "routes": routes,
+        }
+        vault.write_text(OUTPUT_REL, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        print(f"sources-routing: {len(routes)} tags → {OUTPUT_REL}")
 
 
 if __name__ == "__main__":

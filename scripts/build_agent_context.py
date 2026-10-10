@@ -738,6 +738,16 @@ def main() -> int:
         sys.stderr.write(f"ERROR: vault not found: {args.vault}\n")
         return 1
 
+    # B23: git clone / READONLY → no write (dry-run OK)
+    _scripts_lib = Path(__file__).resolve().parent / "lib"
+    if str(_scripts_lib) not in sys.path:
+        sys.path.insert(0, str(_scripts_lib))
+    from vault_readonly import READONLY_MSG, vault_forbids_local_write  # noqa: E402
+
+    if vault_forbids_local_write(args.vault) and not args.dry_run:
+        sys.stderr.write(f"ERROR: {READONLY_MSG}\n")
+        return 2
+
     snapshot = build_snapshot(args.vault)
     ref_index = snapshot.pop("_reference_index", None)
     out = args.out or (args.vault / "00-System" / "agent-context.json")

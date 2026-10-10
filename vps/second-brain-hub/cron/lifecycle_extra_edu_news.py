@@ -24,7 +24,8 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, DriveNotFoundError, DriveConflictError, credentials_from_env  # noqa: E402
+from drive_io import DriveVault, DriveNotFoundError, DriveConflictError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from task_io import iter_active_tasks  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -100,14 +101,9 @@ def main() -> None:
         )
         return
 
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
-
-    print("edu_news: --reset (clearing topics via agenda-edu-news placeholder)")
-    clear_marker(vault, dry_run=args.dry_run)
+    with open_vault() as vault:
+        print("edu_news: --reset (clearing topics via agenda-edu-news placeholder)")
+        clear_marker(vault, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

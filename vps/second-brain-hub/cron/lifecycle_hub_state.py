@@ -19,7 +19,8 @@ if str(_LIB) not in sys.path:
 
 import yaml  # noqa: E402
 
-from drive_io import DriveNotFoundError, DriveVault, credentials_from_env  # noqa: E402
+from drive_io import DriveNotFoundError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from hub_state import (  # noqa: E402
     build_state_content,
     should_refresh_hub_state,
@@ -47,82 +48,77 @@ def _serialize_hub(fm_yaml: str, body: str) -> str:
 
 
 def main() -> None:
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
+    with open_vault() as vault:
+        now = datetime.now(TZ)
+        today = now.date()
+        generated_at = now.isoformat(timespec="minutes")
 
-    now = datetime.now(TZ)
-    today = now.date()
-    generated_at = now.isoformat(timespec="minutes")
+        active = list(iter_active_tasks(vault))
+        archived = list(iter_archive_tasks(vault))
 
-    active = list(iter_active_tasks(vault))
-    archived = list(iter_archive_tasks(vault))
+        updated = 0
+        skipped = 0
+        stale_count = 0
 
-    updated = 0
-    skipped = 0
-    stale_count = 0
-
-    try:
-        hubs = vault.list_dir(PROJEKTY_DIR, pattern="*.md")
-    except DriveNotFoundError:
-        print("lifecycle_hub_state: no PROJEKTY dir")
-        return
-
-    for meta in hubs:
-        if meta.name.startswith("_"):
-            continue
         try:
-            text, file_meta = vault.read_text(meta.rel_path)
+            hubs = vault.list_dir(PROJEKTY_DIR, pattern="*.md")
         except DriveNotFoundError:
-            continue
+            print("lifecycle_hub_state: no PROJEKTY dir")
+            return
 
-        fm, fm_yaml, body = _parse_hub(text)
-        if not should_refresh_hub_state(fm):
-            skipped += 1
-            continue
+        for meta in hubs:
+            if meta.name.startswith("_"):
+                continue
+            try:
+                text, file_meta = vault.read_text(meta.rel_path)
+            except DriveNotFoundError:
+                continue
 
-        slug = str(fm.get("slug") or meta.name.removesuffix(".md"))
-        hub_updated = fm.get("updated")
-        if isinstance(hub_updated, datetime):
-            hub_updated = hub_updated.date().isoformat()
-        elif hub_updated is not None:
-            hub_updated = str(hub_updated)[:10]
+            fm, fm_yaml, body = _parse_hub(text)
+            if not should_refresh_hub_state(fm):
+                skipped += 1
+                continue
 
-        inner, is_stale = build_state_content(
-            slug,
-            active,
-            archived,
-            today,
-            hub_updated=hub_updated,
-            generated_at=generated_at,
+            slug = str(fm.get("slug") or meta.name.removesuffix(".md"))
+            hub_updated = fm.get("updated")
+            if isinstance(hub_updated, datetime):
+                hub_updated = hub_updated.date().isoformat()
+            elif hub_updated is not None:
+                hub_updated = str(hub_updated)[:10]
+
+            inner, is_stale = build_state_content(
+                slug,
+                active,
+                archived,
+                today,
+                hub_updated=hub_updated,
+                generated_at=generated_at,
+            )
+            if is_stale:
+                stale_count += 1
+
+            new_body = upsert_state_in_hub_body(body, inner)
+            if new_body == body:
+                skipped += 1
+                continue
+
+            new_text = _serialize_hub(fm_yaml, new_body)
+            ok = vault.write_text(
+                meta.rel_path,
+                new_text,
+                expect_mtime=file_meta.modified_time if file_meta else None,
+            )
+            if ok:
+                updated += 1
+                print(f"  ✓ {meta.rel_path}")
+            else:
+                skipped += 1
+                print(f"  ~ conflict {meta.rel_path}")
+
+        print(
+            f"lifecycle_hub_state: updated={updated} skipped={skipped} "
+            f"stale_hubs={stale_count}"
         )
-        if is_stale:
-            stale_count += 1
-
-        new_body = upsert_state_in_hub_body(body, inner)
-        if new_body == body:
-            skipped += 1
-            continue
-
-        new_text = _serialize_hub(fm_yaml, new_body)
-        ok = vault.write_text(
-            meta.rel_path,
-            new_text,
-            expect_mtime=file_meta.modified_time if file_meta else None,
-        )
-        if ok:
-            updated += 1
-            print(f"  ✓ {meta.rel_path}")
-        else:
-            skipped += 1
-            print(f"  ~ conflict {meta.rel_path}")
-
-    print(
-        f"lifecycle_hub_state: updated={updated} skipped={skipped} "
-        f"stale_hubs={stale_count}"
-    )
 
 
 if __name__ == "__main__":

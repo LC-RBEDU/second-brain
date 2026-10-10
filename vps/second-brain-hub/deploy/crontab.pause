@@ -1,0 +1,8 @@
+# Heartbeat-only crontab while CRONTAB_MODE=pause or VAULT_WRITERS_PAUSED=1 (F1 freeze/smoke).
+# No vault writers. Full schedule is /app/crontab (CRONTAB_MODE=live ∧ PAUSED=0).
+SHELL=/bin/sh
+PATH=/usr/local/bin:/usr/bin:/bin
+TZ=Europe/Prague
+
+# Keep supercronic alive; log heartbeat hourly.
+0 * * * * /bin/echo "second-brain-hub: crontab.pause heartbeat $(date -Iseconds)" >> /var/log/second-brain/heartbeat.log 2>&1

@@ -1,6 +1,8 @@
-# Sync architecture — Drive API jako SSoT
+# Sync architecture — vault SSOT
 
-## Datový tok
+> **F1 (2026-10):** cílový SSOT = privátní GitHub `LC-RBEDU/second-brain-vault` přes `VAULT_BACKEND=git` + `GitVault` (`lib/git_io.py`, factory `open_vault`). Default do cutoveru zůstává `drive`. Runbook: [docs/git-vault-runbook.md](../../../docs/git-vault-runbook.md). Níže = legacy Drive tok (platí dokud `VAULT_BACKEND=drive`).
+
+## Datový tok (Drive — legacy / pre-cutover)
 
 ```mermaid
 flowchart LR

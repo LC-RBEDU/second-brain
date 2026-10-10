@@ -28,7 +28,8 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+from drive_io import DriveVault, DriveNotFoundError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from task_io import (  # noqa: E402
     iter_active_tasks,
     iter_archive_tasks,
@@ -328,293 +329,288 @@ def collect_areas(vault: DriveVault) -> list[dict]:
 
 
 def main() -> None:
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
+    with open_vault() as vault:
+        today = datetime.now(TZ).date()
+        today_str = today.isoformat()
 
-    today = datetime.now(TZ).date()
-    today_str = today.isoformat()
+        projects = collect_projects(vault)
+        areas = collect_areas(vault)
+        lessons = collect_lessons(vault)
+        strategy_meeting = collect_strategy_meeting_from_drive(
+            vault, parse_frontmatter=parse_frontmatter
+        )
+        active_dicts = [task_to_dict(t) for t in iter_active_tasks(vault)]
+        archive_dicts = [task_to_dict(t) for t in iter_archive_tasks(vault)]
 
-    projects = collect_projects(vault)
-    areas = collect_areas(vault)
-    lessons = collect_lessons(vault)
-    strategy_meeting = collect_strategy_meeting_from_drive(
-        vault, parse_frontmatter=parse_frontmatter
-    )
-    active_dicts = [task_to_dict(t) for t in iter_active_tasks(vault)]
-    archive_dicts = [task_to_dict(t) for t in iter_archive_tasks(vault)]
+        open_count: dict[str, int] = {}
+        epic_count: dict[str, int] = {}
+        for t in active_dicts:
+            if is_terminal(t["status"]):
+                continue
+            open_count[t["slug"]] = open_count.get(t["slug"], 0) + 1
+            if t.get("type") == TYPE_EPIC:
+                epic_count[t["slug"]] = epic_count.get(t["slug"], 0) + 1
+        for p in projects:
+            p["open_tasks_count"] = open_count.get(p["slug"], 0)
+            p["open_epics_count"] = epic_count.get(p["slug"], 0)
 
-    open_count: dict[str, int] = {}
-    epic_count: dict[str, int] = {}
-    for t in active_dicts:
-        if is_terminal(t["status"]):
-            continue
-        open_count[t["slug"]] = open_count.get(t["slug"], 0) + 1
-        if t.get("type") == TYPE_EPIC:
-            epic_count[t["slug"]] = epic_count.get(t["slug"], 0) + 1
-    for p in projects:
-        p["open_tasks_count"] = open_count.get(p["slug"], 0)
-        p["open_epics_count"] = epic_count.get(p["slug"], 0)
+        open_tasks = [t for t in active_dicts if not is_terminal(t["status"])]
+        # Epics stay in open_tasks for charter counts; select_top_priority excludes them.
+        # Paused projects: keep in projects[] / counts, exclude from TOP / Rozhodni / focus (SB3).
+        paused_slugs = paused_project_slugs(projects)
+        queue_tasks = exclude_paused_project_tasks(open_tasks, paused_slugs)
+        top_priority_today, top_priority = select_top_priority(queue_tasks, today)
+        open_epics = [t for t in open_tasks if t.get("type") == TYPE_EPIC]
 
-    open_tasks = [t for t in active_dicts if not is_terminal(t["status"])]
-    # Epics stay in open_tasks for charter counts; select_top_priority excludes them.
-    # Paused projects: keep in projects[] / counts, exclude from TOP / Rozhodni / focus (SB3).
-    paused_slugs = paused_project_slugs(projects)
-    queue_tasks = exclude_paused_project_tasks(open_tasks, paused_slugs)
-    top_priority_today, top_priority = select_top_priority(queue_tasks, today)
-    open_epics = [t for t in open_tasks if t.get("type") == TYPE_EPIC]
+        focus_week = current_focus_week(today)
+        focused = [t for t in queue_tasks if is_focus_current(t.get("focus"), today)]
+        suggestion_pool = [
+            t
+            for t in queue_tasks
+            if not is_focus_current(t.get("focus"), today) and is_queue_eligible(t, today)
+        ]
+        focus_suggestions_raw = select_focus_suggestions(
+            suggestion_pool,
+            today=today,
+            current_focus_count=len(focused),
+        )
+        focus_suggestions = [
+            enrich_task_dict(dict(t) if isinstance(t, dict) else t, today)
+            for t in focus_suggestions_raw
+        ]
 
-    focus_week = current_focus_week(today)
-    focused = [t for t in queue_tasks if is_focus_current(t.get("focus"), today)]
-    suggestion_pool = [
-        t
-        for t in queue_tasks
-        if not is_focus_current(t.get("focus"), today) and is_queue_eligible(t, today)
-    ]
-    focus_suggestions_raw = select_focus_suggestions(
-        suggestion_pool,
-        today=today,
-        current_focus_count=len(focused),
-    )
-    focus_suggestions = [
-        enrich_task_dict(dict(t) if isinstance(t, dict) else t, today)
-        for t in focus_suggestions_raw
-    ]
-
-    week_ago = today - timedelta(days=7)
-    recently_done = []
-    recently_cancelled = []
-    for t in archive_dicts + active_dicts:
-        if t["status"] == STATUS_CANCELLED:
-            upd_c = t.get("updated")
-            if upd_c:
-                try:
-                    if date.fromisoformat(upd_c[:10]) >= week_ago:
-                        recently_cancelled.append(t)
-                except ValueError:
-                    pass
-            continue
-        if t["status"] != STATUS_DONE:
-            continue
-        upd = t.get("updated")
-        if not upd:
-            continue
-        try:
-            d = date.fromisoformat(upd[:10])
-        except ValueError:
-            continue
-        if d >= week_ago:
-            recently_done.append(t)
-    recently_done.sort(key=lambda t: t.get("updated") or "", reverse=True)
-    recently_cancelled.sort(key=lambda t: t.get("updated") or "", reverse=True)
-
-    upcoming = []
-    due_soon = []
-    needs_decision_list = []
-    no_review_deadline = []
-    stale_focus = []
-    soon = today + timedelta(days=7)
-    for t in queue_tasks:
-        dl = t.get("deadline")
-        if dl:
+        week_ago = today - timedelta(days=7)
+        recently_done = []
+        recently_cancelled = []
+        for t in archive_dicts + active_dicts:
+            if t["status"] == STATUS_CANCELLED:
+                upd_c = t.get("updated")
+                if upd_c:
+                    try:
+                        if date.fromisoformat(upd_c[:10]) >= week_ago:
+                            recently_cancelled.append(t)
+                    except ValueError:
+                        pass
+                continue
+            if t["status"] != STATUS_DONE:
+                continue
+            upd = t.get("updated")
+            if not upd:
+                continue
             try:
-                d = date.fromisoformat(dl[:10])
+                d = date.fromisoformat(upd[:10])
             except ValueError:
-                d = None
-            if d is not None and today <= d <= soon:
-                upcoming.append(t)
-        due = effective_due(t.get("deadline"), t.get("review_deadline"))
-        if due is not None and today <= due <= soon:
-            due_soon.append(t)
-        if needs_decision(t, today):
-            needs_decision_list.append(t)
-        if (
-            t.get("status") not in (STATUS_DONE, STATUS_CANCELLED, "Waiting")
-            and t.get("type") != "epic"
-            and not t.get("deadline")
-            and not t.get("review_deadline")
-        ):
-            no_review_deadline.append(t)
-        if t.get("focus") and not is_focus_current(t.get("focus"), today):
-            stale_focus.append(t)
-    upcoming.sort(key=lambda t: t.get("deadline") or "")
-    due_soon.sort(
-        key=lambda t: effective_due(t.get("deadline"), t.get("review_deadline"))
-        or today
-    )
-    needs_decision_list.sort(
-        key=lambda t: effective_due(t.get("deadline"), t.get("review_deadline"))
-        or today
-    )
-    no_review_deadline.sort(key=lambda t: -float(t.get("priority_score") or 0))
-    stale_focus.sort(key=lambda t: t.get("focus") or "")
+                continue
+            if d >= week_ago:
+                recently_done.append(t)
+        recently_done.sort(key=lambda t: t.get("updated") or "", reverse=True)
+        recently_cancelled.sort(key=lambda t: t.get("updated") or "", reverse=True)
 
-    recurring_done = [
-        t for t in active_dicts if t.get("is_recurring") and t["status"] == STATUS_DONE
-    ]
-    blocked = {t["id"]: t.get("blocked_by", []) for t in active_dicts if t.get("blocked_by")}
-
-    stale_hubs: list[dict] = []
-    for p in projects:
-        if not is_active_project_status(p.get("status")):
-            continue
-        slug = p["slug"]
-        slug_tasks = [t for t in active_dicts if t.get("slug") == slug]
-        arch_slug = [t for t in archive_dicts if t.get("slug") == slug]
-
-        def _last_act(tasks_list):
-            latest = None
-            for t in tasks_list:
-                upd = t.get("updated")
-                if not upd:
-                    continue
+        upcoming = []
+        due_soon = []
+        needs_decision_list = []
+        no_review_deadline = []
+        stale_focus = []
+        soon = today + timedelta(days=7)
+        for t in queue_tasks:
+            dl = t.get("deadline")
+            if dl:
                 try:
-                    d = date.fromisoformat(str(upd)[:10])
+                    d = date.fromisoformat(dl[:10])
                 except ValueError:
-                    continue
-                if latest is None or d > latest:
-                    latest = d
-            return latest
+                    d = None
+                if d is not None and today <= d <= soon:
+                    upcoming.append(t)
+            due = effective_due(t.get("deadline"), t.get("review_deadline"))
+            if due is not None and today <= due <= soon:
+                due_soon.append(t)
+            if needs_decision(t, today):
+                needs_decision_list.append(t)
+            if (
+                t.get("status") not in (STATUS_DONE, STATUS_CANCELLED, "Waiting")
+                and t.get("type") != "epic"
+                and not t.get("deadline")
+                and not t.get("review_deadline")
+            ):
+                no_review_deadline.append(t)
+            if t.get("focus") and not is_focus_current(t.get("focus"), today):
+                stale_focus.append(t)
+        upcoming.sort(key=lambda t: t.get("deadline") or "")
+        due_soon.sort(
+            key=lambda t: effective_due(t.get("deadline"), t.get("review_deadline"))
+            or today
+        )
+        needs_decision_list.sort(
+            key=lambda t: effective_due(t.get("deadline"), t.get("review_deadline"))
+            or today
+        )
+        no_review_deadline.sort(key=lambda t: -float(t.get("priority_score") or 0))
+        stale_focus.sort(key=lambda t: t.get("focus") or "")
 
-        last_act = _last_act(slug_tasks + arch_slug)
-        if is_narrative_stale(p.get("updated"), last_act, threshold_days=STALE_NARRATIVE_DAYS):
-            stale_hubs.append({
-                "slug": slug,
-                "hub_filename": p.get("hub_filename"),
-                "hub_updated": p.get("updated"),
+        recurring_done = [
+            t for t in active_dicts if t.get("is_recurring") and t["status"] == STATUS_DONE
+        ]
+        blocked = {t["id"]: t.get("blocked_by", []) for t in active_dicts if t.get("blocked_by")}
+
+        stale_hubs: list[dict] = []
+        for p in projects:
+            if not is_active_project_status(p.get("status")):
+                continue
+            slug = p["slug"]
+            slug_tasks = [t for t in active_dicts if t.get("slug") == slug]
+            arch_slug = [t for t in archive_dicts if t.get("slug") == slug]
+
+            def _last_act(tasks_list):
+                latest = None
+                for t in tasks_list:
+                    upd = t.get("updated")
+                    if not upd:
+                        continue
+                    try:
+                        d = date.fromisoformat(str(upd)[:10])
+                    except ValueError:
+                        continue
+                    if latest is None or d > latest:
+                        latest = d
+                return latest
+
+            last_act = _last_act(slug_tasks + arch_slug)
+            if is_narrative_stale(p.get("updated"), last_act, threshold_days=STALE_NARRATIVE_DAYS):
+                stale_hubs.append({
+                    "slug": slug,
+                    "hub_filename": p.get("hub_filename"),
+                    "hub_updated": p.get("updated"),
+                    "last_task_activity": last_act.isoformat() if last_act else None,
+                    "open_tasks_count": p.get("open_tasks_count", 0),
+                })
+
+        threshold = today - timedelta(days=STALE_AREA_WEEKS * 7)
+        stale_areas: list[dict] = []
+        for area in areas:
+            slugs = set(area.get("projects") or [])
+            area_tasks = [t for t in active_dicts if t.get("slug") in slugs]
+            open_in = [t for t in area_tasks if not is_terminal(t.get("status"))]
+
+            def _last_act(tasks_list):
+                latest = None
+                for t in tasks_list:
+                    upd = t.get("updated")
+                    if not upd:
+                        continue
+                    try:
+                        d = date.fromisoformat(str(upd)[:10])
+                    except ValueError:
+                        continue
+                    if latest is None or d > latest:
+                        latest = d
+                return latest
+
+            last_act = _last_act(area_tasks)
+            if not open_in and not last_act:
+                continue
+            if last_act and last_act >= threshold:
+                continue
+            if not last_act and open_in:
+                continue
+            stale_areas.append({
+                "slug": area["slug"],
+                "filename": area["filename"],
+                "projects": list(slugs),
                 "last_task_activity": last_act.isoformat() if last_act else None,
-                "open_tasks_count": p.get("open_tasks_count", 0),
+                "open_tasks_in_area": len(open_in),
             })
 
-    threshold = today - timedelta(days=STALE_AREA_WEEKS * 7)
-    stale_areas: list[dict] = []
-    for area in areas:
-        slugs = set(area.get("projects") or [])
-        area_tasks = [t for t in active_dicts if t.get("slug") in slugs]
-        open_in = [t for t in area_tasks if not is_terminal(t.get("status"))]
-
-        def _last_act(tasks_list):
-            latest = None
-            for t in tasks_list:
-                upd = t.get("updated")
-                if not upd:
-                    continue
-                try:
-                    d = date.fromisoformat(str(upd)[:10])
-                except ValueError:
-                    continue
-                if latest is None or d > latest:
-                    latest = d
-            return latest
-
-        last_act = _last_act(area_tasks)
-        if not open_in and not last_act:
-            continue
-        if last_act and last_act >= threshold:
-            continue
-        if not last_act and open_in:
-            continue
-        stale_areas.append({
-            "slug": area["slug"],
-            "filename": area["filename"],
-            "projects": list(slugs),
-            "last_task_activity": last_act.isoformat() if last_act else None,
-            "open_tasks_in_area": len(open_in),
-        })
-
-    snapshot = {
-        "version": 2,
-        "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
-        "vault_path": "drive://" + root_id,
-        "today": today_str,
-        "stats": {
-            "active_projects": sum(1 for p in projects if is_active_project_status(p["status"])),
-            "total_open_tasks": len(open_tasks),
-            "recently_done_7d": len(recently_done),
-            "recently_cancelled_7d": len(recently_cancelled),
+        snapshot = {
+            "version": 2,
+            "generated_at": datetime.now(TZ).isoformat(timespec="seconds"),
+            "vault_path": "drive://" + root_id,
+            "today": today_str,
+            "stats": {
+                "active_projects": sum(1 for p in projects if is_active_project_status(p["status"])),
+                "total_open_tasks": len(open_tasks),
+                "recently_done_7d": len(recently_done),
+                "recently_cancelled_7d": len(recently_cancelled),
+                "focus_week": focus_week,
+                "focus_count": len(focused),
+                "focus_limit": FOCUS_LIMIT,
+                "upcoming_deadlines_7d": len(upcoming),
+                "due_soon_7d": len(due_soon),
+                "needs_decision": len(needs_decision_list),
+                "no_review_deadline": len(no_review_deadline),
+                "stale_focus": len(stale_focus),
+                "recurring_pending_rotation": len(recurring_done),
+            },
+            "projects": projects,
+            "areas": areas,
+            "lessons": lessons,
+            "strategy_meeting": strategy_meeting,
+            "strategy_meeting_themes": strategy_meeting.get("themes", []),
+            "priority_rules": {
+                "model": (
+                    "v2.2 — hard deadline bucket (≤7d) then ICE+company_bonus; "
+                    "review_deadline soft only (Rozhodni/due, not ranking)"
+                ),
+                "base": "priority_score = (ice_i * ice_c) / ice_e",
+                "due": "deadline if set else review_deadline",
+                "rank_score": f"priority_score + {COMPANY_PRIORITY_BONUS} if company_priorities non-empty",
+                "today_score": "alias of rank_score",
+                "deadline_horizon_days": DEADLINE_HORIZON_DAYS,
+                "company_priority_bonus": COMPANY_PRIORITY_BONUS,
+                "top_eligible": (
+                    f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
+                    "nikdy Waiting/Backlog/Done/Cancelled"
+                ),
+                "focus_owner": "člověk — žádný cron nesmí zapisovat do focus",
+                "sort": (
+                    "rank_key: deadline bucket (≤7d incl. overdue) first, "
+                    "deadline ASC, then rank_score DESC; arrays pre-sorted — "
+                    "do not re-sort by today_score"
+                ),
+            },
             "focus_week": focus_week,
-            "focus_count": len(focused),
-            "focus_limit": FOCUS_LIMIT,
-            "upcoming_deadlines_7d": len(upcoming),
-            "due_soon_7d": len(due_soon),
-            "needs_decision": len(needs_decision_list),
-            "no_review_deadline": len(no_review_deadline),
-            "stale_focus": len(stale_focus),
-            "recurring_pending_rotation": len(recurring_done),
-        },
-        "projects": projects,
-        "areas": areas,
-        "lessons": lessons,
-        "strategy_meeting": strategy_meeting,
-        "strategy_meeting_themes": strategy_meeting.get("themes", []),
-        "priority_rules": {
-            "model": (
-                "v2.2 — hard deadline bucket (≤7d) then ICE+company_bonus; "
-                "review_deadline soft only (Rozhodni/due, not ranking)"
-            ),
-            "base": "priority_score = (ice_i * ice_c) / ice_e",
-            "due": "deadline if set else review_deadline",
-            "rank_score": f"priority_score + {COMPANY_PRIORITY_BONUS} if company_priorities non-empty",
-            "today_score": "alias of rank_score",
-            "deadline_horizon_days": DEADLINE_HORIZON_DAYS,
-            "company_priority_bonus": COMPANY_PRIORITY_BONUS,
-            "top_eligible": (
-                f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
-                "nikdy Waiting/Backlog/Done/Cancelled"
-            ),
-            "focus_owner": "člověk — žádný cron nesmí zapisovat do focus",
-            "sort": (
-                "rank_key: deadline bucket (≤7d incl. overdue) first, "
-                "deadline ASC, then rank_score DESC; arrays pre-sorted — "
-                "do not re-sort by today_score"
-            ),
-        },
-        "focus_week": focus_week,
-        "focus_suggestions": focus_suggestions,
-        "top_priority_today": top_priority_today,
-        "top_priority": top_priority,
-        "open_epics": open_epics,
-        "recently_done": recently_done[:25],
-        "recently_cancelled": recently_cancelled[:25],
-        "upcoming_deadlines": upcoming,
-        "due_soon": due_soon,
-        "needs_decision": needs_decision_list,
-        "no_review_deadline": no_review_deadline[:40],
-        "stale_focus": stale_focus,
-        "recurring_pending": recurring_done,
-        "blocked_by_graph": blocked,
-        "stale_hubs": stale_hubs,
-        "stale_areas": stale_areas,
-        "health": {
-            "stale_narrative_days": STALE_NARRATIVE_DAYS,
-            "stale_hubs_count": len(stale_hubs),
-            "stale_areas_weeks": STALE_AREA_WEEKS,
-            "stale_areas_count": len(stale_areas),
-        },
-    }
+            "focus_suggestions": focus_suggestions,
+            "top_priority_today": top_priority_today,
+            "top_priority": top_priority,
+            "open_epics": open_epics,
+            "recently_done": recently_done[:25],
+            "recently_cancelled": recently_cancelled[:25],
+            "upcoming_deadlines": upcoming,
+            "due_soon": due_soon,
+            "needs_decision": needs_decision_list,
+            "no_review_deadline": no_review_deadline[:40],
+            "stale_focus": stale_focus,
+            "recurring_pending": recurring_done,
+            "blocked_by_graph": blocked,
+            "stale_hubs": stale_hubs,
+            "stale_areas": stale_areas,
+            "health": {
+                "stale_narrative_days": STALE_NARRATIVE_DAYS,
+                "stale_hubs_count": len(stale_hubs),
+                "stale_areas_weeks": STALE_AREA_WEEKS,
+                "stale_areas_count": len(stale_areas),
+            },
+        }
 
-    vault.write_json(OUTPUT_REL, snapshot)
+        vault.write_json(OUTPUT_REL, snapshot)
 
-    open_enriched = [enrich_task_dict(dict(t), today) for t in open_tasks]
-    try:
-        light = project_light(snapshot, open_enriched, today=today)
-        vault.write_json(OUTPUT_LIGHT_REL, light)
-    except Exception as exc:  # noqa: BLE001
-        print(f"WARNING: agent-context-light.json write failed: {exc}")
-    try:
-        charters = build_charters(snapshot)
-        vault.write_json(OUTPUT_CHARTERS_REL, charters)
-    except Exception as exc:  # noqa: BLE001
-        print(f"WARNING: charters.json write failed: {exc}")
+        open_enriched = [enrich_task_dict(dict(t), today) for t in open_tasks]
+        try:
+            light = project_light(snapshot, open_enriched, today=today)
+            vault.write_json(OUTPUT_LIGHT_REL, light)
+        except Exception as exc:  # noqa: BLE001
+            print(f"WARNING: agent-context-light.json write failed: {exc}")
+        try:
+            charters = build_charters(snapshot)
+            vault.write_json(OUTPUT_CHARTERS_REL, charters)
+        except Exception as exc:  # noqa: BLE001
+            print(f"WARNING: charters.json write failed: {exc}")
 
-    s = snapshot["stats"]
-    print(
-        f"agent-context: projects={s['active_projects']} "
-        f"open={s['total_open_tasks']} done7d={s['recently_done_7d']} "
-        f"upcoming={s['upcoming_deadlines_7d']} → drive://{OUTPUT_REL}"
-    )
+        s = snapshot["stats"]
+        print(
+            f"agent-context: projects={s['active_projects']} "
+            f"open={s['total_open_tasks']} done7d={s['recently_done_7d']} "
+            f"upcoming={s['upcoming_deadlines_7d']} → drive://{OUTPUT_REL}"
+        )
 
 
 if __name__ == "__main__":

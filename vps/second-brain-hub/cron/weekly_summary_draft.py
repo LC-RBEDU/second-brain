@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sunday evening: factual weekly summary draft → 00-System/weekly/YYYY-Www-draft.md
 
-Phase 2 migrace — vault I/O přes lib/drive_io.DriveVault.
+Vault I/O přes vault_factory.open_vault (DriveVault | GitVault).
 """
 from __future__ import annotations
 
@@ -15,26 +15,12 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+from drive_io import DriveNotFoundError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 
 INBOX_SUBDIRS = ("slack", "sembly", "email", "daily", "Clippings")
 TASKS_REL = "00-System/dashboard-tasks-source.json"
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
-
-_VAULT_SINGLETON: DriveVault | None = None
-
-
-def get_vault() -> DriveVault:
-    global _VAULT_SINGLETON
-    if _VAULT_SINGLETON is None:
-        root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-        if not root_id:
-            raise RuntimeError(
-                "VAULT_DRIVE_ID env not set — Drive vault folder ID is required."
-            )
-        creds, _mode = credentials_from_env()
-        _VAULT_SINGLETON = DriveVault(root_id, credentials=creds)
-    return _VAULT_SINGLETON
 
 
 def _today() -> date:
@@ -47,8 +33,7 @@ def iso_week_label(d: date | None = None) -> str:
     return f"{y}-W{w:02d}"
 
 
-def count_inbox() -> int:
-    vault = get_vault()
+def count_inbox(vault) -> int:
     n = 0
     for sub in INBOX_SUBDIRS:
         try:
@@ -88,8 +73,7 @@ def ice_score(t: dict, today: date) -> float:
     return s
 
 
-def build_draft() -> str:
-    vault = get_vault()
+def build_draft(vault) -> str:
     week = iso_week_label()
     rel = f"00-System/weekly/{week}-draft.md"
     today = _today()
@@ -158,7 +142,7 @@ def build_draft() -> str:
 
 ## Metriky
 
-- INBOX nezpracovaných: **{count_inbox()}**
+- INBOX nezpracovaných: **{count_inbox(vault)}**
 - Otevřených úkolů (bez Waiting): **{len(open_tasks)}**
 - Waiting: **{len(waiting)}**
 - Po termínu: **{len(overdue)}**
@@ -219,7 +203,8 @@ _Viz `00-System/Memory/procesy-mrluc.md`_
 
 
 def main() -> None:
-    rel = build_draft()
+    with open_vault() as vault:
+        rel = build_draft(vault)
     print("wrote drive://", rel)
 
 

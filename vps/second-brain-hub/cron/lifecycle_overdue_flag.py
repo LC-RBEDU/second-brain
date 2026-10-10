@@ -26,7 +26,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, credentials_from_env  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from focus import is_terminal  # noqa: E402
 from overdue import (  # noqa: E402
     ESCALATE_AFTER_DAYS,
@@ -41,47 +41,42 @@ TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 
 
 def main() -> None:
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
+    with open_vault() as vault:
+        today = datetime.now(TZ).date()
+        today_str = today.isoformat()
+        flagged = 0
+        escalated = 0
+        skipped = 0
 
-    today = datetime.now(TZ).date()
-    today_str = today.isoformat()
-    flagged = 0
-    escalated = 0
-    skipped = 0
+        for task in iter_active_tasks(vault):
+            if is_terminal(task.status):
+                continue
+            dl = parse_iso_date(task.frontmatter.get("deadline"))
+            if dl is None or dl >= today:
+                continue
 
-    for task in iter_active_tasks(vault):
-        if is_terminal(task.status):
-            continue
-        dl = parse_iso_date(task.frontmatter.get("deadline"))
-        if dl is None or dl >= today:
-            continue
-
-        if needs_first_flag(task.body, dl):
-            log = first_breach_line(today_str, dl)
-            kind = "OVERDUE"
-        elif needs_escalation(task.body, dl, today):
-            log = escalation_line(today_str, dl, today)
-            kind = f"ESKALACE ({ESCALATE_AFTER_DAYS}+ dní)"
-        else:
-            continue
-
-        if update_task(vault, task, today_str=today_str, body_append=log):
-            if kind == "OVERDUE":
-                flagged += 1
+            if needs_first_flag(task.body, dl):
+                log = first_breach_line(today_str, dl)
+                kind = "OVERDUE"
+            elif needs_escalation(task.body, dl, today):
+                log = escalation_line(today_str, dl, today)
+                kind = f"ESKALACE ({ESCALATE_AFTER_DAYS}+ dní)"
             else:
-                escalated += 1
-            print(f"  ✓ {task.rel_path} {kind} (deadline {dl.isoformat()})")
-        else:
-            skipped += 1
+                continue
 
-    print(
-        f"lifecycle_overdue_flag: first={flagged}, escalated={escalated}, "
-        f"conflicts/skipped={skipped}"
-    )
+            if update_task(vault, task, today_str=today_str, body_append=log):
+                if kind == "OVERDUE":
+                    flagged += 1
+                else:
+                    escalated += 1
+                print(f"  ✓ {task.rel_path} {kind} (deadline {dl.isoformat()})")
+            else:
+                skipped += 1
+
+        print(
+            f"lifecycle_overdue_flag: first={flagged}, escalated={escalated}, "
+            f"conflicts/skipped={skipped}"
+        )
 
 
 if __name__ == "__main__":

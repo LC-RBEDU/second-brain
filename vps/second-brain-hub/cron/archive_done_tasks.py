@@ -26,7 +26,8 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
+from drive_io import DriveNotFoundError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 from task_io import iter_active_tasks, parse_iso_date, ARCHIV_DIR  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -43,56 +44,51 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-    if not root_id:
-        raise RuntimeError("VAULT_DRIVE_ID env not set")
-    creds, _ = credentials_from_env()
-    vault = DriveVault(root_id, credentials=creds)
+    with open_vault() as vault:
+        today = datetime.now(TZ).date()
+        cutoff = today - timedelta(days=args.keep_days) if args.keep_days else today
+        archived = 0
+        skipped = 0
 
-    today = datetime.now(TZ).date()
-    cutoff = today - timedelta(days=args.keep_days) if args.keep_days else today
-    archived = 0
-    skipped = 0
-
-    for task in iter_active_tasks(vault):
-        if not task.is_terminal:
-            continue
-        # Skip recurring tasks (they're rotated by lifecycle_recurring, not archived here)
-        if task.frontmatter.get("recurring"):
-            continue
-        # Grace period
-        if args.keep_days:
-            updated = parse_iso_date(task.frontmatter.get("updated"))
-            if updated and updated > cutoff:
+        for task in iter_active_tasks(vault):
+            if not task.is_terminal:
                 continue
-
-        slug = task.slug or "unknown"
-        filename = task.rel_path.rsplit("/", 1)[-1]
-        target = f"{ARCHIV_DIR}/{slug}/{filename}"
-
-        # Skip if target already exists
-        try:
-            existing = vault.stat(target)
-            if existing:
-                print(f"  - skip (target exists): {target}")
-                skipped += 1
+            # Skip recurring tasks (they're rotated by lifecycle_recurring, not archived here)
+            if task.frontmatter.get("recurring"):
                 continue
-        except DriveNotFoundError:
-            pass
+            # Grace period
+            if args.keep_days:
+                updated = parse_iso_date(task.frontmatter.get("updated"))
+                if updated and updated > cutoff:
+                    continue
 
-        if args.dry_run:
-            print(f"  [dry] {task.rel_path} → {target}")
-        else:
-            vault.mkdir_p(f"{ARCHIV_DIR}/{slug}")
+            slug = task.slug or "unknown"
+            filename = task.rel_path.rsplit("/", 1)[-1]
+            target = f"{ARCHIV_DIR}/{slug}/{filename}"
+
+            # Skip if target already exists
             try:
-                vault.move(task.rel_path, target)
-                print(f"  ✓ {task.rel_path} → {target}")
-                archived += 1
-            except Exception as e:
-                print(f"  ! move failed: {task.rel_path} → {target}: {e}")
-                skipped += 1
+                existing = vault.stat(target)
+                if existing:
+                    print(f"  - skip (target exists): {target}")
+                    skipped += 1
+                    continue
+            except DriveNotFoundError:
+                pass
 
-    print(f"archive_done_tasks: archived={archived}, skipped={skipped}, dry_run={args.dry_run}")
+            if args.dry_run:
+                print(f"  [dry] {task.rel_path} → {target}")
+            else:
+                vault.mkdir_p(f"{ARCHIV_DIR}/{slug}")
+                try:
+                    vault.move(task.rel_path, target)
+                    print(f"  ✓ {task.rel_path} → {target}")
+                    archived += 1
+                except Exception as e:
+                    print(f"  ! move failed: {task.rel_path} → {target}: {e}")
+                    skipped += 1
+
+        print(f"archive_done_tasks: archived={archived}, skipped={skipped}, dry_run={args.dry_run}")
 
 
 if __name__ == "__main__":

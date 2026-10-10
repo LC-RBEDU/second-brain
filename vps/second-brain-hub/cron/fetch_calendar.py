@@ -10,12 +10,13 @@ RB Universe DB, kde jsou jen schůzky s externími účastníky v Pipedrive).
 Domain-Wide Delegation user (impersonation):
   CALENDAR_USER_EMAIL (výchozí lukas@redbuttonedu.cz)
 
-**Drive output** (přes DriveVault, Phase 2 migrace):
-  VAULT_DRIVE_ID — folder ID OBSIDIAN rootu (1YTTs...)
+**Vault output** (přes vault_factory.open_vault):
+  VAULT_BACKEND — drive (default) | git
+  VAULT_DRIVE_ID — folder ID OBSIDIAN rootu (drive backend)
   GOOGLE_DRIVE_OAUTH_JSON — OAuth refresh token JSON (preferred)
   GOOGLE_DRIVE_SA_JSON — SA JSON (fallback)
 
-Výstup: Drive `00-System/calendar-events.json`
+Výstup: vault `00-System/calendar-events.json`
 """
 from __future__ import annotations
 
@@ -35,24 +36,8 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from google_sa_json import parse_service_account_json  # noqa: E402
-from drive_io import DriveVault, DriveNotFoundError, credentials_from_env  # noqa: E402
-
-
-_VAULT_SINGLETON: DriveVault | None = None
-
-
-def get_vault() -> DriveVault:
-    """Lazy-init DriveVault from env. Single instance per process."""
-    global _VAULT_SINGLETON
-    if _VAULT_SINGLETON is None:
-        root_id = (os.environ.get("VAULT_DRIVE_ID") or "").strip()
-        if not root_id:
-            raise RuntimeError(
-                "VAULT_DRIVE_ID env not set — Drive vault folder ID is required."
-            )
-        creds, _mode = credentials_from_env()
-        _VAULT_SINGLETON = DriveVault(root_id, credentials=creds)
-    return _VAULT_SINGLETON
+from drive_io import DriveNotFoundError  # noqa: E402
+from vault_factory import open_vault  # noqa: E402
 
 
 def _read_calendar_sa_raw() -> str | None:
@@ -128,10 +113,10 @@ def filter_calendar_payload(payload: dict) -> dict:
     }
 
 
-def load_cached() -> dict | None:
-    """Return previously written calendar JSON from Drive, or None."""
+def load_cached(vault) -> dict | None:
+    """Return previously written calendar JSON from vault, or None."""
     try:
-        data, _meta = get_vault().read_json(OUT_REL)
+        data, _meta = vault.read_json(OUT_REL)
         return data if isinstance(data, dict) else None
     except DriveNotFoundError:
         return None
@@ -218,10 +203,10 @@ def fetch_from_google() -> dict:
     }
 
 
-def refresh(force: bool = False) -> dict:
-    """Fetch + write to Drive. Reuses today's cache unless force=True."""
+def refresh(vault, force: bool = False) -> dict:
+    """Fetch + write to vault. Reuses today's cache unless force=True."""
     if not force:
-        cached = load_cached()
+        cached = load_cached(vault)
         if cached:
             gen = (cached.get("generated") or "")[:10]
             if gen == str(date.today()):
@@ -229,7 +214,7 @@ def refresh(force: bool = False) -> dict:
     try:
         payload = fetch_from_google()
     except Exception as e:
-        cached = load_cached()
+        cached = load_cached(vault)
         if cached:
             cached = filter_calendar_payload(cached)
             cached["source"] = "cache_stale"
@@ -243,13 +228,14 @@ def refresh(force: bool = False) -> dict:
             "fetchError": str(e),
         }
     payload = filter_calendar_payload(payload)
-    get_vault().write_json(OUT_REL, payload)
+    vault.write_json(OUT_REL, payload)
     return payload
 
 
 def main() -> None:
     force = "--force" in sys.argv
-    data = refresh(force=force)
+    with open_vault() as vault:
+        data = refresh(vault, force=force)
     n = len(data.get("events") or [])
     print("calendar drive://", OUT_REL, "events=", n, "source=", data.get("source"))
     if data.get("fetchError"):
