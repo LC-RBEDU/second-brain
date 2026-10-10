@@ -27,6 +27,8 @@ Brain a hub = **jeden** WC `/data/vault`. Oddělený clone zakázán. Coolify Br
 - Hub cron: `with open_vault() as vault: build_and_write_context_bundle(vault, side_failure="warn")`
 - Brain: `with brain_vault(mode=…) as vault:` → tools / `bundle(vault, side_failure="raise")`
 - Lib `agent_context_build` **nemá** session API
+- **`get_context` dual-session (odchylka A45 / R30):** nejdřív `mode=read` (warm + tip ahead OK), při `needs_rebuild` druhá session `mode=rebuild` (tip/PUSH gate). Důvod: warm tip-ahead nesmí spadnout na tip gate.
+- Rebuild / light-charters fail → HTTP **503** s `error_reason` (často `vault_push_reset_failed` + message prefix `context rebuild failed` — nejde o tip reset, ops čti message).
 
 ## Tip ahead / dirty / push (ops SSH)
 

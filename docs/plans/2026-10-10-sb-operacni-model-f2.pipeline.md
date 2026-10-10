@@ -100,6 +100,8 @@ rovnou /rbu-pipeline na F2
 | 54 | 2026-10-10 | IMPLEMENT | — | MCP auth+tools | — | McpAuthMiddleware; list_dir/update_task/set_focus; B34b+paused tests; → REVIEW |
 | 55 | 2026-10-10 | REVIEW | 35945c7e… | K OPRAVĚ | 0B / 3M / 2m | B35b/CAS/T# → IMPLEMENT |
 | 56 | 2026-10-10 | IMPLEMENT | — | MAJOR fixes | — | get_context→503; CAS 409; tip/B34 skipped tests; pytest brain 28 / hub 354 |
+| 57 | 2026-10-10 | REVIEW | 23c7ece6… | K OPRAVĚ | 0B / 3M | T3/B5/A56 tests → IMPLEMENT |
+| 58 | 2026-10-10 | IMPLEMENT | — | T3/B5/A56 | — | B35b+CAS pytest; A56 misconfig≠dirty; runbook dual-session; brain 30 / hub 354 |
 
 ### Grill g=10 odpověď (2026-10-10)
 

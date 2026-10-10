@@ -20,7 +20,7 @@ for _lib in (
 from git_io import GitPushError  # noqa: E402
 from vault_factory import VaultPausedError, open_vault  # noqa: E402
 
-from app.errors import BrainVaultError, vault_error  # noqa: E402
+from app.errors import BrainClientError, BrainVaultError, vault_error  # noqa: E402
 
 VaultMode = Literal["read", "mutate", "rebuild"]
 
@@ -64,9 +64,11 @@ def _gate_after_open(vault: Any, *, mode: VaultMode, env: Mapping[str, str]) -> 
     if bool(getattr(vault, "skipped", False)):
         reason = getattr(vault, "skip_reason", None)
         if not reason:
-            raise vault_error(
-                "vault_dirty_start",
-                "vault.skipped without skip_reason — misconfigured session (A56)",
+            # A56 — never invent vault_dirty_start from bare skipped
+            raise BrainClientError(
+                message="vault.skipped without skip_reason — misconfigured session (A56)",
+                status_code=500,
+                error_reason="misconfigured_session",
             )
         raise vault_error(str(reason))
 
@@ -91,7 +93,7 @@ def _open_and_gate(
     vault = cm.__enter__()
     try:
         _gate_after_open(vault, mode=mode, env=env)
-    except BrainVaultError:
+    except (BrainVaultError, BrainClientError):
         cm.__exit__(None, None, None)
         raise
     return cm, vault
