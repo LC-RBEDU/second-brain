@@ -1,7 +1,7 @@
 # Plán: F1 — Vault → GitHub; crony Drive → git
 
 > Architekt: **k=2 · r=3** (+ patchy po kritikách)  
-> Stav: **SCHVÁLENO** (B1–B25 ano) — IMPLEMENT → REVIEW  
+> Stav: **DONE** (kód nasazen, QA PASS na `9ed0da3`; cutover F1-e…h = runbook)  
 > Pipeline ledger: [2026-10-10-sb-operacni-model-f1.pipeline.md](2026-10-10-sb-operacni-model-f1.pipeline.md)  
 > Parent F0 (SCHVÁLENO): [2026-10-10-sb-operacni-model-f0.md](2026-10-10-sb-operacni-model-f0.md)  
 > Vault: **SB15 — Nový operační model SB — multi-klient, Grok orchestrace, GitHub vault** (**SB15-2**)  
