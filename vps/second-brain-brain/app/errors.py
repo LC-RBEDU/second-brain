@@ -62,6 +62,21 @@ class BrainVaultError(Exception):
         return {"error_reason": self.error_reason, "message": self.message}
 
 
+@dataclass
+class BrainClientError(Exception):
+    """Non-vault client errors (403 path deny, 401 auth, …)."""
+
+    message: str
+    status_code: int = 403
+    error_reason: str = "client_error"
+
+    def __post_init__(self) -> None:
+        Exception.__init__(self, self.message)
+
+    def as_dict(self) -> dict[str, str]:
+        return {"error_reason": self.error_reason, "message": self.message}
+
+
 def vault_error(reason: str, message: str | None = None) -> BrainVaultError:
     return BrainVaultError(
         error_reason=reason,

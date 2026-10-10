@@ -6,7 +6,7 @@ Schvalování plánu uživatelem: ne
 Architekt: 1346c52e… · otevření #2 · k=2/3 · r=2/3 · SCHVÁLENO
 Šťoural: 91285bfd… · g=13 HOTOVÝ
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main před pipeline): ca95c2f1388c1b7605c27ef9113219821e58a1f1 · Kódový SHA: d6be833 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 Profil: SECOND_BRAIN
@@ -90,7 +90,8 @@ rovnou /rbu-pipeline na F2
 | 44 | 2026-10-10 | GRILL | 91285bfd… | HOTOVÝ | — | → critic |
 | 45 | 2026-10-10 | CRITIC | 482a6562… | SCHVÁLENO | 0B / 0M / 1m | A38 editorial → IMPLEMENT |
 | 46 | 2026-10-10 | IMPLEMENT | — | F2-b partial | — | skip_reason + strict_push + factory kwargs; test_git_io 14 passed |
-| 47 | 2026-10-10 | IMPLEMENT | — | F2-b done | — | agent_context_build + thin cron; tombstone; task_id_allocate; reminders A51; Brain scaffold + brain_vault A60–A64; pytest 356 passed |
+| 47 | 2026-10-10 | IMPLEMENT | — | F2-b done | — | agent_context_build + thin cron; tombstone; task_id_allocate; reminders A51; Brain scaffold + brain_vault A60–A64; pytest 356 passed; commit d6be833 |
+| 48 | 2026-10-10 | IMPLEMENT | — | F2-a+c | — | brain-api-runbook (Grok Bot webhook kontrakt); auth_google/service B37; policy/fm stubs |
 
 ### Grill g=10 odpověď (2026-10-10)
 
