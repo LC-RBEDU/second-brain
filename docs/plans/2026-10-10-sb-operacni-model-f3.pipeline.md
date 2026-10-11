@@ -6,7 +6,7 @@ Schvalování plánu uživatelem: ne
 Architekt: b5de8d58… · otevření #2 · k=2/3 · r=3/3
 Šťoural: 31be6955… · g=6 HOTOVÝ
 Kritik: af0b8c4c… · SCHVÁLENO
-Kódový SHA: 6fac0fdab41a1413dc96b222363bf25468d0f5e5
+Kódový SHA: 5e34cc624f1bed0f0ea553d06a8a600837499d42
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main před pipeline): f893b01b6972b3fc55af6dd44639f1ae31e8548e · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
@@ -100,7 +100,9 @@ ok, spusť krátký smoke a pak F3
 | 18 | 2026-10-11 | GRILL | 31be6955… | HOTOVÝ GRILL | — | A34–A37 → CRITIC |
 | 19 | 2026-10-11 | CRITIC | af0b8c4c… | SCHVÁLENO | 3 MINOR | → IMPLEMENT |
 | 20 | 2026-10-11 | IMPLEMENT | hlavní | lokální gate OK | — | brain 44 + hub/scripts 356 pytest; commit pending |
-| 21 | 2026-10-11 | REVIEW | — | start | — | po commitu |
+| 21 | 2026-10-11 | REVIEW | a549d0a3… | K OPRAVĚ | 1 BLOCKER + MAJOR | → IMPLEMENT fix |
+| 22 | 2026-10-11 | IMPLEMENT | hlavní | fix commit | — | NEW-1…NEW-11 |
+| 23 | 2026-10-11 | REVIEW | — | start kolo 2 | — | po fix |
 
 ### Rozhodnutí C1 / apply UX (2026-10-11)
 

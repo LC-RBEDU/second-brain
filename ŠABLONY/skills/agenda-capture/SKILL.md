@@ -8,6 +8,11 @@ description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new fil
 
 # agenda-capture (v2)
 
+## F3 — capture_daily (2026-10)
+
+- Rychlá denní poznámka → prefer Brain `capture_daily` / `POST /v1/capture_daily` (mutate do `01-INBOX/daily/`), ne přímý FS zápis do git klonu.
+- External/mailbox mutate stále jen přes propose + client apply (viz `agenda-triage` F3).
+
 > Bere libovolný střípek a integruje ho do živého systému jako **soubor-per-task** v `02-PROJEKTY/<slug>/tasks/`.
 
 **Vault (SSOT):** `OBSIDIAN/` v repo `SECOND_BRAIN` (Google Drive).
