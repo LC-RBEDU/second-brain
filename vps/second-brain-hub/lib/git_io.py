@@ -576,12 +576,20 @@ class GitVault:
         shutil.move(str(src), str(dst))
         return self._meta_for_path(dst_n)
 
-    def delete(self, rel_path: str, *, permanent: bool = False) -> None:
+    def delete(
+        self,
+        rel_path: str,
+        *,
+        permanent: bool = False,
+        expect_oid: str | None = None,
+        expect_mtime: datetime | None = None,
+    ) -> None:
         _ = permanent  # git has no trash; always remove from working tree
         rel = _norm_rel(rel_path)
         path = self._abspath(rel)
         if not path.exists():
             raise DriveNotFoundError(f"Path not found: {rel!r}")
+        self._check_cas(rel, path, expect_oid=expect_oid, expect_mtime=expect_mtime)
         if self.dry_run:
             log.info("git_io: would-delete %s", rel)
             return

@@ -12,6 +12,14 @@ description: >-
 
 `00-System/send-policy.yaml` = `draft_only` pro Gmail. Slack send jen po výslovném potvrzení.
 
+## F3 — propose + client apply (2026-10)
+
+- Před jakýmkoli **send** (Slack) nebo **mutate** mailboxu: Brain `external_propose` / `mailbox_propose` (povinné) + preview.
+- **Vratné** (archive, trash=koš): 1× „ano“ → client apply.
+- **Nevratné** (odeslat Slack/e-mail): 2. otázka ve stejné appce → teprve pak client apply.
+- Brain `*/apply` nepoužívej (403/501). Partial report: `{succeeded[], failed[{id,error_reason}]}` — ne tiché all-OK.
+- Gmail draft (bez send) smí zůstat client MCP bez propose; **odeslání** mailu = nevratné + propose.
+
 ## Společné
 
 1. Zdroj: soubor v `01-INBOX/email/` nebo `01-INBOX/slack/`, **nebo** živé Slack vlákno (permalink / kanál+thread_ts) přes Slack MCP.

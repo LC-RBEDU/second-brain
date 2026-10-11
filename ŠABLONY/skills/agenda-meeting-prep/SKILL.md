@@ -1,6 +1,6 @@
 ---
 name: agenda-meeting-prep
-description: "Příprava na schůzky do chatu. Ad-hoc (připrav schůzky, příprava na schůzku, co mě dnes čeká) i naplánovaný běh: jen schůzka s dalším účastníkem, výstup do chatu. Nezapisuje do vaultu, neposílá do Slacku."
+description: "Příprava na schůzky. Ad-hoc i scheduled: jeden SSOT přes Brain prepare_meeting → Meeting-Preps; primární doručení Grok. Ad-hoc v chatu čte/volá stejný SSOT — nevyrábí třetí brief."
 ---
 
 # agenda-meeting-prep
@@ -9,13 +9,12 @@ description: "Příprava na schůzky do chatu. Ad-hoc (připrav schůzky, příp
 
 - **Jeden obsah přípravy:** Brain `prepare_meeting` → `00-System/Meeting-Preps/<event_id>-<YYYY-MM-DD>.md`.
 - **Primární doručení:** Grok přes `GROK_BOT_MEETING_PREP_WEBHOOK_*` (VPS cron `meeting_prep_dispatch`, okno 70 min, `*/15 8-23`).
-- **Ad-hoc v Cursoru:** volej Brain `prepare_meeting` (`force=true` pokud přepsat) nebo čti stejný SSOT — **nevyráběj třetí odlišný brief**.
+- **Ad-hoc v Cursoru:** volej Brain `prepare_meeting` (`force=true` pokud přepsat) nebo čti stejný SSOT a shrň do chatu — **nevyráběj třetí odlišný brief**.
 - Paralelní Grok/Claude/Cursor scheduled prep generátory = vypnout (T13; FAIL → DONE s výhradou).
 
-> Příprava na schůzky **na vyžádání**. Výstup jde do chatu, nikam se nezapisuje.
+> Příprava na schůzky **na vyžádání**. Zápis SSOT = Brain; výstup pro člověka do chatu. Ne Slack.
 
-**Zdroje:** Google Calendar MCP (primary), RB Universe MCP (organizace, osoby, dealy účastníků), `00-System/agent-context-light.json` (+ `charters.json` dle potřeby), vault OBSIDIAN, Gmail MCP, Slack MCP, Drive MCP
-**Nezapisuje:** ani do vaultu, ani do Slacku. Pokud si Lukáš přípravu chce uložit, řekne si o to zvlášť → `agenda-capture`.
+**Zdroje (stejný rozsah jako Brain prep):** Google Calendar, RB Universe, vault, Gmail, Slack, Drive — přes Brain tool když jde; jinak MCP jen pro doplnění do stejného briefu / force regenerate.
 
 ## Kdy spouštět
 

@@ -16,6 +16,18 @@ def mailbox_propose(
 ) -> dict[str, Any]:
     if not items:
         raise BrainClientError(message="items required", status_code=400)
+    for raw in items:
+        label = str(
+            (raw.get("payload") or {}).get("label")
+            or raw.get("label")
+            or "INBOX"
+        ).upper()
+        if label != "INBOX":
+            raise BrainClientError(
+                message="L2 mailbox propose only on Inbox",
+                status_code=400,
+                error_reason="l2_sent_forbidden",
+            )
     batch = create_batch("mailbox", items, principal=str(principal))
     return {
         "batch_id": batch.batch_id,

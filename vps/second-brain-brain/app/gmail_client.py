@@ -32,18 +32,27 @@ class GmailL1Result:
 Fetcher = Callable[[str, str], list[dict[str, Any]]]
 
 
-def _default_fetcher(mailbox: str, label: str) -> list[dict[str, Any]]:
-    """No credentials → empty (not error). Tests inject fetcher."""
-    _ = mailbox, label
-    token_key = (
+def _token_for(mailbox: str, env: dict | None = None) -> str:
+    env_map = env if env is not None else os.environ
+    key = (
         "GMAIL_WORKSPACE_REFRESH_TOKEN"
         if mailbox == "workspace"
         else "GMAIL_PERSONAL_REFRESH_TOKEN"
     )
-    if not (os.environ.get(token_key) or "").strip():
+    return (env_map.get(key) or "").strip()
+
+
+def _default_fetcher(mailbox: str, label: str) -> list[dict[str, Any]]:
+    """Live Gmail API not wired in this module yet.
+
+    - No token → empty list (OK, mailbox skipped).
+    - Token present → raise so list_l1 surfaces error_reason (no silent empty).
+    """
+    if not _token_for(mailbox):
         return []
-    # Live Gmail API wiring is env-gated; without google client libs return [].
-    return []
+    raise RuntimeError(
+        f"gmail_api_not_wired:{mailbox}:{label}"
+    )
 
 
 def list_l1(
@@ -51,6 +60,7 @@ def list_l1(
     mailboxes: tuple[str, ...] = ("workspace", "personal"),
     fetcher: Fetcher | None = None,
     fetch_bodies: bool = True,
+    env: dict | None = None,
 ) -> GmailL1Result:
     """P5: Inbox ≤100/mailbox Date ASC; Sent = thread-join only; bodies ≤40 total."""
     fetch = fetcher or _default_fetcher
@@ -106,6 +116,10 @@ def list_l1(
                     if bodies > BODY_CAP:
                         m.body = None
                         bodies = BODY_CAP
+        # Tokens configured but zero messages from default path without inject:
+        # if any mailbox has token and we used default fetcher, empty is OK only
+        # when fetcher returned [] without token — already handled by raise.
+        _ = env
         return GmailL1Result(messages=out, bodies_fetched=min(bodies, BODY_CAP))
     except Exception as exc:  # noqa: BLE001 — surface as error_reason for fail-path
         return GmailL1Result(messages=[], error_reason=f"gmail_l1_error:{exc}")

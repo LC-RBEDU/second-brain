@@ -13,6 +13,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from push_dispatch import as_dict, dispatch_proactivity  # noqa: E402
 from vault_factory import open_vault  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
@@ -59,14 +60,13 @@ def main() -> None:
     }
     print(f"proactivity_dispatch: trigger={trigger} preview={preview} dry_run={args.dry_run}")
 
+    msg = f"{trigger}: jdi do triáže (slack_dump≈{slack_n})"
+    result = dispatch_proactivity(msg, dry_run=args.dry_run)
+    print(f"  deliver={as_dict(result)}")
     if args.dry_run:
         print("  [dry] 0 OS push, 0 Slack send, 0 chat deliver, 0 propose")
         return
-
-    # Delivery: OS push preferred; F3 B18 often FAIL → Slack/chat fallback via env hooks.
     # No propose / batch_id (Q11).
-    fallback = (os.environ.get("PROACTIVITY_FALLBACK") or "log").strip()
-    print(f"  deliver via={fallback} (os_push may be unavailable — B18)")
 
 
 if __name__ == "__main__":

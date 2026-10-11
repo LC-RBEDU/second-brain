@@ -16,18 +16,21 @@ def external_propose(
 ) -> dict[str, Any]:
     if not items:
         raise BrainClientError(message="items required", status_code=400)
+    normalized: list[dict[str, Any]] = []
     for raw in items:
-        target = (raw.get("payload") or {}).get("target") or raw.get("target")
+        item = dict(raw)
+        target = (item.get("payload") or {}).get("target") or item.get("target")
         if target and target not in ("dm", "gdm", "channel"):
             raise BrainClientError(
                 message="target must be dm|gdm|channel",
                 status_code=400,
                 error_reason="invalid_target",
             )
-        if "reversible" not in raw:
-            action = str(raw.get("action") or "")
-            raw = {**raw, "reversible": action not in ("send", "permanent_delete")}
-    batch = create_batch("external", items, principal=str(principal))
+        if "reversible" not in item:
+            action = str(item.get("action") or "")
+            item["reversible"] = action not in ("send", "permanent_delete")
+        normalized.append(item)
+    batch = create_batch("external", normalized, principal=str(principal))
     return {
         "batch_id": batch.batch_id,
         "kind": "external",

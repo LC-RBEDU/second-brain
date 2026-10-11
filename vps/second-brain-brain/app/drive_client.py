@@ -22,5 +22,10 @@ def list_event_attachments(event_id: str, *, env: dict | None = None) -> dict[st
             "attachments": [],
         }
     _ = event_id
-    # Placeholder until SA/OAuth wired; configured ⇒ empty list without crash.
-    return {"ok": True, "degraded": False, "attachments": []}
+    # Credentials present but Drive API not wired yet — explicit degrade (no silent OK).
+    return {
+        "ok": False,
+        "degraded": True,
+        "reason": "drive_api_not_wired",
+        "attachments": [],
+    }

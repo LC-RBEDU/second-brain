@@ -48,6 +48,14 @@ DEPLOYS = [
         "name": "SECOND BRAIN: Mobile → INBOX/daily",
         "daily_folder_id": "1hJWgIxgq5lJpMmjV7OILpRpmUu7zpA2K",
     },
+    # F3 — Sembly → Brain ingest (keep inactive until cutover; Bearer = BRAIN_SERVICE_TOKEN)
+    {
+        "template": "sembly-to-brain.json",
+        "workflow_id": None,
+        "action": "post",
+        "name": "SECOND BRAIN: Sembly → Brain ingest",
+        "active": False,
+    },
 ]
 
 TRIGGER_PREFIXES = ("Gmail:", "Slack:", "Webhook:")
@@ -138,7 +146,7 @@ def merge_nodes(template_nodes: list, live: dict, *, gmail_options: dict | None 
                 node.setdefault("parameters", {})["folderId"] = copy.deepcopy(pool["_folderId"])
             if "googleDrive" in ntype and "googleDriveOAuth2Api" in pool:
                 node["credentials"] = {"googleDriveOAuth2Api": copy.deepcopy(pool["googleDriveOAuth2Api"])}
-            if "gmailTrigger" in ntype and "gmailOAuth2" in pool:
+            if "gmail" in ntype and "gmailOAuth2" in pool:
                 node["credentials"] = {"gmailOAuth2": copy.deepcopy(pool["gmailOAuth2"])}
         merged.append(node)
     return merged
