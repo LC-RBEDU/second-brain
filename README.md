@@ -100,6 +100,7 @@ Versioned: `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/`.
 
 ## Související dokumentace
 
+- [`docs/second-brain-architecture.md`](docs/second-brain-architecture.md) — **přehled architektury** (schémata klientů / Brain / git / cron)
 - `OBSIDIAN/00-System/agent-bootstrap.md` — uživatelská kopie agent kontextu
 - `OBSIDIAN/00-System/Templates/agenda-system.md` — kompletní průvodce v2
 - `OBSIDIAN/00-System/Templates/konvence-a-slovnik.md`
