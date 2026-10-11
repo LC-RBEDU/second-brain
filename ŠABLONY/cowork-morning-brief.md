@@ -5,9 +5,11 @@ Lokální scheduled task (Claude Desktop otevřený). Interval: **každý pracov
 ## Prompt (vlož do `/schedule`)
 
 ```
-Follow ŠABLONY/skills/agenda-co-ted/SKILL.md and read OBSIDIAN/00-System/agent-context.json.
+Schedule morning brief — do NOT follow agenda-co-ted light-primary. Do NOT call GET /v1/context/light (service/schedule has no human OAuth → 403).
 
-The 24h refresh and uklid from that skill do not apply here. Do not run build_agent_context.py. Do not move or write vault files. Do not write Slack. If generated_at is older than 24h, say so in the chat and still use the snapshot.
+Read OBSIDIAN/00-System/agent-context.json (local) or MCP get_context. Same lanes as agenda-co-ted, but snapshot source = local JSON or get_context only.
+
+The 24h refresh and uklid from agenda-co-ted do not apply here. Do not run build_agent_context.py. Do not move or write vault files. Do not write Slack. If generated_at is older than 24h, say so in the chat and still use the snapshot.
 
 Write the morning priority brief in this chat only. Do not write the vault or Slack.
 
