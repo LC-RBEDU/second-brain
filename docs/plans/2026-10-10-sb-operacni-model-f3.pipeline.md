@@ -1,14 +1,18 @@
 # Pipeline: SB operační model F3
 
-Stav: QA
+Stav: DONE (výhrady)
 Plán: docs/plans/2026-10-10-sb-operacni-model-f3.md
 Schvalování plánu uživatelem: ne
 Architekt: b5de8d58… · otevření #2 · k=2/3 · r=3/3
 Šťoural: 31be6955… · g=6 HOTOVÝ
 Kritik: af0b8c4c… · SCHVÁLENO
-Review: af1b954c… · SCHVÁLENO (0 MAJOR; MINOR NEW-16…19 → T18)
+Review: af1b954c… · SCHVÁLENO
+QA: d98f72dc… · PASS s výhradami
+TESTER: přeskočeno (profil SECOND_BRAIN)
 Kódový SHA: 3d153308f75ce8505a8513af30afdb0163408f45
 Review SCHVÁLENO na: 3d153308f75ce8505a8513af30afdb0163408f45
+QA PASS na: 5bf759cae09cde6f04028c25483be57237daa0a0
+Výhrady: B18 OS FAIL OK; B20 Grok webhook ENV; B14* Cursor client-apply NEOVĚŘENO (T8); B21 paralelní prep NEOVĚŘENO
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main před pipeline): f893b01b6972b3fc55af6dd44639f1ae31e8548e · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
@@ -104,7 +108,9 @@ ok, spusť krátký smoke a pak F3
 | 20 | 2026-10-11 | IMPLEMENT | hlavní | lokální gate OK | — | brain 44 + hub/scripts 356 pytest; commit pending |
 | 21 | 2026-10-11 | REVIEW | a549d0a3… | K OPRAVĚ | 1 BLOCKER + MAJOR | → IMPLEMENT fix |
 | 22 | 2026-10-11 | IMPLEMENT | hlavní | fix commit | — | NEW-1…NEW-11 |
-| 23 | 2026-10-11 | REVIEW | — | start kolo 2 | — | po fix |
+| 23 | 2026-10-11 | REVIEW | af1b954c… | SCHVÁLENO | 0 MAJOR | → push |
+| 24 | 2026-10-11 | QA | d98f72dc… | PASS s výhradami | B18 OK; B14*/B21 DATA-NELZE | TESTER skip |
+| 25 | 2026-10-11 | DONE | — | výhrady | — | SB15-4 [x] až po T8 Cursor nebo souhlas |
 
 ### Rozhodnutí C1 / apply UX (2026-10-11)
 
