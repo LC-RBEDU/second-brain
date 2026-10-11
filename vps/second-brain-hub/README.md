@@ -77,7 +77,8 @@ git push origin main
 | `CALENDAR_DAYS_AHEAD` | `2` (max 14) |
 | `ANTHROPIC_API_KEY` | volitelné — LLM rerank EDU news + commitment extraction |
 | `ANTHROPIC_MODEL` | default `claude-3-5-haiku-20241022` |
-| `SLACK_USER_TOKEN` | `xoxp-` — Slack watchlist poll (`slack_poll.py`: DM/GDM + mentions + `:gear:`) |
+| `SLACK_USER_TOKEN` | `xoxp-` — (legacy poll / send scripts); L1 live = Brain |
+| `SLACK_POLL_DUMP` | **F4:** `0` — dump no-op i kdyby se cron omylem spustil |
 | `SLACK_BOT_TOKEN` | `xoxb-` — připomínky (`reminders_dispatch.py`) |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
@@ -112,7 +113,7 @@ EDU news témata: **ne cron** — Cursor skill `agenda-edu-news` (vault + kalend
 
 ### Schválení triáže
 
-Cron návrhy už nevznikají. Triáž je jen v chatu: „projeď inbox“ (skill `agenda-triage`, BATCH/DEEP nad živým `01-INBOX`).
+Cron návrhy už nevznikají. Triáž je jen v chatu: „projeď inbox“ (skill `agenda-triage` — L1 = Brain **live Slack** + Gmail + `daily`/`sembly`; dump `01-INBOX/slack` jen residual).
 
 ### EDU news (OPS2)
 
@@ -128,9 +129,9 @@ python3 cron/lifecycle_extra_edu_news.py --reset
 
 Logy: `docker logs <container>` nebo `docker exec … tail /var/log/second-brain/*.log`.
 
-### Slack watchlist — Cowork dual-writer gate
+### Slack — F4 dump off + Cowork gate
 
-Continuous reply-watch = **VPS `slack_poll.py`**. Před nasazením jako SSOT **pauzni oba** Claude Cowork Slack archive schedules (jinak dva writers na `_vN`):
+**F4:** cron dump `slack_poll` je **off**. L1 Slack = Brain `slack_live` / `get_triage_candidates` (live API). Kill-switch: `SLACK_POLL_DUMP=0`. Cowork Slack archive schedules 3.3 + 3.4 drž **pauznuté** (ať znovu neplní `01-INBOX/slack/`):
 
 | # | Název | Kdy | ID |
 |---|-------|-----|-----|

@@ -14,7 +14,7 @@ On-demand only — skill `agenda-reply`:
 - Slack: nejdřív ukaž text; pošli až po „pošli“ / „ano“, jako Lukáš.
 - Živé Slack vlákno: **ne** zapisuj do `01-INBOX/slack/` (F4 dump off). Pracuj z permalinku / live Slack; triage preview v chatu. Nový task nezakládej; co má vzniknout, dej do `01-INBOX/daily/`. Task založí Cursor na desktopu.
 
-Continuous reply-watch (nové odpovědi v DM/GDM a sledovaných vláknech) = **VPS `slack_poll`**, ne Cowork `on:date` sweep. Scheduled Slack archive tasky 3.3 + 3.4 mají být pauznuté (viz `vps/second-brain-hub/README.md`).
+**F4:** Slack L1 = live (Brain / permalink), ne dump do `01-INBOX/slack/`. Cowork scheduled Slack archive 3.3 + 3.4 drž pauznuté (viz `vps/second-brain-hub/README.md`).
 
 Žádné automatické drafty, karty v `_lukas_ai-comm`, ani pointery v `01-INBOX/drafts/`.
 

@@ -1,12 +1,13 @@
 # Pipeline: SB operační model F4
 
-Stav: REVIEW
+Stav: PUSH/QA
 Plán: docs/plans/2026-10-10-sb-operacni-model-f4.md
 Schvalování plánu uživatelem: ne
 Architekt: parent · otevření #1 · k=1/3 · r=6
 Šťoural: 19f63106… · g=1 HOTOVÝ
 Kritik: 08fa7f49… · SCHVÁLENO
-Kódový SHA: (po review fix — viz log)
+Review: 4dae76cc… · SCHVÁLENO
+Kódový SHA: tip main (po MINOR README)
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main před pipeline): 7e63304962eba5bb1f769d9d90ed40b6c71696f9 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
