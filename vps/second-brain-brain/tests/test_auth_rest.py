@@ -49,10 +49,10 @@ def test_service_token_ok_list():
         assert "VAULT" in str(exc) or "GIT" in str(exc)
 
 
-def test_f3_stub_501():
+def test_f3_stub_removed():
     client = TestClient(app)
     r = client.get(
         "/v1/f3/slack_live",
         headers={"Authorization": "Bearer test-service-token"},
     )
-    assert r.status_code == 501
+    assert r.status_code == 404

@@ -19,12 +19,19 @@ from app.mcp_app import build_mcp
 from app.mcp_auth import McpAuthMiddleware
 from app.oauth_routes import router as oauth_router
 from app.tools import allocate_task_id as allocate_tool
+from app.tools import capture_daily as capture_daily_tool
 from app.tools import create_task as create_task_tool
+from app.tools import external_propose_apply as external_tool
 from app.tools import get_context as get_context_tool
+from app.tools import get_triage_candidates as triage_tool
+from app.tools import ingest_sembly as ingest_tool
 from app.tools import list_dir as list_dir_tool
+from app.tools import mailbox_propose_apply as mailbox_tool
+from app.tools import prepare_meeting as prepare_tool
 from app.tools import read_file as read_file_tool
 from app.tools import reminders_tools as reminders_tool
 from app.tools import set_focus as set_focus_tool
+from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
 
 
@@ -209,10 +216,109 @@ def rest_cancel(reminder_id: str, _auth: AuthPrincipal) -> dict:
     return reminders_tool.cancel_reminder(reminder_id)
 
 
-@app.api_route("/v1/f3/{name}", methods=["GET", "POST", "PUT", "DELETE"])
-def f3_stub(name: str, _auth: AuthPrincipal) -> JSONResponse:
-    _ = name
-    return JSONResponse(
-        status_code=501,
-        content={"error_reason": "f3_stub", "message": "F3 tool — not in F2"},
+# --- F3 tools ---
+
+
+class IngestSemblyBody(BaseModel):
+    payload: dict[str, Any]
+
+
+@app.post("/v1/ingest_sembly")
+def rest_ingest_sembly(body: IngestSemblyBody, _auth: AuthPrincipal) -> dict:
+    return ingest_tool.ingest_sembly(body.payload)
+
+
+class CaptureDailyBody(BaseModel):
+    text: str
+    title: str | None = None
+
+
+@app.post("/v1/capture_daily")
+def rest_capture_daily(body: CaptureDailyBody, _auth: AuthPrincipal) -> dict:
+    return capture_daily_tool.capture_daily(body.text, title=body.title)
+
+
+@app.get("/v1/triage/candidates")
+def rest_triage(
+    _auth: AuthPrincipal,
+    include_live_slack: bool = False,
+    include_gmail: bool = True,
+) -> dict:
+    return triage_tool.get_triage_candidates(
+        include_live_slack=include_live_slack,
+        include_gmail=include_gmail,
     )
+
+
+@app.get("/v1/slack/live")
+def rest_slack_live(_auth: AuthPrincipal) -> dict:
+    return slack_live_tool.slack_live_search()
+
+
+class ProposeBody(BaseModel):
+    items: list[dict[str, Any]]
+
+
+@app.post("/v1/mailbox/propose")
+def rest_mailbox_propose(body: ProposeBody, auth: AuthPrincipal) -> dict:
+    return mailbox_tool.mailbox_propose(body.items, principal=auth)
+
+
+class ApplyBody(BaseModel):
+    batch_id: str
+    ids: list[str] | None = None
+
+
+@app.post("/v1/mailbox/apply")
+def rest_mailbox_apply(body: ApplyBody, auth: AuthPrincipal) -> dict:
+    return mailbox_tool.mailbox_apply(body.batch_id, body.ids, principal=auth)
+
+
+@app.post("/v1/external/propose")
+def rest_external_propose(body: ProposeBody, auth: AuthPrincipal) -> dict:
+    return external_tool.external_propose(body.items, principal=auth)
+
+
+@app.post("/v1/external/apply")
+def rest_external_apply(body: ApplyBody, auth: AuthPrincipal) -> dict:
+    return external_tool.external_apply(body.batch_id, body.ids, principal=auth)
+
+
+class PrepareMeetingBody(BaseModel):
+    event_id: str
+    title: str = ""
+    starts_at: str = ""
+    force: bool = False
+    deliver: bool = True
+    dry_run: bool = False
+
+
+@app.post("/v1/prepare_meeting")
+def rest_prepare_meeting(body: PrepareMeetingBody, _auth: AuthPrincipal) -> dict:
+    return prepare_tool.prepare_meeting(
+        body.event_id,
+        title=body.title,
+        starts_at=body.starts_at,
+        force=body.force,
+        deliver=body.deliver,
+        dry_run=body.dry_run,
+    )
+
+
+@app.get("/v1/meeting_prep")
+def rest_get_meeting_prep(
+    event_id: str, _auth: AuthPrincipal, day: str | None = None
+) -> dict:
+    return prepare_tool.get_meeting_prep(event_id, day=day)
+
+
+@app.post("/v1/push/test")
+def rest_push_test(_auth: AuthPrincipal) -> dict:
+    """B18 OS push probe — F3 ships Slack/chat fallback; native OS may FAIL."""
+    return {
+        "ok": False,
+        "channel": "none",
+        "error_reason": "os_push_not_configured",
+        "fallback": ["slack_dm", "chat"],
+        "b18": "FAIL",
+    }

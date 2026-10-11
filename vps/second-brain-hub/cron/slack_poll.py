@@ -76,6 +76,7 @@ def _discover_queries() -> list[tuple[str, str]]:
         ("from_me", f"from:<@{uid}>"),
         ("mention", f"<@{uid}> -from:<@{uid}>"),
         ("gear", "hasmy::gear:"),
+        ("eyes", "hasmy::eyes:"),
     ]
 
 

@@ -1,0 +1,44 @@
+{
+  "name": "Sembly → Brain ingest",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sembly-to-brain",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-sembly",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BRAIN_PUBLIC_URL}}/v1/ingest_sembly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $json }) }}",
+        "options": {}
+      },
+      "id": "http-brain",
+      "name": "Brain ingest_sembly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Brain ingest_sembly", "type": "main", "index": 0 }]]
+    }
+  },
+  "meta": {
+    "description": "F3 thin Sembly webhook → Brain ingest_sembly (Bearer service). Activate after cutover; keep sembly-to-cowork off."
+  }
+}

@@ -1,8 +1,17 @@
 {
   "mcpServers": {
     "second-brain-brain": {
-      "type": "http",
-      "url": "https://brain.cyprovi.cz/mcp/"
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://brain.cyprovi.cz/mcp/",
+        "--header",
+        "Authorization:${BRAIN_AUTHORIZATION}"
+      ],
+      "env": {
+        "BRAIN_AUTHORIZATION": "Bearer <BRAIN_SERVICE_TOKEN from Coolify second-brain-brain>"
+      }
     }
   }
 }

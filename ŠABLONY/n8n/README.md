@@ -19,14 +19,15 @@ Workflows. Každý JSON je importovatelný do n8n.
 
 | Soubor | n8n ID | Co dělá |
 |--------|--------|---------|
-| `gmail-starred-to-inbox-workspace.json` | `xtnI0PYaTp8Ou2la` | Hvězdičky + refresh SB Saved → `01-INBOX/email/` (Workspace); schedule **5 min** |
+| `gmail-starred-to-inbox-workspace.json` | `xtnI0PYaTp8Ou2la` | Hvězdičky + refresh SB Saved → `01-INBOX/email/` (Workspace), včetně příloh `sb-workspace-<thread>__soubor`; schedule **5 min** |
 | `gmail-starred-to-inbox-personal.json` | `yuFyLHlioxuE2Jhj` | Totéž pro osobní Gmail (`lukas.cypra@gmail.com`); schedule **15 min** |
 | `n8n-error-to-slack.json` | `PCmXS1X3xB8hWfy0` | Error Trigger → Slack `#…` (`C0C5VRU59UZ`); throttle **1×/10 min** per workflow |
 | `coolify-to-slack-alerts.json` | `IuZgaUkHQJUXqfEP` | Coolify webhook → jen error/warning → `C0C5VRU59UZ` (`@claude_capture`) |
 | `workspace-sent-to-inbox.json` | `7fhDXThOaxl1yNtE` | Nové odeslané (ne reply) → `email/sent/` + SB Saved |
 | `slack-cowork-inbox-with-attachments.json` | `rCOoXlfbD1XcVmtn` | Slack capture + přílohy |
 | `mobile-capture-to-cowork.json` | `k5p32VUAgaPL0KPe` | Webhook → daily/ |
-| `sembly-to-cowork.json` | `hKL04ATDDRSt0FOG` | Sembly → sembly/ |
+| `sembly-to-cowork.json` | `hKL04ATDDRSt0FOG` | Sembly → Drive (legacy; F3 off) |
+| `sembly-to-brain.json` | (deploy F3) | Sembly webhook → Brain `ingest_sembly` |
 
 **Smazáno:** `email-to-cowork` (`omQRpDBa48ePiKnT`, forward `+cowork`), Slack Odpověz (`jpeTZfRw42XujVw4`).
 

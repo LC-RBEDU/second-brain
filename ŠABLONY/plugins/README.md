@@ -8,4 +8,11 @@ Skills žijí v [`ŠABLONY/skills/`](../skills/). Tento strom drží **manifesty
 | Claude | [`claude/mcp.json.example`](claude/mcp.json.example) |
 | Grok Bot | [`grok/mcp.json.example`](grok/mcp.json.example) |
 
-Live Brain: `https://brain.cyprovi.cz/mcp` (v příkladech nahraď placeholder). OAuth = user-bound (ne service token v lidském klientovi).
+Live Brain: `https://brain.cyprovi.cz/mcp/` (trailing slash). Token = Coolify app **second-brain-brain** → `BRAIN_SERVICE_TOKEN`.
+
+| Klient | Auth tvar |
+|---|---|
+| Cursor / Grok | native `url` + `headers.Authorization: Bearer …` |
+| Claude Desktop | jen `command`/`args`/`env` (schema odmítne `url`) → `npx mcp-remote` + `--header Authorization:${BRAIN_AUTHORIZATION}` a token v `env` |
+
+OAuth cookie = browser session; remote MCP ho typicky nepošle.

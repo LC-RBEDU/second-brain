@@ -65,6 +65,16 @@ TZ=Europe/Prague
 # Prereq: pause Cowork Slack archive schedules 3.3 + 3.4 (dual-writer). Needs SLACK_USER_TOKEN.
 */2 8-23 * * * /usr/local/bin/python3 /app/cron/slack_poll.py >> /var/log/second-brain/slack-poll.log 2>&1
 
+# === F3 PROACTIVITY + MEETING PREP (Europe/Prague) ===
+# Morning / evening triage nudge (no propose/apply). due = hourly WD 9–17.
+0 8 * * 1-5 /usr/local/bin/python3 /app/cron/proactivity_dispatch.py --trigger morning >> /var/log/second-brain/proactivity.log 2>&1
+0 9-17 * * 1-5 /usr/local/bin/python3 /app/cron/proactivity_dispatch.py --trigger due >> /var/log/second-brain/proactivity.log 2>&1
+0 18 * * 1-5 /usr/local/bin/python3 /app/cron/proactivity_dispatch.py --trigger evening >> /var/log/second-brain/proactivity.log 2>&1
+# Meeting prep look-ahead 70 min (MEETING_PREP_WINDOW_MINUTES); cadence */15 8–23 (A37)
+*/15 8-23 * * * /usr/local/bin/python3 /app/cron/meeting_prep_dispatch.py >> /var/log/second-brain/meeting-prep.log 2>&1
+# Meeting-Preps GC >14d
+30 3 * * * /usr/local/bin/python3 /app/cron/meeting_preps_gc.py >> /var/log/second-brain/meeting-prep.log 2>&1
+
 # === FOCUS (priority model v2) ===
 # No cron writes `focus` — it is the one field only the human sets.
 # When fewer than 5 tasks carry the current ISO week, build_agent_context.py fills

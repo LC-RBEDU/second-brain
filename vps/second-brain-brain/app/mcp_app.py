@@ -8,12 +8,19 @@ from mcp.server.mcpserver import MCPServer
 
 from app.errors import BrainClientError, BrainVaultError
 from app.tools import allocate_task_id as allocate_tool
+from app.tools import capture_daily as capture_daily_tool
 from app.tools import create_task as create_task_tool
+from app.tools import external_propose_apply as external_tool
 from app.tools import get_context as get_context_tool
+from app.tools import get_triage_candidates as triage_tool
+from app.tools import ingest_sembly as ingest_tool
 from app.tools import list_dir as list_dir_tool
+from app.tools import mailbox_propose_apply as mailbox_tool
+from app.tools import prepare_meeting as prepare_tool
 from app.tools import read_file as read_file_tool
 from app.tools import reminders_tools as reminders_tool
 from app.tools import set_focus as set_focus_tool
+from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
 
 
@@ -37,7 +44,8 @@ def build_mcp() -> MCPServer:
         name="second-brain-brain",
         instructions=(
             "Second Brain vault tools. Mutate requires OAuth (human) or service token. "
-            "Vault errors return JSON {error_reason, message}."
+            "Vault errors return JSON {error_reason, message}. "
+            "External/mailbox mutate: propose here, then client apply (1×/2× UX)."
         ),
     )
 
@@ -114,12 +122,85 @@ def build_mcp() -> MCPServer:
     def cancel_reminder(reminder_id: str) -> str:
         return _call(reminders_tool.cancel_reminder, reminder_id=reminder_id)
 
-    @mcp.tool(description="F3 stub — not available in F2.")
-    def f3_stub(name: str = "unknown") -> str:
-        raise RuntimeError(
-            json.dumps(
-                {"error_reason": "f3_stub", "message": f"F3 tool {name!r} — not in F2"}
-            )
+    @mcp.tool(description="Ingest Sembly payload → 01-INBOX/sembly MD (no LLM).")
+    def ingest_sembly(payload_json: str) -> str:
+        payload = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
+        return _call(ingest_tool.ingest_sembly, payload=payload)
+
+    @mcp.tool(description="Capture a daily INBOX note.")
+    def capture_daily(text: str, title: str | None = None) -> str:
+        return _call(capture_daily_tool.capture_daily, text=text, title=title)
+
+    @mcp.tool(description="Triage L1 candidates (default dump; Gmail L1 optional).")
+    def get_triage_candidates(
+        include_live_slack: bool = False, include_gmail: bool = True
+    ) -> str:
+        return _call(
+            triage_tool.get_triage_candidates,
+            include_live_slack=include_live_slack,
+            include_gmail=include_gmail,
         )
+
+    @mcp.tool(description="Live Slack search (opt-in; does not dump).")
+    def slack_live() -> str:
+        return _call(slack_live_tool.slack_live_search)
+
+    @mcp.tool(description="Propose mailbox actions (audit batch; 0 mutate).")
+    def mailbox_propose(items_json: str) -> str:
+        items = json.loads(items_json) if isinstance(items_json, str) else items_json
+        return _call(mailbox_tool.mailbox_propose, items=items)
+
+    @mcp.tool(description="Brain mailbox apply — F3 always 403/501; use client apply.")
+    def mailbox_apply(batch_id: str, ids_json: str = "[]") -> str:
+        ids = json.loads(ids_json) if isinstance(ids_json, str) else ids_json
+        # MCP has no principal — treat as service path via error
+        from app.auth_service import ServicePrincipal
+
+        return _call(
+            mailbox_tool.mailbox_apply,
+            batch_id=batch_id,
+            ids=ids,
+            principal=ServicePrincipal(label="mcp"),
+        )
+
+    @mcp.tool(description="Propose external Slack actions (audit batch; 0 mutate).")
+    def external_propose(items_json: str) -> str:
+        items = json.loads(items_json) if isinstance(items_json, str) else items_json
+        return _call(external_tool.external_propose, items=items)
+
+    @mcp.tool(description="Brain external apply — F3 always 403/501; use client apply.")
+    def external_apply(batch_id: str, ids_json: str = "[]") -> str:
+        ids = json.loads(ids_json) if isinstance(ids_json, str) else ids_json
+        from app.auth_service import ServicePrincipal
+
+        return _call(
+            external_tool.external_apply,
+            batch_id=batch_id,
+            ids=ids,
+            principal=ServicePrincipal(label="mcp"),
+        )
+
+    @mcp.tool(description="Prepare meeting brief SSOT (+ optional Grok deliver).")
+    def prepare_meeting(
+        event_id: str,
+        title: str = "",
+        starts_at: str = "",
+        force: bool = False,
+        deliver: bool = True,
+        dry_run: bool = False,
+    ) -> str:
+        return _call(
+            prepare_tool.prepare_meeting,
+            event_id=event_id,
+            title=title,
+            starts_at=starts_at,
+            force=force,
+            deliver=deliver,
+            dry_run=dry_run,
+        )
+
+    @mcp.tool(description="Read meeting prep SSOT from vault.")
+    def get_meeting_prep(event_id: str, day: str | None = None) -> str:
+        return _call(prepare_tool.get_meeting_prep, event_id=event_id, day=day)
 
     return mcp

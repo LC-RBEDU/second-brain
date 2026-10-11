@@ -10,6 +10,17 @@ description: "INBOX triage in MrLUC Second Brain v2 vault or re-priority. Trigge
 
 > Pravidelný průchod nasbíraného. Capture ukládá rychle, triage pročistí. **V2:** vytváří `task .md` soubory v `02-PROJEKTY/<slug>/tasks/` (file-per-task), Bases dashboard se aktualizuje sám. **Chat-only** — žádný cron pending batch; módy jen BATCH + DEEP.
 
+## F3 — L1 / propose / client apply (2026-10)
+
+- **Default L1:** dump `01-INBOX/slack` (+ legacy `01-INBOX/email`) + `daily` / `sembly`. Live Slack = opt-in (`include_live_slack`), ne default fronta.
+- **Gmail L1:** prefer Brain `get_triage_candidates` / `/v1/triage/candidates` (P5). Při `error_reason` → **fail-path** client connector list (Inbox+Sent); označ v preview.
+- **Mutate navenek (Gmail/Slack):** nejdřív Brain `mailbox_propose` / `external_propose` (povinné), preview, pak chat schválení:
+  - **vratné** (archive, trash=koš, přesun) → 1× „ano“ → **client apply**
+  - **nevratné** (send, permanent delete) → 2. otázka ve stejné appce → client apply
+  - **smíšený batch:** po 1× „ano“ jen vratná id
+- **Brain `*/apply` nepoužívej** jako provozní cestu (403/501). DONE gate client-apply = **Cursor** (Claude/Grok best-effort).
+- **Partial apply:** vrať `{succeeded[], failed[{id,error_reason}]}` — nikdy tiché all-OK když `failed` neprázdné.
+
 **Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
 
 ## Kdy spouštět

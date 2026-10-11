@@ -99,5 +99,21 @@ Bez API = skip+log → Slack (A4). Kontrakt doplní F2-i po research; neblokuje 
 | Auth hlavička | `Authorization: Bearer <token>` |
 | Token | Coolify → projekt **Second Brain** → app **second-brain-brain** → env `BRAIN_SERVICE_TOKEN` (Reveal). Stejný token jako service REST. |
 | OAuth (browser) | `https://brain.cyprovi.cz/oauth/authorize` → session cookie — remote MCP u Groku typicky **nepoužije**; proto Bearer. |
+| Grok konektory | Sdílené **napříč celým Grok účtem** — Bearer token uvidí i ostatní boti stejného účtu. Neukládat do chatu; jen do connector pole. |
 
 Build context: `vps/` — image [`vps/second-brain-brain/Dockerfile`](../vps/second-brain-brain/Dockerfile).
+
+## F3 (Slack / Sembly / Gmail hybrid / briefy)
+
+Plán: [docs/plans/2026-10-10-sb-operacni-model-f3.md](plans/2026-10-10-sb-operacni-model-f3.md)
+
+| Položka | Hodnota |
+|---|---|
+| Stub `/v1/f3/*` | **pryč** — reálné routes `/v1/ingest_sembly`, `/v1/capture_daily`, `/v1/triage/candidates`, `/v1/slack/live`, `/v1/mailbox/{propose,apply}`, `/v1/external/{propose,apply}`, `/v1/prepare_meeting`, `/v1/meeting_prep`, `/v1/push/test` |
+| Apply path | **Client apply** po propose + 1×/2× UX. Brain `*/apply`: service → **403** `human_oauth_required`; oauth → **501** `oauth_brain_apply_post_f3` |
+| Propose | oauth \| service OK; batch in-memory TTL 2 h; **replicas=1** na Coolify Brain |
+| Default L1 triáž | dump `01-INBOX/slack` (+ email legacy); live Slack **opt-in** |
+| Meeting prep | `MEETING_PREP_WINDOW_MINUTES=70`; cron `*/15 8-23`; Grok `GROK_BOT_MEETING_PREP_WEBHOOK_*`; dry-run = 0 vault write ∧ 0 Grok |
+| Proactivity | ráno 08:00 / due `0 9-17 * * 1-5` / evening 18:00; **bez** propose; `--dry-run` no-send |
+| B18 OS push | `/v1/push/test` → FAIL + fallback Slack/chat je **DONE s výhradou** (primár v docs zůstává OS) |
+| Partial client apply | report `{succeeded[], failed[{id,error_reason}]}` — ne tiché all-OK |

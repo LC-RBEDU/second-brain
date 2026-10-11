@@ -5,6 +5,13 @@ description: "Příprava na schůzky do chatu. Ad-hoc (připrav schůzky, příp
 
 # agenda-meeting-prep
 
+## F3 — jednotný SSOT (2026-10)
+
+- **Jeden obsah přípravy:** Brain `prepare_meeting` → `00-System/Meeting-Preps/<event_id>-<YYYY-MM-DD>.md`.
+- **Primární doručení:** Grok přes `GROK_BOT_MEETING_PREP_WEBHOOK_*` (VPS cron `meeting_prep_dispatch`, okno 70 min, `*/15 8-23`).
+- **Ad-hoc v Cursoru:** volej Brain `prepare_meeting` (`force=true` pokud přepsat) nebo čti stejný SSOT — **nevyráběj třetí odlišný brief**.
+- Paralelní Grok/Claude/Cursor scheduled prep generátory = vypnout (T13; FAIL → DONE s výhradou).
+
 > Příprava na schůzky **na vyžádání**. Výstup jde do chatu, nikam se nezapisuje.
 
 **Zdroje:** Google Calendar MCP (primary), RB Universe MCP (organizace, osoby, dealy účastníků), `00-System/agent-context-light.json` (+ `charters.json` dle potřeby), vault OBSIDIAN, Gmail MCP, Slack MCP, Drive MCP
