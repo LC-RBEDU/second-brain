@@ -1,9 +1,9 @@
 ---
 name: agenda-co-ted
-description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit', 'co je urgentní', 'ukaž mi dashboard', 'co mám rozdělaného' v MrLUC Second Brain v2. Reads 00-System/agent-context.json (primary) or 02-PROJEKTY/<slug>/tasks/*.md frontmatter (fallback). ICE scoring (I*C)/E sjednocený s Bases formula. Optional 'ukliď' archivuje Done tasky do 07-ARCHIV/tasks-done/. Never modifies files unless user says ukliď/clean/urgent/odlož."
+description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit', 'co je urgentní', 'ukaž mi dashboard', 'co mám rozdělaného' v MrLUC Second Brain v2. Primary: Brain GET /v1/context/light (human OAuth). Fail-path: MCP get_context (full). Not local agent-context.json rebuild as primary. ICE (I*C)/E. Optional 'ukliď' archives Done to 07-ARCHIV/tasks-done/. Never modifies files unless user says ukliď/clean/urgent/odlož."
 ---
 
-**F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
+**F4:** snapshot = Brain light / MCP `get_context`. Git vault klon = pull/read only — žádný FS zápis do klonu jako SSOT writer.
 
 
 # agenda-co-ted (v2)

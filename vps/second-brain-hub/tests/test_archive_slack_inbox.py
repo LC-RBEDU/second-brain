@@ -70,20 +70,13 @@ def test_dry_run_zero_write(vault_root: Path):
 
 def test_happy_md_att_orphan(vault_root: Path):
     result = mod.archive_slack_inbox(dry_run=False)
-    assert result["moved"] >= 2
+    assert result["moved"] == 3
     assert not (vault_root / "01-INBOX" / "slack" / "2026-10-09_dm-test_1_v1.md").exists()
-    dest = (
-        vault_root
-        / "07-ARCHIV"
-        / "inbox-processed"
-        / "2026"
-        / "10"
-        / "slack"
-        / "2026-10-09_dm-test_1_v1.md"
-    )
-    assert dest.exists()
-    att = dest.parent / "2026-10-09_dm-test_1_v1__1-image.png"
-    assert att.exists()
+    dest_dir = vault_root / "07-ARCHIV" / "inbox-processed" / "2026" / "10" / "slack"
+    assert (dest_dir / "2026-10-09_dm-test_1_v1.md").exists()
+    assert (dest_dir / "2026-10-09_dm-test_1_v1__1-image.png").exists()
+    assert (dest_dir / "2026-10-09_orphan.bin").exists()
+    assert not (vault_root / "01-INBOX" / "slack" / "2026-10-09_orphan.bin").exists()
 
 
 def test_cas_conflict_skips(vault_root: Path, monkeypatch):

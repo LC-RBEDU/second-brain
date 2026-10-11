@@ -12,7 +12,7 @@ On-demand only — skill `agenda-reply`:
 
 - Gmail: jen **draft**, nikdy send. Connector = Workspace (`lukas@redbuttonedu.cz`). Osobní Gmail konektor nenapojuje (jeden účet).
 - Slack: nejdřív ukaž text; pošli až po „pošli“ / „ano“, jako Lukáš.
-- Živé Slack vlákno: zapiš do `01-INBOX/slack/` (dedup channel+thread_ts) a spusť triage preview. Nový task nezakládej; co má vzniknout, dej do `01-INBOX/daily/`. Task založí Cursor na desktopu.
+- Živé Slack vlákno: **ne** zapisuj do `01-INBOX/slack/` (F4 dump off). Pracuj z permalinku / live Slack; triage preview v chatu. Nový task nezakládej; co má vzniknout, dej do `01-INBOX/daily/`. Task založí Cursor na desktopu.
 
 Continuous reply-watch (nové odpovědi v DM/GDM a sledovaných vláknech) = **VPS `slack_poll`**, ne Cowork `on:date` sweep. Scheduled Slack archive tasky 3.3 + 3.4 mají být pauznuté (viz `vps/second-brain-hub/README.md`).
 

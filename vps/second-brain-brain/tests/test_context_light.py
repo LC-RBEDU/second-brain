@@ -34,6 +34,8 @@ def test_service_token_403_on_light():
 
 
 def test_warm_light_ok():
+    import json
+
     light = {"generated_at": "x", "top_priority_today": [{"id": "X1"}]}
 
     fake = MagicMock()
@@ -53,6 +55,8 @@ def test_warm_light_ok():
         out = light_mod.get_context_light(env={})
     assert out["mode"] == "warm"
     assert out["context"]["top_priority_today"][0]["id"] == "X1"
+    # B8 / P1 — response body light ≤256 KB
+    assert len(json.dumps(out["context"], ensure_ascii=False).encode("utf-8")) <= 256 * 1024
 
 
 def test_stale_trio_503():

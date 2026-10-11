@@ -1,11 +1,12 @@
 # Pipeline: SB operační model F4
 
-Stav: IMPLEMENT
+Stav: REVIEW
 Plán: docs/plans/2026-10-10-sb-operacni-model-f4.md
 Schvalování plánu uživatelem: ne
 Architekt: parent · otevření #1 · k=1/3 · r=6
 Šťoural: 19f63106… · g=1 HOTOVÝ
-Kritik: 08fa7f49… · SCHVÁLENO → IMPLEMENT
+Kritik: 08fa7f49… · SCHVÁLENO
+Kódový SHA: da00106
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main před pipeline): 7e63304962eba5bb1f769d9d90ed40b6c71696f9 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
@@ -58,3 +59,5 @@ ok a můžeme teď tedy dál na F4?
 | 13 | 2026-10-11 | CRITIC | 08fa7f49… | SCHVÁLENO | 0 | IMPLEMENT smí |
 | 14 | 2026-10-11 | IMPLEMENT | parent | in progress | — | F4-a…i kód+docs; pytest hub 311 / brain 58 |
 | 15 | 2026-10-11 | NOTE | — | F4-a | — | backup slack-poll-state.backup-2026-10-11.json; dump md=89 other=101 |
+| 16 | 2026-10-11 | IMPLEMENT | parent | commit da00106 | — | pytest hub 311 brain 58 scripts 57 |
+| 17 | 2026-10-11 | REVIEW | — | start | — | base 7e63304..da00106 |

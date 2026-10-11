@@ -123,7 +123,7 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f3.md](plans/2026-10-10-sb-opera
 | Stub `/v1/f3/*` | **pryč** — reálné routes `/v1/ingest_sembly`, `/v1/capture_daily`, `/v1/triage/candidates`, `/v1/slack/live`, `/v1/mailbox/{propose,apply}`, `/v1/external/{propose,apply}`, `/v1/prepare_meeting`, `/v1/meeting_prep`, `/v1/push/test` |
 | Apply path | **Client apply** po propose + 1×/2× UX. Brain `*/apply`: service → **403** `human_oauth_required`; oauth → **501** `oauth_brain_apply_post_f3` |
 | Propose | oauth \| service OK; batch in-memory TTL 2 h; **replicas=1** na Coolify Brain |
-| Default L1 triáž | dump `01-INBOX/slack` (+ email legacy); live Slack **opt-in** |
+| Default L1 triáž | **F4:** live Slack + Gmail + daily/sembly (`include_live_slack=true`). Dump `01-INBOX/slack` = residual only (historicky F3 default dump) |
 | Meeting prep | `MEETING_PREP_WINDOW_MINUTES=70`; cron `*/15 8-23`; Grok `GROK_BOT_MEETING_PREP_WEBHOOK_*`; dry-run = 0 vault write ∧ 0 Grok |
 | Proactivity | ráno 08:00 / due `0 9-17 * * 1-5` / evening 18:00; **bez** propose; `--dry-run` no-send |
 | B18 OS push | `/v1/push/test` → FAIL + fallback Slack/chat je **DONE s výhradou** (primár v docs zůstává OS) |
