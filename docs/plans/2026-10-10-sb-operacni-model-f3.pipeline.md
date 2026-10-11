@@ -1,12 +1,14 @@
 # Pipeline: SB operační model F3
 
-Stav: REVIEW
+Stav: QA
 Plán: docs/plans/2026-10-10-sb-operacni-model-f3.md
 Schvalování plánu uživatelem: ne
 Architekt: b5de8d58… · otevření #2 · k=2/3 · r=3/3
 Šťoural: 31be6955… · g=6 HOTOVÝ
 Kritik: af0b8c4c… · SCHVÁLENO
-Kódový SHA: 5e34cc624f1bed0f0ea553d06a8a600837499d42
+Review: af1b954c… · SCHVÁLENO (0 MAJOR; MINOR NEW-16…19 → T18)
+Kódový SHA: 3d153308f75ce8505a8513af30afdb0163408f45
+Review SCHVÁLENO na: 3d153308f75ce8505a8513af30afdb0163408f45
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main před pipeline): f893b01b6972b3fc55af6dd44639f1ae31e8548e · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
