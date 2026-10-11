@@ -3,15 +3,18 @@
 Plán: [docs/plans/2026-10-10-sb-operacni-model-f2.md](plans/2026-10-10-sb-operacni-model-f2.md) · F4: [docs/plans/2026-10-10-sb-operacni-model-f4.md](plans/2026-10-10-sb-operacni-model-f4.md) · F5: [docs/plans/2026-10-10-sb-operacni-model-f5.md](plans/2026-10-10-sb-operacni-model-f5.md)  
 Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md) · Artifact: [docs/claude-artifact-dashboard.md](claude-artifact-dashboard.md)
 
-## F5 — boti
+## F5 — boti (DONE 2026-10-11)
 
 | Položka | Stav |
 |---|---|
 | SSOT inventář | vault `02-PROJEKTY/second-brain/materials/2026-10-11 — boti-prehled.md` |
-| Saturnin | soft-router, **ne** povinná brána k Brain / specialistům |
+| Saturnin | soft-router v Grok (Lukáš mluví primárně s ním); **ne** technická brána k Brain pro Cursor/Claude |
 | Reminder webhook | **Hub** env `GROK_BOT_REMINDER_WEBHOOK_URL` (+ key) → Grok Bot **Saturnin** |
 | Meeting-prep webhook | **Brain** env `GROK_BOT_MEETING_PREP_WEBHOOK_URL` (+ key) → stejný Bot **Saturnin** |
-| New Bot | ke smazání — pending F5-c (T4) |
+| New Bot | smazán (F5-c / T4) |
+| Grok MCP | `second-brain-brain` → `https://brain.cyprovi.cz/mcp/` + Bearer; starý konektor `second-brain` smazán |
+| Claude Desktop | `claude_desktop_config.json` → mcp-remote + Bearer (~20 tools) |
+| Claude mobil / claude.ai | Custom connector (remote MCP URL + Request header `Authorization: Bearer …`); ne lokální `lcl-` bridge |
 | Domain boti | Wiki / Universe / Admin / Právník = doménové MCP; Brain jen vault |
 
 ## F4 — Slack dump off + light context

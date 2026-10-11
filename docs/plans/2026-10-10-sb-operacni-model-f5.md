@@ -1,7 +1,7 @@
 # Plán: F5 — Revize botů (Saturnin + specialisti → Brain)
 
 > Architekt: **k=2 · r=1** (otevření #1; delta po critic kolo 2 — strop r=3 u k=1) · grill g=1 HOTOVÝ (A# beze změny, skip re-grill)
-> Stav: DRAFT → CRITIC
+> Stav: DONE (2026-10-11)
 > Pipeline ledger: [2026-10-10-sb-operacni-model-f5.pipeline.md](2026-10-10-sb-operacni-model-f5.pipeline.md)
 > Parent F0 (SCHVÁLENO): [2026-10-10-sb-operacni-model-f0.md](2026-10-10-sb-operacni-model-f0.md) · F1–F4 DONE (F4 tip `34b1830` / close `80403c6`)
 > Vault: **SB15 — Nový operační model SB** (**SB15-6** F5 — ladění botů)
