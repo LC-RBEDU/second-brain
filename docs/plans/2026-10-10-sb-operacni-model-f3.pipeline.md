@@ -16,7 +16,7 @@ Výhrady: B18 OS FAIL OK; B20 Grok webhook ENV; B14* Cursor client-apply NEOVĚ�
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main před pipeline): f893b01b6972b3fc55af6dd44639f1ae31e8548e · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete
 Profil: SECOND_BRAIN
 
 ## Zadání (doslovně)
