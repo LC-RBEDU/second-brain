@@ -1,7 +1,18 @@
-# Brain API runbook (F2)
+# Brain API runbook (F2 + F4)
 
-Plán: [docs/plans/2026-10-10-sb-operacni-model-f2.md](plans/2026-10-10-sb-operacni-model-f2.md)  
-Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md)
+Plán: [docs/plans/2026-10-10-sb-operacni-model-f2.md](plans/2026-10-10-sb-operacni-model-f2.md) · F4: [docs/plans/2026-10-10-sb-operacni-model-f4.md](plans/2026-10-10-sb-operacni-model-f4.md)  
+Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md) · Artifact: [docs/claude-artifact-dashboard.md](claude-artifact-dashboard.md)
+
+## F4 — Slack dump off + light context
+
+| Položka | Stav |
+|---|---|
+| `slack_poll` dump | Off (crontab + `SLACK_POLL_DUMP=0`) |
+| Triáž L1 Slack | `GET /v1/triage/candidates` default `include_live_slack=true` / `slack_live` |
+| Light dashboard | `GET /v1/context/light` — **human OAuth only** (service → 403 `human_oauth_required`) |
+| Light stale / trio mismatch | **503** `context_light_stale` — nerestartuje; nejdřív full `get_context` / cron |
+| MCP light | **Není** — MCP fail-path = plný `get_context` |
+| Archiv residual dump | `cron/archive_slack_inbox.py --dry-run` / `--no-dry-run` (CAS move) |
 
 ## F2-a preflight
 

@@ -10,9 +10,9 @@ description: "INBOX triage in MrLUC Second Brain v2 vault or re-priority. Trigge
 
 > Pravidelný průchod nasbíraného. Capture ukládá rychle, triage pročistí. **V2:** vytváří `task .md` soubory v `02-PROJEKTY/<slug>/tasks/` (file-per-task), Bases dashboard se aktualizuje sám. **Chat-only** — žádný cron pending batch; módy jen BATCH + DEEP.
 
-## F3 — L1 / propose / client apply (2026-10)
+## F4 — L1 / propose / client apply (2026-10)
 
-- **Default L1:** dump `01-INBOX/slack` (+ legacy `01-INBOX/email`) + `daily` / `sembly`. Live Slack = opt-in (`include_live_slack`), ne default fronta.
+- **Default L1:** **live Slack** (`get_triage_candidates` / `slack_live` — DM/GDM, mentions, `:eyes:`, `:gear:`) + Gmail L1 + `daily` / `sembly`. Dump `01-INBOX/slack` = jen residual/legacy po archivu F4 — **ne** provozní fronta.
 - **Gmail L1:** prefer Brain `get_triage_candidates` / `/v1/triage/candidates` (P5). Při `error_reason` → **fail-path** client connector list (Inbox+Sent); označ v preview.
 - **Mutate navenek (Gmail/Slack):** nejdřív Brain `mailbox_propose` / `external_propose` (povinné), preview, pak chat schválení:
   - **vratné** (archive, trash=koš, přesun) → 1× „ano“ → **client apply**
@@ -274,7 +274,7 @@ n8n ukládá `*_v1.md`, `*_v2.md`, `*_v3.md` u stejného **Thread TS**. Platí *
 **Ignorovat (přestat sledovat) — odděleně od ARCHIVE:**
 
 - `archive_only` / `ZPRACOVÁNO` **nesmí** stáhnout vlákno z VPS watchlistu (`slack_poll` dál hledá nové odpovědi).
-- Ruční Slack capture: reakce **`:gear:`** (hub poll → INBOX s důvodem `označeno :gear:` → route **batch**). Slack Later / `is:saved` poll nebere.
+- Ruční Slack capture: reakce **`:gear:`** / **`:eyes:`** → kandidát v **live** L1 (`slack_live`); route **batch**. Slack Later / `is:saved` live nebere. Dump poll je F4 off.
 - Teprve když Lukáš v triáži řekne **ignoruj / nesleduj toto vlákno**, zavolej:
 
 ```bash

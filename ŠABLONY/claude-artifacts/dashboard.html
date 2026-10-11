@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <title>Second Brain — light</title>
+  <style>
+    :root { --fg: #1a1a1a; --muted: #666; --bg: #f7f5f2; --line: #ddd; }
+    body { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif; margin: 0; background: var(--bg); color: var(--fg); }
+    main { max-width: 42rem; margin: 2rem auto; padding: 0 1.25rem; }
+    h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+    .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+    h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.25rem; }
+    ul { padding-left: 1.1rem; }
+    li { margin: 0.35rem 0; }
+    .err { color: #8b1a1a; white-space: pre-wrap; }
+    button { font: inherit; padding: 0.4rem 0.8rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Second Brain</h1>
+    <p class="meta" id="meta">Načítám /v1/context/light …</p>
+    <p><button type="button" id="reload">Obnovit</button></p>
+    <div id="err" class="err" hidden></div>
+    <section><h2>TOP dnes</h2><ul id="top"></ul></section>
+    <section><h2>Rozhodni</h2><ul id="decide"></ul></section>
+    <section><h2>Due soon</h2><ul id="due"></ul></section>
+  </main>
+  <script>
+    const BASE = "https://brain.cyprovi.cz";
+    const titleById = (ctx, id) => {
+      const tasks = ctx.tasks || ctx.all_tasks || [];
+      const hit = tasks.find((t) => t.id === id || t.code === id);
+      return hit ? (hit.title || hit.name || id) : id;
+    };
+    const renderList = (el, items, ctx) => {
+      el.innerHTML = "";
+      (items || []).forEach((item) => {
+        const id = item.id || item.code || "?";
+        const title = item.title || titleById(ctx, id);
+        const li = document.createElement("li");
+        li.textContent = id + " — " + title;
+        el.appendChild(li);
+      });
+      if (!(items || []).length) {
+        const li = document.createElement("li");
+        li.textContent = "—";
+        el.appendChild(li);
+      }
+    };
+    async function load() {
+      const err = document.getElementById("err");
+      err.hidden = true;
+      document.getElementById("meta").textContent = "Načítám…";
+      try {
+        const r = await fetch(BASE + "/v1/context/light", { credentials: "include" });
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error((body.error_reason || r.status) + ": " + (body.message || r.statusText));
+        }
+        const ctx = body.context || {};
+        document.getElementById("meta").textContent =
+          "mode=" + (body.mode || "?") + " · generated_at=" + (ctx.generated_at || "?");
+        renderList(document.getElementById("top"), ctx.top_priority_today, ctx);
+        renderList(document.getElementById("decide"), ctx.needs_decision, ctx);
+        renderList(document.getElementById("due"), ctx.due_soon, ctx);
+      } catch (e) {
+        err.hidden = false;
+        err.textContent =
+          String(e.message || e) +
+          "\n\nFail-path: MCP get_context v chatu, nebo Slack proactivity nudge.";
+        document.getElementById("meta").textContent = "FAIL";
+      }
+    }
+    document.getElementById("reload").onclick = load;
+    load();
+  </script>
+</body>
+</html>

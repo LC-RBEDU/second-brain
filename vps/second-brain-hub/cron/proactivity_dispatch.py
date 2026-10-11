@@ -54,13 +54,14 @@ def main() -> None:
     preview = {
         "trigger": trigger,
         "slack_dump_count": slack_n,
-        "message": "jdi do triáže",
+        "message": "jdi do live triáže",
         "propose": False,
         "batch_id": None,
     }
     print(f"proactivity_dispatch: trigger={trigger} preview={preview} dry_run={args.dry_run}")
 
-    msg = f"{trigger}: jdi do triáže (slack_dump≈{slack_n})"
+    # F4 A16/B26: CTA = live triáž (eyes/gear); dump count není provozní signál.
+    msg = f"{trigger}: jdi do live triáže (Slack live — :eyes: / :gear:)"
     result = dispatch_proactivity(msg, dry_run=args.dry_run)
     print(f"  deliver={as_dict(result)}")
     if args.dry_run:

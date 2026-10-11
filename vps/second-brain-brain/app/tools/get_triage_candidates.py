@@ -1,4 +1,4 @@
-"""get_triage_candidates — dump default + optional Gmail L1 / live Slack (R6/R10)."""
+"""get_triage_candidates — F4 default L1 = live Slack + Gmail + daily/sembly."""
 from __future__ import annotations
 
 import os
@@ -25,7 +25,7 @@ def _list_md(vault: Any, folder: str) -> list[str]:
 
 def get_triage_candidates(
     *,
-    include_live_slack: bool = False,
+    include_live_slack: bool = True,
     include_gmail: bool = True,
     env: dict | None = None,
     gmail_fetcher=None,
@@ -43,6 +43,7 @@ def get_triage_candidates(
     fail_path_hint: str | None = None
 
     with brain_vault(mode="read", env=env) as vault:
+        # Residual dump list only — not the operational L1 queue after F4.
         sources["slack_dump"] = _list_md(vault, SLACK_DUMP)
         sources["email_dump"] = _list_md(vault, EMAIL_DUMP)
         sources["daily"] = _list_md(vault, DAILY)
@@ -77,7 +78,7 @@ def get_triage_candidates(
 
     out: dict[str, Any] = {
         "sources": sources,
-        "default_l1": "dump",
+        "default_l1": "live",
         "include_live_slack": include_live_slack,
     }
     if error_reason:

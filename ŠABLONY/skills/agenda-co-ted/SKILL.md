@@ -20,11 +20,11 @@ description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit'
 
 ## Načti data
 
-V2 priority pořadí:
+V2 priority pořadí (F4):
 
-1. **`OBSIDIAN/00-System/agent-context.json`** (PRIMARY) — `needs_decision`, `top_priority_today` (TOP dnes, max 5), `top_priority` (max 15), `due_soon`, `no_review_deadline`, `recently_done`, `upcoming_deadlines`, `recurring_pending`, `blocked_by_graph`, `priority_rules`. Pokud `generated_at` je starší než 24 h, spusť `python3 scripts/build_agent_context.py` před analýzou.
-2. Fallback: parsuj všechny `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md` frontmattery + aplikuj stejná pravidla jako `vps/second-brain-hub/lib/today_priority.py`
-3. Backup: `OBSIDIAN/Dashboard.md` Bases embedy (aproximace — SSOT je agent-context)
+1. **PRIMARY — Brain `GET /v1/context/light`** (human OAuth) — light projection (`top_priority_today`, `needs_decision`, `due_soon`, …). Join ID → `tasks[]` dle artifact docs. **Ne** local `agent-context.json` + `build_agent_context.py` jako primár.
+2. **Fail-path MCP:** plný `get_context` (warm/rebuild). **Bez** MCP `get_context_light`.
+3. Fallback jen když Brain nedostupný: lokální `OBSIDIAN/00-System/agent-context.json` (read-only; ne spouštěj rebuild jako default).
 4. **Lessons pending:** pokud `00-System/Lessons-Pending/*.md` (ne `.gitkeep`) není prázdný → v dashboardu řádek `Lessons ke schválení: N` (+ **stale** pokud mtime > 7 dní). Příkaz: „schval lessons“ → skill `agenda-lessons`.
 
 ## Lane Rozhodni (SSOT: `needs_decision`)

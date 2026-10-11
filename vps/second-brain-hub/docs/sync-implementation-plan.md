@@ -1,5 +1,7 @@
 # Implementační plán — migrace na Drive API
 
+> **HISTORICKÝ F0–F1 Drive plán.** SSOT od F4: [sync-architecture.md](./sync-architecture.md) + [docs/git-vault-runbook.md](../../../docs/git-vault-runbook.md). Neprovozovat jako aktuální architekturu.
+
 > **Poznámka (2026-09-24):** cron writers `triage_run` / `triage_llm_run` removed — triáž je chat-only (`agenda-triage` BATCH/DEEP). Smoke log a checklisty níže zůstávají historické.
 
 > **Status (2026-05-23):** Phase **0–3** hotové. **Coolify Redeploy hotov** — běží image **`881b458`**. Phase **4.1 částečně** — triage + build + hourly cron ověřeno; **`edu_news_refresh` NameError (`key`) opraven v main** — po redeploy znovu `edu_news_refresh --dry-run` pro uzavření 4.1. Phase **4.2–4.3** čekají na čas / E2E.

@@ -22,7 +22,7 @@ description: >-
 
 ## Společné
 
-1. Zdroj: soubor v `01-INBOX/email/` nebo `01-INBOX/slack/`, **nebo** živé Slack vlákno (permalink / kanál+thread_ts) přes Slack MCP.
+1. Zdroj: soubor v `01-INBOX/email/` (legacy), **nebo** živé Slack vlákno (permalink / kanál+thread_ts) přes Slack MCP / live API. **F4: žádný nový zápis do `01-INBOX/slack/`.**
 2. Celé vlákno, ne jen poslední větu. U mailu `gmail_thread_id` + `mailbox` (`workspace` | `personal`).
 3. `00-System/reply-playbook.md` (sekce Mail / Slack), `05-RESOURCES/lide/` protistrany, writing-style.
 4. Po úpravě stylu, který se má opakovat: jeden řádek do playbooku (správná sekce). Ne do tohoto SKILL.md.
@@ -41,11 +41,7 @@ description: >-
 1. Návrh textu podle playbooku Slack. **Ukaž text v chatu.**
 2. Pošli **až** po „pošli“ / „ano“ / ekvivalent. Bez potvrzení neposílej.
 3. Post jako Lukáš (user Slack / MCP s jeho účtem), ne bot, ne n8n. Na konec odesílaného textu vždy kurzívou `_(jménem Lukáše posílá jeho AsIstent)_` — viz `.cursor/rules/asist-send-signature.mdc`.
-4. **Vault ve stejném tahu** (i když Cowork archiv ještě neběžel):
-   - Zapiš vlákno do `01-INBOX/slack/` ve tvaru Cowork archivu (frontmatter `channel_id`, `thread_ts`, `kind`).
-   - Dedup: jeden soubor na `channel_id` + `thread_ts` (večerní archiv nesmí udělat druhý).
-   - Pak zpracuj jako položku `agenda-triage`: preview, kterých tasků/projektů se týká.
-   - Zápis do tasku/hubu **až po schválení preview**. Když se netýká ničeho: řekni to a jen archivuj.
+4. **Po odeslání (F4):** **0** dump do `01-INBOX/slack/`. Zdroj = live Slack / permalink. Pokud z odpovědi plyne task: preview přes `agenda-triage` (live kandidát), zápis do tasku/hubu **až po schválení**. Když se netýká ničeho: hotovo bez vault dump.
 
 ## Zakázané
 

@@ -6,7 +6,7 @@ Dvě části: **A** vlož do Project → Instructions. **B** nahraj do Project �
 
 ## A) PROJECT INSTRUCTIONS (zkopíruj celé do Instructions)
 
-Jsi asistent Lukáše Cypru pro Second Brain v2 (Red Button EDU). Vault je Obsidian na Google Drive; automatizace a skills jsou v GitHub repu SECOND_BRAIN.
+Jsi asistent Lukáše Cypru pro Second Brain v2 (Red Button EDU). Vault SSOT = git (`second-brain-vault`) + Brain API (`brain.cyprovi.cz`); automatizace a skills jsou v GitHub repu SECOND_BRAIN. Obsidian/Drive nejsou provozní writer.
 
 **Cowork a Grok Bot se řídí** `OBSIDIAN/00-System/agent-guide-mimo-cursor.md`. Když tenhle text nebo skill řekne něco jiného (nové task ID, `next_task_id.py`, Slack, archiv), platí návod. Nový task nezakládej. Do `01-INBOX/daily/` napiš, co má vzniknout. Task založí Cursor. Slack jen po „pošli“ / „ano“, nebo zápis schůzky na známý kanál podle skillu.
 
@@ -146,7 +146,7 @@ Blacklist: `OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`
 
 ### Skills v repu (ŠABLONY/skills/)
 
-agenda-capture, agenda-triage, agenda-co-ted, agenda-work, agenda-status-update, agenda-priority-review, agenda-weekly-review, agenda-lessons, agenda-analyze, agenda-proces, agenda-edu-news, agenda-remind, agenda-cursor-inbox, agenda-zapis-ze-schuzky, grammar-nazi (jen zápisy; Claude = in-process pass + `md_fingerprint.py`; ZIP `ŠABLONY/skills/grammar-nazi/dist/grammar-nazi-claude.zip`)
+agenda-capture, agenda-triage, agenda-co-ted, agenda-work, agenda-status-update, agenda-priority-review, agenda-weekly-review, agenda-lessons, agenda-analyze, agenda-proces, agenda-edu-news, agenda-remind, agenda-cursor-inbox, agenda-zapis-ze-schuzky, rbedu-grammar-nazi (jazykový průchod textů; v zápisech Claude = in-process pass + `md_fingerprint.py`; ZIP `ŠABLONY/skills/rbedu-grammar-nazi/dist/rbedu-grammar-nazi-claude.zip`)
 
 Cursor: symlinky přes `scripts/install_agenda_skills.sh`. Claude: čti SKILL.md z GitHubu při triggeru.
 

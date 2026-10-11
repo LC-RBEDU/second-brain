@@ -557,7 +557,14 @@ class GitVault:
 
     mkdir = mkdir_p
 
-    def move(self, src_rel: str, dst_rel: str) -> FileMeta:
+    def move(
+        self,
+        src_rel: str,
+        dst_rel: str,
+        *,
+        expect_oid: str | None = None,
+        expect_mtime: datetime | None = None,
+    ) -> FileMeta:
         src_n = _norm_rel(src_rel)
         dst_n = _norm_rel(dst_rel)
         if not dst_n:
@@ -566,6 +573,7 @@ class GitVault:
         dst = self._abspath(dst_n)
         if not src.exists():
             raise DriveNotFoundError(f"Path not found: {src_n!r}")
+        self._check_cas(src_n, src, expect_oid=expect_oid, expect_mtime=expect_mtime)
         if self.dry_run:
             log.info("git_io: would-move %s -> %s", src_n, dst_n)
             return self._meta_for_path(src_n)

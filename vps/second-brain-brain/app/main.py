@@ -134,6 +134,28 @@ def rest_get_context(_auth: AuthPrincipal) -> dict[str, Any]:
     return get_context_tool.get_context()
 
 
+@app.get("/v1/context/light")
+def rest_get_context_light(_auth: AuthPrincipal) -> dict[str, Any]:
+    """F4 — warm light only; human OAuth required (service → 403)."""
+    from app.auth_service import ServicePrincipal
+    from app.errors import BrainClientError
+    from app.tools import get_context_light as light_tool
+
+    if isinstance(_auth, ServicePrincipal) or _auth == "dev":
+        raise BrainClientError(
+            message="GET /v1/context/light requires human OAuth.",
+            status_code=403,
+            error_reason="human_oauth_required",
+        )
+    if not (isinstance(_auth, str) and _auth.startswith("oauth:")):
+        raise BrainClientError(
+            message="GET /v1/context/light requires human OAuth.",
+            status_code=403,
+            error_reason="human_oauth_required",
+        )
+    return light_tool.get_context_light()
+
+
 @app.get("/v1/file")
 def rest_read_file(path: str, _auth: AuthPrincipal) -> dict[str, Any]:
     return read_file_tool.read_file(path)
@@ -241,7 +263,7 @@ def rest_capture_daily(body: CaptureDailyBody, _auth: AuthPrincipal) -> dict:
 @app.get("/v1/triage/candidates")
 def rest_triage(
     _auth: AuthPrincipal,
-    include_live_slack: bool = False,
+    include_live_slack: bool = True,
     include_gmail: bool = True,
 ) -> dict:
     return triage_tool.get_triage_candidates(

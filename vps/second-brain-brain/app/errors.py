@@ -13,6 +13,7 @@ ERROR_REASONS: frozenset[str] = frozenset(
         "vault_tip_ahead",
         "vault_push_disabled",
         "vault_paused",
+        "context_light_stale",
     }
 )
 
@@ -40,6 +41,10 @@ _MESSAGES: dict[str, str] = {
     ),
     "vault_paused": (
         "VAULT_WRITERS_PAUSED=1 — mutate/rebuild dočasně vypnuté."
+    ),
+    "context_light_stale": (
+        "Light context chybí nebo freshness trio nesedí. "
+        "Nejdřív warm/rebuild přes get_context — /v1/context/light nerestartuje."
     ),
 }
 

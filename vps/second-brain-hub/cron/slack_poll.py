@@ -306,7 +306,16 @@ def _clear_gear_after_unreact(
         return state_mtime
 
 
+def _dump_enabled() -> bool:
+    """F4: SLACK_POLL_DUMP=0|false|off → no-op (dump off; live = Brain slack_live)."""
+    raw = (os.environ.get("SLACK_POLL_DUMP") or "1").strip().lower()
+    return raw not in {"0", "false", "off", "no"}
+
+
 def main() -> None:
+    if not _dump_enabled():
+        print("slack_poll: dump disabled (SLACK_POLL_DUMP) — exit 0")
+        return
     now = datetime.now(TZ)
     if not in_active_window(now):
         print(f"slack_poll: outside 08:00–24:00 ({now.isoformat()}) — skip")

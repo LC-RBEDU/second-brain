@@ -711,7 +711,16 @@ class DriveVault:
             parent_id = meta.id
         return parent_id
 
-    def move(self, src_rel: str, dst_rel: str) -> FileMeta:
+    def move(
+        self,
+        src_rel: str,
+        dst_rel: str,
+        *,
+        expect_oid: str | None = None,
+        expect_mtime: datetime | None = None,
+    ) -> FileMeta:
+        """Move; ``expect_oid`` / ``expect_mtime`` accepted for GitVault parity (Drive ignores CAS)."""
+        _ = expect_oid, expect_mtime
         src = self._resolve(src_rel)
         dst_rel_n = _norm_rel(dst_rel)
         if not dst_rel_n:

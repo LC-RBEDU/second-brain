@@ -104,7 +104,7 @@ git push origin main
 |-----|-------|-------|
 | `inbox_inventory.py` | Po 6:55 (log only) | — |
 | `weekly_summary_draft.py` | — | Ne 20:00 |
-| `slack_poll.py` | každých 2 min, 08:00–23:59 — watchlist (DM/GDM + mention + `:gear:` → `_vN`) | stejně |
+| `slack_poll.py` | **F4 off** (crontab zakomentován; `SLACK_POLL_DUMP=0`). Live Slack = Brain `slack_live` | — |
 
 Cron batch / LLM writers odstraněny 2026-09-24.
 

@@ -131,9 +131,9 @@ def build_mcp() -> MCPServer:
     def capture_daily(text: str, title: str | None = None) -> str:
         return _call(capture_daily_tool.capture_daily, text=text, title=title)
 
-    @mcp.tool(description="Triage L1 candidates (default dump; Gmail L1 optional).")
+    @mcp.tool(description="Triage L1 candidates (default live Slack + Gmail L1).")
     def get_triage_candidates(
-        include_live_slack: bool = False, include_gmail: bool = True
+        include_live_slack: bool = True, include_gmail: bool = True
     ) -> str:
         return _call(
             triage_tool.get_triage_candidates,
@@ -141,7 +141,7 @@ def build_mcp() -> MCPServer:
             include_gmail=include_gmail,
         )
 
-    @mcp.tool(description="Live Slack search (opt-in; does not dump).")
+    @mcp.tool(description="Live Slack search (default L1; does not dump).")
     def slack_live() -> str:
         return _call(slack_live_tool.slack_live_search)
 
