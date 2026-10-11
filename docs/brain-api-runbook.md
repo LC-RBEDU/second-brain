@@ -11,7 +11,7 @@ Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md) · Artifact: [docs/
 | Saturnin | soft-router, **ne** povinná brána k Brain / specialistům |
 | Reminder webhook | **Hub** env `GROK_BOT_REMINDER_WEBHOOK_URL` (+ key) → Grok Bot **Saturnin** |
 | Meeting-prep webhook | **Brain** env `GROK_BOT_MEETING_PREP_WEBHOOK_URL` (+ key) → stejný Bot **Saturnin** |
-| New Bot | smazán (F5-c) |
+| New Bot | ke smazání — pending F5-c (T4) |
 | Domain boti | Wiki / Universe / Admin / Právník = doménové MCP; Brain jen vault |
 
 ## F4 — Slack dump off + light context

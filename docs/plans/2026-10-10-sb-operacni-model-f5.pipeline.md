@@ -1,13 +1,14 @@
 # Pipeline: SB operační model F5
 
-Stav: REVIEW (kód F5-a/b + T12; F5-c Grok UI mimo diff)
+Stav: QA (po review SCHVÁLENO; F5-c Grok UI zbývá pro DONE)
 Plán: docs/plans/2026-10-10-sb-operacni-model-f5.md
 Schvalování plánu uživatelem: ne
 Architekt: parent delta · otevření #1 · k=2/3 · r=1/3
 Šťoural: 714fee03… · g=1 HOTOVÝ
 Kritik: 00396014… · kolo 3 → SCHVÁLENO
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): 80403c65803d20971f35aee00abf766fe39e5230 · Kódový SHA: c074e73 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
+Reviewer: dd148c74… · SCHVÁLENO (0B/0M/1m NEW-1 runbook — opraveno)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main před pipeline): 80403c65803d20971f35aee00abf766fe39e5230 · Kódový SHA: — · Review SCHVÁLENO na: dd148c74 (tip po MINOR fix) · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: —
 Profil: SECOND_BRAIN
