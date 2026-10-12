@@ -56,3 +56,51 @@ def test_mcp_with_service_token_passes_auth_gate(client: TestClient):
     # Auth middleware passed (not 401). MCP transport may 421 on Host=testserver.
     assert r.status_code != 401
     assert r.status_code != 500
+
+
+def test_t12_middleware_sets_service_principal_contextvar():
+    """T12 — Bearer auth sets ServicePrincipal on ContextVar during request."""
+    import asyncio
+
+    from starlette.responses import PlainTextResponse
+
+    from app.auth_service import ServicePrincipal
+    from app.mcp_auth import McpAuthMiddleware
+    from app.request_principal import get_brain_principal
+
+    seen: list = []
+
+    async def inner(scope, receive, send):
+        seen.append(get_brain_principal())
+        resp = PlainTextResponse("ok")
+        await resp(scope, receive, send)
+
+    app = McpAuthMiddleware(inner)
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "path": "/mcp/",
+        "raw_path": b"/mcp/",
+        "root_path": "",
+        "scheme": "http",
+        "query_string": b"",
+        "headers": [
+            (b"authorization", b"Bearer test-service-token"),
+            (b"host", b"testserver"),
+        ],
+        "client": ("127.0.0.1", 123),
+        "server": ("testserver", 80),
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(_msg):
+        return None
+
+    asyncio.run(app(scope, receive, send))
+    assert len(seen) == 1
+    assert isinstance(seen[0], ServicePrincipal)
+    assert get_brain_principal() is None  # reset after request

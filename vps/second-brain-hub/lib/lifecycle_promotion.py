@@ -68,9 +68,13 @@ def _frontmatter(task: Any) -> dict[str, Any]:
 
 
 def count_focused(tasks: list[Any], today: date) -> int:
-    return sum(
-        1 for t in tasks if is_focus_current(_frontmatter(t).get("focus"), today)
-    )
+    """Deprecated alias — prefer ``count_focus_slots`` (A4 eligible ∩ ¬paused).
+
+    Callers that already excluded paused may pass ``paused_slugs=None``.
+    """
+    from today_priority import count_focus_slots  # local import avoids cycle
+
+    return count_focus_slots(tasks, today, paused_slugs=None)
 
 
 def select_focus_suggestions(

@@ -41,10 +41,12 @@ from strategy_meeting import collect_strategy_meeting_from_drive  # noqa: E402
 from today_priority import (  # noqa: E402
     COMPANY_PRIORITY_BONUS,
     DEADLINE_HORIZON_DAYS,
+    count_focus_slots,
     effective_due,
     enrich_task_dict,
     exclude_paused_project_tasks,
     is_active_project_status,
+    is_focus_eligible,
     is_queue_eligible,
     needs_decision,
     paused_project_slugs,
@@ -364,16 +366,18 @@ def build_and_write_context_bundle(
     open_epics = [t for t in open_tasks if t.get("type") == TYPE_EPIC]
 
     focus_week = current_focus_week(today)
-    focused = [t for t in queue_tasks if is_focus_current(t.get("focus"), today)]
+    # A15 / Q3a — same slot definition as Brain set_focus (eligible ∩ ¬paused)
+    focused = [t for t in queue_tasks if is_focus_eligible(t, today)]
+    focus_count = count_focus_slots(queue_tasks, today, paused_slugs=None)
     suggestion_pool = [
         t
         for t in queue_tasks
-        if not is_focus_current(t.get("focus"), today) and is_queue_eligible(t, today)
+        if not is_focus_eligible(t, today) and is_queue_eligible(t, today)
     ]
     focus_suggestions_raw = select_focus_suggestions(
         suggestion_pool,
         today=today,
-        current_focus_count=len(focused),
+        current_focus_count=focus_count,
     )
     focus_suggestions = [
         enrich_task_dict(dict(t) if isinstance(t, dict) else t, today)
@@ -538,7 +542,7 @@ def build_and_write_context_bundle(
             "recently_done_7d": len(recently_done),
             "recently_cancelled_7d": len(recently_cancelled),
             "focus_week": focus_week,
-            "focus_count": len(focused),
+            "focus_count": focus_count,
             "focus_limit": FOCUS_LIMIT,
             "upcoming_deadlines_7d": len(upcoming),
             "due_soon_7d": len(due_soon),

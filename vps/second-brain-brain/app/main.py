@@ -184,9 +184,20 @@ def rest_update_task(body: UpdateTaskBody, _auth: AuthPrincipal) -> dict:
     )
 
 
+class SetFocusBody(BaseModel):
+    task_path: str
+    focus_week: str = ""
+    expect_oid: str | None = None
+
+
 @app.post("/v1/set_focus")
-def rest_set_focus(_auth: AuthPrincipal) -> dict:
-    return set_focus_tool.set_focus()
+def rest_set_focus(body: SetFocusBody, _auth: AuthPrincipal) -> dict:
+    return set_focus_tool.set_focus(
+        task_path=body.task_path,
+        focus_week=body.focus_week,
+        expect_oid=body.expect_oid,
+        principal=_auth,
+    )
 
 
 @app.get("/v1/allocate_task_id")

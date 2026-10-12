@@ -216,6 +216,51 @@ def is_focus_eligible(task: Any, today: date) -> bool:
     return is_focus_current(_task_get(task, "focus"), today)
 
 
+def would_consume_focus_slot(task: Any, paused_slugs: set[str] | None = None) -> bool:
+    """True if setting *current* focus on this task would take a TOP slot (A4).
+
+    Ignores the current ``focus`` field — used by ``set_focus`` before write.
+    """
+    slug = str(_task_get(task, "slug") or "")
+    if paused_slugs and slug in paused_slugs:
+        return False
+    if not is_focusable(task):
+        return False
+    if _task_get(task, "status") in FOCUS_INELIGIBLE_STATUSES:
+        return False
+    return True
+
+
+def count_focus_slots(
+    tasks: list[Any],
+    today: date,
+    *,
+    paused_slugs: set[str] | None = None,
+    exclude_path: str | None = None,
+    exclude_id: str | None = None,
+) -> int:
+    """Count TOP focus slots: ``is_focus_eligible`` ∩ ¬paused (± exclude).
+
+    SSOT for Brain ``set_focus`` limit and ``agent-context`` ``stats.focus_count``.
+    """
+    filtered = exclude_paused_project_tasks(tasks, paused_slugs or set())
+    n = 0
+    for t in filtered:
+        if exclude_path is not None:
+            rel = _task_get(t, "rel_path") or (
+                getattr(t, "rel_path", None) if not isinstance(t, dict) else t.get("rel_path")
+            )
+            if rel is not None and str(rel) == str(exclude_path):
+                continue
+        if exclude_id is not None:
+            tid = _task_get(t, "id") or _task_get(t, "task_id")
+            if tid is not None and str(tid) == str(exclude_id):
+                continue
+        if is_focus_eligible(t, today):
+            n += 1
+    return n
+
+
 def is_queue_eligible(task: Any, today: date) -> bool:
     """True for the wider list: focused work plus everything queued as Doing/Next.
 

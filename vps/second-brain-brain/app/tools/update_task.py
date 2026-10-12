@@ -1,4 +1,4 @@
-"""update_task — CAS patch of frontmatter fields (B5); refuses focus / Stav auto."""
+"""update_task — CAS patch of frontmatter fields (B5); focus via set_focus only."""
 from __future__ import annotations
 
 import re

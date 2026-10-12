@@ -6,12 +6,13 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app.auth_service import authenticate_service_token, reject_human_api_key
+from app.auth_service import ServicePrincipal, authenticate_service_token, reject_human_api_key
 from app.oauth_routes import _COOKIE, read_session_email
+from app.request_principal import reset_brain_principal, set_brain_principal
 
 
 class McpAuthMiddleware:
-    """Reject unauthenticated MCP requests with 401 JSON."""
+    """Reject unauthenticated MCP requests with 401 JSON; set principal ContextVar."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -31,16 +32,9 @@ class McpAuthMiddleware:
             return
 
         email = read_session_email(request.cookies.get(_COOKIE))
-        if email:
-            await self.app(scope, receive, send)
-            return
-
         auth = request.headers.get("authorization") or ""
         presented = auth[7:].strip() if auth.lower().startswith("bearer ") else None
-        if authenticate_service_token(presented, env=os.environ) is not None:
-            await self.app(scope, receive, send)
-            return
-
+        service_ok = authenticate_service_token(presented, env=os.environ) is not None
         allow_dev = (os.environ.get("BRAIN_ALLOW_NO_PUSH") or "").strip().lower() in (
             "1",
             "true",
@@ -48,12 +42,24 @@ class McpAuthMiddleware:
             "on",
         )
         has_token = bool((os.environ.get("BRAIN_SERVICE_TOKEN") or "").strip())
-        if allow_dev and not has_token:
-            await self.app(scope, receive, send)
+        dev_ok = allow_dev and not has_token
+
+        if email:
+            principal: ServicePrincipal | str = f"oauth:{email}"
+        elif service_ok:
+            principal = ServicePrincipal()
+        elif dev_ok:
+            principal = "dev"
+        else:
+            resp = JSONResponse(
+                {"error_reason": "client_error", "message": "authentication required"},
+                status_code=401,
+            )
+            await resp(scope, receive, send)
             return
 
-        resp = JSONResponse(
-            {"error_reason": "client_error", "message": "authentication required"},
-            status_code=401,
-        )
-        await resp(scope, receive, send)
+        token = set_brain_principal(principal)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            reset_brain_principal(token)

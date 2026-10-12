@@ -105,7 +105,7 @@ python3 scripts/build_agent_context.py
 
 - Pouze single-task ops; bulk přes `agenda-work` / `agenda-co-ted` / `agenda-priority-review`
 - **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na Next / Backlog / Doing / Done / Cancelled vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (every 2h :03) vyčistí opomenutí z manuálních editací. Cron `lifecycle_waiting_default_waituntil.py` (every 2h :02) doplní `waitUntil = dnes + 3 dny`, pokud je Waiting bez data.
-- **Do `focus` nikdy nesahá cron.** Je to jediné pole ve vaultu, které je čistě lidským rozhodnutím. Když je fokus pod pěti, `build_agent_context.py` naplní `focus_suggestions[]` — ty je smíš **nabídnout**, ne aplikovat.
+- **Do `focus` nikdy nesahá cron.** Lidské rozhodnutí: v Cursoru patchni frontmatter (tento skill); přes Brain MCP (Claude / Saturnin) po potvrzení v chatu volej **`set_focus`** (ne `update_task` s `focus`). Max 5 eligible slotů (server). Když je fokus pod pěti, `build_agent_context.py` naplní `focus_suggestions[]` — ty je smíš **nabídnout**, ne aplikovat bez potvrzení.
 - **Limit fokusu je 5.** Před přidáním spočítej aktuální stav; při překročení se zeptej, co z fokusu vypadne.
 - **Zrušený úkol není `Done`.** Používej `Cancelled` — jinak „recently done" tvrdí, že jsi udělal práci, kterou jsi odepsal.
 - Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej

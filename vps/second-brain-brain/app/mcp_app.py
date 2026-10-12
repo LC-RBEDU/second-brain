@@ -66,7 +66,9 @@ def build_mcp() -> MCPServer:
             recursive=recursive,
         )
 
-    @mcp.tool(description="Patch task frontmatter (CAS expect_oid); focus denied.")
+    @mcp.tool(
+        description="Patch task frontmatter (CAS expect_oid); focus key denied — use set_focus."
+    )
     def update_task(
         path: str, patch_json: str, expect_oid: str | None = None
     ) -> str:
@@ -78,9 +80,23 @@ def build_mcp() -> MCPServer:
             expect_oid=expect_oid,
         )
 
-    @mcp.tool(description="Denied — focus is human-owned (B6).")
-    def set_focus(task_path: str = "", focus_week: str = "") -> str:
-        return _call(set_focus_tool.set_focus, task_path=task_path, focus_week=focus_week)
+    @mcp.tool(
+        description=(
+            "Set or clear task focus (current ISO week or empty). "
+            "Max 5 eligible TOP slots. Confirm with the user in chat before calling."
+        )
+    )
+    def set_focus(
+        task_path: str = "",
+        focus_week: str = "",
+        expect_oid: str | None = None,
+    ) -> str:
+        return _call(
+            set_focus_tool.set_focus,
+            task_path=task_path,
+            focus_week=focus_week,
+            expect_oid=expect_oid,
+        )
 
     @mcp.tool(description="Preview next task ID (non-reserving).")
     def allocate_task_id(slug: str, level: str | None = None) -> str:

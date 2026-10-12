@@ -3,6 +3,19 @@
 Plán: [docs/plans/2026-10-10-sb-operacni-model-f2.md](plans/2026-10-10-sb-operacni-model-f2.md) · F4: [docs/plans/2026-10-10-sb-operacni-model-f4.md](plans/2026-10-10-sb-operacni-model-f4.md) · F5: [docs/plans/2026-10-10-sb-operacni-model-f5.md](plans/2026-10-10-sb-operacni-model-f5.md)  
 Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md) · Artifact: [docs/claude-artifact-dashboard.md](claude-artifact-dashboard.md)
 
+## set_focus (2026-10-12)
+
+| Položka | Stav |
+|---|---|
+| MCP / REST | `set_focus(task_path, focus_week="", expect_oid?)` · `POST /v1/set_focus` |
+| Auth | OAuth cookie **nebo** Bearer service (MCP Grok/Claude) |
+| Potvrzení | V chatu u agenta (náhled → ano); API bez confirm flagu |
+| `focus_week` | Prázdné = clear; jinak jen **aktuální** ISO týden (`Europe/Prague`) |
+| Limit | Max **5** eligible TOP slotů (`is_focus_eligible` ∩ ¬paused); epic/Waiting/paused nespotřebují slot |
+| `update_task` + `focus` | Stále **403** — jen `set_focus` |
+| Deploy | Brain **i** hub stejný SHA (`count_focus_slots` v hub lib) |
+| Plán | [docs/plans/2026-10-12-brain-set-focus.md](plans/2026-10-12-brain-set-focus.md) |
+
 ## F5 — boti (DONE 2026-10-11)
 
 | Položka | Stav |
