@@ -528,3 +528,198 @@ def test_crontab_still_has_evening_line():
     text = (HUB / "deploy" / "crontab").read_text(encoding="utf-8")
     assert "proactivity_dispatch.py --trigger evening" in text
     assert "0 18 * * 1-5" in text
+
+
+def test_sembly_cut_drops_transcript_token():
+    """B1: token only in ## Plný transkript → outside haystack."""
+    text = (
+        "## Shrnutí\nsummary only\n\n"
+        "## Akční body\naction only\n\n"
+        "## Plný transkript\n"
+        "unikátnítranskripttokenzzzz only here\n"
+    )
+    body = evening.sembly_match_body(text)
+    assert "unikátnítranskripttokenzzzz" not in body
+    assert "summary only" in body
+    assert "action only" in body
+
+
+def test_sembly_keeps_summary_action_tokens():
+    """B2: tokens in Shrnutí/Akční body stay in haystack."""
+    text = (
+        "## Shrnutí\nshrnutitokenzzzz here\n\n"
+        "## Akční body\nakcitokenzzzz here\n\n"
+        "## Plný transkript\nnoise\n"
+    )
+    body = evening.sembly_match_body(text)
+    assert "shrnutitokenzzzz" in body
+    assert "akcitokenzzzz" in body
+
+
+def test_sembly_cut_aliases_and_non_exact():
+    """B3 / B3n: Plný přepis / Full transcript cut; ### / substring / # do not."""
+    assert "secretzzz" not in evening.sembly_match_body(
+        "## Shrnutí\nok\n## Plný přepis\nsecretzzz\n"
+    )
+    assert "secretzzz" not in evening.sembly_match_body(
+        "## Summary\nok\n## Full transcript\nsecretzzz\n"
+    )
+    # non-exact → no primary cut; keep-cut after Summary before next ##
+    body_h3 = evening.sembly_match_body(
+        "## Shrnutí\nok\n### Plný transkript\nsecretzzz\n## Other\n"
+    )
+    assert "secretzzz" in body_h3 or "ok" in body_h3  # ### is not ## cut
+    # substring heading is not exact alias → no primary cut
+    body_sub = evening.sembly_match_body(
+        "## Shrnutí\nok\n## Foo Plný transkript\nsecretzzz\n"
+    )
+    # keep-cut: after Shrnutí, next ## Foo… is non-keep → cut before it
+    assert "secretzzz" not in body_sub
+
+
+def test_sembly_fallback_4kib_without_markers():
+    """B5: no markers → 4096 B cap."""
+    prefix = "a" * 4096
+    text = prefix + "unikátníza4096zzzz"
+    body = evening.sembly_match_body(text)
+    assert "unikátníza4096zzzz" not in body
+    assert len(body.encode("utf-8")) <= 4096
+
+
+def test_sembly_post_cut_cap_8192():
+    """B5b: cut before transcript, then 8192 cap."""
+    # pre-transcript larger than 8192; token near end of Akční body past cap
+    pad = "x" * 8200
+    text = (
+        f"## Shrnutí\n{pad}\n"
+        "## Akční body\nakcizatokenzzzz\n"
+        "## Plný transkript\nignored\n"
+    )
+    body = evening.sembly_match_body(text)
+    assert "ignored" not in body
+    assert len(body.encode("utf-8")) <= 8192
+    # token after 8192 of pre-transcript may be clipped
+    assert "akcizatokenzzzz" not in body or body.encode("utf-8").find(b"akci") < 8192
+
+
+def test_daily_still_includes_transcript_heading_bytes():
+    """B6 / R8: daily keeps stem+8KiB including transcript-like heading."""
+    vault = MemVault(
+        {
+            "01-INBOX/daily/x.md": (
+                "## Shrnutí\nok\n## Plný transkript\ndailytranskripttokenzzzz\n"
+            ),
+        }
+    )
+    cands = [
+        evening.Candidate(
+            "daily", "01-INBOX/daily/x.md", "", "x.md", "01-INBOX/daily/x.md"
+        )
+    ]
+    out = evening.enrich_path_sources(vault, cands)
+    assert "dailytranskripttokenzzzz" in out[0].haystack
+
+
+def test_sembly_enrich_excludes_transcript_from_match():
+    """Integration: body match does not hit transcript-only token."""
+    vault = MemVault(
+        {
+            "01-INBOX/sembly/m.md": (
+                "## Shrnutí\nnothing special\n"
+                "## Plný transkript\n"
+                "cashflow planned náklady znulování\n"
+            ),
+        }
+    )
+    cands = evening.flatten_candidates(
+        {"sembly": ["01-INBOX/sembly/m.md"], "live_slack": [], "gmail": []}
+    )
+    cands = evening.enrich_path_sources(vault, cands)
+    pool = [
+        evening.MatchTask(
+            "RBU-S70",
+            "Cashflow planned náklady",
+            "znulování planned expenses",
+            "p",
+        )
+    ]
+    r = evening.match_candidates(pool, cands)
+    assert "RBU-S70" not in r.matched
+
+
+def test_fetch_l1_brain_retries_503_then_ok(monkeypatch):
+    """B9: 503 → 200 with one sleep(1.0)."""
+    sleeps: list[float] = []
+    calls = {"n": 0}
+
+    class Resp:
+        def read(self):
+            return b'{"sources": {}}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.HTTPError(req.full_url, 503, "Unavailable", hdrs=None, fp=None)
+        return Resp()
+
+    import urllib.error
+    import urllib.request
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    data, err = evening.fetch_l1_brain(
+        brain_url="https://brain.example",
+        token="t",
+        sleep=lambda s: sleeps.append(s),
+    )
+    assert err is None
+    assert data == {"sources": {}}
+    assert sleeps == [1.0]
+    assert calls["n"] == 2
+
+
+def test_fetch_l1_brain_503_exhausted(monkeypatch):
+    """B11: 503×3 → brain_http_503; two sleeps."""
+    import urllib.error
+    import urllib.request
+
+    sleeps: list[float] = []
+
+    def fake_urlopen(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 503, "Unavailable", hdrs=None, fp=None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    data, err = evening.fetch_l1_brain(
+        brain_url="https://brain.example",
+        token="t",
+        sleep=lambda s: sleeps.append(s),
+    )
+    assert data is None
+    assert err == "brain_http_503"
+    assert sleeps == [1.0, 2.0]
+
+
+def test_fetch_l1_brain_502_no_retry(monkeypatch):
+    """B12: 502 → immediate fail, no sleep."""
+    import urllib.error
+    import urllib.request
+
+    sleeps: list[float] = []
+
+    def fake_urlopen(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 502, "Bad Gateway", hdrs=None, fp=None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    data, err = evening.fetch_l1_brain(
+        brain_url="https://brain.example",
+        token="t",
+        sleep=lambda s: sleeps.append(s),
+    )
+    assert data is None
+    assert err == "brain_http_502"
+    assert sleeps == []

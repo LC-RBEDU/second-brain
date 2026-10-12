@@ -4,8 +4,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Mapping
@@ -20,8 +22,26 @@ TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
 DIGEST_DIR = "00-System/digests"
 BODY_CAP_BYTES = 3072
 HEAD_CAP_BYTES = 8192
+SEMBLY_FALLBACK_CAP_BYTES = 4096
 SOFT_GROK_CHARS = int(os.environ.get("EVENING_DIGEST_GROK_CHARS") or "28000")
 BRAIN_TIMEOUT = float(os.environ.get("EVENING_DIGEST_BRAIN_TIMEOUT") or "120")
+BRAIN_MAX_503_RETRIES = 2
+BRAIN_503_BACKOFF_S = (1.0, 2.0)
+
+_H2_RE = re.compile(r"^##\s+(.+?)\s*$")
+_SEMBLY_TRANSCRIPT_HEADINGS = frozenset(
+    {"plný přepis", "plný transkript", "full transcript"}
+)
+_SEMBLY_KEEP_HEADINGS = frozenset(
+    {
+        "shrnutí",
+        "summary",
+        "akční body",
+        "action items",
+        "action points",
+        "actions",
+    }
+)
 
 STOP = frozenset(
     {
@@ -111,38 +131,94 @@ def digest_rel_path(day: str) -> str:
     return f"{DIGEST_DIR}/{day}-evening-l1.md"
 
 
+def _utf8_cap(text: str, max_bytes: int) -> str:
+    return text.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
+
+
+def _h2_heading(line: str) -> str | None:
+    m = _H2_RE.match(line)
+    if not m:
+        return None
+    return m.group(1).strip().casefold()
+
+
+def sembly_match_body(text: str) -> str:
+    """Haystack body for sembly: stem caller adds; cut before full transcript (variant A)."""
+    lines = text.splitlines(keepends=True)
+    # Primary: cut before exact ## transcript aliases
+    for i, line in enumerate(lines):
+        heading = _h2_heading(line.rstrip("\n"))
+        if heading in _SEMBLY_TRANSCRIPT_HEADINGS:
+            body = "".join(lines[:i])
+            return _utf8_cap(body, HEAD_CAP_BYTES)
+    # Fallback: after keep section, cut before next non-keep ##
+    seen_keep = False
+    for i, line in enumerate(lines):
+        heading = _h2_heading(line.rstrip("\n"))
+        if heading is None:
+            continue
+        if heading in _SEMBLY_KEEP_HEADINGS:
+            seen_keep = True
+            continue
+        if seen_keep:
+            body = "".join(lines[:i])
+            return _utf8_cap(body, HEAD_CAP_BYTES)
+    # No marker / no keep path
+    return _utf8_cap(text, SEMBLY_FALLBACK_CAP_BYTES)
+
+
 def fetch_l1_brain(
     *,
     brain_url: str | None = None,
     token: str | None = None,
     env: Mapping[str, str] | None = None,
     timeout_s: float = BRAIN_TIMEOUT,
+    max_503_retries: int = BRAIN_MAX_503_RETRIES,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    """Return (payload, total_error). total_error set → total degrade."""
+    """Return (payload, total_error). total_error set → total degrade.
+
+    HTTP 503: retry up to ``max_503_retries`` times with backoff (1s, 2s).
+    Final error maps the *last* attempt (A9).
+    """
     env_map = env if env is not None else os.environ
     url = (brain_url if brain_url is not None else env_map.get("BRAIN_PUBLIC_URL") or "").rstrip("/")
     tok = (token if token is not None else env_map.get("BRAIN_SERVICE_TOKEN") or "").strip()
     if not url or not tok:
         return None, "brain_env_missing"
-    req = urllib.request.Request(
-        f"{url}/v1/triage/candidates?include_live_slack=true&include_gmail=true",
-        method="GET",
-        headers={
-            "Authorization": f"Bearer {tok}",
-            "Accept": "application/json",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-            raw = resp.read().decode("utf-8")
-            data = json.loads(raw) if raw else {}
-            if not isinstance(data, dict):
-                return None, "brain_bad_json"
-            return data, None
-    except urllib.error.HTTPError as exc:
-        return None, f"brain_http_{exc.code}"
-    except Exception as exc:  # noqa: BLE001
-        return None, f"brain_error:{type(exc).__name__}"
+    endpoint = f"{url}/v1/triage/candidates?include_live_slack=true&include_gmail=true"
+    attempts = 1 + max(0, max_503_retries)
+    last_error = "brain_http_503"
+    for attempt in range(1, attempts + 1):
+        req = urllib.request.Request(
+            endpoint,
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {tok}",
+                "Accept": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                raw = resp.read().decode("utf-8")
+                data = json.loads(raw) if raw else {}
+                if not isinstance(data, dict):
+                    return None, "brain_bad_json"
+                return data, None
+        except urllib.error.HTTPError as exc:
+            last_error = f"brain_http_{exc.code}"
+            if exc.code != 503 or attempt >= attempts:
+                return None, last_error
+            delay = BRAIN_503_BACKOFF_S[min(attempt - 1, len(BRAIN_503_BACKOFF_S) - 1)]
+            print(
+                f"evening_l1_digest: brain retry 503 attempt {attempt}/{attempts - 1} "
+                f"sleep={delay}s",
+                flush=True,
+            )
+            sleep(delay)
+        except Exception as exc:  # noqa: BLE001
+            return None, f"brain_error:{type(exc).__name__}"
+    return None, last_error
 
 
 def load_match_pool(vault: Any) -> list[MatchTask]:
@@ -265,11 +341,14 @@ def enrich_path_sources(vault: Any, candidates: list[Candidate]) -> list[Candida
                 )
             )
             continue
-        head = text.encode("utf-8")[:HEAD_CAP_BYTES].decode("utf-8", errors="ignore")
         stem = path.rsplit("/", 1)[-1]
-        hay = f"{stem}\n{head}"
+        if c.source_key == "sembly":
+            body = sembly_match_body(text)
+        else:
+            body = _utf8_cap(text, HEAD_CAP_BYTES)
+        hay = f"{stem}\n{body}"
         # preview from body without huge FM
-        body_preview = head
+        body_preview = body
         if body_preview.startswith("---"):
             parts = body_preview.split("---", 2)
             if len(parts) >= 3:
