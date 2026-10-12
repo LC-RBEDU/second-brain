@@ -8,7 +8,7 @@ Kritik: 0e8590d0… **SCHVÁLENO** (kolo 6)
 Goal: aktivní
 Schvalování plánu uživatelem: ne → rovnou IMPLEMENT
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: 6439d0ed3e39631a8e3d606ea3b3341aea406f8f · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: b09bc374cf1460d6521ea653c720046c57f7c317 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
