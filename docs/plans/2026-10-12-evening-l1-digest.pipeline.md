@@ -8,7 +8,7 @@ Kritik: 0e8590d0… **SCHVÁLENO** (kolo 6)
 Goal: aktivní
 Schvalování plánu uživatelem: ne → rovnou IMPLEMENT
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: (pending commit) · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: 6c5a13731944063c07094022d11b5027c8ae80ff · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -64,6 +64,7 @@ Takže nějaké konkrétní shrnutí dne - např. daily v 18:00 by bylo fajn
 | 12 | 2026-10-12T14:55 | GRILL | d40a71b0… | HOTOVÝ | — | → CRITIC |
 | 13 | 2026-10-12T15:00 | CRITIC | b5acf843… | K PŘEPRACOVÁNÍ | C3, force, Brain auth | → AWAITING_USER |
 | 14 | 2026-10-12T16:12 | AWAITING_USER | uživatel | ID match = 1 word-boundary | — | → PLAN r=2 |
+| 15 | 2026-10-12T16:30 | IMPLEMENT | hlavní | lib+cron+11 tests; hub 319 passed | — | → lokální commit → REVIEW |
 
 ## Otevřené nálezy
 | ID | Závažnost | Typ | Stav | Kolikrát |
