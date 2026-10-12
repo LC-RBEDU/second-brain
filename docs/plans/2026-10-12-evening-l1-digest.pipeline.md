@@ -5,12 +5,12 @@ Plán: docs/plans/2026-10-12-evening-l1-digest.md
 Architekt: 2887a5f5… k=2
 Šťoural: HOTOVÝ
 Kritik: 0e8590d0… **SCHVÁLENO** (kolo 6)
-Goal: aktivní
+Goal: complete
 Schvalování plánu uživatelem: ne → rovnou IMPLEMENT
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 3/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 1/2
-Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: b09bc374cf1460d6521ea653c720046c57f7c317 · Review SCHVÁLENO na: f8d9c5ba… (kolo 3) · QA PASS na: 10947e9c (Coolify image) · TESTER: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: b09bc374cf1460d6521ea653c720046c57f7c317 · Review SCHVÁLENO na: f8d9c5ba… (kolo 3) · QA PASS na: 10947e9c (+ re-verify dry-run na image c1874bd) · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete
 
 ## Projekt
 SECOND_BRAIN — kořen `~/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN`, větev `main`, base = origin/main před pipeline. Nasazení: push `main` → Coolify `second-brain-hub` (coolify-dev) = ostrý cron nad živým vaultem. Gate: `python3 -m pytest vps/second-brain-hub/tests scripts/tests -q`. QA: image dle hub README + `--dry-run` evening digest. Tester: vždy přeskočeno (profil SECOND_BRAIN).
