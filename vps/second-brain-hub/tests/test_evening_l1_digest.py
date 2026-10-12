@@ -557,24 +557,48 @@ def test_sembly_keeps_summary_action_tokens():
 
 
 def test_sembly_cut_aliases_and_non_exact():
-    """B3 / B3n: Plný přepis / Full transcript cut; ### / substring / # do not."""
+    """B3 / B3n: Plný přepis / Full transcript cut; ### / # / substring do not primary-cut."""
     assert "secretzzz" not in evening.sembly_match_body(
         "## Shrnutí\nok\n## Plný přepis\nsecretzzz\n"
     )
     assert "secretzzz" not in evening.sembly_match_body(
         "## Summary\nok\n## Full transcript\nsecretzzz\n"
     )
-    # non-exact → no primary cut; keep-cut after Summary before next ##
+    # ### is not ## → stays in body until keep-cut before ## Other
     body_h3 = evening.sembly_match_body(
         "## Shrnutí\nok\n### Plný transkript\nsecretzzz\n## Other\n"
     )
-    assert "secretzzz" in body_h3 or "ok" in body_h3  # ### is not ## cut
-    # substring heading is not exact alias → no primary cut
+    assert "secretzzz" in body_h3
+    # single # is not ##
+    body_h1 = evening.sembly_match_body(
+        "## Shrnutí\nok\n# Plný transkript\nsecretzzz\n## Other\n"
+    )
+    assert "secretzzz" in body_h1
+    # substring heading → keep-cut before it
     body_sub = evening.sembly_match_body(
         "## Shrnutí\nok\n## Foo Plný transkript\nsecretzzz\n"
     )
-    # keep-cut: after Shrnutí, next ## Foo… is non-keep → cut before it
     assert "secretzzz" not in body_sub
+
+
+def test_sembly_keep_cut_cap_8192():
+    """B4: after keep, cut before non-keep ##; cap 8192."""
+    pad = "y" * 100
+    text = f"## Shrnutí\n{pad}\n## Other section\naftercutzzzz\n"
+    body = evening.sembly_match_body(text)
+    assert "aftercutzzzz" not in body
+    assert pad in body
+    assert len(body.encode("utf-8")) <= 8192
+
+
+def test_sembly_keep_only_uses_8192_not_4096():
+    """A10.2: keep sections, no further ## → cap 8192 not 4096."""
+    pad = "k" * 5000
+    text = f"## Shrnutí\n{pad}\nkeeponlytokenzzzz\n"
+    body = evening.sembly_match_body(text)
+    assert "keeponlytokenzzzz" in body
+    assert len(body.encode("utf-8")) <= 8192
+    assert len(body.encode("utf-8")) > 4096
 
 
 def test_sembly_fallback_4kib_without_markers():
@@ -587,19 +611,19 @@ def test_sembly_fallback_4kib_without_markers():
 
 
 def test_sembly_post_cut_cap_8192():
-    """B5b: cut before transcript, then 8192 cap."""
-    # pre-transcript larger than 8192; token near end of Akční body past cap
-    pad = "x" * 8200
+    """B5b: cut before transcript, then 8192; token before cap matches, after does not."""
+    early = "earlytokenzzzz "
+    pad = "x" * (8200 - len(early))
     text = (
-        f"## Shrnutí\n{pad}\n"
+        f"## Shrnutí\n{early}{pad}\n"
         "## Akční body\nakcizatokenzzzz\n"
         "## Plný transkript\nignored\n"
     )
     body = evening.sembly_match_body(text)
     assert "ignored" not in body
+    assert "earlytokenzzzz" in body
+    assert "akcizatokenzzzz" not in body
     assert len(body.encode("utf-8")) <= 8192
-    # token after 8192 of pre-transcript may be clipped
-    assert "akcizatokenzzzz" not in body or body.encode("utf-8").find(b"akci") < 8192
 
 
 def test_daily_still_includes_transcript_heading_bytes():
@@ -683,6 +707,42 @@ def test_fetch_l1_brain_retries_503_then_ok(monkeypatch):
     assert calls["n"] == 2
 
 
+def test_fetch_l1_brain_two_503_then_ok(monkeypatch):
+    """B10 / T9b: 503→503→200; sleeps 1.0 then 2.0."""
+    import urllib.error
+    import urllib.request
+
+    sleeps: list[float] = []
+    calls = {"n": 0}
+
+    class Resp:
+        def read(self):
+            return b'{"sources": {}}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise urllib.error.HTTPError(req.full_url, 503, "Unavailable", hdrs=None, fp=None)
+        return Resp()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    data, err = evening.fetch_l1_brain(
+        brain_url="https://brain.example",
+        token="t",
+        sleep=lambda s: sleeps.append(s),
+    )
+    assert err is None
+    assert data == {"sources": {}}
+    assert sleeps == [1.0, 2.0]
+    assert calls["n"] == 3
+
+
 def test_fetch_l1_brain_503_exhausted(monkeypatch):
     """B11: 503×3 → brain_http_503; two sleeps."""
     import urllib.error
@@ -702,6 +762,31 @@ def test_fetch_l1_brain_503_exhausted(monkeypatch):
     assert data is None
     assert err == "brain_http_503"
     assert sleeps == [1.0, 2.0]
+
+
+def test_fetch_l1_brain_503_then_urlerror(monkeypatch):
+    """B13 / T10b: last attempt maps URLError → brain_error:…"""
+    import urllib.error
+    import urllib.request
+
+    sleeps: list[float] = []
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.HTTPError(req.full_url, 503, "Unavailable", hdrs=None, fp=None)
+        raise urllib.error.URLError("down")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    data, err = evening.fetch_l1_brain(
+        brain_url="https://brain.example",
+        token="t",
+        sleep=lambda s: sleeps.append(s),
+    )
+    assert data is None
+    assert err == "brain_error:URLError"
+    assert sleeps == [1.0]
 
 
 def test_fetch_l1_brain_502_no_retry(monkeypatch):

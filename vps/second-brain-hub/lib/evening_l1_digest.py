@@ -163,7 +163,10 @@ def sembly_match_body(text: str) -> str:
         if seen_keep:
             body = "".join(lines[:i])
             return _utf8_cap(body, HEAD_CAP_BYTES)
-    # No marker / no keep path
+    # Keep sections present but no further ## → full keep body, cap 8192 (A10.2)
+    if seen_keep:
+        return _utf8_cap(text, HEAD_CAP_BYTES)
+    # No marker / no keep path → 4096 (A10.3)
     return _utf8_cap(text, SEMBLY_FALLBACK_CAP_BYTES)
 
 
