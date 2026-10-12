@@ -2,7 +2,8 @@
 
 **Projekt:** SECOND_BRAIN  
 **Base:** `origin/main` @ `046bed8`  
-**Stav:** IMPLEMENT  
+**Stav:** REVIEW  
+**Commit:** `1b9b806`  
 **TESTER:** přeskočeno (profil SECOND_BRAIN)
 
 ## Zamčené
@@ -17,7 +18,7 @@ CRITIC r=2: **SCHVÁLENO** (MINOR NEW-10/11 zapsány)
 | PLAN | k=1 r=2 |
 | GRILL | HOTOVÝ |
 | CRITIC | SCHVÁLENO r=2 |
-| IMPLEMENT | in progress |
-| REVIEW | — |
+| IMPLEMENT | `1b9b806` local |
+| REVIEW | in progress |
 | QA | — |
 | DONE | — |

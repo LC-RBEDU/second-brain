@@ -124,6 +124,59 @@ def test_b4_clear(monkeypatch):
     assert out["focus"] is None
 
 
+def test_b20_clear_already_empty(monkeypatch):
+    monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
+    vault = _vault(_task_md(focus=""))
+    with patch.object(mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(mod, "iter_active_tasks", return_value=iter([])):
+            with patch.object(mod, "delete_context_tombstone"):
+                with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
+                    out = mod.set_focus(
+                        task_path=PATH,
+                        focus_week="",
+                        principal="dev",
+                    )
+    assert out["cleared"] is True
+    vault.write_text.assert_called_once()
+
+
+def test_b18_prague_today_uses_tz(monkeypatch):
+    """T13 — _prague_today respects Europe/Prague (no mock of the helper)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    fixed = datetime(2026, 10, 12, 1, 30, tzinfo=ZoneInfo("UTC"))  # still Mon in Prague
+
+    class _DT:
+        @staticmethod
+        def now(tz=None):
+            return fixed.astimezone(tz) if tz else fixed
+
+    monkeypatch.setattr(mod, "datetime", _DT)
+    d = mod._prague_today({"TZ": "Europe/Prague"})
+    assert d == date(2026, 10, 12)
+    assert current_focus_week(d) == "2026-W42"
+
+
+def test_b5_reset_allows_when_full(monkeypatch):
+    """Already in focus → allow even when others count reports 5."""
+    monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
+    vault = _vault(_task_md(focus=WEEK))
+    with patch.object(mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(mod, "iter_active_tasks", return_value=iter([])):
+            with patch.object(mod, "delete_context_tombstone"):
+                with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
+                    with patch.object(mod, "count_focus_slots", return_value=5):
+                        out = mod.set_focus(
+                            task_path=PATH,
+                            focus_week=WEEK,
+                            principal="dev",
+                        )
+    assert out["focus"] == WEEK
+    assert out["already_in_focus"] is True
+    vault.write_text.assert_called_once()
+
+
 def test_b6_limit_exceeded(monkeypatch):
     monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
     vault = _vault(_task_md())
