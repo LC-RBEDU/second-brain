@@ -67,6 +67,8 @@ Takže nějaké konkrétní shrnutí dne - např. daily v 18:00 by bylo fajn
 | 15 | 2026-10-12T16:30 | IMPLEMENT | hlavní | lib+cron+11 tests; hub 319 passed | — | → lokální commit → REVIEW |
 | 16 | 2026-10-12T16:45 | REVIEW | 2906bc05… | K PŘEPRACOVÁNÍ | NEW-1 CAS, NEW-2 tests, NEW-3 FM | → IMPLEMENT |
 | 17 | 2026-10-12T16:55 | IMPLEMENT | hlavní | CAS catch + 17 tests; NEW-1/2/3 | — | → REVIEW kolo 2 |
+| 18 | 2026-10-12T17:05 | REVIEW | ce0f62ad… | K OPRAVĚ | NEW-4 B3 test, NEW-5 B20 test, NEW-6 | → IMPLEMENT |
+| 19 | 2026-10-12T17:10 | IMPLEMENT | hlavní | B3/B20/B4 brain assert; 19 tests | — | → REVIEW kolo 3 |
 
 ## Otevřené nálezy
 | ID | Závažnost | Typ | Stav | Kolikrát |
@@ -81,3 +83,6 @@ Takže nějaké konkrétní shrnutí dne - např. daily v 18:00 by bylo fajn
 | NEW-1 | MAJOR | IMPL | opraveno (DriveConflictError → False / exit 0) | 1 |
 | NEW-2 | MAJOR | IMPL | opraveno (B2/B2b/B4b/B8/B10/B14/B21/B22/B24 + truncated_hits) | 1 |
 | NEW-3 | MINOR | IMPL | opraveno (truncated_hits assert + json-quoted deliver_detail) | 1 |
+| NEW-4 | MAJOR | IMPL | opraveno (test B3 force+OK) | 1 |
+| NEW-5 | MAJOR | IMPL | opraveno (test B20 degrade MD write) | 1 |
+| NEW-6 | MINOR | IMPL | opraveno (B4 assert Brain called) | 1 |

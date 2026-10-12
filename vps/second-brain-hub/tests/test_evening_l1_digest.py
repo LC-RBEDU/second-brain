@@ -278,14 +278,20 @@ def test_patch_deliver_quotes_detail_and_cas_conflict():
 
 
 def test_proactivity_evening_dry_run_force_no_write(tmp_path, monkeypatch):
-    """B4: --force --dry-run does not write digest."""
+    """B4: --force --dry-run does not write digest; Brain may be called (R9)."""
     monkeypatch.setenv("TZ", "Europe/Prague")
     monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
 
     vault = MemVault()
     mod = _load_cron(monkeypatch)
     monkeypatch.setattr(mod, "open_vault", lambda: vault)
-    monkeypatch.setattr(mod, "fetch_l1_brain", lambda **k: (None, "brain_env_missing"))
+    called = {"brain": 0}
+
+    def brain(**k):
+        called["brain"] += 1
+        return None, "brain_env_missing"
+
+    monkeypatch.setattr(mod, "fetch_l1_brain", brain)
     monkeypatch.setattr(
         mod,
         "build_match_from_brain",
@@ -296,6 +302,87 @@ def test_proactivity_evening_dry_run_force_no_write(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "render_digest_md", lambda **k: "# dry\n")
     mod._run_evening(dry_run=True, force=True, brain_url="")
     assert vault.writes == []
+    assert called["brain"] == 1
+
+
+def test_evening_force_rebuild_despite_deliver_ok(monkeypatch):
+    """B3/T4: exists deliver OK + --force → Brain + rebuild path (not skip)."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    rel = evening.digest_rel_path("2026-10-12")
+    vault = MemVault(
+        {rel: "---\ntype: evening-l1-digest\ndeliver: OK\n---\nold\n"}
+    )
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
+
+    class FakeDT:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2026, 10, 12, 18, 0, tzinfo=ZoneInfo("Europe/Prague"))
+
+    monkeypatch.setattr(mod, "datetime", FakeDT)
+    called = {"brain": 0, "grok": 0}
+
+    def brain(**k):
+        called["brain"] += 1
+        return {"sources": {"live_slack": [], "gmail": []}}, None
+
+    monkeypatch.setattr(mod, "fetch_l1_brain", brain)
+    monkeypatch.setattr(
+        mod,
+        "build_match_from_brain",
+        lambda vault, payload, total_error=None: evening.MatchResult(candidate_count=0),
+    )
+    monkeypatch.setattr(
+        mod,
+        "render_digest_md",
+        lambda **k: "---\ntype: evening-l1-digest\n---\n# rebuilt\n",
+    )
+    monkeypatch.setattr(
+        mod, "deliver_to_saturnin", lambda *a, **k: (called.__setitem__("grok", 1) or True, "ok")
+    )
+    mod._run_evening(dry_run=False, force=True, brain_url="")
+    assert called["brain"] == 1
+    assert called["grok"] == 1
+    assert rel in vault.writes
+    assert "# rebuilt" in vault.files[rel]
+
+
+def test_evening_brain_fail_writes_degrade_md(monkeypatch):
+    """B20/T11: Brain env missing + non-dry → write total-degrade MD (not silent skip)."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    rel = evening.digest_rel_path("2026-10-12")
+    vault = MemVault()
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
+
+    class FakeDT:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2026, 10, 12, 18, 0, tzinfo=ZoneInfo("Europe/Prague"))
+
+    monkeypatch.setattr(mod, "datetime", FakeDT)
+    monkeypatch.setattr(mod, "fetch_l1_brain", lambda **k: (None, "brain_env_missing"))
+    monkeypatch.setattr(evening, "load_match_pool", lambda vault: [])
+    monkeypatch.setattr(
+        mod,
+        "build_match_from_brain",
+        lambda vault, payload, total_error=None: evening.build_match_from_brain(
+            vault, payload, total_error=total_error
+        ),
+    )
+    monkeypatch.setattr(mod, "deliver_to_saturnin", lambda *a, **k: (True, "ok"))
+    mod._run_evening(dry_run=False, force=False, brain_url="")
+    assert rel in vault.writes
+    md = vault.files[rel]
+    assert "Total degrade" in md or "total_degrade" in md
+    assert "brain_env_missing" in md
 
 
 def test_evening_skip_when_deliver_ok(monkeypatch):
