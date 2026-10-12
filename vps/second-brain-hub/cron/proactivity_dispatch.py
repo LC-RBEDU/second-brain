@@ -13,6 +13,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from drive_io import DriveConflictError  # noqa: E402
 from evening_l1_digest import (  # noqa: E402
     DIGEST_DIR,
     build_match_from_brain,
@@ -115,9 +116,14 @@ def _run_evening(*, dry_run: bool, force: bool, brain_url: str) -> None:
                 return
             # re-read for fresh CAS meta
             _, fresh = vault.read_text(rel)
-            patch_deliver_frontmatter(
+            patched = patch_deliver_frontmatter(
                 vault, rel, status=status, detail=detail, meta=fresh
             )
+            if not patched:
+                print(
+                    "  ! CAS conflict on deliver patch — leave FM unchanged, exit 0",
+                    file=sys.stderr,
+                )
         return
 
     # first run or --force → rebuild
@@ -150,7 +156,14 @@ def _run_evening(*, dry_run: bool, force: bool, brain_url: str) -> None:
             print(f"  [dry] would write {rel} chars={len(md)}")
             return
         vault.mkdir_p(DIGEST_DIR)
-        vault.write_text(rel, md)
+        try:
+            vault.write_text(rel, md)
+        except DriveConflictError as exc:
+            print(
+                f"  ! CAS conflict on digest write — abort Grok, exit 0 ({exc})",
+                file=sys.stderr,
+            )
+            return
 
     ok, detail = deliver_to_saturnin(md, day=day, dry_run=False)
     status = "OK" if ok else "FAIL"
@@ -160,9 +173,14 @@ def _run_evening(*, dry_run: bool, force: bool, brain_url: str) -> None:
             print("  ! vault skipped on deliver patch (MD already written)")
             return
         _, fresh = vault.read_text(rel)
-        patch_deliver_frontmatter(
+        patched = patch_deliver_frontmatter(
             vault, rel, status=status, detail=detail, meta=fresh
         )
+        if not patched:
+            print(
+                "  ! CAS conflict on deliver patch — leave FM unchanged, exit 0",
+                file=sys.stderr,
+            )
 
 
 def main() -> None:

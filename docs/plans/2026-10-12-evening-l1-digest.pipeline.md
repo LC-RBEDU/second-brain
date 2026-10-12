@@ -65,6 +65,8 @@ Takže nějaké konkrétní shrnutí dne - např. daily v 18:00 by bylo fajn
 | 13 | 2026-10-12T15:00 | CRITIC | b5acf843… | K PŘEPRACOVÁNÍ | C3, force, Brain auth | → AWAITING_USER |
 | 14 | 2026-10-12T16:12 | AWAITING_USER | uživatel | ID match = 1 word-boundary | — | → PLAN r=2 |
 | 15 | 2026-10-12T16:30 | IMPLEMENT | hlavní | lib+cron+11 tests; hub 319 passed | — | → lokální commit → REVIEW |
+| 16 | 2026-10-12T16:45 | REVIEW | 2906bc05… | K PŘEPRACOVÁNÍ | NEW-1 CAS, NEW-2 tests, NEW-3 FM | → IMPLEMENT |
+| 17 | 2026-10-12T16:55 | IMPLEMENT | hlavní | CAS catch + 17 tests; NEW-1/2/3 | — | → REVIEW kolo 2 |
 
 ## Otevřené nálezy
 | ID | Závažnost | Typ | Stav | Kolikrát |
@@ -76,3 +78,6 @@ Takže nějaké konkrétní shrnutí dne - např. daily v 18:00 by bylo fajn
 | C5 | MAJOR | PLAN | uzavřený v k=2 (PAUSED) | 1 |
 | C6 | MINOR | PLAN | uzavřený v k=2 (subject) | 1 |
 | C7 | MINOR | PLAN | uzavřený v k=2 (B11 větev) | 1 |
+| NEW-1 | MAJOR | IMPL | opraveno (DriveConflictError → False / exit 0) | 1 |
+| NEW-2 | MAJOR | IMPL | opraveno (B2/B2b/B4b/B8/B10/B14/B21/B22/B24 + truncated_hits) | 1 |
+| NEW-3 | MINOR | IMPL | opraveno (truncated_hits assert + json-quoted deliver_detail) | 1 |

@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
-from drive_io import DriveNotFoundError, FileMeta, cas_from_meta
+from drive_io import DriveConflictError, DriveNotFoundError, FileMeta, cas_from_meta
 from hierarchy import is_epic
 from reminder_chat_delivery import send_grok_chat
 from task_io import iter_active_tasks
@@ -435,6 +435,11 @@ def render_digest_md(
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _yaml_scalar(value: str) -> str:
+    """Quote FM values that break unquoted YAML (colons, newlines, …)."""
+    return json.dumps(value, ensure_ascii=False)
+
+
 def patch_deliver_frontmatter(
     vault: Any,
     rel: str,
@@ -442,24 +447,34 @@ def patch_deliver_frontmatter(
     status: str,
     detail: str,
     meta: FileMeta | None,
-) -> None:
+) -> bool:
+    """CAS-patch deliver status. Returns False on DriveConflictError (no false OK)."""
     text, cur_meta = vault.read_text(rel)
     use_meta = meta or cur_meta
     m = re.match(r"^(---\s*\n)(.*?)(\n---\s*\n)(.*)$", text, re.DOTALL)
     now = datetime.now(TZ).isoformat(timespec="seconds")
+    detail_q = _yaml_scalar(detail)
     if not m:
         new_text = (
             f"---\ntype: evening-l1-digest\ndeliver: {status}\n"
-            f"delivered_at: {now}\ndeliver_detail: {detail}\n---\n{text}"
+            f"delivered_at: {now}\ndeliver_detail: {detail_q}\n---\n{text}"
         )
     else:
         fm = m.group(2)
-        lines = [ln for ln in fm.splitlines() if not ln.startswith(("deliver:", "delivered_at:", "deliver_detail:"))]
+        lines = [
+            ln
+            for ln in fm.splitlines()
+            if not ln.startswith(("deliver:", "delivered_at:", "deliver_detail:"))
+        ]
         lines.append(f"deliver: {status}")
         lines.append(f"delivered_at: {now}")
-        lines.append(f"deliver_detail: {detail}")
+        lines.append(f"deliver_detail: {detail_q}")
         new_text = m.group(1) + "\n".join(lines) + m.group(3) + m.group(4)
-    vault.write_text(rel, new_text, **cas_from_meta(use_meta))
+    try:
+        vault.write_text(rel, new_text, **cas_from_meta(use_meta))
+    except DriveConflictError:
+        return False
+    return True
 
 
 def build_match_from_brain(

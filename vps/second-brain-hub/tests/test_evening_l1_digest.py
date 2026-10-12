@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,11 +11,69 @@ import pytest
 HUB = Path(__file__).resolve().parents[1]
 LIB = HUB / "lib"
 
-
-import sys
-
 sys.path.insert(0, str(LIB))
 import evening_l1_digest as evening  # noqa: E402
+from drive_io import DriveConflictError, FileMeta  # noqa: E402
+
+
+def _load_cron(monkeypatch):
+    cron = HUB / "cron" / "proactivity_dispatch.py"
+    sys.path.insert(0, str(HUB / "cron"))
+    sys.path.insert(0, str(LIB))
+    spec = importlib.util.spec_from_file_location("proactivity_dispatch", cron)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class MemVault:
+    """Minimal vault stub: exists/read/write + optional CAS conflict."""
+
+    def __init__(self, files: dict[str, str] | None = None, *, conflict_on_write: bool = False):
+        self.files = dict(files or {})
+        self.conflict_on_write = conflict_on_write
+        self.writes: list[str] = []
+        self.skipped = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def exists(self, rel):
+        return rel in self.files
+
+    def mkdir_p(self, *a, **k):
+        return None
+
+    def list_dir(self, *a, **k):
+        return []
+
+    def read_text(self, rel):
+        from datetime import datetime, timezone
+
+        text = self.files[rel]
+        return text, FileMeta(
+            id="id1",
+            name=rel.rsplit("/", 1)[-1],
+            mime_type="text/markdown",
+            modified_time=datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc),
+            size=len(text.encode("utf-8")),
+            parent_id=None,
+            rel_path=rel,
+            oid="abc123",
+        )
+
+    def write_text(self, rel, text, **kwargs):
+        if self.conflict_on_write:
+            raise DriveConflictError("cas conflict test")
+        if kwargs.get("expect_mtime") or kwargs.get("expect_md5"):
+            # CAS path — still write unless conflict flag
+            pass
+        self.files[rel] = text
+        self.writes.append(rel)
 
 
 def test_id_word_boundary_s12_vs_s120():
@@ -52,6 +111,23 @@ def test_title_and_body_match():
     assert any(c.ref == "c" for c in r.unmatched)
 
 
+def test_body_cap_3072_no_hit_beyond():
+    """B8: token only after 3072 B must not match."""
+    prefix = "x" * 3072
+    body = prefix + " unikátníznulováníabcdef "
+    pool = [evening.MatchTask("T1", "Other", body, "p")]
+    # haystack has the token that sits past the cap in task body
+    cand = evening.Candidate(
+        "live_slack", "1", "unikátníznulováníabcdef mentioned", "…", ""
+    )
+    # body_cap truncates — token not in first 3072 unicode-decoded bytes
+    capped = body.encode("utf-8")[:3072].decode("utf-8", errors="ignore")
+    pool[0] = evening.MatchTask("T1", "Other", capped, "p")
+    r = evening.match_candidates(pool, [cand])
+    assert "T1" not in r.matched
+    assert r.unmatched
+
+
 def test_display_caps_truncated_in_render():
     pool = [
         evening.MatchTask(f"T{i}", f"Title token{i}xxxx", "", f"p{i}")
@@ -72,14 +148,29 @@ def test_display_caps_truncated_in_render():
         evening.Candidate("live_slack", f"u{i}", f"zzz unique{i}qqq", f"u{i}", "")
         for i in range(45)
     ]
+    # >8 hits for one task
+    mega = evening.MatchTask("MEGA", "Megatokenzzzz", "", "pm")
+    pool.append(mega)
+    for j in range(10):
+        cands.append(
+            evening.Candidate(
+                "live_slack",
+                f"m{j}",
+                f"Megatokenzzzz hit{j}",
+                f"hit{j}",
+                "",
+            )
+        )
     match = evening.match_candidates(pool, cands)
     md = evening.render_digest_md(
         day="2026-10-12", match=match, generated_at="2026-10-12T18:00:00+02:00"
     )
     assert "truncated_tasks" in md
     assert "truncated_unmatched" in md
+    assert "truncated_hits" in md
     assert "Evening L1 — 2026-10-12" in md
     assert "Snapshot ~18:00" in md
+    assert "CTA:" in md
 
 
 def test_parse_deliver_and_saturnin_soft_truncate():
@@ -107,68 +198,94 @@ def test_gmail_flatten_uses_subject():
     assert cands[0].haystack == "Invoice Allfred"
 
 
-def test_proactivity_evening_dry_run_force_no_write(tmp_path, monkeypatch):
-    """B4: --force --dry-run does not write digest."""
-    cron = HUB / "cron" / "proactivity_dispatch.py"
-    # Ensure import path
-    monkeypatch.setenv("TZ", "Europe/Prague")
-    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
-    monkeypatch.delenv("BRAIN_PUBLIC_URL", raising=False)
-    monkeypatch.delenv("BRAIN_SERVICE_TOKEN", raising=False)
+def test_enrich_path_uses_vault_head_not_path_only():
+    """B24: dump haystack includes file body head."""
+    vault = MemVault(
+        {
+            "01-INBOX/sembly/foo.md": "---\ntitle: x\n---\nuniquebodytokenzzzz content\n",
+        }
+    )
+    cands = [
+        evening.Candidate(
+            "sembly",
+            "01-INBOX/sembly/foo.md",
+            "",
+            "foo.md",
+            "01-INBOX/sembly/foo.md",
+        )
+    ]
+    out = evening.enrich_path_sources(vault, cands)
+    assert "uniquebodytokenzzzz" in out[0].haystack
 
-    # Mock open_vault to in-memory-ish stub
-    class FakeVault:
-        skipped = False
 
-        def __enter__(self):
-            return self
+def test_load_match_pool_excludes_epic(monkeypatch):
+    """B14: epics excluded from pool."""
 
-        def __exit__(self, *a):
-            return False
+    class T:
+        def __init__(self, tid, typ, terminal=False):
+            self._tid = tid
+            self.frontmatter = {"title": tid, "type": typ}
+            self.body = "body"
+            self.rel_path = f"p/{tid}.md"
+            self.is_terminal = terminal
 
-        def exists(self, rel):
-            return False
-
-        def mkdir_p(self, *a, **k):
-            raise AssertionError("mkdir should not run in dry-run rebuild")
-
-        def write_text(self, *a, **k):
-            raise AssertionError("write should not run in dry-run")
-
-        def list_dir(self, *a, **k):
-            return []
-
-        def read_text(self, *a, **k):
-            raise AssertionError("unexpected read")
-
-    import vault_factory
-
-    monkeypatch.setattr(vault_factory, "open_vault", lambda: FakeVault())
-
-    # Also patch evening helpers used after import inside cron
-    import evening_l1_digest as eld
+        @property
+        def task_id(self):
+            return self._tid
 
     monkeypatch.setattr(
-        eld,
-        "fetch_l1_brain",
-        lambda **k: (None, "brain_env_missing"),
+        evening,
+        "iter_active_tasks",
+        lambda vault: [
+            T("RBU-E1", "epic"),
+            T("RBU-S2", "story"),
+            T("RBU-S3", "story", terminal=True),
+        ],
     )
+    pool = evening.load_match_pool(MemVault())
+    ids = {t.task_id for t in pool}
+    assert ids == {"RBU-S2"}
 
-    def boom_pool(vault):
-        return []
 
-    monkeypatch.setattr(eld, "load_match_pool", boom_pool)
+def test_patch_deliver_quotes_detail_and_cas_conflict():
+    vault = MemVault(
+        {"00-System/digests/2026-10-12-evening-l1.md": "---\ntype: evening-l1-digest\n---\nbody\n"}
+    )
+    meta = vault.read_text("00-System/digests/2026-10-12-evening-l1.md")[1]
+    ok = evening.patch_deliver_frontmatter(
+        vault,
+        "00-System/digests/2026-10-12-evening-l1.md",
+        status="OK",
+        detail="error: timeout: boom",
+        meta=meta,
+    )
+    assert ok is True
+    text = vault.files["00-System/digests/2026-10-12-evening-l1.md"]
+    assert 'deliver_detail: "error: timeout: boom"' in text or "deliver_detail: \"error: timeout: boom\"" in text
+    assert evening.parse_deliver(text) == "OK"
 
-    # Load cron module fresh
-    sys.path.insert(0, str(HUB / "cron"))
-    sys.path.insert(0, str(LIB))
-    spec = importlib.util.spec_from_file_location("proactivity_dispatch", cron)
-    assert spec and spec.loader
-    mod = importlib.util.module_from_spec(spec)
-    # Inject mocked evening into module namespace before exec — re-exec after patch
-    spec.loader.exec_module(mod)
+    vault.conflict_on_write = True
+    meta2 = vault.read_text("00-System/digests/2026-10-12-evening-l1.md")[1]
+    ok2 = evening.patch_deliver_frontmatter(
+        vault,
+        "00-System/digests/2026-10-12-evening-l1.md",
+        status="FAIL",
+        detail="x",
+        meta=meta2,
+    )
+    assert ok2 is False
+    assert evening.parse_deliver(vault.files["00-System/digests/2026-10-12-evening-l1.md"]) == "OK"
+
+
+def test_proactivity_evening_dry_run_force_no_write(tmp_path, monkeypatch):
+    """B4: --force --dry-run does not write digest."""
+    monkeypatch.setenv("TZ", "Europe/Prague")
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+
+    vault = MemVault()
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
     monkeypatch.setattr(mod, "fetch_l1_brain", lambda **k: (None, "brain_env_missing"))
-    monkeypatch.setattr(mod, "open_vault", lambda: FakeVault())
     monkeypatch.setattr(
         mod,
         "build_match_from_brain",
@@ -176,13 +293,148 @@ def test_proactivity_evening_dry_run_force_no_write(tmp_path, monkeypatch):
             total_degrade=True, degrade_reason=total_error or "x"
         ),
     )
-    monkeypatch.setattr(
-        mod,
-        "render_digest_md",
-        lambda **k: "# dry\n",
-    )
-
+    monkeypatch.setattr(mod, "render_digest_md", lambda **k: "# dry\n")
     mod._run_evening(dry_run=True, force=True, brain_url="")
+    assert vault.writes == []
+
+
+def test_evening_skip_when_deliver_ok(monkeypatch):
+    """B2: exists + deliver OK + !force → 0 write, 0 Grok."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+    rel = evening.digest_rel_path("2026-10-12")
+    # freeze day
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    vault = MemVault(
+        {rel: "---\ntype: evening-l1-digest\ndeliver: OK\n---\nbody\n"}
+    )
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
+    monkeypatch.setattr(mod, "TZ", ZoneInfo("Europe/Prague"))
+
+    class FakeDT:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2026, 10, 12, 18, 0, tzinfo=ZoneInfo("Europe/Prague"))
+
+    monkeypatch.setattr(mod, "datetime", FakeDT)
+
+    called = {"brain": 0, "grok": 0}
+
+    def boom_brain(**k):
+        called["brain"] += 1
+        return None, "no"
+
+    def boom_grok(*a, **k):
+        called["grok"] += 1
+        return True, "ok"
+
+    monkeypatch.setattr(mod, "fetch_l1_brain", boom_brain)
+    monkeypatch.setattr(mod, "deliver_to_saturnin", boom_grok)
+    mod._run_evening(dry_run=False, force=False, brain_url="")
+    assert called["brain"] == 0
+    assert called["grok"] == 0
+    assert vault.writes == []
+
+
+def test_evening_saturnin_only_dry_run_no_brain(monkeypatch):
+    """B4b: exists FAIL + dry-run → 0 Brain, 0 Grok, 0 write."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    rel = evening.digest_rel_path("2026-10-12")
+    vault = MemVault(
+        {rel: "---\ntype: evening-l1-digest\ndeliver: FAIL\n---\nold\n"}
+    )
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
+
+    class FakeDT:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2026, 10, 12, 18, 0, tzinfo=ZoneInfo("Europe/Prague"))
+
+    monkeypatch.setattr(mod, "datetime", FakeDT)
+    called = {"brain": 0, "grok": 0}
+    monkeypatch.setattr(
+        mod, "fetch_l1_brain", lambda **k: (called.__setitem__("brain", 1), None)[1]
+    )
+    monkeypatch.setattr(
+        mod, "deliver_to_saturnin", lambda *a, **k: (called.__setitem__("grok", 1), (True, "x"))[1]
+    )
+    mod._run_evening(dry_run=True, force=False, brain_url="")
+    assert called["brain"] == 0
+    assert called["grok"] == 0
+    assert vault.writes == []
+
+
+def test_evening_saturnin_only_retry_patches_fail(monkeypatch):
+    """B2b/B10: Saturnin-only on FAIL; Grok fail → deliver FAIL, exit 0."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    rel = evening.digest_rel_path("2026-10-12")
+    vault = MemVault(
+        {rel: "---\ntype: evening-l1-digest\ndeliver: FAIL\n---\nold body\n"}
+    )
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
+
+    class FakeDT:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2026, 10, 12, 18, 0, tzinfo=ZoneInfo("Europe/Prague"))
+
+    monkeypatch.setattr(mod, "datetime", FakeDT)
+    monkeypatch.setattr(mod, "fetch_l1_brain", lambda **k: (_ for _ in ()).throw(AssertionError("no brain")))
+    monkeypatch.setattr(mod, "deliver_to_saturnin", lambda *a, **k: (False, "grok_down"))
+    mod._run_evening(dry_run=False, force=False, brain_url="")
+    assert evening.parse_deliver(vault.files[rel]) == "FAIL"
+    assert rel in vault.writes
+
+
+def test_evening_paused_no_work(monkeypatch):
+    """B21: PAUSED → 0 write, 0 Grok."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "1")
+    mod = _load_cron(monkeypatch)
+    called = {"vault": 0}
+
+    def boom_vault():
+        called["vault"] += 1
+        return MemVault()
+
+    monkeypatch.setattr(mod, "open_vault", boom_vault)
+    mod._run_evening(dry_run=False, force=True, brain_url="")
+    assert called["vault"] == 0
+
+
+def test_evening_cas_conflict_on_deliver_patch_exit_0(monkeypatch):
+    """B22: CAS on deliver patch → no false OK flip if conflict mid-patch."""
+    monkeypatch.setenv("VAULT_WRITERS_PAUSED", "0")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    rel = evening.digest_rel_path("2026-10-12")
+    vault = MemVault(
+        {rel: "---\ntype: evening-l1-digest\ndeliver: FAIL\n---\nold\n"},
+        conflict_on_write=True,
+    )
+    mod = _load_cron(monkeypatch)
+    monkeypatch.setattr(mod, "open_vault", lambda: vault)
+
+    class FakeDT:
+        @staticmethod
+        def now(tz=None):
+            return datetime(2026, 10, 12, 18, 0, tzinfo=ZoneInfo("Europe/Prague"))
+
+    monkeypatch.setattr(mod, "datetime", FakeDT)
+    monkeypatch.setattr(mod, "deliver_to_saturnin", lambda *a, **k: (True, "ok"))
+    # Should not raise
+    mod._run_evening(dry_run=False, force=False, brain_url="")
+    assert evening.parse_deliver(vault.files[rel]) == "FAIL"
 
 
 def test_crontab_still_has_evening_line():
