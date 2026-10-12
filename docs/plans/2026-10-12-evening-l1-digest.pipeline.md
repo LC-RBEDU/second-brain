@@ -1,14 +1,14 @@
 # Pipeline: evening-l1-digest
 
-Stav: QA (awaiting deploy)
+Stav: DONE
 Plán: docs/plans/2026-10-12-evening-l1-digest.md
 Architekt: 2887a5f5… k=2
 Šťoural: HOTOVÝ
 Kritik: 0e8590d0… **SCHVÁLENO** (kolo 6)
 Goal: aktivní
 Schvalování plánu uživatelem: ne → rovnou IMPLEMENT
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 3/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: b09bc374cf1460d6521ea653c720046c57f7c317 · Review SCHVÁLENO na: f8d9c5ba… (kolo 3) · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 3/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 1/2
+Base (origin/main): 886f494b836472412c783b0d72d1f3e01652791e · Kódový SHA: b09bc374cf1460d6521ea653c720046c57f7c317 · Review SCHVÁLENO na: f8d9c5ba… (kolo 3) · QA PASS na: 10947e9c (Coolify image) · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -70,6 +70,10 @@ Takže nějaké konkrétní shrnutí dne - např. daily v 18:00 by bylo fajn
 | 18 | 2026-10-12T17:05 | REVIEW | ce0f62ad… | K OPRAVĚ | NEW-4 B3 test, NEW-5 B20 test, NEW-6 | → IMPLEMENT |
 | 19 | 2026-10-12T17:10 | IMPLEMENT | hlavní | B3/B20/B4 brain assert; 19 tests | — | → REVIEW kolo 3 |
 | 20 | 2026-10-12T17:15 | REVIEW | f8d9c5ba… | **SCHVÁLENO** | 0 BLOCKER 0 MAJOR | → gate + push main → QA |
+| 21 | 2026-10-12T16:44 | PUSH | hlavní | b948228 → Coolify finished | — | image b948228 |
+| 22 | 2026-10-12T16:46 | ENV | hlavní | hub chyběl BRAIN_* → copy z app 18 + redeploy 10947e9 | ENV | dry-run Brain OK |
+| 23 | 2026-10-12T16:48 | QA | hlavní | T16 PASS: force dry-run; 8 cand / 158 matched; partial slack_token_missing | — | → TESTER skip → DONE |
+| 24 | 2026-10-12T16:49 | DONE | hlavní | TESTER: přeskočeno (profil SECOND_BRAIN) | — | evening L1 live od příštího 18:00 |
 
 ## Otevřené nálezy
 | ID | Závažnost | Typ | Stav | Kolikrát |

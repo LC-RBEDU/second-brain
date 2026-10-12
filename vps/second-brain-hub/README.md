@@ -80,6 +80,8 @@ git push origin main
 | `SLACK_USER_TOKEN` | `xoxp-` — (legacy poll / send scripts); L1 live = Brain |
 | `SLACK_POLL_DUMP` | **F4:** `0` — dump no-op i kdyby se cron omylem spustil |
 | `SLACK_BOT_TOKEN` | `xoxb-` — připomínky (`reminders_dispatch.py`) |
+| `BRAIN_PUBLIC_URL` | `https://brain.cyprovi.cz` — evening L1 digest (`GET /v1/triage/candidates`) |
+| `BRAIN_SERVICE_TOKEN` | Bearer pro Brain service (stejný jako na `second-brain-brain`) |
 
 **Smazané (legacy v1):** `VAULT_PATH`, `DASHBOARD_JSON`, `LEGACY_TASKS`.
 
