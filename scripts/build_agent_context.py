@@ -49,7 +49,8 @@ if str(_SCRIPTS) not in sys.path:
 
 from strategy_meeting import collect_strategy_meeting_from_path  # noqa: E402
 from focus import (  # noqa: E402
-    FOCUS_LIMIT,
+    FOCUS_EPIC_LIMIT,
+    FOCUS_TASK_LIMIT,
     STATUS_CANCELLED,
     STATUS_DONE,
     current_focus_week,
@@ -63,10 +64,13 @@ from lifecycle_promotion import select_focus_suggestions  # noqa: E402
 from today_priority import (  # noqa: E402
     COMPANY_PRIORITY_BONUS,
     DEADLINE_HORIZON_DAYS,
+    count_focus_epic_slots,
+    count_focus_slots,
     effective_due,
     enrich_task_dict,
     exclude_paused_project_tasks,
     is_active_project_status,
+    is_focus_eligible,
     is_queue_eligible,
     needs_decision,
     paused_project_slugs,
@@ -532,16 +536,17 @@ def build_snapshot(vault: Path) -> dict:
     top_priority_today, top_priority = select_top_priority(queue_tasks, today)
 
     focus_week = current_focus_week(today)
-    focused = [t for t in queue_tasks if is_focus_current(t.focus, today)]
+    focus_count = count_focus_slots(queue_tasks, today, paused_slugs=None)
+    focus_epic_count = count_focus_epic_slots(queue_tasks, today, paused_slugs=None)
     suggestion_pool = [
         t
         for t in queue_tasks
-        if not is_focus_current(t.focus, today) and is_queue_eligible(t, today)
+        if not is_focus_eligible(t, today) and is_queue_eligible(t, today)
     ]
     focus_suggestions_raw = select_focus_suggestions(
         suggestion_pool,
         today=today,
-        current_focus_count=len(focused),
+        current_focus_count=focus_count,
     )
     focus_suggestions = [
         enrich_task_dict(t.to_dict() if hasattr(t, "to_dict") else dict(t), today)
@@ -660,8 +665,10 @@ def build_snapshot(vault: Path) -> dict:
             "recently_done_7d": len(recently_done),
             "recently_cancelled_7d": len(recently_cancelled),
             "focus_week": focus_week,
-            "focus_count": len(focused),
-            "focus_limit": FOCUS_LIMIT,
+            "focus_count": focus_count,
+            "focus_limit": FOCUS_TASK_LIMIT,
+            "focus_epic_count": focus_epic_count,
+            "focus_epic_limit": FOCUS_EPIC_LIMIT,
             "upcoming_deadlines_7d": len(upcoming),
             "due_soon_7d": len(due_soon),
             "needs_decision": len(needs_decision_list),
@@ -686,7 +693,8 @@ def build_snapshot(vault: Path) -> dict:
             "deadline_horizon_days": DEADLINE_HORIZON_DAYS,
             "company_priority_bonus": COMPANY_PRIORITY_BONUS,
             "top_eligible": (
-                f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
+                f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_TASK_LIMIT} "
+                f"tasků/stories; max {FOCUS_EPIC_LIMIT} epiců (mimo TOP); "
                 "nikdy Waiting/Backlog/Done/Cancelled"
             ),
             "focus_owner": "člověk — žádný cron nesmí zapisovat do focus",

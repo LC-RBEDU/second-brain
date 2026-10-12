@@ -2,8 +2,9 @@
 
 Priority model v2.2 — "what now" is answered by the focus week, not by a status:
 
-- ``top_priority_today`` — tasks whose ``focus`` is the current ISO week (max 5).
-  Nothing else qualifies, and no cron may add to it: focus is a human choice.
+- ``top_priority_today`` — tasks/stories whose ``focus`` is the current ISO week
+  (max ``FOCUS_TASK_LIMIT`` = 10). Epics are capped separately (``FOCUS_EPIC_LIMIT`` = 5)
+  and never appear here. No cron may add focus: it is a human choice.
 - ``top_priority`` — the wider queue (focus + Doing + Next), sorted the same way.
 
 Dates (exclusive):
@@ -29,13 +30,14 @@ from typing import Any
 from focus import (
     FOCUS_INELIGIBLE_STATUSES,
     FOCUS_LIMIT,
+    FOCUS_TASK_LIMIT,
     STATUS_DOING,
     STATUS_NEXT,
     STATUS_WAITING,
     is_focus_current,
     is_terminal,
 )
-from hierarchy import is_focusable
+from hierarchy import is_epic, is_focusable
 
 DEADLINE_HORIZON_DAYS = 7
 COMPANY_PRIORITY_BONUS = 5.0
@@ -47,7 +49,7 @@ URGENCY_BONUS_TOMORROW = 15
 URGENCY_BONUS_REVIEW_TODAY = 20
 URGENCY_BONUS_REVIEW_TOMORROW = 10
 
-TOP_PRIORITY_TODAY_LIMIT = FOCUS_LIMIT
+TOP_PRIORITY_TODAY_LIMIT = FOCUS_TASK_LIMIT
 TOP_PRIORITY_LIMIT = 15
 
 QUEUE_STATUSES = frozenset({STATUS_DOING, STATUS_NEXT})
@@ -216,10 +218,36 @@ def is_focus_eligible(task: Any, today: date) -> bool:
     return is_focus_current(_task_get(task, "focus"), today)
 
 
+def _rel_path(task: Any) -> str | None:
+    rel = _task_get(task, "rel_path") or (
+        getattr(task, "rel_path", None) if not isinstance(task, dict) else task.get("rel_path")
+    )
+    return str(rel) if rel is not None else None
+
+
+def _task_id(task: Any) -> str | None:
+    tid = _task_get(task, "id") or _task_get(task, "task_id")
+    return str(tid) if tid is not None else None
+
+
+def _excluded(
+    task: Any,
+    *,
+    exclude_path: str | None,
+    exclude_id: str | None,
+) -> bool:
+    if exclude_path is not None and _rel_path(task) == str(exclude_path):
+        return True
+    if exclude_id is not None and _task_id(task) == str(exclude_id):
+        return True
+    return False
+
+
 def would_consume_focus_slot(task: Any, paused_slugs: set[str] | None = None) -> bool:
-    """True if setting *current* focus on this task would take a TOP slot (A4).
+    """True if setting *current* focus on this story/task would take a task slot.
 
     Ignores the current ``focus`` field — used by ``set_focus`` before write.
+    Epics never consume task slots (see ``would_consume_epic_focus_slot``).
     """
     slug = str(_task_get(task, "slug") or "")
     if paused_slugs and slug in paused_slugs:
@@ -231,6 +259,29 @@ def would_consume_focus_slot(task: Any, paused_slugs: set[str] | None = None) ->
     return True
 
 
+def would_consume_epic_focus_slot(
+    task: Any, paused_slugs: set[str] | None = None
+) -> bool:
+    """True if setting *current* focus on this epic would take an epic slot."""
+    slug = str(_task_get(task, "slug") or "")
+    if paused_slugs and slug in paused_slugs:
+        return False
+    if not is_epic(task):
+        return False
+    if _task_get(task, "status") in FOCUS_INELIGIBLE_STATUSES:
+        return False
+    return True
+
+
+def is_epic_focus_eligible(task: Any, today: date) -> bool:
+    """Epic with current focus week and actionable status (not in TOP queue)."""
+    if not is_epic(task):
+        return False
+    if _task_get(task, "status") in FOCUS_INELIGIBLE_STATUSES:
+        return False
+    return is_focus_current(_task_get(task, "focus"), today)
+
+
 def count_focus_slots(
     tasks: list[Any],
     today: date,
@@ -239,24 +290,35 @@ def count_focus_slots(
     exclude_path: str | None = None,
     exclude_id: str | None = None,
 ) -> int:
-    """Count TOP focus slots: ``is_focus_eligible`` ∩ ¬paused (± exclude).
+    """Count task/story focus slots: ``is_focus_eligible`` ∩ ¬paused (± exclude).
 
-    SSOT for Brain ``set_focus`` limit and ``agent-context`` ``stats.focus_count``.
+    SSOT for Brain ``set_focus`` task limit and ``stats.focus_count``.
     """
     filtered = exclude_paused_project_tasks(tasks, paused_slugs or set())
     n = 0
     for t in filtered:
-        if exclude_path is not None:
-            rel = _task_get(t, "rel_path") or (
-                getattr(t, "rel_path", None) if not isinstance(t, dict) else t.get("rel_path")
-            )
-            if rel is not None and str(rel) == str(exclude_path):
-                continue
-        if exclude_id is not None:
-            tid = _task_get(t, "id") or _task_get(t, "task_id")
-            if tid is not None and str(tid) == str(exclude_id):
-                continue
+        if _excluded(t, exclude_path=exclude_path, exclude_id=exclude_id):
+            continue
         if is_focus_eligible(t, today):
+            n += 1
+    return n
+
+
+def count_focus_epic_slots(
+    tasks: list[Any],
+    today: date,
+    *,
+    paused_slugs: set[str] | None = None,
+    exclude_path: str | None = None,
+    exclude_id: str | None = None,
+) -> int:
+    """Count epic focus slots for the current week (± exclude)."""
+    filtered = exclude_paused_project_tasks(tasks, paused_slugs or set())
+    n = 0
+    for t in filtered:
+        if _excluded(t, exclude_path=exclude_path, exclude_id=exclude_id):
+            continue
+        if is_epic_focus_eligible(t, today):
             n += 1
     return n
 

@@ -1,4 +1,4 @@
-"""Režimy zápisu Cowork / Grok Bot (T1–T12)."""
+"""Režimy zápisu Cowork / Grok Bot (T1–T14)."""
 from __future__ import annotations
 
 import sys
@@ -37,6 +37,41 @@ def _req(**kwargs) -> Request:
 
 def _block(actor: str = "Cowork", topic: str = "bus") -> str:
     return format_bus_block("18:00", actor, topic, "text")
+
+
+def test_omitted_today_follows_prague_not_a_frozen_date():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from agent_write_guard import Request
+
+    day = datetime.now(ZoneInfo("Europe/Prague")).date().isoformat()
+    path = f"OBSIDIAN/00-System/Agent_Bus/{day}.md"
+    fresh = decide(
+        Request(
+            op="append_bus",
+            actor="Cowork",
+            has_folder=True,
+            path=path,
+            target_read="absent",
+            block=_block(),
+            guide_readable=True,
+        )
+    )
+    assert fresh.reason == "allow_append_bus"
+    if day != "2026-10-04":
+        frozen = decide(
+            Request(
+                op="append_bus",
+                actor="Cowork",
+                has_folder=True,
+                path="OBSIDIAN/00-System/Agent_Bus/2026-10-04.md",
+                target_read="absent",
+                block=_block(),
+                guide_readable=True,
+            )
+        )
+        assert frozen.reason == "deny_old_bus_day"
 
 
 def test_t1_disk_cowork_append_keeps_old_blocks():
@@ -96,6 +131,14 @@ def test_t2_grok_append_and_workspace():
     assert "Grok" in ok.text
     denied = decide(_req(op="append_bus", path="/workspace/vault.md", target_read="absent", block=block))
     assert denied.reason == "deny_workspace"
+    claude_disk = decide(
+        _req(op="append_bus", path="/home/claude/vault.md", target_read="absent", block=block)
+    )
+    assert claude_disk.reason == "deny_workspace"
+    user_data = decide(
+        _req(op="append_bus", path="/mnt/user-data/vault.md", target_read="absent", block=block)
+    )
+    assert user_data.reason == "deny_workspace"
 
 
 def test_t3_placeholder_is_not_remote_and_other_daily_still_allowed():
@@ -148,7 +191,7 @@ def test_t4_unreadable_guide_and_cowork_phone():
             path=TASK,
         )
     )
-    assert phone_focus.reason == "deny_focus_cowork_phone"
+    assert phone_focus.reason == "deny_focus_remote"
     closed_desktop = decide(
         _req(
             op="create",
@@ -159,8 +202,19 @@ def test_t4_unreadable_guide_and_cowork_phone():
             target_read="absent",
         )
     )
-    assert closed_desktop.reason == "allow_daily_create"
-    assert classify_surface("Cowork", True, True, False) == "cowork_phone"
+    assert closed_desktop.reason == "deny_morning_write"
+    assert classify_surface("Cowork", True, True, False) == "morning_schedule"
+    remote_schedule = decide(
+        _req(
+            op="create",
+            is_schedule=True,
+            has_folder=False,
+            path=DAILY,
+            target_read="absent",
+        )
+    )
+    assert remote_schedule.reason == "allow_daily_create"
+    assert classify_surface("Cowork", True, False, False) == "cowork_phone"
 
 
 def test_t5_phone_one_line_and_disk_prefix():
@@ -176,9 +230,10 @@ def test_t5_phone_one_line_and_disk_prefix():
             proposed=changed,
         )
     )
-    assert phone_ok.reason == "allow_overwrite"
+    assert phone_ok.reason == "deny_existing_md"
+    assert phone_ok.claimed_remote is True
     two = HELD.replace("Next", "Doing").replace("řádek", "jiný")
-    assert decide(
+    two_res = decide(
         _req(
             op="overwrite",
             actor="Grok",
@@ -188,9 +243,11 @@ def test_t5_phone_one_line_and_disk_prefix():
             reread=HELD,
             proposed=two,
         )
-    ).reason == "deny_phone_not_one_line"
+    )
+    assert two_res.reason == "deny_existing_md"
+    assert two_res.claimed_remote is True
     shorter = "status: Next\nřádek\n"
-    assert decide(
+    shorter_res = decide(
         _req(
             op="overwrite",
             actor="Grok",
@@ -200,7 +257,9 @@ def test_t5_phone_one_line_and_disk_prefix():
             reread=HELD,
             proposed=shorter,
         )
-    ).reason == "deny_phone_not_one_line"
+    )
+    assert shorter_res.reason == "deny_existing_md"
+    assert shorter_res.claimed_remote is True
     prefix = decide(
         _req(op="overwrite", path=TASK, held=HELD, reread=HELD, proposed="---\nstatus: Next\n")
     )
@@ -223,7 +282,8 @@ def test_t5_phone_one_line_and_disk_prefix():
             proposed=HELD[:-3],
         )
     )
-    assert phone_mid.reason == "deny_prefix_cut"
+    assert phone_mid.reason == "deny_existing_md"
+    assert phone_mid.claimed_remote is True
     blank_reread = decide(_req(op="overwrite", path=TASK, held=HELD, reread="", proposed=""))
     assert blank_reread.reason == "deny_stale_reread"
     assert prefix.reason == "deny_prefix_cut"
@@ -284,6 +344,20 @@ def test_t5_phone_one_line_and_disk_prefix():
             op="overwrite",
             actor="Grok",
             is_schedule=True,
+            has_folder=False,
+            path=TASK,
+            held=HELD,
+            reread=HELD,
+            proposed=changed,
+        )
+    )
+    assert schedule_grok.reason == "deny_existing_md"
+    assert schedule_grok.claimed_remote is True
+    schedule_grok_folder = decide(
+        _req(
+            op="overwrite",
+            actor="Grok",
+            is_schedule=True,
             has_folder=True,
             desktop_open=False,
             path=TASK,
@@ -292,7 +366,7 @@ def test_t5_phone_one_line_and_disk_prefix():
             proposed=changed,
         )
     )
-    assert schedule_grok.reason == "allow_overwrite"
+    assert schedule_grok_folder.reason == "deny_morning_write"
 
 
 def test_t6_morning_and_open_desktop_schedule_write_nothing():
@@ -375,13 +449,43 @@ def test_t8_archive_and_recurring():
 def test_t9_focus_cap():
     assert decide(_req(op="set_focus", path=TASK, held=HELD, reread=HELD)).reason == "deny_focus_without_ask"
     full = decide(
-        _req(op="set_focus", path=TASK, held=HELD, reread=HELD, user_said_focus=True, focus_count=5)
+        _req(op="set_focus", path=TASK, held=HELD, reread=HELD, user_said_focus=True, focus_count=10)
     )
-    assert full.reason == "deny_focus_over_5"
+    assert full.reason == "deny_focus_task_limit"
     room = decide(
-        _req(op="set_focus", path=TASK, held=HELD, reread=HELD, user_said_focus=True, focus_count=4)
+        _req(op="set_focus", path=TASK, held=HELD, reread=HELD, user_said_focus=True, focus_count=9)
     )
     assert room.reason == "allow_focus"
+    mid = decide(
+        _req(op="set_focus", path=TASK, held=HELD, reread=HELD, user_said_focus=True, focus_count=5)
+    )
+    assert mid.reason == "allow_focus"
+    epic_full = decide(
+        _req(
+            op="set_focus",
+            path=TASK,
+            held=HELD,
+            reread=HELD,
+            user_said_focus=True,
+            would_consume_focus_slot=False,
+            would_consume_epic_focus_slot=True,
+            focus_epic_count=5,
+        )
+    )
+    assert epic_full.reason == "deny_focus_epic_limit"
+    epic_room = decide(
+        _req(
+            op="set_focus",
+            path=TASK,
+            held=HELD,
+            reread=HELD,
+            user_said_focus=True,
+            would_consume_focus_slot=False,
+            would_consume_epic_focus_slot=True,
+            focus_epic_count=4,
+        )
+    )
+    assert epic_room.reason == "allow_focus"
     again = decide(
         _req(
             op="set_focus",
@@ -389,7 +493,7 @@ def test_t9_focus_cap():
             held=HELD,
             reread=HELD,
             user_said_focus=True,
-            focus_count=5,
+            focus_count=10,
             already_in_focus=True,
         )
     )
@@ -419,7 +523,7 @@ def test_t9_focus_cap():
             reread=HELD,
         )
     )
-    assert phone_ok.reason == "allow_focus"
+    assert phone_ok.reason == "deny_focus_remote"
     phone_stale = decide(
         _req(
             op="set_focus",
@@ -432,7 +536,7 @@ def test_t9_focus_cap():
             reread=HELD,
         )
     )
-    assert phone_stale.reason == "deny_stale_reread"
+    assert phone_stale.reason == "deny_focus_remote"
     blank = decide(_req(op="set_focus", path=TASK, held=HELD, reread="", user_said_focus=True, focus_count=4))
     assert blank.reason == "deny_stale_reread"
     assert blank.text is None
@@ -462,9 +566,8 @@ def test_t9_focus_cap():
             focus_count=4,
         )
     )
-    assert phone_unread.reason == "deny_read_failed"
-    assert phone_unread.claimed_remote is False
-    assert phone_unread.text is None
+    assert phone_unread.reason == "deny_focus_remote"
+    assert phone_unread.claimed_remote is True
     hidden_guide = decide(
         _req(
             op="set_focus",
@@ -491,7 +594,7 @@ def test_t9_focus_cap():
             set_done_because_checkboxes=True,
         )
     )
-    assert boxes.reason == "deny_status_done_from_boxes"
+    assert boxes.reason == "deny_focus_remote"
 
 
 def test_t10_guide_codes_when_vault_present():
@@ -516,6 +619,53 @@ def test_t11_morning_prompt_disables_skill_side_effects():
     assert "Do not run build_agent_context.py" in prompt
     assert "Do not move" in prompt
     assert "refresh with `python3 scripts/build_agent_context.py`" not in prompt
+
+
+def test_t13_schedule_with_folder_is_read_only_regardless_of_desktop():
+    for desktop in (True, False):
+        for actor in ("Cowork", "Grok"):
+            assert classify_surface(actor, True, True, desktop) == "morning_schedule"
+            daily = decide(_req(op="create", actor=actor, is_schedule=True, has_folder=True,
+                                desktop_open=desktop, path=DAILY, target_read="absent"))
+            assert daily.reason == "deny_morning_write"
+            bus = decide(_req(op="append_bus", actor=actor, is_schedule=True, has_folder=True,
+                              desktop_open=desktop, path=BUS, target_read="absent",
+                              block=format_bus_block("08:00", actor, "test")))
+            assert bus.reason == "deny_morning_write"
+    assert classify_surface("Cowork", False, True) == "disk_cowork"
+    assert classify_surface("Grok", False, True) == "disk_grok"
+    assert classify_surface("Grok", False, False) == "grok_phone"
+
+
+def test_t14_remote_mode_only_new_daily():
+    for actor in ("Cowork", "Grok"):
+        daily = decide(_req(op="create", actor=actor, has_folder=False,
+                            path=DAILY, target_read="absent"))
+        assert daily.reason == "allow_daily_create"
+        assert daily.claimed_remote is True
+        overwrite = decide(_req(op="overwrite", actor=actor, has_folder=False,
+                                path=TASK, held=HELD, reread=HELD,
+                                proposed=HELD.replace("Next", "Doing")))
+        assert overwrite.reason == "deny_existing_md"
+        focus = decide(_req(op="set_focus", actor=actor, has_folder=False,
+                            path=TASK, held=HELD, reread=HELD,
+                            user_said_focus=True, focus_count=0))
+        assert focus.reason == "deny_focus_remote"
+        new_task = decide(_req(op="create", actor=actor, has_folder=False,
+                               path=TASK, target_read="absent"))
+        assert new_task.reason == "deny_new_task"
+    assert "deny_phone_not_one_line" not in ALL_REASONS
+    assert "deny_focus_cowork_phone" not in ALL_REASONS
+
+
+def test_t14_disk_overwrite_without_frontmatter():
+    held = "# Návod\n\nřádek\n"
+    res = decide(_req(op="overwrite", has_folder=True, path=TASK,
+                      held=held, reread=held, proposed=held + "nový\n"))
+    assert res.reason == "deny_no_frontmatter"
+    ok = decide(_req(op="overwrite", has_folder=True, path=TASK,
+                     held=HELD, reread=HELD, proposed=HELD + "nový\n"))
+    assert ok.reason == "allow_overwrite"
 
 
 def test_t12_cowork_instructions_point_at_guide():

@@ -8,11 +8,11 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from focus import FOCUS_LIMIT, is_focus_current
+from focus import FOCUS_TASK_LIMIT, is_focus_current
 from today_priority import rank_key, rank_score
 
 DEFAULT_WAIT_UNTIL_DAYS = 3
-FOCUS_TARGET = FOCUS_LIMIT
+FOCUS_TARGET = FOCUS_TASK_LIMIT
 
 
 def priority_score_from_frontmatter(fm: dict[str, Any]) -> float:

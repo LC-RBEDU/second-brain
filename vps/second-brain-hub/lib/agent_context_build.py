@@ -25,7 +25,8 @@ from task_io import (  # noqa: E402
     parse_task_text,
 )
 from focus import (  # noqa: E402
-    FOCUS_LIMIT,
+    FOCUS_EPIC_LIMIT,
+    FOCUS_TASK_LIMIT,
     STATUS_CANCELLED,
     STATUS_DONE,
     current_focus_week,
@@ -41,6 +42,7 @@ from strategy_meeting import collect_strategy_meeting_from_drive  # noqa: E402
 from today_priority import (  # noqa: E402
     COMPANY_PRIORITY_BONUS,
     DEADLINE_HORIZON_DAYS,
+    count_focus_epic_slots,
     count_focus_slots,
     effective_due,
     enrich_task_dict,
@@ -366,9 +368,9 @@ def build_and_write_context_bundle(
     open_epics = [t for t in open_tasks if t.get("type") == TYPE_EPIC]
 
     focus_week = current_focus_week(today)
-    # A15 / Q3a — same slot definition as Brain set_focus (eligible ∩ ¬paused)
-    focused = [t for t in queue_tasks if is_focus_eligible(t, today)]
+    # Same slot definition as Brain set_focus (task eligible ∩ ¬paused; epics separate)
     focus_count = count_focus_slots(queue_tasks, today, paused_slugs=None)
+    focus_epic_count = count_focus_epic_slots(queue_tasks, today, paused_slugs=None)
     suggestion_pool = [
         t
         for t in queue_tasks
@@ -543,7 +545,9 @@ def build_and_write_context_bundle(
             "recently_cancelled_7d": len(recently_cancelled),
             "focus_week": focus_week,
             "focus_count": focus_count,
-            "focus_limit": FOCUS_LIMIT,
+            "focus_limit": FOCUS_TASK_LIMIT,
+            "focus_epic_count": focus_epic_count,
+            "focus_epic_limit": FOCUS_EPIC_LIMIT,
             "upcoming_deadlines_7d": len(upcoming),
             "due_soon_7d": len(due_soon),
             "needs_decision": len(needs_decision_list),
@@ -568,7 +572,8 @@ def build_and_write_context_bundle(
             "deadline_horizon_days": DEADLINE_HORIZON_DAYS,
             "company_priority_bonus": COMPANY_PRIORITY_BONUS,
             "top_eligible": (
-                f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_LIMIT}; "
+                f"focus == {focus_week} (aktuální ISO týden), max {FOCUS_TASK_LIMIT} "
+                f"tasků/stories; max {FOCUS_EPIC_LIMIT} epiců (mimo TOP); "
                 "nikdy Waiting/Backlog/Done/Cancelled"
             ),
             "focus_owner": "člověk — žádný cron nesmí zapisovat do focus",

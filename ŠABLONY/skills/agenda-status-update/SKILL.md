@@ -50,7 +50,7 @@ Mapping user intent → frontmatter změna:
 |-------------|-------|
 | "hotovo" / "done" | `status: Done`, `waitUntil:` prázdné, `updated: <today>`, body append `## Poznámky / log\n- <today>: Done — <důvod, pokud řekl>`. **U `type: epic` potvrď výslovně** — epic se z checkboxů / GitHubu neauto-Done. |
 | "hotovo PD4-3" / "hotovo RBU62-1" | flip checkbox `**ID-N**` v `## Operativní kroky` na `[x]` (single subtask); v chatu uveď parent **ID — title** + text kroku |
-| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. U epic OK (téma týdne). Nejdřív spočítej fokus (limit 5). |
+| "do fokusu" / "tenhle týden" | `focus: <aktuální ISO týden>`, `waitUntil:` prázdné, `updated: <today>`. U epic OK (téma týdne). Nejdřív spočítej fokus (task limit 10 / epic limit 5). |
 | "pryč z fokusu" | `focus:` prázdné, `updated: <today>` |
 | "odlož do YYYY-MM-DD" | `status: Waiting`, `waitUntil: <date>`, `updated: <today>` |
 | "ztím čekat" (bez data) | `status: Waiting`, `waitUntil: <today + 3 dny>`, `updated: <today>` |
@@ -105,7 +105,7 @@ python3 scripts/build_agent_context.py
 
 - Pouze single-task ops; bulk přes `agenda-work` / `agenda-co-ted` / `agenda-priority-review`
 - **`waitUntil` platí jen pro `status: Waiting`.** Při flipu na Next / Backlog / Doing / Done / Cancelled vždy nastav `waitUntil:` prázdné (YAML null). Cron `lifecycle_waituntil_hygiene.py` (every 2h :03) vyčistí opomenutí z manuálních editací. Cron `lifecycle_waiting_default_waituntil.py` (every 2h :02) doplní `waitUntil = dnes + 3 dny`, pokud je Waiting bez data.
-- **Do `focus` nikdy nesahá cron.** Lidské rozhodnutí: v Cursoru patchni frontmatter (tento skill); přes Brain MCP (Claude / Saturnin) po potvrzení v chatu volej **`set_focus`** (ne `update_task` s `focus`). Max 5 eligible slotů (server). Když je fokus pod pěti, `build_agent_context.py` naplní `focus_suggestions[]` — ty je smíš **nabídnout**, ne aplikovat bez potvrzení.
+- **Do `focus` nikdy nesahá cron.** Lidské rozhodnutí: v Cursoru patchni frontmatter (tento skill); přes Brain MCP (Claude / Saturnin) po potvrzení v chatu volej **`set_focus`** (ne `update_task` s `focus`). Max 10 task slotů / max 5 epic slotů (server). Když je task-fokus pod deseti, `build_agent_context.py` naplní `focus_suggestions[]` — ty je smíš **nabídnout**, ne aplikovat bez potvrzení.
 - **Limit fokusu je 5.** Před přidáním spočítej aktuální stav; při překročení se zeptej, co z fokusu vypadne.
 - **Zrušený úkol není `Done`.** Používej `Cancelled` — jinak „recently done" tvrdí, že jsi udělal práci, kterou jsi odepsal.
 - Nikdy nemaž ostatní frontmatter pole, jen patchni / přidávej

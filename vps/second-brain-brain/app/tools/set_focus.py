@@ -20,15 +20,18 @@ for _lib in (
 from context_tombstone import delete_context_tombstone  # noqa: E402
 from drive_io import DriveConflictError, DriveNotFoundError  # noqa: E402
 from focus import (  # noqa: E402
-    FOCUS_LIMIT,
+    FOCUS_EPIC_LIMIT,
+    FOCUS_TASK_LIMIT,
     current_focus_week,
     is_focus_current,
     parse_focus,
 )
 from task_io import FRONTMATTER_RE, iter_active_tasks, parse_task_text  # noqa: E402
 from today_priority import (  # noqa: E402
+    count_focus_epic_slots,
     count_focus_slots,
     paused_project_slugs,
+    would_consume_epic_focus_slot,
     would_consume_focus_slot,
 )
 
@@ -176,19 +179,38 @@ def set_focus(
 
         if not clear and not already:
             paused = _paused_slugs_from_vault(vault)
+            active = list(iter_active_tasks(vault))
             if would_consume_focus_slot(parsed_task, paused):
-                active = list(iter_active_tasks(vault))
                 others = count_focus_slots(
                     active,
                     today,
                     paused_slugs=paused,
                     exclude_path=path,
                 )
-                if others >= FOCUS_LIMIT:
+                if others >= FOCUS_TASK_LIMIT:
                     raise BrainClientError(
-                        message=f"focus_limit_exceeded count={others} limit={FOCUS_LIMIT}",
+                        message=(
+                            f"focus_task_limit_exceeded count={others} "
+                            f"limit={FOCUS_TASK_LIMIT}"
+                        ),
                         status_code=403,
                         error_reason="focus_limit_exceeded",
+                    )
+            elif would_consume_epic_focus_slot(parsed_task, paused):
+                others_e = count_focus_epic_slots(
+                    active,
+                    today,
+                    paused_slugs=paused,
+                    exclude_path=path,
+                )
+                if others_e >= FOCUS_EPIC_LIMIT:
+                    raise BrainClientError(
+                        message=(
+                            f"focus_epic_limit_exceeded count={others_e} "
+                            f"limit={FOCUS_EPIC_LIMIT}"
+                        ),
+                        status_code=403,
+                        error_reason="focus_epic_limit_exceeded",
                     )
 
         updated = today.isoformat()
@@ -209,6 +231,9 @@ def set_focus(
         paused = _paused_slugs_from_vault(vault)
         active_after = list(iter_active_tasks(vault))
         focus_count = count_focus_slots(active_after, today, paused_slugs=paused)
+        focus_epic_count = count_focus_epic_slots(
+            active_after, today, paused_slugs=paused
+        )
 
     focus_out = parse_focus(target_week) if target_week else None
     return {
@@ -218,6 +243,8 @@ def set_focus(
         "cleared": clear,
         "oid": getattr(meta2, "oid", None),
         "focus_count": focus_count,
-        "focus_limit": FOCUS_LIMIT,
+        "focus_limit": FOCUS_TASK_LIMIT,
+        "focus_epic_count": focus_epic_count,
+        "focus_epic_limit": FOCUS_EPIC_LIMIT,
         "already_in_focus": already,
     }

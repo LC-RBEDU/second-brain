@@ -26,7 +26,12 @@ from app.tools import set_focus as mod  # noqa: E402
 from app.tools import update_task as update_mod  # noqa: E402
 from drive_io import DriveConflictError, DriveNotFoundError  # noqa: E402
 from focus import current_focus_week  # noqa: E402
-from today_priority import count_focus_slots, would_consume_focus_slot  # noqa: E402
+from today_priority import (  # noqa: E402
+    count_focus_epic_slots,
+    count_focus_slots,
+    would_consume_epic_focus_slot,
+    would_consume_focus_slot,
+)
 
 TODAY = date(2026, 10, 12)
 WEEK = current_focus_week(TODAY)
@@ -159,14 +164,14 @@ def test_b18_prague_today_uses_tz(monkeypatch):
 
 
 def test_b5_reset_allows_when_full(monkeypatch):
-    """Already in focus → allow even when others count reports 5."""
+    """Already in focus → allow even when others count reports full task slots."""
     monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
     vault = _vault(_task_md(focus=WEEK))
     with patch.object(mod, "brain_vault", return_value=_CM(vault)):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    with patch.object(mod, "count_focus_slots", return_value=5):
+                    with patch.object(mod, "count_focus_slots", return_value=10):
                         out = mod.set_focus(
                             task_path=PATH,
                             focus_week=WEEK,
@@ -180,12 +185,11 @@ def test_b5_reset_allows_when_full(monkeypatch):
 def test_b6_limit_exceeded(monkeypatch):
     monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
     vault = _vault(_task_md())
-    # Fake 5 other eligible via count_focus_slots patch
     with patch.object(mod, "brain_vault", return_value=_CM(vault)):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    with patch.object(mod, "count_focus_slots", return_value=5):
+                    with patch.object(mod, "count_focus_slots", return_value=10):
                         with pytest.raises(BrainClientError) as ei:
                             mod.set_focus(
                                 task_path=PATH,
@@ -196,6 +200,62 @@ def test_b6_limit_exceeded(monkeypatch):
     assert ei.value.error_reason == "focus_limit_exceeded"
 
 
+def test_b6_epic_limit_exceeded(monkeypatch):
+    monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
+    vault = _vault(_task_md(typ="epic"))
+    with patch.object(mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(mod, "iter_active_tasks", return_value=iter([])):
+            with patch.object(mod, "delete_context_tombstone"):
+                with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
+                    with patch.object(mod, "count_focus_epic_slots", return_value=5):
+                        with pytest.raises(BrainClientError) as ei:
+                            mod.set_focus(
+                                task_path=PATH,
+                                focus_week=WEEK,
+                                principal="dev",
+                            )
+    assert ei.value.status_code == 403
+    assert ei.value.error_reason == "focus_epic_limit_exceeded"
+
+
+def test_b6_epic_allows_when_task_slots_full(monkeypatch):
+    """Task pool full must not block a new epic focus."""
+    monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
+    vault = _vault(_task_md(typ="epic"))
+    with patch.object(mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(mod, "iter_active_tasks", return_value=iter([])):
+            with patch.object(mod, "delete_context_tombstone"):
+                with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
+                    with patch.object(mod, "count_focus_slots", return_value=10):
+                        with patch.object(mod, "count_focus_epic_slots", return_value=2):
+                            out = mod.set_focus(
+                                task_path=PATH,
+                                focus_week=WEEK,
+                                principal="dev",
+                            )
+    assert out["focus"] == WEEK
+    vault.write_text.assert_called_once()
+
+
+def test_b6_story_allows_when_epic_slots_full(monkeypatch):
+    """Epic pool full must not block a new story focus."""
+    monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
+    vault = _vault(_task_md(typ="story"))
+    with patch.object(mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(mod, "iter_active_tasks", return_value=iter([])):
+            with patch.object(mod, "delete_context_tombstone"):
+                with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
+                    with patch.object(mod, "count_focus_slots", return_value=3):
+                        with patch.object(mod, "count_focus_epic_slots", return_value=5):
+                            out = mod.set_focus(
+                                task_path=PATH,
+                                focus_week=WEEK,
+                                principal="dev",
+                            )
+    assert out["focus"] == WEEK
+    vault.write_text.assert_called_once()
+
+
 def test_b16_waiting_allows_when_full(monkeypatch):
     monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
     vault = _vault(_task_md(status="Waiting"))
@@ -203,7 +263,7 @@ def test_b16_waiting_allows_when_full(monkeypatch):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    with patch.object(mod, "count_focus_slots", return_value=5):
+                    with patch.object(mod, "count_focus_slots", return_value=10):
                         out = mod.set_focus(
                             task_path=PATH,
                             focus_week=WEEK,
@@ -286,5 +346,8 @@ def test_count_focus_slots_a4():
         {"id": "4", "slug": "paused", "status": "Next", "type": "story", "focus": WEEK},
     ]
     assert count_focus_slots(tasks, TODAY, paused_slugs={"paused"}) == 1
+    assert count_focus_epic_slots(tasks, TODAY, paused_slugs={"paused"}) == 1
     assert would_consume_focus_slot(tasks[0], set()) is True
     assert would_consume_focus_slot(tasks[1], set()) is False
+    assert would_consume_focus_slot(tasks[2], set()) is False
+    assert would_consume_epic_focus_slot(tasks[2], set()) is True

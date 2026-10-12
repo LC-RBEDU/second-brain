@@ -111,7 +111,7 @@ Prioritu nenese jeden sloupec, ale tři nezávislé otázky:
 |---|---|---|
 | Udělám to vůbec? | ty | `status` |
 | Kdy to musí být hotové? | svět | `deadline` — **jen reálný externí závazek**, jinak prázdné |
-| Na co se soustředím teď? | ty | `focus` — ISO týden, max 5 úkolů |
+| Na co se soustředím teď? | ty | `focus` — ISO týden, max 10 tasků / max 5 epiců |
 
 „Chci to mít do pátku" **není deadline**, to je fokus týdne.
 
@@ -140,7 +140,7 @@ Prioritu nenese jeden sloupec, ale tři nezávislé otázky:
 - **Max 5 úkolů** na týden. Rituály (recurring) o místo nesoutěží.
 - **Nastavuje výhradně člověk.** Je to jediné pole ve vaultu, do kterého žádný cron nesmí zapsat.
 - Co si v pondělí znovu nevybereš, vypadne z fokusu samo — týdenní razítko řeší zatuhnutí bez úklidu.
-- Zdroj `top_priority_today` v `agent-context.json`. Když je fokus pod pěti, `build_agent_context.py` naplní `focus_suggestions[]` návrhy — nikdy ale nepatchuje tasky.
+- Zdroj `top_priority_today` v `agent-context.json` (max 10 tasků). Když je task-fokus pod deseti, `build_agent_context.py` naplní `focus_suggestions[]` návrhy — nikdy ale nepatchuje tasky. Focused epicy max 5, mimo TOP.
 
 ### agent
 

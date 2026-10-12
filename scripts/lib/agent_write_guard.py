@@ -8,9 +8,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 ACTORS = ("Cursor", "Cowork", "Grok")
 HM_RE = re.compile(r"^\d{2}:\d{2}$")
+# Mirror hub lib/focus.py (CLI path has no hub PYTHONPATH).
+FOCUS_TASK_LIMIT = 10
+FOCUS_EPIC_LIMIT = 5
 
 ALL_REASONS = (
     "allow_append_bus",
@@ -24,18 +29,19 @@ ALL_REASONS = (
     "deny_morning_write",
     "allow_overwrite",
     "deny_prefix_cut",
-    "deny_phone_not_one_line",
     "deny_stale_reread",
+    "deny_no_frontmatter",
     "restore_original",
     "deny_task_after_failed_restore",
     "allow_daily_create",
     "deny_existing_md",
     "deny_new_task",
     "deny_create",
-    "deny_focus_cowork_phone",
+    "deny_focus_remote",
     "allow_focus",
     "deny_focus_without_ask",
-    "deny_focus_over_5",
+    "deny_focus_task_limit",
+    "deny_focus_epic_limit",
     "deny_morning_build_context",
     "allow_script",
     "deny_script",
@@ -67,7 +73,7 @@ class Request:
     target_read: str = "ok"
     guide_readable: bool = True
     path: str = ""
-    today: str = "2026-10-04"
+    today: str = ""
     existing: str = ""
     reread: str = ""
     held: str = ""
@@ -76,6 +82,10 @@ class Request:
     user_said_focus: bool = False
     already_in_focus: bool = False
     focus_count: int = 0
+    focus_epic_count: int = 0
+    # Target would take a task/story slot (default) vs epic slot after set_focus.
+    would_consume_focus_slot: bool = True
+    would_consume_epic_focus_slot: bool = False
     user_said_send: bool = False
     preview_shown: bool = False
     after_task_write: bool = False
@@ -88,17 +98,18 @@ class Request:
     extra: dict = field(default_factory=dict)
 
 
-def classify_surface(actor: str, is_schedule: bool, has_folder: bool, desktop_open: bool) -> str:
+def classify_surface(actor: str, is_schedule: bool, has_folder: bool, desktop_open: bool = False) -> str:
+    """Režim podle toho, co jde, ne podle zařízení.
+
+    has_folder = čtení SECOND_BRAIN/ přes připojenou složku prošlo.
+    desktop_open se už nevyhodnocuje (zůstává kvůli kompatibilitě volání).
+    """
     phone = "grok_phone" if actor == "Grok" else "cowork_phone"
-    if is_schedule and has_folder and desktop_open:
+    if not has_folder:
+        return phone
+    if is_schedule:
         return "morning_schedule"
-    if is_schedule and not has_folder:
-        return phone
-    if is_schedule and has_folder and not desktop_open:
-        return phone
-    if not is_schedule and has_folder:
-        return "disk_grok" if actor == "Grok" else "disk_cowork"
-    return phone
+    return "disk_grok" if actor == "Grok" else "disk_cowork"
 
 
 def closed_frontmatter(text: str) -> bool:
@@ -120,14 +131,6 @@ def is_prefix_cut(original: str, proposed: str) -> bool:
     if original.rstrip("\n") == proposed.rstrip("\n"):
         return False
     return original.startswith(proposed)
-
-
-def is_single_line_replace(original: str, proposed: str) -> bool:
-    old = original.splitlines()
-    new = proposed.splitlines()
-    if len(old) != len(new) or not old:
-        return False
-    return sum(1 for left, right in zip(old, new) if left != right) == 1
 
 
 def format_bus_block(hm: str, actor: str, topic: str, body: str = "") -> str:
@@ -161,8 +164,11 @@ def _norm_path(path: str) -> str:
 
 
 def _is_workspace(path: str) -> bool:
-    norm = _norm_path(path)
-    return norm == "/workspace" or norm.startswith("/workspace/") or "/workspace/" in f"/{norm.strip('/')}/"
+    norm = "/" + _norm_path(path).lstrip("/")
+    for prefix in ("/workspace", "/home/claude", "/mnt/user-data"):
+        if norm == prefix or norm.startswith(prefix + "/"):
+            return True
+    return False
 
 
 def _is_today_bus(path: str, today: str) -> bool:
@@ -193,6 +199,10 @@ def _deny(reason: str, claimed_remote: bool = False, text: str | None = None) ->
     return Decision("deny", reason, text, claimed_remote)
 
 
+def prague_today() -> str:
+    return datetime.now(ZoneInfo("Europe/Prague")).date().isoformat()
+
+
 def _surface(req: Request) -> str:
     if req.surface:
         return req.surface
@@ -215,6 +225,8 @@ def _valid_block(block: str) -> bool:
 
 
 def decide(req: Request) -> Decision:
+    if not req.today:
+        req.today = prague_today()
     if req.origin_restore_failed and req.op == "overwrite":
         return _deny("deny_task_after_failed_restore")
     if _is_workspace(req.path):
@@ -239,31 +251,30 @@ def _decide_focus(req: Request) -> Decision:
     remote = surface.endswith("phone")
     if surface == "morning_schedule":
         return _deny("deny_morning_write")
-    if surface == "cowork_phone":
-        return _deny("deny_focus_cowork_phone", claimed_remote=True)
+    if remote:
+        return _deny("deny_focus_remote", claimed_remote=True)
     if not req.user_said_focus:
-        return _deny("deny_focus_without_ask", claimed_remote=remote)
-    if not req.already_in_focus and req.focus_count >= 5:
-        return _deny("deny_focus_over_5", claimed_remote=remote)
+        return _deny("deny_focus_without_ask")
+    if not req.already_in_focus:
+        if req.would_consume_focus_slot and req.focus_count >= FOCUS_TASK_LIMIT:
+            return _deny("deny_focus_task_limit")
+        if req.would_consume_epic_focus_slot and req.focus_epic_count >= FOCUS_EPIC_LIMIT:
+            return _deny("deny_focus_epic_limit")
     if req.set_done_because_checkboxes:
-        return _deny("deny_status_done_from_boxes", claimed_remote=remote)
+        return _deny("deny_status_done_from_boxes")
     if req.touches_stav_auto:
-        return _deny("deny_stav_auto", claimed_remote=remote)
+        return _deny("deny_stav_auto")
     if req.target_read in ("failed", "placeholder"):
         return _deny("deny_read_failed", claimed_remote=False)
     if not req.guide_readable:
         return _deny("deny_existing_md", claimed_remote=False)
-    if surface == "grok_phone":
-        if req.reread == req.held and closed_frontmatter(req.held):
-            return Decision("apply", "allow_focus", claimed_remote=True)
-        return _deny("deny_stale_reread", claimed_remote=True)
     if surface.startswith("disk"):
         if req.reread != req.held:
             if req.reread != "" and is_prefix_cut(req.held, req.reread):
                 return Decision("restore", "restore_original", req.held)
             return _deny("deny_stale_reread")
         return Decision("apply", "allow_focus")
-    return _deny("deny_focus_without_ask", claimed_remote=remote)
+    return _deny("deny_focus_without_ask")
 
 
 def _decide_create(req: Request) -> Decision:
@@ -313,29 +324,23 @@ def _decide_overwrite(req: Request) -> Decision:
         return _deny("deny_morning_write")
     if req.target_read in ("failed", "placeholder"):
         return _deny("deny_read_failed", claimed_remote=False)
-    if surface == "cowork_phone":
+    if remote:
         return _deny("deny_existing_md", claimed_remote=True)
     if not req.guide_readable:
         return _deny("deny_existing_md", claimed_remote=False)
     if req.reread != req.held:
-        if surface.startswith("disk") and req.reread != "" and is_prefix_cut(req.held, req.reread):
+        if req.reread != "" and is_prefix_cut(req.held, req.reread):
             return Decision("restore", "restore_original", req.held)
-        return _deny("deny_stale_reread", claimed_remote=remote)
-    if is_prefix_cut(req.held, req.proposed):
-        return _deny("deny_prefix_cut", claimed_remote=remote)
-    if req.set_done_because_checkboxes:
-        return _deny("deny_status_done_from_boxes", claimed_remote=remote)
-    if req.touches_stav_auto:
-        return _deny("deny_stav_auto", claimed_remote=remote)
-    if surface == "grok_phone":
-        if closed_frontmatter(req.held) and is_single_line_replace(req.held, req.proposed):
-            return Decision("apply", "allow_overwrite", req.proposed, claimed_remote=True)
-        return _deny("deny_phone_not_one_line", claimed_remote=True)
-    if surface.startswith("disk") and closed_frontmatter(req.held):
-        return Decision("apply", "allow_overwrite", req.proposed)
-    if surface.startswith("disk"):
         return _deny("deny_stale_reread")
-    return _deny("deny_existing_md", claimed_remote=remote)
+    if is_prefix_cut(req.held, req.proposed):
+        return _deny("deny_prefix_cut")
+    if req.set_done_because_checkboxes:
+        return _deny("deny_status_done_from_boxes")
+    if req.touches_stav_auto:
+        return _deny("deny_stav_auto")
+    if not closed_frontmatter(req.held):
+        return _deny("deny_no_frontmatter")
+    return Decision("apply", "allow_overwrite", req.proposed)
 
 
 def _script_name(script: str) -> str:

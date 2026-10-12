@@ -16,7 +16,11 @@ import re
 from datetime import date
 from typing import Any
 
-FOCUS_LIMIT = 5
+# Weekly focus capacity (ISO week). Tasks/stories vs epics are separate pools.
+FOCUS_TASK_LIMIT = 10
+FOCUS_EPIC_LIMIT = 5
+# Backward-compatible alias = task/story slot cap (TOP dnes, set_focus tasks).
+FOCUS_LIMIT = FOCUS_TASK_LIMIT
 
 STATUS_DOING = "Doing"
 STATUS_NEXT = "Next"

@@ -11,10 +11,10 @@ Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md) · Artifact: [docs/
 | Auth | OAuth cookie **nebo** Bearer service (MCP Grok/Claude) |
 | Potvrzení | V chatu u agenta (náhled → ano); API bez confirm flagu |
 | `focus_week` | Prázdné = clear; jinak jen **aktuální** ISO týden (`Europe/Prague`) |
-| Limit | Max **5** eligible TOP slotů (`is_focus_eligible` ∩ ¬paused); epic/Waiting/paused nespotřebují slot |
+| Limit | Max **10** task/story slotů (`is_focus_eligible` ∩ ¬paused) + max **5** epic slotů (`is_epic_focus_eligible` ∩ ¬paused); oddělené pooly; Waiting/paused nespotřebují slot |
 | `update_task` + `focus` | Stále **403** — jen `set_focus` |
-| Deploy | Brain **i** hub stejný SHA (`count_focus_slots` v hub lib) |
-| Plán | [docs/plans/2026-10-12-brain-set-focus.md](plans/2026-10-12-brain-set-focus.md) |
+| Deploy | Brain **i** hub stejný SHA (`count_focus_slots` / `count_focus_epic_slots` v hub lib) |
+| Plán | [docs/plans/2026-10-13-focus-limits-10-tasks-5-epics.md](plans/2026-10-13-focus-limits-10-tasks-5-epics.md) · původní [set_focus](plans/2026-10-12-brain-set-focus.md) |
 
 ## F5 — boti (DONE 2026-10-11)
 

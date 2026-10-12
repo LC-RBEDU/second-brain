@@ -30,7 +30,7 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus
 - `due = deadline` pokud je, jinak `review_deadline` (při `deadline` se review maže)
 - řazení: hard deadline ≤7d striktně nahoře; pak `rank_score` = ICE + 5 při `company_priorities`
 - snapshot pole pre-sorted — **nesortuj** podle `today_score`
-- **TOP eligibility:** jen `focus` = aktuální ISO týden, max 5; nikdy Waiting/Backlog/Cancelled
+- **TOP eligibility:** jen `focus` = aktuální ISO týden, max 10 tasků; max 5 epiců (mimo TOP); nikdy Waiting/Backlog/Cancelled
 - **Do `focus` nezapisuj sám** — navrhni kandidáty a nech volbu na uživateli
 - **Waiting** — nepatří do TOP; zkontroluj `waitUntil` a smysl
 - **Blocked** — pokud `blocked_by != []`, označ v preview

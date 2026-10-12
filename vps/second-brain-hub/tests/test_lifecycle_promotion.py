@@ -50,7 +50,7 @@ def test_has_wait_until_value():
 
 
 def test_focus_target_is_five():
-    assert FOCUS_TARGET == 5
+    assert FOCUS_TARGET == 10
 
 
 def test_count_focused_only_counts_current_week():
@@ -70,7 +70,7 @@ def test_suggestions_ranked_by_today_score():
     picked = select_focus_suggestions(
         [low, high, mid],
         today=TODAY,
-        current_focus_count=3,
+        current_focus_count=FOCUS_TARGET - 2,
     )
     assert [t.frontmatter["id"] for t in picked] == ["high", "mid"]
 

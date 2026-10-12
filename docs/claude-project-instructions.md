@@ -99,7 +99,7 @@ GitHub SECOND_BRAIN (verzováno): `vps/second-brain-hub/`, `scripts/`, `ŠABLONY
 
 - `priority_score = (ice_i × ice_c) / ice_e`
 - `rank_score` / `today_score` = ICE + company_bonus; hard deadline ≤7d striktně nahoře (snapshot pre-sorted)
-- `top_priority_today` = max 5, jen tasky s `focus` = aktuální ISO týden
+- `top_priority_today` = max 10, jen tasky/stories s `focus` = aktuální ISO týden (max 5 focused epiců mimo TOP)
 - `focus_suggestions` = návrhy, ne auto-nastavení
 
 FY RB EDU: 1. 3. – 28. 2. (FY2026 = bře 2026 – únor 2027).

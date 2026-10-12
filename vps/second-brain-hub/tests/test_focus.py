@@ -109,9 +109,18 @@ def test_top_today_comes_only_from_current_focus():
 
 
 def test_top_today_is_capped_at_focus_limit():
-    tasks = [_t(f"f{i}", focus="2026-W32", ice=(9, 9, 1)) for i in range(9)]
+    tasks = [_t(f"f{i}", focus="2026-W32", ice=(9, 9, 1)) for i in range(15)]
     top_today, _ = select_top_priority(tasks, TODAY)
-    assert len(top_today) == FOCUS_LIMIT == 5
+    assert len(top_today) == FOCUS_LIMIT == 10
+
+
+def test_focused_epic_excluded_from_top_today():
+    tasks = [
+        {**_t("story-f", focus="2026-W32"), "type": "story"},
+        {**_t("epic-f", focus="2026-W32"), "type": "epic"},
+    ]
+    top_today, _ = select_top_priority(tasks, TODAY)
+    assert [t["id"] for t in top_today] == ["story-f"]
 
 
 def test_top_today_empty_when_nothing_is_focused():

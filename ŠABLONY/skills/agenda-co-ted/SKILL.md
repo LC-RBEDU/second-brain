@@ -41,11 +41,11 @@ V2 priority pořadí (F4):
 **Eligibility** (nikdy porušit):
 - **Jen `focus` = aktuální ISO týden** (např. `2026-W32`). Nic jiného do TOP dnes nepatří.
 - **Nikdy:** `Waiting`, `Backlog`, `Done`, `Cancelled`
-- **Max 5.** Fokus vybírá **výhradně člověk** — nikdy ho nenastavuj sám.
+- **Max 10 tasků** (stories/legacy); epicy mimo TOP (max **5** focused epiců zvlášť). Fokus vybírá **výhradně člověk** — nikdy ho nenastavuj sám.
 
-**Když je fokus prázdný nebo pod pěti:**
+**Když je task-fokus prázdný nebo pod deseti:**
 - `agent-context.json` → `focus_suggestions[]` = kandidáti v pořadí ze snapshotu (už `rank_key`; neresortuj).
-- **Nabídni je, nepovyšuj.** Formulace: „Fokus týdne má X z 5. Kandidáti: … Chceš některý přidat?"
+- **Nabídni je, nepovyšuj.** Formulace: „Fokus týdne má X z 10 tasků (epicy Y z 5). Kandidáti: … Chceš některý přidat?"
 
 **Scoring / řazení:**
 - `priority_score = (ice_i * ice_c) / ice_e`
