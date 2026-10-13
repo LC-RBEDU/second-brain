@@ -1,0 +1,47 @@
+{
+  "id": "rb-brand-design-system",
+  "title": "Red Button Design System (brand / marketing)",
+  "source_url": "https://claude.ai/artifact/H8iBbMwMhU7RQ8efaZVuDS?sk=p0oBUUn5ZB00tx431ok3ww",
+  "source_kind": "claude_artifact",
+  "claude_skill_note": "Claude Team has this as a company skill for marketing; do NOT duplicate as a Claude skill. This folder is Cursor/Grok local SSOT only.",
+  "fetched_at": "2026-10-13T14:07:29Z",
+  "content_hash": "c0b92b79248b3046921393e5342f1c427ba345fe84ae3598114970994bb8d3b1",
+  "bundle_hash": "c2fd69c4ca8cdd302b778f8d07130362dfc43f29695ed8419216f4e26bed4a6a",
+  "hash_algo": "sha256",
+  "hash_of": "UTF-8 text of snapshot/design-system.md (content_hash); content_hash + ordered successful asset bytes (bundle_hash)",
+  "local_copy": "ŠABLONY/design-system/snapshot/design-system.md",
+  "local_tokens": [
+    "ŠABLONY/design-system/snapshot/assets/project/tokens.json",
+    "ŠABLONY/design-system/snapshot/assets/project/tokens.css",
+    "ŠABLONY/design-system/snapshot/assets/project/components/bundle.css",
+    "ŠABLONY/design-system/snapshot/assets/project/components/bundle.js"
+  ],
+  "frame_base": "https://82a5cdfd-4a71-494e-8ff5-18d4e18f4521.frame.claudeusercontent.com/_f/1791585516-d87a",
+  "remote_meta": {
+    "artifact_title": "Red Button EDU - newest",
+    "build_git_hash": "d40c622ef07c4d318d1504ae40fabc3faa8a85fa",
+    "frame_runtime_pin": "manifest.8e95a1ce6076990b.json",
+    "md_chars": 172863,
+    "md_lines": 3041,
+    "assets_ok": 4,
+    "assets_forbidden_or_missing": 15
+  },
+  "completeness": "partial",
+  "completeness_notes": [
+    "Full textual design-system + brand manual captured via Firecrawl markdown scrape of the public artifact page.",
+    "Public frame CDN served tokens.json/css and components/bundle.css|js without login.",
+    "Icons, logos, fonts, photos, frames, patterns, and many guideline HTML cards return HTTP 403 without Claude sign-in — not in git; refresh note documents manual re-export if needed.",
+    "235 Files panel in artifact UI is not fully mirrored."
+  ],
+  "refresh": {
+    "script": "scripts/refresh_rb_design_system.py",
+    "check_only": "python3 scripts/refresh_rb_design_system.py --check",
+    "force": "python3 scripts/refresh_rb_design_system.py --force",
+    "agent_mcp": "Firecrawl MCP user-firecrawl-mcp firecrawl_scrape on source_url (formats markdown+links, waitFor 8000, maxAge 0, proxy stealth). Then: python3 scripts/refresh_rb_design_system.py --from-markdown /path/to.md  OR --from-firecrawl-json /path/to/scrape.json",
+    "manual": "Open source_url while signed into Claude → copy/export artifact text into snapshot/design-system.md → run script --from-markdown … --force to bump manifest"
+  },
+  "related_skills": {
+    "rbe-writing-style": "ŠABLONY/skills/rbe-writing-style — brand voice/copy; gate check-before-use",
+    "rb-edu-ui-patterns": "Lives in Red Button Universe ~/.cursor/skills/rb-edu-ui-patterns → RBU .cursor/skills/_global/rb-edu-ui-patterns (EDUteka internal tools). Different system; points here for brand/marketing DS."
+  }
+}

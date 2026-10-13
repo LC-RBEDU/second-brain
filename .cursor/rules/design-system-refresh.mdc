@@ -1,0 +1,36 @@
+---
+description: >-
+  Before using Red Button brand/marketing design system, refresh-check local
+  SSOT vs Claude artifact. Not for EDUteka/internal tool UI (rb-edu-ui-patterns).
+globs:
+  - "**/ŠABLONY/design-system/**"
+  - "**/frontend/**/*.{tsx,ts,css,scss}"
+  - "**/*design*system*"
+  - "**/*brand*manual*"
+  - "**/pitch-deck/**"
+  - "**/slides/**"
+alwaysApply: false
+---
+
+# Brand design system — check before use
+
+When the task needs the **Red Button brand / marketing** design system (web marketing, slides, pitch deck, brand colors Rubik/Wine/`#e4003a`, Permanent Marker, brand icons/frames — **not** EDUteka internal tool UI):
+
+1. **Before reading or applying** local copy, run:
+   ```bash
+   python3 scripts/refresh_rb_design_system.py --check
+   ```
+2. If exit code **2** (changed) or remote fetch needed → run without `--check` (or with `--force` / `--from-firecrawl-json` after MCP scrape). Then use updated files.
+3. If exit code **0** (unchanged) → use:
+   - [`ŠABLONY/design-system/snapshot/design-system.md`](ŠABLONY/design-system/snapshot/design-system.md)
+   - [`ŠABLONY/design-system/snapshot/assets/project/tokens.json`](ŠABLONY/design-system/snapshot/assets/project/tokens.json)
+4. Manifest SSOT: [`ŠABLONY/design-system/manifest.json`](ŠABLONY/design-system/manifest.json).
+
+## Claude vs Cursor/Grok
+
+- Claude Team already has this as a **company skill** — do **not** create a duplicate Claude skill.
+- This repo folder is **only** for Cursor and Grok Bot.
+
+## Wrong skill
+
+Internal apps / RB Universe product UI / EDUteka patterns → skill **`rb-edu-ui-patterns`** (Plus Jakarta, `#e9244a`), not this brand pack.

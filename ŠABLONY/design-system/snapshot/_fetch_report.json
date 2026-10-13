@@ -1,0 +1,94 @@
+{
+  "ok": [
+    {
+      "path": "project/components/bundle.css",
+      "bytes": 2005,
+      "content_type": "text/css"
+    },
+    {
+      "path": "project/components/bundle.js",
+      "bytes": 43163,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "project/tokens.css",
+      "bytes": 19726,
+      "content_type": "text/css"
+    },
+    {
+      "path": "project/tokens.json",
+      "bytes": 25837,
+      "content_type": "application/json"
+    }
+  ],
+  "fail": [
+    {
+      "path": "project/assets/frames/frame-long-red-2.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/frames/frame-short-grey.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/frames/frame-short-red.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/frames/frame-short-wine.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/icons/icon-10.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/icons/icon-15.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/icons/icon-16.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/icons/icon-18.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/icons/icon-19.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/icons/icon-26.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/logos/logo-light-logo.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/notes/MIGRATION-REPORT.md",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/patterns/zakladni-sit.svg",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/assets/photos/photo-filtered-bw.webp",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "path": "project/components/Feedback/assets/frames/frame-short-wine.svg",
+      "error": "HTTP Error 403: Forbidden"
+    }
+  ],
+  "content_hash": "c0b92b79248b3046921393e5342f1c427ba345fe84ae3598114970994bb8d3b1",
+  "bundle_hash": "c2fd69c4ca8cdd302b778f8d07130362dfc43f29695ed8419216f4e26bed4a6a",
+  "frame_base": "https://82a5cdfd-4a71-494e-8ff5-18d4e18f4521.frame.claudeusercontent.com/_f/1791585516-d87a",
+  "md_chars": 172863,
+  "md_lines": 3041,
+  "meta_title": "Red Button EDU - newest",
+  "build_git_hash": "d40c622ef07c4d318d1504ae40fabc3faa8a85fa",
+  "frame_runtime_pin": "manifest.8e95a1ce6076990b.json"
+}

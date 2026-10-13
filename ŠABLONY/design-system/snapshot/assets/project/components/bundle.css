@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,400;0,500;0,700;0,800;0,900;1,400;1,500;1,700&display=swap");
+
+/* ── styles.css ── */
+/* Red Button Design System — global entry point */
+/* ── tokens/fonts.css ── */
+/* Rubik — primary brand typeface (headings + body). Weights used: 400/500/700/800/900 + italics. */
+
+
+/* Permanent Marker — accent / handwritten typeface (subheadings, hashtags, quotes).
+   Brand-supplied OTF with Czech diacritics fix — always prefer this file over the Google-hosted version. */
+/* @font-face Permanent Marker 400 normal: declared by tokens.json (fonts/permanentmarker-regular-czech-fix.otf) */
+
+/* ── styles.css ── */
+
+/* ── tokens/colors.css ── */
+/* Red Button — color tokens
+   Source: brand manual (full export 2026-07-22) — "Primární barvy" + "Podpůrné barvy" +
+   "Poměry barev" + "Úprava barev pro Dark Mode" + design-tokens table.
+   Ratio guide: off-white 60% · wine 20% · anthracite 10% · Red Button red 5% · greys 5%. */
+:root {
+}
+
+/* ── styles.css ── */
+
+/* ── tokens/typography.css ── */
+/* Red Button — typography tokens
+   Source: brand manual "Styly textu" specimen.
+   H1 Rubik Black 64/128 · H2 Rubik Extrabold 42 (or Permanent Marker 42) · H3 Rubik Bold 24
+   H4/Subheading Permanent Marker 24 · Large ¶ Rubik Medium 21 · ¶ Rubik Regular 18
+   Button Rubik Extrabold 16 · Caption Rubik Regular ~14 */
+:root { /* red all-caps kicker labels */
+}
+
+/* ── styles.css ── */
+
+/* ── tokens/spacing.css ── */
+/* Red Button — spacing, radius, shadow tokens
+   NOTE: the brand manual specifies only card radius (6px). The spacing scale and
+   shadow values below are inferred from layout examples (generous whitespace, flat surfaces). */
+:root {
+}
+
+/* ── styles.css ── */
+
+
+/* ── tokens/fonts.css ── */
+
+/* ── tokens/colors.css ── */
+
+/* ── tokens/typography.css ── */
+
+/* ── tokens/spacing.css ── */
+

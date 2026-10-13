@@ -1,0 +1,406 @@
+/* Red Button EDU - newest — generated from tokens.json */
+:root, [data-theme="default"] {
+  --rb-red-button: #e4003a; /* Red Button – akcent (~5 % ploch): CTA, zvýraznění, aktivní stavy. Pantone 192 C. Bílý text na ní 4,82:1. Jediná červená pro tlačítka i slidy (sjednoceno 9. 10. 2026). */
+  --rb-wine: #a11834; /* Wine – dominantní barva značky (~20 %): tmavé plochy, záhlaví tabulek, eyebrow popisky, marker podnadpisy, patička; na slidech nadpisový akcent, štítek, linka hlavičky, karty. Bílý text na ní 7,79:1. */
+  --rb-anthracite: #444444; /* Anthracite – text a tmavé plochy (~10 %): nadpisy i běžný text. 9,74:1 na bílé, 9,33:1 na #fafafa. */
+  --rb-white: #ffffff; /* White – povrch karet, inputů, panelů; text a ikony na tmavých plochách. */
+  --rb-off-white: #fafafa; /* White z poměrů barev (~60 %): pozadí stránky, hlavičky a slidů. Povolené pozadí pro logo. */
+  --rb-grey: #b0b2b6; /* Grey – podpůrná (~3 %): okraje, oddělovače, ikony na tmavém. Jako text na bílé jen 2,12:1 – nepoužívat pro text na světlém. */
+  --rb-spanish-grey: #969696; /* Spanish Grey – podpůrná (~2 %): tagy a popisky v Rubik Regular. POZOR: na bílé jen 2,96:1 (pod AA) – hodnota z manuálu, jen pro doplňkové údaje. */
+  --rb-button-red: var(--rb-red-button); /* Zpětně kompatibilní alias na rb-red-button. Dřív #e3043a (tabulka webových tokenů), sjednoceno na #e4003a (rozhodnutí 9. 10. 2026). Nové použití: rb-red-button. */
+  --rb-apple-red: #fe1a3f; /* Apple Red – akcent JEN pro výjimečný dark mode (např. web Exponential Summit) a barva odkazů na webu. Na bílé 3,86:1 – odkazy vždy podtržené. Nikdy jako pozadí loga, nikdy v tisku. */
+  --rb-red-black: #262626; /* Red Black – tmavé plochy výjimečného dark mode. Nikdy v tisku a oficiálních materiálech. */
+  --logo-red-deep: #a31834; /* Tmavě červený oblouk značky – hodnota přímo z oficiálních SVG log (manuálová Wine je #a11834). Jen logo; v UI používej rb-wine. */
+  --logo-ink: #4a4a49; /* Grafit wordmarku RED BUTTON v oficiálním SVG (manuálová Anthracite je #444444). Jen logo. */
+  --logo-gray-light: #ededed; /* Světlý segment prstence značky (oficiální SVG). Jen logo a identitní plochy. */
+  --logo-gray: #bdbcbc; /* Šedý segment prstence značky (oficiální SVG). Jen logo a identitní plochy. */
+  --surface-page: var(--rb-off-white); /* Pozadí stránky ve světlém režimu. */
+  --surface-card: var(--rb-white); /* Povrch karet. */
+  --surface-brand: var(--rb-wine); /* Plné plochy značky (patička, hero pásy). */
+  --surface-dark: var(--rb-anthracite); /* Tmavé plochy; povolené pozadí pro negativní logo. */
+  --surface-darkmode: var(--rb-red-black); /* Plochy výjimečného dark mode. */
+  --text-heading: var(--rb-anthracite); /* Nadpisy. */
+  --text-body: var(--rb-anthracite); /* Běžný text. */
+  --text-muted: var(--rb-spanish-grey); /* Popisky a metadata. 2,96:1 na bílé – jen doplňkové údaje. */
+  --text-on-dark: var(--rb-white); /* Text na tmavých a Wine plochách. */
+  --text-accent: var(--rb-wine); /* Akcentní text (eyebrow, marker podnadpisy). */
+  --accent: var(--rb-red-button); /* Signální akcent (~5 %). */
+  --accent-darkmode: var(--rb-apple-red); /* Akcent výjimečného dark mode. */
+  --button-primary: var(--rb-red-button); /* Primární tlačítko (rb-red-button; dřív #e3043a). */
+  --border-subtle: #e2e2e2; /* Jemné okraje karet. */
+  --border-brand: var(--rb-wine); /* Okraj v barvě značky (ručně tažené rámy). */
+  --bg: var(--rb-off-white); /* Pozadí stránky. V tmavém režimu Red Black (výjimečný dark mode). */
+  --surface: var(--rb-white); /* Povrch karet, inputů, panelů, hlavičky. V tmavém režimu Anthracite – na ní je povolené negativní logo. */
+  --surface-sunken: var(--rb-off-white); /* Zapuštěné plochy uvnitř povrchu: pole formulářů v tmavém režimu, pozadí tabulek. */
+  --text: var(--rb-anthracite); /* Nadpisy a běžný text na bg a surface (světle ≥9,3:1, tmavě ≥9,7:1). */
+  --text-caption-color: var(--rb-spanish-grey); /* Popisky, tagy, metadata (Rubik Regular). Světle 2,96:1 – pod AA, podle manuálu; tmavě 4,59:1 na surface. */
+  --accent-text: var(--rb-wine); /* Malé akcentní texty: eyebrow popisky (verzálky), aktivní navigace. Světle Wine 7,79:1; tmavě Grey (Wine na tmavém nečitelná 1,94:1). */
+  --accent-display: var(--rb-wine); /* Marker podnadpisy (Permanent Marker ≥24px), citace. Tmavě Apple Red 3,92:1 – jen velký text. */
+  --action: var(--rb-red-button); /* Primární tlačítka a CTA. */
+  --action-hover: var(--rb-wine); /* Hover/pressed primárního tlačítka. Odvozeno (manuál hover neuvádí). */
+  --on-action: #ffffff; /* Text na action a action-hover: 4,82:1 na rb-red-button, 7,79:1 na rb-wine; tmavě na Apple Red jen 3,86:1 (jen velký/tučný text ≥19px). */
+  --link: var(--rb-apple-red); /* Odkazy na webu (manuál: #fe1a3f, web only). 3,86:1 na bílé – vždy podtržené. */
+  --border: var(--logo-gray-light); /* Hairline okraje karet a oddělovače (dekorativní). */
+  --border-control: var(--rb-spanish-grey); /* Okraje formulářových polí a outline tlačítek: světle 2,96:1 (těsně pod 3:1), tmavě 4,59:1. */
+  --fill-hover: var(--logo-gray-light); /* Hover pozadí položek menu a ikon-tlačítek. */
+  --focus: var(--rb-red-button); /* Focus ring 2px plná čára: světle 4,82:1 na bílé, tmavě bílá ≥9,7:1. */
+  --inverse-bg: var(--rb-wine); /* Plné tmavé plochy značky: patička, hero pásy, záhlaví tabulek. Povolené pozadí pro negativní logo. */
+  --on-inverse: #ffffff; /* Text a negativní logo na inverse-bg (7,79:1). */
+  --overlay: rgba(38,38,38,0.6); /* Backdrop modalu a mobilního menu (Red Black 60 %). */
+  --success-bg: #f0fdf4; /* Úspěch – pozadí. MIMO manuál (Tailwind green-50), doplněno pro UI stavy. */
+  --success-text: #008236; /* Úspěch – text. MIMO manuál. 4,72:1 na success-bg. */
+  --warning-bg: #fffbeb; /* Varování – pozadí. MIMO manuál. */
+  --warning-text: #bb4d00; /* Varování – text. MIMO manuál. 4,85:1. */
+  --error-bg: #fef2f2; /* Chyba – pozadí. */
+  --error-text: var(--rb-red-button); /* Chyba – text v barvě značky (4,82:1 na bílé; tmavě 3,92:1 – doplň ikonou a slovem). */
+  --rb-crimson: var(--rb-wine); /* Alias (dřívější slidový název, #a11834). Použij rb-wine. */
+  --rb-crimson-deep: var(--rb-wine); /* Alias (dřív #9f1b3c, kreslené tahy). Sloučeno do Wine. Použij rb-wine. */
+  --rb-crimson-paper: var(--rb-wine); /* Alias (dřív #a01d38, červené pozadí titulu). Sloučeno do Wine. Použij rb-wine / surface-brand. */
+  --rb-logo-red: var(--rb-red-button); /* Alias (dřív #e3003a ze slidů). Sloučeno do Red Button #e4003a; logo kresli ze souborů, ne z tokenu. */
+  --rb-ink-strong: var(--rb-anthracite); /* Alias (dřív #3f3f3f, nadpisy slidů). Sloučeno do Anthracite. Použij rb-anthracite. */
+  --rb-ink: var(--rb-anthracite); /* Alias (dřív #444444, text slidů). Použij rb-anthracite. */
+  --rb-black: var(--rb-anthracite); /* Alias (dřív #000000, číslo strany a datum). Manuál černou nemá – sloučeno do Anthracite (úsudek, ověř na slidu). Použij rb-anthracite. */
+  --rb-muted: var(--rb-spanish-grey); /* Alias (dřív #737373, 4,1:1). Po sloučení Spanish Grey 2,96:1 – jen doplňky ve velkém písmu, nikdy hlavní text. */
+  --rb-subtle: var(--rb-spanish-grey); /* Alias (dřív #969696). Jen nedůležitý doplněk (pod AA). */
+  --rb-line: var(--rb-grey); /* Alias (dřív #babbbd, jemné oddělovače). Sloučeno do Grey. */
+  --rb-paper: var(--rb-off-white); /* Alias (dřív #f2f2f2, papírové pozadí slidů). Sloučeno do #fafafa (White z poměrů barev). */
+  --rb-paper-light: var(--rb-off-white); /* Alias (dřív #f9f9f9, výplň tabulek a boxů). Použij rb-off-white. */
+  --shadow-card: none; /* Karty leží ploše; manuál stíny u loga zakazuje. */
+  --shadow-float: 0 8px 32px rgba(68, 68, 68, 0.18); /* Jen překryvné prvky (dropdowny, modaly, mobilní panel). */
+}
+[data-theme="dark"] {
+  --rb-button-red: var(--rb-red-button);
+  --surface-page: var(--rb-off-white);
+  --surface-card: var(--rb-white);
+  --surface-brand: var(--rb-wine);
+  --surface-dark: var(--rb-anthracite);
+  --surface-darkmode: var(--rb-red-black);
+  --text-heading: var(--rb-anthracite);
+  --text-body: var(--rb-anthracite);
+  --text-muted: var(--rb-spanish-grey);
+  --text-on-dark: var(--rb-white);
+  --text-accent: var(--rb-wine);
+  --accent: var(--rb-red-button);
+  --accent-darkmode: var(--rb-apple-red);
+  --button-primary: var(--rb-red-button);
+  --border-brand: var(--rb-wine);
+  --bg: var(--rb-red-black);
+  --surface: var(--rb-anthracite);
+  --surface-sunken: var(--rb-red-black);
+  --text: var(--rb-white);
+  --text-caption-color: var(--rb-grey);
+  --accent-text: var(--rb-grey);
+  --accent-display: var(--rb-apple-red);
+  --action: var(--rb-apple-red);
+  --action-hover: var(--rb-red-button);
+  --link: var(--rb-apple-red);
+  --border: var(--rb-red-black);
+  --border-control: var(--rb-grey);
+  --fill-hover: var(--rb-red-black);
+  --focus: var(--rb-white);
+  --inverse-bg: var(--rb-wine);
+  --success-bg: rgba(13,84,43,0.25);
+  --success-text: #05df72;
+  --warning-bg: rgba(123,51,6,0.25);
+  --warning-text: #ffb900;
+  --error-bg: rgba(254,26,63,0.12);
+  --error-text: var(--rb-apple-red);
+  --rb-crimson: var(--rb-wine);
+  --rb-crimson-deep: var(--rb-wine);
+  --rb-crimson-paper: var(--rb-wine);
+  --rb-logo-red: var(--rb-red-button);
+  --rb-ink-strong: var(--rb-anthracite);
+  --rb-ink: var(--rb-anthracite);
+  --rb-black: var(--rb-anthracite);
+  --rb-muted: var(--rb-spanish-grey);
+  --rb-subtle: var(--rb-spanish-grey);
+  --rb-line: var(--rb-grey);
+  --rb-paper: var(--rb-off-white);
+  --rb-paper-light: var(--rb-off-white);
+}
+:root {
+  --space-1: 4px; /* Mikro mezery, ikona + text. */
+  --space-2: 8px; /* Skupiny tlačítek, tagy. */
+  --space-3: 12px; /* Vnitřní odsazení malých prvků, mřížky na mobilu. */
+  --space-4: 16px; /* Odsazení karet a polí, mezera mezi poli. */
+  --space-5: 24px; /* Odsazení velkých karet a modalu. */
+  --space-6: 32px; /* Mezery mezi bloky. */
+  --space-7: 48px; /* Rytmus sekcí. */
+  --space-8: 64px; /* Velké sekce, patička. */
+  --space-9: 96px; /* Hero sekce. */
+  --slide-width: 1920px; /* Slidy: šířka plátna (16:9). */
+  --slide-height: 1080px; /* Slidy: výška plátna. */
+  --slide-margin-x: 106px; /* Slidy: levý a pravý okraj obsahu; od něj začíná štítek, nadpis i text. */
+  --slide-title-top: 112px; /* Slidy: horní hrana nadpisu. */
+  --slide-content-top: 210px; /* Slidy: začátek obsahu pod nadpisem (lead); hlavní obsah od cca 300 px. */
+  --slide-header-line-top: 38px; /* Slidy: svislá poloha linky hlavičky (linka-hlavicky.png). */
+  --slide-card-width: 315px; /* Slidy: šířka karty v řadě čtyř kroků (roadmapa). */
+  --slide-page-number-offset: 64px; /* Slidy: odsazení čísla strany od pravého a spodního okraje. */
+  --radius-none: 0px; /* Tabulky, plné pásy, marker štítky. Slidy nemají zaoblené rohy – hrany tvoří ručně kreslené rámečky. */
+  --radius-card: 6px; /* Zaoblení karet a boxů podle manuálu. */
+  --radius-button: 6px; /* Tlačítka, pole, modaly, dropdowny (odvozeno z karet). */
+  --radius-pill: 999px; /* Avatary, kruhové prvky, tečky (motiv „buttonu“). */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+  --weight-black: 900;
+  --text-h1-hero: 128px;
+  --text-h1: 64px;
+  --text-h2: 42px;
+  --text-h3: 24px;
+  --text-sub: 24px;
+  --text-lead: 21px;
+  --text-p: 18px;
+  --text-button: 16px;
+  --text-caption: 14px;
+  --leading-tight: 1.05;
+  --leading-heading: 1.15;
+  --leading-body: 1.6;
+  --tracking-heading: 0em;
+  --tracking-caps: 0.08em;
+  --bp-sm: 640px; /* Větší telefony. */
+  --bp-md: 768px; /* Tablety. */
+  --bp-lg: 1024px; /* Desktop – hlavní zlom. */
+  --bp-xl: 1280px; /* Velký desktop. */
+  --container-max: 1200px; /* Max. šířka obsahu (odvozeno). */
+  --header-height: 72px; /* Hlavička (odvozeno). */
+  --logo-min-height: 20px; /* Minimální výška loga na obrazovce (manuál). Alternativní logo 24px. */
+  --logo-clearspace: 50%; /* Ochranná zóna = 50 % výšky loga (manuál). */
+  --z-header: 30; /* Fixní hlavička, dropdowny. */
+  --z-overlay: 50; /* Modal, mobilní panel, backdrop. */
+  --font-sans: "Rubik", "Arial", sans-serif;
+  --font-accent: "Permanent Marker", "Kalam", cursive;
+  --font-accent-slides: "Kalam", "Trebuchet MS", cursive;
+  --text-h2-marker: 400 42px/1.2 var(--font-accent); /* Alternativní H2 / podnadpis – Permanent Marker 42px v accent-display (manuál). Web, tisk, branding: vždy CZ-fix OTF z manuálu. */
+  --text-h4-marker: 400 24px/1.3 var(--font-accent); /* H4 / nadpis boxu / citace – Permanent Marker 24px v accent-display (manuál). */
+  --text-marker-tag: 400 18px/1.2 var(--font-accent); /* Štítek na Wine ploše (ukázky použití manuálu). Velikost odvozena. */
+  --text-eyebrow: 700 16px/1.3 var(--font-sans); /* Eyebrow / sekční popisek – verzálky, prostrkání, accent-text (velikost odvozena). */
+  --text-ui: 500 14px/1.43 var(--font-sans); /* UI text: navigace, položky menu, popisky polí. MIMO manuál – doplněk pro rozhraní. */
+  --text-ui-small: 400 12px/1.33 var(--font-sans); /* Drobné UI: tagy, badge, metadata. MIMO manuál – doplněk pro rozhraní. */
+  --text-slide-cover-title: 900 107px/0.95 var(--font-sans); /* Slidy: název programu na titulu, verzálky, Anthracite (na Wine bílá). */
+  --text-slide-title: 900 56px/1.15 var(--font-sans); /* Slidy: nadpis každého obsahového slidu, verzálky, Anthracite; klíčová část (2–3 slova) ve Wine. */
+  --text-slide-step-number: 900 47px/1 var(--font-sans); /* Slidy: dvoumístné číslo kroku v roadmapě. */
+  --text-slide-page-number: 900 27px/1 var(--font-sans); /* Slidy: číslo strany vpravo dole, Anthracite. */
+  --text-slide-body: 400 28px/1.45 var(--font-sans); /* Slidy: hlavní text, Anthracite. */
+  --text-slide-body-strong: 700 28px/1.45 var(--font-sans); /* Slidy: popisky řádků tabulek, nadpisy sloupců karet. */
+  --text-slide-lead: 400 24px/1.4 var(--font-sans); /* Slidy: podtitul pod nadpisem, delší odstavce. */
+  --text-slide-date: 500 28px/1.3 var(--font-sans); /* Slidy: měsíc a rok na titulu (Rubik Medium). */
+  --text-slide-card-text: 400 20px/1.4 var(--font-sans); /* Slidy: text uvnitř Wine a tmavých karet, bílý. */
+  --text-slide-caption: 400 24px/1.35 var(--font-sans); /* Slidy: doplňkové informace ve Spanish Grey (jen nedůležité, pod AA). */
+  --text-slide-tagline: 400 48px/1.2 var(--font-accent); /* Slidy: tagline nad názvem na titulu. Jen text BEZ ě š č ř ž ů ť ď ň; jinak slide-accent-cz. */
+  --text-slide-big-figure: 400 48px/1.1 var(--font-accent); /* Slidy: cena, číslo v seznamu cílů, krátké heslo. Wine; Red Button jen jako jediný akcent na slidu. */
+  --text-slide-accent: 400 32px/1.25 var(--font-accent); /* Slidy: názvy kroků, karet a uzlů diagramů, poznámky BEZ českých znaků s diakritikou. */
+  --text-slide-section-tag: 400 28px/1 var(--font-accent); /* Slidy: hashtag štítek vlevo nahoře na každém obsahovém slidu, Wine. */
+  --text-slide-accent-cz: 700 32px/1.25 var(--font-accent-slides); /* Slidy a Google Slides (i interní decky typu Town hall): Kalam Bold pro ruční texty obsahující ě š č ř ž ů ť ď ň, VŽDY VERZÁLKAMI. Permanent Marker tyto znaky na slidech nezobrazuje dobře. Rozhodnutí 9. 10. 2026; manuál Kalam připouští jen pro otevřené decky klientům. Web a tisk: Kalam nepoužívat. */
+}
+.h1-hero {
+  font-family: var(--font-sans);
+  font-size: 128px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+.h1 {
+  font-family: var(--font-sans);
+  font-size: 64px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.h2 {
+  font-family: var(--font-sans);
+  font-size: 42px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.h3 {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.h2-marker {
+  font-family: var(--font-accent);
+  font-size: 42px;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.h4-marker {
+  font-family: var(--font-accent);
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.marker-tag {
+  font-family: var(--font-accent);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.lead {
+  font-family: var(--font-sans);
+  font-size: 21px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.button {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.caption {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.ui {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.43;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.ui-small {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.33;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-cover-title {
+  font-family: var(--font-sans);
+  font-size: 107px;
+  line-height: 0.95;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.slide-title {
+  font-family: var(--font-sans);
+  font-size: 56px;
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.slide-step-number {
+  font-family: var(--font-sans);
+  font-size: 47px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.slide-page-number {
+  font-family: var(--font-sans);
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.slide-body {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-body-strong {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.slide-lead {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-date {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.slide-card-text {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-caption {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-tagline {
+  font-family: var(--font-accent);
+  font-size: 48px;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-big-figure {
+  font-family: var(--font-accent);
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-accent {
+  font-family: var(--font-accent);
+  font-size: 32px;
+  line-height: 1.25;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-section-tag {
+  font-family: var(--font-accent);
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.slide-accent-cz {
+  font-family: var(--font-accent-slides);
+  font-size: 32px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+@font-face {
+  font-family: "Permanent Marker";
+  src: url("fonts/permanentmarker-regular-czech-fix.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

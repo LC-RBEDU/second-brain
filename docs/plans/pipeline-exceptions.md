@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-13 | `ŠABLONY/design-system/**`, `scripts/refresh_rb_design_system.py`, `.cursor/rules/design-system-refresh.mdc`, `ŠABLONY/skills/rbe-writing-style/SKILL.md` (+ pointer v RBU `rb-edu-ui-patterns`) | čistě docs/skill/rule + jednorázový fetch snapshot Claude artifactu; bez hub/cron/vault-batch runtime | agent (uživatel: brand DS SSOT pro Cursor/Grok) |
 | 2026-10-10 | `vps/second-brain-hub/Dockerfile`, `lib/git_io.py`, `tests/test_git_io.py` | jednořádkové/jasná příčina cutover hotfixy: (1) chybějící `openssh-client`, (2) Debian git 2.39 bez `git push --ff-only` → `push.ff=only` | agent (cutover F1-f/h) |
 | 2026-10-10 | `docs/plans/2026-10-10-sb-operacni-model-f0.md` (+ vault materiál SB15) | F0 jen dokument (cílová architektura + rozpad fází) — REVIEW/QA/deploy přeskočeny; Tester přeskočen (profil SECOND_BRAIN + F0). Pipeline běží jen PLAN→GRILL→CRITIC→schválení uživatelem | uživatel (plán F0 /rbu-pipeline) |
 | 2026-10-09 | `ŠABLONY/skills/agenda-zapis-ze-schuzky/SKILL.md`, `…/references/struktura-vystupu.md`, `…/scripts/build_html.py` (docstring) | čistě docs/skill — zakotvení schváleného HTML standardu zápisu (kicker, Rámec jen MD, HTML tagy v body, hero layout); bez nové runtime logiky | agent (uživatel: standard pro všechny další zápisy) |
