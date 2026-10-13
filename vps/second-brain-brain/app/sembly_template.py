@@ -29,48 +29,119 @@ def _parse_start(raw: Any) -> datetime | None:
         return None
 
 
-def filename_for(payload: dict[str, Any]) -> str:
-    meeting = payload.get("meeting") or payload
-    title = str(meeting.get("title") or payload.get("title") or "meeting")
-    start = _parse_start(
-        meeting.get("start_time")
-        or meeting.get("started_at")
-        or payload.get("start_time")
+def _meeting_blob(payload: dict[str, Any]) -> dict[str, Any]:
+    for key in ("meeting", "meeting_data", "data"):
+        val = payload.get(key)
+        if isinstance(val, dict):
+            return val
+    return {}
+
+
+def _pick(*vals: Any) -> Any:
+    for v in vals:
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            continue
+        return v.strip() if isinstance(v, str) else v
+    return None
+
+
+def _coerce_number(raw: Any) -> float | None:
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _field(payload: dict[str, Any], blob: dict[str, Any], *keys: str) -> Any:
+    candidates: list[Any] = []
+    for key in keys:
+        candidates.append(payload.get(key))
+        candidates.append(blob.get(key))
+    return _pick(*candidates)
+
+
+def _duration_minutes_value(payload: dict[str, Any], blob: dict[str, Any]) -> int | str:
+    minutes = _coerce_number(_field(payload, blob, "duration_minutes"))
+    if minutes is not None:
+        return int(round(minutes))
+    raw = _coerce_number(_field(payload, blob, "duration", "meeting_duration"))
+    if raw is None:
+        return "—"
+    if raw >= 1000:
+        return int(round(raw / 60))
+    return int(round(raw))
+
+
+def _participants_label(payload: dict[str, Any], blob: dict[str, Any]) -> str:
+    raw = _field(payload, blob, "participants", "attendees")
+    if raw is None:
+        return "—"
+    if isinstance(raw, list):
+        parts = []
+        for p in raw:
+            if isinstance(p, dict):
+                name = _pick(p.get("name"), p.get("email"), str(p))
+                if name is not None:
+                    parts.append(str(name))
+            else:
+                text = str(p).strip()
+                if text:
+                    parts.append(text)
+        return ", ".join(parts) if parts else "—"
+    text = str(raw).strip()
+    return text or "—"
+
+
+def _title_and_start(payload: dict[str, Any]) -> tuple[str, datetime | None]:
+    blob = _meeting_blob(payload)
+    title = _field(
+        payload, blob, "meeting_title", "title", "name", "subject", "meetingName"
     )
+    title_s = str(title) if title is not None else "meeting"
+    start = _parse_start(
+        _field(
+            payload,
+            blob,
+            "meeting_started_at",
+            "start_time",
+            "started_at",
+            "meeting_start",
+        )
+    )
+    return title_s, start
+
+
+def filename_for(payload: dict[str, Any]) -> str:
+    title, start = _title_and_start(payload)
     stamp = start.strftime("%Y-%m-%d-%H%M") if start else "unknown-time"
     return f"{stamp}-{_slug_title(title)}.md"
 
 
 def render_markdown(payload: dict[str, Any]) -> str:
-    meeting = payload.get("meeting") or payload
-    title = str(meeting.get("title") or payload.get("title") or "Meeting")
-    start = _parse_start(
-        meeting.get("start_time")
-        or meeting.get("started_at")
-        or payload.get("start_time")
-    )
+    blob = _meeting_blob(payload)
+    title, start = _title_and_start(payload)
+    display_title = title if title != "meeting" else "Meeting"
     when = start.strftime("%Y-%m-%d %H:%M") if start else "—"
-    participants = meeting.get("participants") or payload.get("participants") or []
-    if isinstance(participants, list):
-        parts = ", ".join(
-            (p.get("name") if isinstance(p, dict) else str(p)) for p in participants
-        )
+    parts = _participants_label(payload, blob)
+    duration = _duration_minutes_value(payload, blob)
+    if isinstance(duration, int):
+        duration_line = f"**Trvání**: {duration} min"
     else:
-        parts = str(participants)
-    duration = meeting.get("duration_minutes") or meeting.get("duration") or "—"
-    permalink = (
-        meeting.get("permalink")
-        or meeting.get("url")
-        or payload.get("permalink")
-        or ""
-    )
-    summary = (
-        payload.get("summary")
-        or meeting.get("summary")
-        or payload.get("auto_summary")
-        or ""
-    )
-    actions = payload.get("action_items") or meeting.get("action_items") or []
+        duration_line = f"**Trvání**: {duration}"
+    permalink = _field(payload, blob, "permalink", "url", "meeting_url") or ""
+    summary = _field(payload, blob, "summary", "auto_summary") or ""
+    actions = _field(payload, blob, "action_items") or []
     if isinstance(actions, list):
         action_lines = []
         for a in actions:
@@ -80,15 +151,21 @@ def render_markdown(payload: dict[str, Any]) -> str:
     else:
         actions_md = str(actions)
     transcript = (
-        payload.get("transcript")
-        or meeting.get("transcript")
-        or payload.get("full_transcript")
+        _field(
+            payload,
+            blob,
+            "meeting_transcription",
+            "transcript",
+            "transcription",
+            "full_transcript",
+            "content",
+        )
         or ""
     )
     return (
-        f"# {title} — {when}\n\n"
-        f"**Účastníci**: {parts or '—'}\n"
-        f"**Trvání**: {duration} min\n"
+        f"# {display_title} — {when}\n\n"
+        f"**Účastníci**: {parts}\n"
+        f"{duration_line}\n"
         f"**Sembly**: {permalink or '—'}\n\n"
         f"## Shrnutí\n\n{summary or '—'}\n\n"
         f"## Akční body\n\n{actions_md}\n\n"

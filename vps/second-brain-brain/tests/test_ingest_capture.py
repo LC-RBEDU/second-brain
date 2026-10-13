@@ -57,7 +57,10 @@ def test_ingest_write_and_dedupe():
     assert r1["deduped"] is False
     assert r1["path"].startswith("01-INBOX/sembly/")
     assert r2["deduped"] is True
-    assert "hi" in next(iter(vault.files.values()))
+    assert r2["path"] == r1["path"]
+    md_paths = [p for p in vault.files if p.endswith(".md")]
+    assert len(md_paths) == 1
+    assert "hi" in vault.files[md_paths[0]]
 
 
 def test_capture_daily_path():

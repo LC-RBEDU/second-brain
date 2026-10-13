@@ -29,7 +29,17 @@ def test_render_has_no_llm_marker_and_sections():
     )
     assert "## Shrnutí" in md
     assert "hello" in md
-    assert "llm" not in md.lower() or "LLM" not in md  # no LLM section
+    assert "**Trvání**: 30 min" in md
+    assert "llm" not in md.casefold()
     assert filename_for({"meeting": {"title": "Sync", "start_time": "2026-10-11T10:00:00"}}).endswith(
         "-Sync.md"
     )
+
+
+def test_legacy_started_at_and_full_transcript():
+    payload = {
+        "meeting": {"title": "X", "started_at": "2026-10-11T10:30:00"},
+        "full_transcript": "legacy full",
+    }
+    assert "2026-10-11-1030" in filename_for(payload)
+    assert "legacy full" in render_markdown(payload)
