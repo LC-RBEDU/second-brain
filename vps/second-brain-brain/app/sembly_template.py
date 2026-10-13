@@ -91,7 +91,7 @@ def _participants_label(payload: dict[str, Any], blob: dict[str, Any]) -> str:
         parts = []
         for p in raw:
             if isinstance(p, dict):
-                name = _pick(p.get("name"), p.get("email"), str(p))
+                name = _pick(p.get("name"), p.get("email"))
                 if name is not None:
                     parts.append(str(name))
             else:

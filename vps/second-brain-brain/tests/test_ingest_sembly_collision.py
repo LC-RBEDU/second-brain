@@ -44,17 +44,33 @@ def test_two_meetings_same_unknown_filename_both_write():
     vault = _FakeVault()
     p1 = {"meeting_id": "m1", "meeting_title": "meeting", "meeting_transcription": "a"}
     p2 = {"meeting_id": "m2", "meeting_title": "meeting", "meeting_transcription": "b"}
+    p3 = {"meeting_id": "m3", "meeting_title": "meeting", "meeting_transcription": "c"}
     with patch.object(ingest_mod, "brain_vault", return_value=_cm(vault)):
         r1 = ingest_mod.ingest_sembly(p1, env={"GIT_VAULT_PUSH": "1"})
         r2 = ingest_mod.ingest_sembly(p2, env={"GIT_VAULT_PUSH": "1"})
+        r3 = ingest_mod.ingest_sembly(p3, env={"GIT_VAULT_PUSH": "1"})
     assert r1["deduped"] is False
     assert r2["deduped"] is False
-    assert r1["path"] != r2["path"]
-    assert "m2" in r2["path"] or r2["path"].endswith(".md")
-    assert vault.files[r1["path"]]
-    assert vault.files[r2["path"]]
+    assert r3["deduped"] is False
+    assert r1["path"] == "01-INBOX/sembly/unknown-time-meeting.md"
+    assert r2["path"] == "01-INBOX/sembly/unknown-time-meeting-m2.md"
+    assert r3["path"] == "01-INBOX/sembly/unknown-time-meeting-m3.md"
     assert "a" in vault.files[r1["path"]]
     assert "b" in vault.files[r2["path"]]
+    assert "c" in vault.files[r3["path"]]
+
+
+def test_collision_suffix_increments_when_key12_path_taken():
+    vault = _FakeVault()
+    # Pre-seed colliding stem-key12 path so third write must use -2
+    vault.files["01-INBOX/sembly/unknown-time-meeting.md"] = "old"
+    vault.files["01-INBOX/sembly/unknown-time-meeting-m9.md"] = "taken"
+    p = {"meeting_id": "m9", "meeting_title": "meeting", "meeting_transcription": "x"}
+    with patch.object(ingest_mod, "brain_vault", return_value=_cm(vault)):
+        r = ingest_mod.ingest_sembly(p, env={"GIT_VAULT_PUSH": "1"})
+    assert r["deduped"] is False
+    assert r["path"] == "01-INBOX/sembly/unknown-time-meeting-m9-2.md"
+    assert "x" in vault.files[r["path"]]
 
 
 def test_same_meeting_id_dedupes_via_key():
