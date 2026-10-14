@@ -1,15 +1,16 @@
 # Pipeline: Brain append_task_note
 
-Stav: IMPLEMENT
+Stav: DONE
 Plán: docs/plans/2026-10-14-brain-append-task-note.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID b5d26299-9469-414b-a4b3-34bd0eb9d446, otevření plánu #1, generace v otevření k=2/3, kolo r=2/3
 Šťoural: g=5 agent ID 2641ba9c-06f2-4138-bcba-8fb3a903d8fd · HOTOVÝ GRILL (0 otázek)
 Kritik: kolo 5 agent ID d8b5ab8b-49fc-478e-bca2-e0bbfed2c75a · SCHVÁLENO (0 BLOCKER, 0 MAJOR)
+Review: agent ID 8e8aa5b2-8878-4b2d-80b8-f04f49bf1a88 · SCHVÁLENO (0 BLOCKER, 0 MAJOR) na 99ad22a
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (rbu-base, origin/main při vzniku větve): 99c3685c2a76860c6c48d0ff604661c30813f1c5 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN) — zapsat až v testerGate
+Base (rbu-base, origin/main při vzniku větve): 99c3685c2a76860c6c48d0ff604661c30813f1c5 · Kódový SHA: 99ad22a9b93236a8840f7b79fe7845b81d497385 · Review SCHVÁLENO na: 99ad22a9b93236a8840f7b79fe7845b81d497385 · QA PASS na: 99ad22a9b93236a8840f7b79fe7845b81d497385 · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete
 
 ## Zadání (doslovně) a rozhodnutí
 
@@ -104,6 +105,11 @@ nechej /rbu-pipeline architekta a další doladit zadání této změny
 | 14 | 2026-10-14 | PLAN | b5d26299-9469-414b-a4b3-34bd0eb9d446 | plán v4 doplněn | — | C24–C26: B16/T3, A28 string updated, A14 split 409. GRILL g=5. |
 | 15 | 2026-10-14 | GRILL | 2641ba9c-06f2-4138-bcba-8fb3a903d8fd | HOTOVÝ GRILL | 0 | C24–C26 drží. Žádná nová otázka. Přechod do CRITIC. |
 | 16 | 2026-10-14 | CRITIC | d8b5ab8b-49fc-478e-bca2-e0bbfed2c75a | SCHVÁLENO | 0 BLOCKER, 0 MAJOR | C24–C26 vyřešeny. Přechod do IMPLEMENT. |
+| 17 | 2026-10-14 | IMPLEMENT | hlavní | commit 99ad22a | — | Gate 534 passed. Jen soubory nástroje, docs, skill a plán. Push ne. |
+| 18 | 2026-10-14 | REVIEW | 8e8aa5b2-8878-4b2d-80b8-f04f49bf1a88 | SCHVÁLENO | 0 BLOCKER, 0 MAJOR | Na 99ad22a. Push main. |
+| 19 | 2026-10-14 | QA | 247e7644-6374-48ff-98c2-d99cfffb5707 | PASS | — | Image `99ad22a` na second-brain-brain (app 18). `GET /healthz` 200. Vault se nezapisoval. |
+| 20 | 2026-10-14 | testerGate | hlavní | TESTER: přeskočeno (profil SECOND_BRAIN) | — | rbu-tester se nevolá. |
+| 21 | 2026-10-14 | DONE | hlavní | audit | — | Plán SCHVÁLENO, review SCHVÁLENO, QA PASS na 99ad22a, gate 534 passed. |
 
 ## Otevřené nálezy
 
