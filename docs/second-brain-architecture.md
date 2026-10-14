@@ -146,7 +146,7 @@ sequenceDiagram
 
 ### 8.2 Zápis úkolu
 
-Klient → Brain `create_task` / `update_task` / `capture_daily` → GitVault commit/push → GitHub vault.
+Klient → Brain `create_task` / `update_task` / `append_task_note` / `capture_daily` → GitVault commit/push → GitHub vault.
 
 ### 8.3 Triáž Slack/Gmail
 

@@ -16,6 +16,20 @@ Git vault: [docs/git-vault-runbook.md](git-vault-runbook.md) · Artifact: [docs/
 | Deploy | Brain **i** hub stejný SHA (`count_focus_slots` / `count_focus_epic_slots` v hub lib) |
 | Plán | [docs/plans/2026-10-13-focus-limits-10-tasks-5-epics.md](plans/2026-10-13-focus-limits-10-tasks-5-epics.md) · původní [set_focus](plans/2026-10-12-brain-set-focus.md) |
 
+## append_task_note
+
+| Položka | Stav |
+|---|---|
+| MCP / REST | `append_task_note(path, text, target, expect_oid?)` · `POST /v1/tasks/append` |
+| `target` | `log` nebo `step`. `note` je alias `log`. Porovnání bez ohledu na velikost písmen. V odpovědi jen `log` nebo `step`. |
+| Log | Odrážka do `## Poznámky / log`. |
+| Krok | Další nezaškrtnutý `**ID-N**` v `## Operativní kroky`. |
+| CAS | Volitelný `expect_oid`, stejně jako `update_task`. Nesoulad → 409 `cas_conflict`. |
+| Terminální úkol | Nový krok na `Done` nebo `Cancelled` → 409 `task_terminal`. Stejný krok, který už v sekci je, zůstane. Log se na terminální úkol zapíše. |
+| Epic | Bez sekce `## Operativní kroky` a cíl `step` → 400 `epic_has_no_steps`. Log na epicu projde. |
+| Nemění | `status`, `focus`, odškrtnutí existujících kroků, `## Stav (auto)`, Definition of done. |
+| Auth | OAuth, service Bearer i `dev`. Zvláštní focus-policy není. |
+
 ## F5 — boti (DONE 2026-10-11)
 
 | Položka | Stav |

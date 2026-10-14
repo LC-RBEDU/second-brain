@@ -22,6 +22,7 @@ from app.tools import reminders_tools as reminders_tool
 from app.tools import set_focus as set_focus_tool
 from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
+from app.tools import append_task_note as append_task_note_tool
 
 
 def _err_text(exc: BaseException) -> str:
@@ -77,6 +78,32 @@ def build_mcp() -> MCPServer:
             update_task_tool.update_task,
             path=path,
             patch=patch,
+            expect_oid=expect_oid,
+        )
+
+    @mcp.tool(
+        description=(
+            "Append one bullet to an existing task file. target=log writes into "
+            "## Poznámky / log (target note is an alias; matching is case-insensitive; "
+            "the result target is log or step). target=step adds the next unchecked "
+            "**ID-N** checkbox in ## Operativní kroky. A new step on Done or Cancelled "
+            "returns 409 task_terminal. An epic with no operational-steps section returns "
+            "400 epic_has_no_steps. Optional expect_oid is the same CAS as update_task. "
+            "Does not change status or focus, does not check off existing steps, and does "
+            "not write ## Stav (auto) or Definition of done."
+        )
+    )
+    def append_task_note(
+        path: str,
+        text: str,
+        target: str,
+        expect_oid: str | None = None,
+    ) -> str:
+        return _call(
+            append_task_note_tool.append_task_note,
+            path=path,
+            text=text,
+            target=target,
             expect_oid=expect_oid,
         )
 

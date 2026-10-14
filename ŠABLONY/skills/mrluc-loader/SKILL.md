@@ -9,7 +9,7 @@ description: >-
   (using-n8n-skills-official and related) — not agenda skills alone.
 ---
 
-**F2+ (Brain write):** vault mutate = Brain MCP/REST (`brain.cyprovi.cz`) — `create_task`, `update_task`, `capture_daily`, … Git klon / Drive folder = read (+ legacy FS fail-path jen když Brain down a uživatel dovolí). Drive Desktop offline už není provozní předpoklad zápisu.
+**F2+ (Brain write):** vault mutate = Brain MCP/REST (`brain.cyprovi.cz`) — `create_task`, `update_task`, `append_task_note`, `capture_daily`, … Git klon / Drive folder = read (+ legacy FS fail-path jen když Brain down a uživatel dovolí). Drive Desktop offline už není provozní předpoklad zápisu.
 
 
 # MrLUC loader

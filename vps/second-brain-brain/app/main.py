@@ -33,6 +33,7 @@ from app.tools import reminders_tools as reminders_tool
 from app.tools import set_focus as set_focus_tool
 from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
+from app.tools import append_task_note as append_task_note_tool
 
 
 def _push_ok() -> bool:
@@ -181,6 +182,23 @@ class UpdateTaskBody(BaseModel):
 def rest_update_task(body: UpdateTaskBody, _auth: AuthPrincipal) -> dict:
     return update_task_tool.update_task(
         path=body.path, patch=body.patch, expect_oid=body.expect_oid
+    )
+
+
+class AppendTaskBody(BaseModel):
+    path: str
+    text: str
+    target: str
+    expect_oid: str | None = None
+
+
+@app.post("/v1/tasks/append")
+def rest_append_task_note(body: AppendTaskBody, _auth: AuthPrincipal) -> dict:
+    return append_task_note_tool.append_task_note(
+        path=body.path,
+        text=body.text,
+        target=body.target,
+        expect_oid=body.expect_oid,
     )
 
 
