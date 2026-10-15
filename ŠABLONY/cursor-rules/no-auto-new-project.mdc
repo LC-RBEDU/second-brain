@@ -1,0 +1,36 @@
+---
+description: Nový project hub jen po výslovném souhlasu člověka — default mapovat na existující projekt
+alwaysApply: true
+---
+
+# Žádný auto-nový projekt
+
+Agent **nesmí** sám založit nový project hub (`02-PROJEKTY/<Hub>.md`, `create_project_hub.py`, scaffold `tasks/` / `materials/` / `outputs/`, záznam v `migration-mapping.json`).
+
+## Default
+
+1. Najdi **existující** projekt (`02-PROJEKTY/*.md` → `slug` / `aliases`, `agent-context.json` → `projects[]`, Index).
+2. Task / materiál / zápis mapuj tam — i když téma „zní jako nová oblast“ (např. marketing KPI → `rb-universe-development` / existující epic).
+3. Nejsi si jistý slugem → **zeptej se** („kam to patří?“) a nabídni 1–3 kandidáty. **Nevytvářej** nový hub „zatím“.
+
+## Nový projekt — jen po explicitním souhlasu
+
+Povoleno teprve když člověk **výslovně** řekne např. „založ projekt …“, „nový projekt …“, „ano, založ hub“ po preview.
+
+Pak teprve:
+
+1. Preview parametrů (`slug`, hub-name, area, id-prefix) — `create_project_hub.py --dry-run` / workflow v `new-project-workflow.md`.
+2. Po **druhém** potvrzení (ne jen „zkus to“) spusť scaffold.
+3. Teprve potom první tasky.
+
+„Vypadá to na nový projekt“ / „nemám kam to dát“ / triage batch **nestačí** jako souhlas.
+
+## Capture / triage / work
+
+- Capture a triage: mapuj na existující slug; nový hub = **návrh v preview**, apply až po výslovném ano.
+- `agenda-work` § Nový projekt: stejný gate — žádný dry-run→execute bez lidského „založ“.
+- Mirror task v „novém“ projektu vedle existující story (jako bývalé MKT1 vedle RBU-S112) **nezakládej** — stačí jeden kanonický task.
+
+## Incident
+
+2026-10: agent založil projekt Marketing + **MKT1** jako mirror k **RBU-S112** bez souhlasu → hub zrušen, MKT1 Cancelled.

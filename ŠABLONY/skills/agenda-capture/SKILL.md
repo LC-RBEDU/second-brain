@@ -71,7 +71,7 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 
 - Projdi `02-PROJEKTY/*.md` (frontmatter `slug` + `aliases`) a [[00-System/Index]]
 - Sembly `Suggested topic:` jako default
-- **Nový slug** (žádný existující projekt): neskákej rovnou na task — navrhni [[00-System/Templates/new-project-workflow|založení projektu]] (`create_project_hub.py` + charter včetně `## Zdroje dat`; bez `workspace:`)
+- **Nový slug** (žádný existující projekt): **nezakládej hub**. Default = mapuj na nejbližší existující projekt (nebo se zeptej „kam?“). Nový projekt jen po **výslovném** souhlasu člověka — viz `.cursor/rules/no-auto-new-project.mdc` + [[00-System/Templates/new-project-workflow]]. Mirror task v novém projektu vedle existující story **nezakládej**.
 
 ### 5. Generuj ID a filename
 

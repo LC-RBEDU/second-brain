@@ -166,6 +166,7 @@ Z toho plyne (v README není):
 - **NE** označuj zrušený úkol jako `Done` — od 4. 8. 2026 je na to `Cancelled`.
 - **NE** používej **dev RB Universe** (`dev-universe`, `api.dev-universe`) pro pracovní data — jen produkce + MCP `user-rb-universe`; viz `rb-universe-production-data.mdc`.
 - **NE** spouštěj `/init` ani negeneruj `AGENTS.md` / `CLAUDE.md` v git repu — viz `no-agents-md-init.mdc`. Krátká šablona na týmovém sdíleném disku `[EDU] <Tým>` skillem `tymovy-disk` po potvrzení člověkem je povolená.
+- **NE** zakládej nový project hub bez výslovného souhlasu — default mapuj na existující projekt; viz `no-auto-new-project.mdc`.
 - **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
 
 ## Související

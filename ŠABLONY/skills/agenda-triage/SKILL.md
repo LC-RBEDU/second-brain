@@ -87,7 +87,7 @@ Pro každý INBOX zdroj:
 
 Po schválení batch s novými tasky pro projekt **nabídn** doplnění `## Kontext` hubu (nové téma z triáže) + `updated:`.
 
-Pokud batch vyžaduje **nový projekt** (nový slug): naved na [[00-System/Templates/new-project-workflow]] — nejdřív hub + `## Zdroje dat`, pak tasky.
+Pokud batch „vypadá na **nový projekt**“: **nezakládej hub ani mirror task**. Mapuj na existující slug (nebo nabídni kandidáty a zeptej se). Nový hub jen po výslovném „založ projekt …“ — viz `.cursor/rules/no-auto-new-project.mdc` + [[00-System/Templates/new-project-workflow]].
 
 ## Auto-routing „komplexních" zdrojů
 

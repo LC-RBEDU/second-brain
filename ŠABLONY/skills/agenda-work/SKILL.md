@@ -150,11 +150,13 @@ Vždy jako preview, vždy čekej na potvrzení.
 
 ### 6. Nový projekt
 
-Když téma nepatří do existujícího slugu:
+**Default: nový hub nezakládej** — mapuj na existující projekt (viz `.cursor/rules/no-auto-new-project.mdc`). Téma „nezapadá“ → zeptej se „kam?“ / nabídni 1–3 slugy.
+
+Nový projekt **jen** když člověk výslovně řekne „založ projekt …“ / „nový projekt …“ / potvrdí preview „ano, založ hub“:
 
 1. Načti [[00-System/Templates/new-project-workflow]] + [[00-System/Index]].
 2. Preview parametrů: `slug`, `hub-name`, `area`, `id-prefix`, basename kolize s `03-AREAS/`.
-3. Spusť scaffold (preview first):
+3. Dry-run:
 
 ```bash
 python3 scripts/create_project_hub.py \
@@ -162,7 +164,7 @@ python3 scripts/create_project_hub.py \
   --area "03-AREAS/<oblast>" --id-prefix <PREFIX> --dry-run
 ```
 
-4. Po schválení — stejný příkaz bez `--dry-run`.
+4. Po **výslovném** schválení — stejný příkaz bez `--dry-run`.
 5. Doplň charter (`## Cíl`, `## Scope`, `## Zdroje dat` s konkrétními URL). **Nepoužívej** `workspace:` ani `sources: google-workspace` (GWS globální — [[agenda-system]] §6).
 6. První task(y) přes capture/triage s `project: "[[<HubName>]]"`.
 
