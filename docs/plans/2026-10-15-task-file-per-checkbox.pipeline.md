@@ -1,15 +1,15 @@
 # Pipeline: task soubor místo checkboxu
 
-Stav: IMPLEMENT
+Stav: DONE
 Kritik: SCHVÁLENO · c6b287c7-5e95-47db-af24-543f84525817 · 0 BLOCKER, 0 MAJOR
 Plán: docs/plans/2026-10-15-task-file-per-checkbox.md
 Schvalování plánu uživatelem: ne
 Architekt: resume d3b2bc77-6c50-4b46-a3ac-278dd17c886b · otevření #2 · generace k=1/3 · kolo r=2/3
 Šťoural: g=2 HOTOVÝ · 1418a290-3fcc-489c-acc5-e9c88d4a6af7. g=1 eb9a4192 je po deltě r=2 neplatný.
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): neřešeno (ještě bez implementace) · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN) až v DONE
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 4/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main při vzniku): 25c76ad · Kódový SHA: b9ce544 · Review SCHVÁLENO na: b9ce544 · QA PASS na: b9ce544 · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete po auditu
 
 ## Projekt
 
@@ -70,13 +70,17 @@ Odpovědi:
 | 21 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Embed i v tasks/*.md, expirované checkbox id nezavře story, dry-run nese epic a deadline, append dry_run na MCP i REST. Gate: hub+scripts 434 passed, brain 143 passed. Commit ab92bfc. |
 | 22 | 2026-10-16 | REVIEW | 215c3f22 | K OPRAVĚ | 0 BLOCKER, 1 MAJOR | NEW-1: po kotvě Closes ID-N bez promoted_from nic neodškrtne, a po dni 91 už natrvalo. |
 | 23 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Expirované id s promoted_from story nezavře. Živý krok na souboru se odškrtne. Chybějící řádek je noop, ne Done story. Hub+scripts 437 passed. |
+| 24 | 2026-10-16 | REVIEW | 89bccaeb | SCHVÁLENO | 0 BLOCKER, 0 MAJOR | Na b9ce544. |
+| 25 | 2026-10-16 | QA | 95e29072 | PASS | 0 | Image b9ce544 na second-brain-brain (18, healthy) i second-brain-hub (11). healthz 200. Nástroje v image. tools/list bez tokenu 401. Vault se nezapisoval. |
+| 26 | 2026-10-16 | testerGate | hlavní | TESTER: přeskočeno (profil SECOND_BRAIN) | — | rbu-tester se nevolá. |
+| 27 | 2026-10-16 | DONE | hlavní | audit | — | Kritik SCHVÁLENO, review SCHVÁLENO na b9ce544, QA PASS na nasazeném b9ce544. Vlastní gate: hub+scripts 437 passed, brain 143 passed. |
 
 ## Otevřené nálezy
 
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
 | --- | --- | --- | --- | --- | --- |
-| Q1 | BLOKUJÍCÍ | PLAN | otevřený | 1 |
-| Q2 | BLOKUJÍCÍ | PLAN | otevřený | 1 |
-| Q3 | BLOKUJÍCÍ | PLAN | otevřený | 1 |
-| Q4 | BLOKUJÍCÍ | PLAN | otevřený | 1 |
-| Q5 | NEBLOKUJÍCÍ | PLAN | předpoklad do odpovědi (Doing/Next/Backlog/Waiting s deadline; Done/Cancelled a [x] mimo) | 1 |
+| Q1 | BLOKUJÍCÍ | PLAN | vyřešen v #4 | 1 |
+| Q2 | BLOKUJÍCÍ | PLAN | vyřešen v #4 | 1 |
+| Q3 | BLOKUJÍCÍ | PLAN | vyřešen v #4 | 1 |
+| Q4 | BLOKUJÍCÍ | PLAN | vyřešen v #4 | 1 |
+| Q5 | NEBLOKUJÍCÍ | PLAN | vyřešen v #4 (Doing/Next/Backlog/Waiting s deadline; Done/Cancelled a [x] mimo) | 1 |
