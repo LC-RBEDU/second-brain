@@ -63,7 +63,9 @@ Odpovědi:
 | 14 | 2026-10-16 | IMPLEMENT | hlavní | rozpracováno | — | create, bulk, promote gate |
 | 15 | 2026-10-16 | IMPLEMENT | hlavní | rozpracováno | — | write_plan |
 | 16 | 2026-10-16 | IMPLEMENT | hlavní | rozpracováno | — | Smazané šablony .base, zákaz Obsidianu jako editoru. |
-| 17 | 2026-10-16 | IMPLEMENT | hlavní | gate zelený | — | python3 -m pytest vps/second-brain-hub/tests scripts/tests -q → 423 passed. Brain venv pytest → 139 passed. Živý vault se nezapisoval. Další krok: lokální commit a diff reviewer. |
+| 17 | 2026-10-16 | IMPLEMENT | hlavní | gate zelený | — | 423 hub + 139 brain. Commit 6fd95f7. |
+| 18 | 2026-10-16 | REVIEW | 13ae5ee7 | K OPRAVĚ | 7 BLOCKER, 5 MAJOR | NEW-1 cron Done, NEW-2 append checkbox, NEW-3 toggle okno, NEW-4 create deadline, NEW-5 .base, NEW-6 dry-run, NEW-7 YAML, NEW-8 pole, NEW-9 pozdější rodič, NEW-10 index Closes, NEW-11 log čtení, NEW-12 testy. |
+| 19 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Nálezy NEW-1 až NEW-12 v kódu. Gate: hub+scripts 431 passed, brain 142 passed. Živý vault se nezapisoval. |
 
 ## Otevřené nálezy
 

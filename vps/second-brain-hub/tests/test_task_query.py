@@ -43,6 +43,12 @@ def test_old_checkbox_id_resolves_only_inside_the_window():
     assert error_direct is None and resolved_direct is None and direct is task
 
 
+def test_checkbox_alias_without_anchor_is_inactive_even_when_the_file_exists():
+    task = _task(id="IAD-T9", title="Krok", status="Next", type="task", promoted_from="IAD-S55-1", slug="it-ai-data")
+    _found, _resolved, error = resolve_task([task], "IAD-S55-1", applied_at=None, today=INSIDE)
+    assert error == "alias_inactive"
+
+
 def test_tree_counts_open_descendants():
     tasks = [
         _task(id="E1", title="Epic", status="Doing", type="epic", slug="finance"),

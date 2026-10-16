@@ -1,6 +1,9 @@
 """Promote script refuses the wrong backend and plans distinct task ids."""
 from __future__ import annotations
 
+import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,12 +29,58 @@ def _story(body: str, **fm):
     return SimpleNamespace(frontmatter=base, body=body, rel_path="02-PROJEKTY/rb-universe-development/tasks/RBU-S7 — Story.md")
 
 
+def _git(tmp, *args):
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+    subprocess.check_call(["git", *args], cwd=tmp, env=env)
+
+
+def test_dirty_git_start_does_not_reset_or_write_the_anchor(tmp_path):
+    from git_io import GitVault
+
+    _git(tmp_path, "init", "-b", "main")
+    (tmp_path / "readme.md").write_text("a\n")
+    _git(tmp_path, "add", "readme.md")
+    _git(tmp_path, "commit", "-m", "init")
+    (tmp_path / "readme.md").write_text("dirty\n")
+    vault = GitVault(tmp_path, remote="", push=False, discard_dirty_on_error=True, env={})
+    vault.begin_session()
+    assert vault.skipped is True
+    assert not (tmp_path / "00-System" / "task-promotion-applied.json").exists()
+    vault.end_session()
+    assert (tmp_path / "readme.md").read_text() == "dirty\n"
+
+
+def test_exception_in_session_drops_the_uncommitted_file(tmp_path):
+    from git_io import GitVault
+
+    _git(tmp_path, "init", "-b", "main")
+    (tmp_path / "readme.md").write_text("a\n")
+    _git(tmp_path, "add", "readme.md")
+    _git(tmp_path, "commit", "-m", "init")
+    vault = GitVault(tmp_path, remote="", push=False, discard_dirty_on_error=True, env={})
+    try:
+        with vault:
+            (tmp_path / "readme.md").write_text("changed\n")
+            raise RuntimeError("boom")
+    except RuntimeError:
+        pass
+    assert (tmp_path / "readme.md").read_text() == "a\n"
+    log = subprocess.check_output(["git", "log", "--oneline"], cwd=tmp_path, text=True)
+    assert "boom" not in log
+
+
 def test_apply_refuses_drive_and_mac_root():
     assert apply_allowed({}) == "ALLOW_VAULT_APPLY"
     assert main(["--apply"], {}) == 2
     assert main(["--apply"], {"ALLOW_VAULT_APPLY": "1", "VAULT_BACKEND": "drive", "GIT_VAULT_ROOT": "/data/vault"}) == 2
     assert main(["--apply"], {"ALLOW_VAULT_APPLY": "1", "VAULT_BACKEND": "git", "GIT_VAULT_ROOT": "/Users/me/vault"}) == 2
-    assert main([], {}) == 0
+    assert main([], {}, tasks=[]) == 0
 
 
 def test_two_open_checks_get_two_ids_and_leave_focus_off_the_tasks():
@@ -95,6 +144,60 @@ def ANCHOR_WRITES(vault: _Mem) -> int:
     from promote_open_checkboxes import ANCHOR
 
     return sum(1 for path in vault.writes if path == ANCHOR)
+
+
+def test_title_with_colon_is_quoted_and_trace_lands_in_the_log():
+    from promote_open_checkboxes import write_plan
+
+    body = "---\nid: RBU-S7\nstatus: Doing\nfocus:\ndeadline:\n---\n## Operativní kroky\n- [ ] **RBU-S7-1** A: B\n  pokračování\n"
+    story_path = "02-PROJEKTY/rb-universe-development/tasks/RBU-S7 — Story.md"
+    vault = _Mem({story_path: body})
+    plans = plan_promotions(
+        [_story("## Operativní kroky\n- [ ] **RBU-S7-1** A: B\n  pokračování\n", focus="", deadline="")],
+        id_for_index=lambda i: "RBU14",
+    )
+    write_plan(vault, plans, today="2026-10-16")
+    child = next(text for path, text in vault.files.items() if "RBU-T14" in path)
+    assert 'title: "A: B"' in child
+    assert "pokračování" in child
+    assert "- [ ] **RBU-S7-1**" not in vault.files[story_path]
+    assert "RBU-S7-1 → [[RBU-T14 — A: B]]" in vault.files[story_path]
+
+
+def test_dry_run_lists_focus_and_writes_nothing(capsys):
+    body = "## Operativní kroky\n- [ ] **RBU-S7-1** První\n- [ ] **RBU-S7-2** Druhý\n"
+    assert main([], {}, tasks=[_story(body)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["written"] is False
+    assert payload["count"] == 2
+    assert all(row["clear_story_focus"] for row in payload["plans"])
+    assert all(row["focus"] == "" for row in payload["plans"])
+
+
+def test_apply_deletes_base_files():
+    from promote_open_checkboxes import write_plan
+
+    class _Vault(_Mem):
+        def list_dir(self, path, pattern="*", recursive=False):
+            return [
+                SimpleNamespace(rel_path=rel)
+                for rel in self.files
+                if rel.startswith(path) and rel.endswith(".base")
+            ]
+
+        def delete(self, path):
+            self.files.pop(path, None)
+            self.writes.append("deleted:" + path)
+
+    story_path = "02-PROJEKTY/rb-universe-development/tasks/RBU-S7 — Story.md"
+    vault = _Vault(
+        {
+            story_path: "---\nid: RBU-S7\nfocus:\n---\n## Poznámky / log\n",
+            "00-System/Bases/All-tasks.base": "views: []\n",
+        }
+    )
+    write_plan(vault, [], today="2026-10-16")
+    assert "00-System/Bases/All-tasks.base" not in vault.files
 
 
 def test_single_check_later_than_epic_keeps_the_date_on_the_story():

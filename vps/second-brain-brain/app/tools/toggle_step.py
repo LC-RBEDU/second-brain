@@ -19,11 +19,11 @@ for _lib in (
 from context_tombstone import delete_context_tombstone  # noqa: E402
 from drive_io import DriveNotFoundError  # noqa: E402
 from hierarchy import is_story, parse_parent_id  # noqa: E402
-from promoted_alias import alias_is_active  # noqa: E402
+from promoted_alias import load_applied_at  # noqa: E402
 from task_io import parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError
-from app.tools.task_catalog import alias_clock, load_tasks
+from app.tools.task_catalog import load_tasks
 from app.vault_deps import brain_vault
 
 _BOX = re.compile(r"^(?P<prefix>\s*-\s+\[)(?P<mark>[ xX])(?P<rest>\]\s+\*\*[^*]+\*\*.*)$")
@@ -62,8 +62,7 @@ def toggle_step(
         except DriveNotFoundError as exc:
             raise BrainClientError(message="not_found", status_code=404, error_reason="not_found") from exc
         parsed = parse_task_text(text, rel_path=path, meta=meta)
-        today, applied = alias_clock(vault)
-        if alias_is_active(today, applied) and is_story(parsed):
+        if load_applied_at(vault) is not None and is_story(parsed):
             tasks = load_tasks(vault)
             story_id = str(parsed.frontmatter.get("id") or "")
             child_ids = [

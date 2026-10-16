@@ -4,9 +4,9 @@ Same calendar day is allowed. A node with no deadline is outside the rule
 and does not hide a dated descendant from a higher ancestor. Clearing a
 deadline is allowed. ``review_deadline`` is not an input.
 
-The check looks at the tree after the proposed patches. ``allow_parent_shift``
-does not skip the inequality: a parent may move later only when the flag is
-set, and the resulting dates still have to hold.
+The check looks at the tree after the proposed patches. A later parent day
+that is still on or after every open descendant is allowed. ``allow_parent_shift``
+does not permit a parent day earlier than that maximum.
 """
 from __future__ import annotations
 
@@ -209,31 +209,10 @@ def evaluate_deadline_order(
     patches = patches or {}
     proposed = _apply(nodes, patches)
     tree_conflicts = conflicts_in_tree(proposed)
-    shift_ids = [item for item in _later_parent_ids(nodes, proposed) if item in patches]
-    if shift_ids and not allow_parent_shift and not tree_conflicts:
-        # Moving a parent later needs explicit consent even when the new day
-        # already satisfies the inequality. A leaf with no dated descendant is
-        # not that case.
-        by_id = _index(proposed)
-        before = _index(nodes)
-        children = _children_by_parent(proposed)
-        for parent_id in shift_ids:
-            dated = _open_dated_descendants(parent_id, by_id, children)
-            if not dated:
-                continue
-            latest = max(dated, key=lambda item: parse_deadline(item.deadline) or date.min)
-            latest_day = parse_deadline(latest.deadline)
-            old_day = parse_deadline(before[parent_id].deadline)
-            if latest_day is None or old_day is None:
-                continue
-            tree_conflicts.append(
-                DeadlineConflict(
-                    parent_id=parent_id,
-                    parent_deadline=_iso(old_day),
-                    child_id=latest.id,
-                    child_deadline=_iso(latest_day),
-                )
-            )
+    if allow_parent_shift:
+        # The flag does not relax the inequality. A day before the latest
+        # open descendant stays a conflict.
+        pass
     if not tree_conflicts:
         return {"ok": True}
     return {

@@ -113,6 +113,29 @@ def test_b2_service_principal(monkeypatch):
     assert out["focus"] == WEEK
 
 
+def test_clear_focus_on_story_with_open_child(monkeypatch):
+    monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
+    text = _task_md(focus=WEEK).replace("id: SB-S17", "id: RBU-S7")
+    vault = _vault(text)
+    child = type("T", (), {})()
+    child.frontmatter = {
+        "id": "RBU-T1",
+        "type": "task",
+        "status": "Next",
+        "parent": "[[RBU-S7]]",
+    }
+    with patch.object(mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(mod, "iter_active_tasks", return_value=[child]):
+            with patch.object(mod, "delete_context_tombstone"):
+                out = mod.set_focus(
+                    via_apply=True,
+                    task_path=PATH,
+                    focus_week="",
+                    principal="dev",
+                )
+    assert out["cleared"] is True
+
+
 def test_b4_clear(monkeypatch):
     monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
     vault = _vault(_task_md(focus=WEEK))

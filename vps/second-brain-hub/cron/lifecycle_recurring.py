@@ -57,7 +57,7 @@ import re
 import sys
 from datetime import datetime, timedelta, date
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 _LIB = Path(__file__).resolve().parents[1] / "lib"
@@ -256,6 +256,23 @@ def reset_body(body: str, reset_sections: list[str], preserve_sections: list[str
     return "\n".join(out_lines)
 
 
+def rotation_blocked(task: Any, siblings: list[Any], today: date) -> tuple[bool, date, dict]:
+    """True when the next deadline would break parent order. The file stays put."""
+    last_dl = parse_iso_date(task.frontmatter.get("deadline"))
+    next_dl = compute_next_deadline(task.frontmatter.get("recurring") or {}, last_dl, today)
+    nodes = []
+    for item in siblings:
+        if not item.frontmatter.get("id"):
+            continue
+        node = node_from_frontmatter(item.frontmatter)
+        if node.id == task.task_id:
+            # The next instance is open. The file on disk is still Done.
+            node = type(node)(node.id, node.parent_id, "Next", node.deadline)
+        nodes.append(node)
+    order = evaluate_deadline_order(nodes, {task.task_id: next_dl.isoformat()})
+    return (not order.get("ok", False), next_dl, order)
+
+
 def main() -> None:
     with open_vault() as vault:
         today = datetime.now(TZ).date()
@@ -278,15 +295,9 @@ def main() -> None:
 
             # Deadline order is checked before archive. A violating rotation
             # leaves the live file in tasks/ and does not move the parent.
-            last_dl = parse_iso_date(task.frontmatter.get("deadline"))
-            next_dl = compute_next_deadline(rec, last_dl, today)
-            nodes = [
-                node_from_frontmatter(item.frontmatter)
-                for item in iter_active_tasks(vault)
-                if item.frontmatter.get("id")
-            ]
-            order = evaluate_deadline_order(nodes, {task_id: next_dl.isoformat()})
-            if not order.get("ok", False):
+            siblings = list(iter_active_tasks(vault))
+            blocked, next_dl, order = rotation_blocked(task, siblings, today)
+            if blocked:
                 marker = "deadline_order — rotace přeskočena"
                 if marker not in (task.body or ""):
                     parent = (order.get("conflicts") or [{}])[0].get("parent_id", "")

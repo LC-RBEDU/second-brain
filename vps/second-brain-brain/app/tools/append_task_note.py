@@ -20,7 +20,8 @@ for _lib in (
 import yaml  # noqa: E402
 from context_tombstone import delete_context_tombstone  # noqa: E402
 from drive_io import DriveConflictError, DriveNotFoundError  # noqa: E402
-from hierarchy import is_epic  # noqa: E402
+from hierarchy import is_epic, is_story  # noqa: E402
+from promoted_alias import load_applied_at  # noqa: E402
 from operational_steps import (  # noqa: E402
     _CHECKBOX_RE,
     _SUBTASK_ID_RE,
@@ -192,12 +193,73 @@ def _log_bullet(remainder: str, today: date) -> str:
     return f"- {today.isoformat()}: {remainder}"
 
 
+def _spawn_child(vault: Any, fm: dict[str, Any], title: str, *, dry_run: bool) -> dict[str, Any]:
+    """After the migration anchor, a step on a story becomes a task file."""
+    from hierarchy import parse_parent_id
+    from task_id_allocate import peek_ids, with_level
+    from task_io import parse_task_text
+
+    from app.tools.create_task import _hub_filename, _render_task, _slugify_title
+
+    slug = str(fm.get("slug") or "")
+    parent_id = str(fm.get("id") or "")
+    wanted = title.strip()
+    open_status = {"Doing", "Next", "Backlog", "Waiting"}
+    try:
+        metas = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md", recursive=False)
+    except Exception:
+        metas = []
+    for meta in metas:
+        rel = getattr(meta, "rel_path", "")
+        if not rel:
+            continue
+        try:
+            text, file_meta = vault.read_text(rel)
+        except Exception:
+            continue
+        parsed = parse_task_text(text, rel_path=rel, meta=file_meta)
+        child = parsed.frontmatter
+        if str(child.get("type") or "") != "task":
+            continue
+        if parse_parent_id(child.get("parent")) != parent_id:
+            continue
+        if str(child.get("status") or "") not in open_status:
+            continue
+        if str(child.get("title") or "").strip() == wanted:
+            return {
+                "created": str(child.get("id") or ""),
+                "path": rel,
+                "parent": parent_id,
+                "already_present": True,
+            }
+    bare, _where = peek_ids(vault, slug, 1)[0]
+    task_id = with_level(bare, "task")
+    rel = f"02-PROJEKTY/{slug}/tasks/{task_id} — {_slugify_title(wanted)}.md"
+    if dry_run:
+        return {"created": task_id, "path": rel, "parent": parent_id, "dry_run": True, "written": False}
+    body = _render_task(
+        task_id=task_id,
+        title=wanted,
+        slug=slug,
+        hub=_hub_filename(vault, slug),
+        level="task",
+        status="Next",
+        detail="",
+        parent=f"[[{parent_id}]]",
+        hierarchy=True,
+    )
+    vault.mkdir_p(f"02-PROJEKTY/{slug}/tasks")
+    vault.write_text(rel, body)
+    return {"created": task_id, "path": rel, "parent": parent_id}
+
+
 def append_task_note(
     *,
     path: str,
     text: str,
     target: str,
     expect_oid: str | None = None,
+    dry_run: bool = False,
     env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     cleaned_path = (path or "").strip()
@@ -212,7 +274,7 @@ def append_task_note(
     today = _prague_today(env)
     today_s = today.isoformat()
 
-    with brain_vault(mode="mutate", env=env) as vault:
+    with brain_vault(mode="read" if dry_run else "mutate", env=env) as vault:
         try:
             raw_text, meta = vault.read_text(cleaned_path)
         except DriveNotFoundError as exc:
@@ -291,6 +353,8 @@ def append_task_note(
                 raise _client("task is terminal", 409, "task_terminal")
             if task_id is None:
                 raise _client("task id missing", 400, "task_id_missing")
+            if is_story(fm) and load_applied_at(vault) is not None:
+                return _spawn_child(vault, fm, remainder, dry_run=dry_run)
             if any(line.startswith("### ") for line in section):
                 raise _client(
                     "step section has subheadings",
@@ -324,6 +388,14 @@ def append_task_note(
                 new_body += "\n"
         new_fm = _patch_updated(fm_raw, today_s)
         new_text = "---\n" + new_fm + "---\n" + new_body
+        if dry_run:
+            return {
+                "path": cleaned_path,
+                "target": canon,
+                "dry_run": True,
+                "written": False,
+                "inserted_line": bullet,
+            }
         if new_text == raw_text:
             return _present(
                 cleaned_path,

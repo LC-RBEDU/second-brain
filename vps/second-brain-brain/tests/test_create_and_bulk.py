@@ -36,6 +36,44 @@ def _vault() -> MagicMock:
     return vault
 
 
+def test_append_step_on_story_creates_a_file_after_the_anchor():
+    from app.tools import append_task_note as append_mod
+
+    vault = _vault()
+    story = (
+        "---\nid: RBU-S1\ntype: story\nslug: rb-universe-development\nstatus: Next\n---\n"
+        "## Operativní kroky\n"
+    )
+    anchor = '{"applied_at": "2026-10-16"}\n'
+    meta = MagicMock()
+
+    def _read(path):
+        if path.endswith("task-promotion-applied.json"):
+            return anchor, meta
+        return story, meta
+
+    vault.read_text.side_effect = _read
+    vault.list_dir.return_value = []
+    with patch.object(append_mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(append_mod, "peek_ids", create=True):
+            pass
+    with patch.object(append_mod, "brain_vault", return_value=_CM(vault)):
+        with patch("app.tools.append_task_note.peek_ids", create=True) as peek:
+            peek.return_value = [("RBU40", "t")]
+            # peek is imported inside the function
+            with patch("task_id_allocate.peek_ids", return_value=[("RBU40", "t")]):
+                out = append_mod.append_task_note(
+                    path="02-PROJEKTY/rb-universe-development/tasks/RBU-S1 — Story.md",
+                    text="Nový krok",
+                    target="step",
+                    dry_run=True,
+                )
+    assert out["created"] == "RBU-T40"
+    assert out["parent"] == "RBU-S1"
+    assert out["written"] is False
+    vault.write_text.assert_not_called()
+
+
 def test_hierarchy_task_without_parent_is_rejected():
     vault = _vault()
     with patch.object(create_mod, "brain_vault", return_value=_CM(vault)):
@@ -68,6 +106,30 @@ def test_dry_run_batch_returns_distinct_ids():
                 ],
             )
     assert [item["id"] for item in out["created"]] == ["RBU-T20", "RBU-T21"]
+    vault.write_text.assert_not_called()
+
+
+def test_create_deadline_after_parent_writes_nothing():
+    vault = _vault()
+    parent = (
+        "---\nid: RBU-S1\ntype: story\nslug: rb-universe-development\n"
+        "status: Next\ndeadline: 2026-10-10\n---\n"
+    )
+    meta = MagicMock()
+    meta.rel_path = "02-PROJEKTY/rb-universe-development/tasks/RBU-S1 — Story.md"
+    vault.list_dir.return_value = [meta]
+    vault.read_text.return_value = (parent, meta)
+    with patch.object(create_mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(create_mod, "peek_ids", return_value=[("RBU30", "t")]):
+            with pytest.raises(BrainClientError) as ei:
+                create_mod.create_task(
+                    slug="rb-universe-development",
+                    title="Pozdě",
+                    level="task",
+                    parent="RBU-S1",
+                    deadline="2026-10-20",
+                )
+    assert ei.value.error_reason == "deadline_order"
     vault.write_text.assert_not_called()
 
 

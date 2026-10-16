@@ -40,14 +40,44 @@ def apply_allowed(env: dict[str, str]) -> str | None:
     return None
 
 
-def _open_checks(body: str) -> list[tuple[str, str]]:
-    found: list[tuple[str, str]] = []
-    for line in (body or "").splitlines():
-        matched = OPEN_BOX.match(line.strip())
+def _yaml(value: str) -> str:
+    text = str(value)
+    if not text:
+        return ""
+    if text.startswith((" ", "[[", "'", '"')) or any(ch in text for ch in ":{}[]&*!|>%@`#"):
+        return json.dumps(text, ensure_ascii=False)
+    return text
+
+
+def _outside_steps(body: str, checkbox_id: str) -> bool:
+    index = body.find(f"**{checkbox_id}**")
+    if index < 0:
+        return False
+    head = body[:index]
+    marker = head.rfind("\n## ")
+    if marker < 0:
+        heading = head if head.startswith("## ") else ""
+    else:
+        heading = head[marker + 1 :].splitlines()[0]
+    return "Operativní kroky" not in heading
+
+
+def _open_checks(body: str) -> list[tuple[str, str, str]]:
+    lines = (body or "").splitlines()
+    found: list[tuple[str, str, str]] = []
+    index = 0
+    while index < len(lines):
+        matched = OPEN_BOX.match(lines[index].strip())
         if not matched:
+            index += 1
             continue
         title = matched.group("title").strip() or matched.group("id")
-        found.append((matched.group("id"), title))
+        extra: list[str] = []
+        index += 1
+        while index < len(lines) and lines[index].startswith((" ", "\t")) and lines[index].strip():
+            extra.append(lines[index].strip())
+            index += 1
+        found.append((matched.group("id"), title, "\n".join(extra)))
     return found
 
 
@@ -76,7 +106,11 @@ def plan_promotions(tasks: list[Any], *, id_for_index) -> list[dict[str, Any]]:
             continue
         if str(fm.get("type") or "") != "story":
             continue
-        checks = [(cid, title) for cid, title in _open_checks(task.body or "") if cid not in taken]
+        checks = [
+            (cid, title, extra)
+            for cid, title, extra in _open_checks(task.body or "")
+            if cid not in taken
+        ]
         if not checks:
             continue
         epic_id = parse_parent_id(fm.get("parent"))
@@ -87,7 +121,7 @@ def plan_promotions(tasks: list[Any], *, id_for_index) -> list[dict[str, Any]]:
         blocked_by_epic = bool(single and story_deadline and epic_deadline and story_deadline > epic_deadline)
         focus = str(fm.get("focus") or "")
         give_focus = bool(single and focus)
-        for checkbox_id, title in checks:
+        for checkbox_id, title, extra in checks:
             bare = id_for_index(cursor)
             cursor += 1
             task_id = with_level(bare, "task")
@@ -99,13 +133,15 @@ def plan_promotions(tasks: list[Any], *, id_for_index) -> list[dict[str, Any]]:
                 "title": title,
                 "new_id": task_id,
                 "status": _child_status(str(fm.get("status") or "")),
+                "agent": str(fm.get("agent") or "none"),
                 "waitUntil": fm.get("waitUntil") if str(fm.get("status") or "") == "Waiting" else "",
+                "detail": extra,
                 "focus": focus if give_focus else "",
                 "deadline": "" if not single or blocked_by_epic else story_deadline,
                 "review_deadline": "" if not single or blocked_by_epic else str(fm.get("review_deadline") or "")[:10],
                 "clear_story_focus": bool(focus),
                 "move_dates": bool(single and not blocked_by_epic and (story_deadline or fm.get("review_deadline"))),
-                "outside_steps": "## Operativní kroky" not in (task.body or "").split(checkbox_id)[0][-400:],
+                "outside_steps": _outside_steps(task.body or "", checkbox_id),
             }
             plans.append(item)
     return plans
@@ -116,18 +152,21 @@ def _child_markdown(item: dict[str, Any]) -> str:
         "---",
         f"id: {item['new_id']}",
         "type: task",
-        f"title: {item['title']}",
+        f"title: {_yaml(item['title'])}",
         f"slug: {item['slug']}",
         f"status: {item['status']}",
         f"parent: \"[[{item['story_id']}]]\"",
         f"promoted_from: {item['checkbox_id']}",
+        f"agent: {item.get('agent') or 'none'}",
         f"focus: {item['focus']}" if item.get("focus") else "focus:",
         f"deadline: {item['deadline']}" if item.get("deadline") else "deadline:",
         f"review_deadline: {item['review_deadline']}" if item.get("review_deadline") else "review_deadline:",
-        "agent: none",
+        f"waitUntil: {item['waitUntil']}" if item.get("waitUntil") else "waitUntil:",
         "---",
         "",
         f"# {item['new_id']} — {item['title']}",
+        "",
+        item.get("detail") or "",
         "",
         "## Operativní kroky",
         "",
@@ -138,14 +177,36 @@ def _child_markdown(item: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+_EMBED = re.compile(r"(?m)^!\[\[[^\]]*\.base[^\]]*\]\]\s*\n?")
+
+
 def _rewrite_story(text: str, items: list[dict[str, Any]]) -> str:
+    lines = text.splitlines()
     for item in items:
-        pattern = re.compile(
-            rf"^- \[ \] \*\*{re.escape(item['checkbox_id'])}\*\*.*$",
-            re.MULTILINE,
-        )
-        trace = f"{item['checkbox_id']} → [[{item['new_id']} — {item['title']}]]"
-        text = pattern.sub(trace, text, count=1)
+        kept: list[str] = []
+        index = 0
+        pattern = re.compile(rf"^- \[ \] \*\*{re.escape(item['checkbox_id'])}\*\*")
+        while index < len(lines):
+            if pattern.match(lines[index].strip()):
+                index += 1
+                while index < len(lines) and lines[index].startswith((" ", "\t")) and lines[index].strip():
+                    index += 1
+                continue
+            kept.append(lines[index])
+            index += 1
+        lines = kept
+    text = "\n".join(lines)
+    if text and not text.endswith("\n"):
+        text += "\n"
+    traces = [
+        f"- {item['checkbox_id']} → [[{item['new_id']} — {item['title']}]]"
+        for item in items
+    ]
+    block = "\n".join(traces) + "\n"
+    if "## Poznámky / log" in text:
+        text = text.replace("## Poznámky / log\n", "## Poznámky / log\n" + block, 1)
+    else:
+        text += "\n## Poznámky / log\n" + block
     if any(item.get("clear_story_focus") for item in items):
         text = re.sub(r"(?m)^focus:.*$", "focus:", text, count=1)
     if any(item.get("move_dates") for item in items):
@@ -154,8 +215,45 @@ def _rewrite_story(text: str, items: list[dict[str, Any]]) -> str:
     return text
 
 
+def strip_bases_and_embeds(vault: Any) -> list[str]:
+    """Delete ``00-System/Bases/*.base`` and drop ``![[*.base]]`` embeds."""
+    removed: list[str] = []
+    try:
+        metas = vault.list_dir("00-System/Bases", pattern="*.base", recursive=True)
+    except Exception:
+        metas = []
+    for meta in metas:
+        rel = getattr(meta, "rel_path", "")
+        if not rel:
+            continue
+        if hasattr(vault, "delete"):
+            vault.delete(rel)
+        else:
+            vault.write_text(rel, "")
+        removed.append(rel)
+    paths: list[str] = []
+    try:
+        hubs = vault.list_dir("02-PROJEKTY", pattern="*.md", recursive=False)
+        paths.extend(getattr(meta, "rel_path", "") for meta in hubs)
+    except Exception:
+        pass
+    for rel in paths:
+        if not rel:
+            continue
+        try:
+            text, _meta = vault.read_text(rel)
+        except Exception:
+            continue
+        cleaned = _EMBED.sub("", text)
+        if cleaned != text:
+            vault.write_text(rel, cleaned)
+            removed.append(rel)
+    return removed
+
+
 def write_plan(vault: Any, plans: list[dict[str, Any]], *, today: str) -> dict[str, Any]:
     """Write child files, story traces, and the anchor. A second call keeps applied_at."""
+    strip_bases_and_embeds(vault)
     grouped: dict[str, list[dict[str, Any]]] = {}
     written_paths: list[str] = []
     for item in plans:
@@ -179,12 +277,61 @@ def write_plan(vault: Any, plans: list[dict[str, Any]], *, today: str) -> dict[s
     return {"files": written_paths, "applied_at": existing}
 
 
-def main(argv: list[str] | None = None, env: dict[str, str] | None = None) -> int:
+def _summarize(plans: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = []
+    for item in plans:
+        rows.append(
+            {
+                "story_id": item["story_id"],
+                "checkbox_id": item["checkbox_id"],
+                "new_id": item["new_id"],
+                "focus": item.get("focus") or "",
+                "clear_story_focus": bool(item.get("clear_story_focus")),
+                "move_dates": bool(item.get("move_dates")),
+                "deadline": item.get("deadline") or "",
+                "outside_steps": bool(item.get("outside_steps")),
+            }
+        )
+    return {"apply": False, "written": False, "count": len(rows), "plans": rows}
+
+
+def main(
+    argv: list[str] | None = None,
+    env: dict[str, str] | None = None,
+    tasks: list[Any] | None = None,
+) -> int:
     args = argv if argv is not None else sys.argv[1:]
     env_map = env if env is not None else dict(os.environ)
     apply = "--apply" in args
     if not apply:
-        print(json.dumps({"apply": False, "written": False}, ensure_ascii=False))
+        if tasks is None:
+            from collections import Counter
+
+            from task_io import iter_active_tasks
+            from vault_factory import open_vault
+
+            with open_vault(env=env_map) as vault:
+                loaded = list(iter_active_tasks(vault))
+                slugs = []
+                taken = {str(task.frontmatter.get("promoted_from") or "") for task in loaded}
+                taken.discard("")
+                for task in loaded:
+                    fm = task.frontmatter
+                    if str(fm.get("slug") or "") not in HIERARCHY_SLUGS or str(fm.get("type") or "") != "story":
+                        continue
+                    for checkbox_id, _title, _extra in _open_checks(task.body or ""):
+                        if checkbox_id not in taken:
+                            slugs.append(str(fm.get("slug")))
+                pools = {
+                    slug: iter(peek_ids(vault, slug, count))
+                    for slug, count in Counter(slugs).items()
+                    if count
+                }
+                sequence = [next(pools[slug])[0] for slug in slugs] or ["TMP1"]
+                planned = plan_promotions(loaded, id_for_index=lambda index: sequence[index])
+        else:
+            planned = plan_promotions(tasks, id_for_index=lambda index: f"TMP{index + 1}")
+        print(json.dumps(_summarize(planned), ensure_ascii=False))
         return 0
     reason = apply_allowed(env_map)
     if reason:
@@ -207,7 +354,7 @@ def main(argv: list[str] | None = None, env: dict[str, str] | None = None) -> in
             fm = task.frontmatter
             if str(fm.get("slug") or "") not in HIERARCHY_SLUGS or str(fm.get("type") or "") != "story":
                 continue
-            for checkbox_id, _title in _open_checks(task.body or ""):
+            for checkbox_id, _title, _extra in _open_checks(task.body or ""):
                 if checkbox_id not in taken:
                     slugs.append(str(fm.get("slug")))
         pools = {

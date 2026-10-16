@@ -124,7 +124,8 @@ def main() -> None:
                 from task_io import parse_task_text
 
                 task = parse_task_text(text, rel_path=task.rel_path, meta=meta)
-                by_id[action.task_id] = task
+                file_id = str(task.frontmatter.get("id") or action.task_id)
+                by_id[file_id] = task
             except Exception as e:
                 counts["conflict"] += 1
                 print(f"  ! re-read failed {action.task_id}: {e}")
@@ -146,9 +147,8 @@ def main() -> None:
                     text, meta = vault.read_text(task.rel_path)
                     from task_io import parse_task_text
 
-                    by_id[action.task_id] = parse_task_text(
-                        text, rel_path=task.rel_path, meta=meta
-                    )
+                    refreshed = parse_task_text(text, rel_path=task.rel_path, meta=meta)
+                    by_id[str(refreshed.frontmatter.get("id") or action.task_id)] = refreshed
                 except Exception:
                     pass
 

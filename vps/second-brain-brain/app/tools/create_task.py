@@ -17,6 +17,7 @@ for _lib in (
 
 from context_tombstone import delete_context_tombstone  # noqa: E402
 from hierarchy import DEFAULT_HIERARCHY_SLUGS, parse_parent_id, project_uses_hierarchy  # noqa: E402
+from deadline_order import evaluate_deadline_order, node_from_frontmatter, DeadlineNode  # noqa: E402
 from task_id_allocate import peek_ids, with_level  # noqa: E402
 from task_io import parse_task_text  # noqa: E402
 
@@ -203,6 +204,50 @@ def _promoted_taken(vault: Any, slug: str, promoted_from: str) -> bool:
     return False
 
 
+def _reject_deadline_order(vault: Any, slug: str, prepared: list[dict[str, Any]], bare_ids: list[tuple[str, str]]) -> None:
+    """409 and zero writes when a new deadline sits after an open ancestor."""
+    fresh: list[DeadlineNode] = []
+    for spec, (bare, _where) in zip(prepared, bare_ids):
+        deadline = str(spec.get("deadline") or "").strip()
+        if not deadline:
+            continue
+        parent = parse_parent_id(spec.get("parent_link") or spec.get("parent"))
+        fresh.append(
+            DeadlineNode(
+                id=with_level(bare, str(spec.get("level") or "story")),
+                parent_id=parent,
+                status=str(spec.get("status") or "Next"),
+                deadline=deadline[:10],
+            )
+        )
+    if not fresh:
+        return
+    existing: list[DeadlineNode] = []
+    try:
+        metas = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md", recursive=False)
+    except Exception:
+        metas = []
+    for meta in metas:
+        rel = getattr(meta, "rel_path", "")
+        if not rel:
+            continue
+        try:
+            text, file_meta = vault.read_text(rel)
+        except Exception:
+            continue
+        parsed = parse_task_text(text, rel_path=rel, meta=file_meta)
+        existing.append(node_from_frontmatter(parsed.frontmatter))
+    order = evaluate_deadline_order(existing + fresh)
+    if order.get("ok"):
+        return
+    raise BrainClientError(
+        message="deadline_order",
+        status_code=409,
+        error_reason="deadline_order",
+        detail=order,
+    )
+
+
 def create_task(
     *,
     slug: str,
@@ -259,6 +304,7 @@ def create_task(
                 seen_promoted.add(promo)
             prepared.append({**spec, "level": spec_level, "parent_link": parent_link, "promoted_from": promo})
         bare_ids = peek_ids(vault, slug, len(prepared))
+        _reject_deadline_order(vault, slug, prepared, bare_ids)
         hub = _hub_filename(vault, slug)
         created: list[dict[str, str]] = []
         rel_dir = f"02-PROJEKTY/{slug}/tasks"

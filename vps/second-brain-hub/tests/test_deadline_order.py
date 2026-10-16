@@ -52,15 +52,13 @@ def test_clearing_parent_deadline_is_allowed():
     assert out["ok"] is True
 
 
-def test_allow_parent_shift_accepts_a_later_parent_on_the_max_day():
+def test_later_parent_on_or_after_the_max_passes_without_the_flag():
     nodes = [
-        DeadlineNode("E1", None, "Doing", "2026-10-10"),
+        DeadlineNode("E1", None, "Doing", "2026-10-20"),
         DeadlineNode("T1", "E1", "Next", "2026-10-18"),
     ]
-    denied = evaluate_deadline_order(nodes, {"E1": "2026-10-18"}, allow_parent_shift=False)
-    assert denied["ok"] is False
-    allowed = evaluate_deadline_order(nodes, {"E1": "2026-10-18"}, allow_parent_shift=True)
-    assert allowed["ok"] is True
+    out = evaluate_deadline_order(nodes, {"E1": "2026-10-25"}, allow_parent_shift=False)
+    assert out["ok"] is True
 
 
 def test_allow_parent_shift_still_rejects_a_date_before_the_child():

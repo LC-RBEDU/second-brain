@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import datetime
+from typing import Any
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -25,10 +26,21 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
 from vault_factory import open_vault  # noqa: E402
-from hierarchy import is_epic  # noqa: E402
+from github_rbu_closes import story_has_open_child  # noqa: E402
+from hierarchy import is_epic, is_story  # noqa: E402
 from task_io import iter_active_tasks, update_task, all_checkboxes_done  # noqa: E402
 
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Prague"))
+
+
+def should_auto_done(task: Any, tasks: list[Any]) -> bool:
+    """A story with an open child task stays open even when every box is [x]."""
+    if task.is_terminal or is_epic(task):
+        return False
+    story_id = str(task.frontmatter.get("id") or "")
+    if is_story(task) and story_has_open_child(tasks, story_id):
+        return False
+    return all_checkboxes_done(task.body)
 
 
 def main() -> None:
@@ -38,7 +50,8 @@ def main() -> None:
         skipped = 0
         skipped_epic = 0
 
-        for task in iter_active_tasks(vault):
+        tasks = list(iter_active_tasks(vault))
+        for task in tasks:
             if task.is_terminal:
                 continue
             if is_epic(task):
@@ -46,7 +59,10 @@ def main() -> None:
                 if all_checkboxes_done(task.body):
                     skipped_epic += 1
                 continue
-            if not all_checkboxes_done(task.body):
+            if not should_auto_done(task, tasks):
+                if is_story(task) and story_has_open_child(tasks, str(task.frontmatter.get("id") or "")):
+                    skipped += 1
+                    print(f"  - {task.rel_path} stays open (child task)")
                 continue
 
             log = f"- {today}: Done — auto (všechny operativní kroky [x]). [lifecycle_done_from_checkboxes]\n"
