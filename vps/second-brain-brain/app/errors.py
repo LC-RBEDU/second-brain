@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 # Stable set asserted by T16 (A58 ⊇ A55 + flock + push_disabled + paused).
 ERROR_REASONS: frozenset[str] = frozenset(
@@ -74,12 +75,16 @@ class BrainClientError(Exception):
     message: str
     status_code: int = 403
     error_reason: str = "client_error"
+    detail: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.message)
 
-    def as_dict(self) -> dict[str, str]:
-        return {"error_reason": self.error_reason, "message": self.message}
+    def as_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"error_reason": self.error_reason, "message": self.message}
+        if self.detail is not None:
+            out["detail"] = self.detail
+        return out
 
 
 def vault_error(reason: str, message: str | None = None) -> BrainVaultError:

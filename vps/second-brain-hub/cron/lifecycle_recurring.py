@@ -64,13 +64,18 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from deadline_order import (  # noqa: E402
+    evaluate_deadline_order,
+    node_from_frontmatter,
+)
 from drive_io import DriveNotFoundError  # noqa: E402
 from vault_factory import open_vault  # noqa: E402
 from task_io import (  # noqa: E402
     iter_active_tasks,
+    parse_iso_date,
     parse_task_text,
     serialize_task,
-    parse_iso_date,
+    update_task,
     ARCHIV_DIR,
 )
 
@@ -271,6 +276,33 @@ def main() -> None:
                 print(f"  ! skipping recurring task without id: {task.rel_path}")
                 continue
 
+            # Deadline order is checked before archive. A violating rotation
+            # leaves the live file in tasks/ and does not move the parent.
+            last_dl = parse_iso_date(task.frontmatter.get("deadline"))
+            next_dl = compute_next_deadline(rec, last_dl, today)
+            nodes = [
+                node_from_frontmatter(item.frontmatter)
+                for item in iter_active_tasks(vault)
+                if item.frontmatter.get("id")
+            ]
+            order = evaluate_deadline_order(nodes, {task_id: next_dl.isoformat()})
+            if not order.get("ok", False):
+                marker = "deadline_order — rotace přeskočena"
+                if marker not in (task.body or ""):
+                    parent = (order.get("conflicts") or [{}])[0].get("parent_id", "")
+                    update_task(
+                        vault,
+                        task,
+                        today_str=today_str,
+                        body_append=(
+                            f"- {today_str}: {marker}, nový deadline {next_dl.isoformat()}"
+                            f" proti {parent}. [lifecycle_recurring]\n"
+                        ),
+                    )
+                print(f"  ! deadline_order skip {task.rel_path} next={next_dl.isoformat()}")
+                skipped += 1
+                continue
+
             # 1. Archive current instance
             archive_filename = f"{task_id}-{today_str}.md"
             archive_path = f"{ARCHIV_DIR}/{slug}/{archive_filename}"
@@ -283,9 +315,7 @@ def main() -> None:
             except DriveNotFoundError:
                 pass
 
-            # 2. Compute next deadline
-            last_dl = parse_iso_date(task.frontmatter.get("deadline"))
-            next_dl = compute_next_deadline(rec, last_dl, today)
+            # 2. Wake date from the deadline already checked above
             next_wu = next_dl - timedelta(days=resolve_lead_days(rec))
 
             # 3. Reset body

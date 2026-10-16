@@ -8,6 +8,7 @@ from mcp.server.mcpserver import MCPServer
 
 from app.errors import BrainClientError, BrainVaultError
 from app.tools import allocate_task_id as allocate_tool
+from app.tools import bulk_update as bulk_update_tool
 from app.tools import capture_daily as capture_daily_tool
 from app.tools import create_task as create_task_tool
 from app.tools import external_propose_apply as external_tool
@@ -23,6 +24,13 @@ from app.tools import set_focus as set_focus_tool
 from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
 from app.tools import append_task_note as append_task_note_tool
+from app.tools import close_task as close_task_tool
+from app.tools import edit_task_body as edit_task_body_tool
+from app.tools import find_tasks as find_tasks_tool
+from app.tools import focus_proposal as focus_proposal_tool
+from app.tools import get_task as get_task_tool
+from app.tools import task_tree as task_tree_tool
+from app.tools import toggle_step as toggle_step_tool
 
 
 def _err_text(exc: BaseException) -> str:
@@ -46,7 +54,8 @@ def build_mcp() -> MCPServer:
         instructions=(
             "Second Brain vault tools. Mutate requires OAuth (human) or service token. "
             "Vault errors return JSON {error_reason, message}. "
-            "External/mailbox mutate: propose here, then client apply (1×/2× UX)."
+            "External/mailbox mutate: propose here, then client apply (1×/2× UX). "
+            "Focus: propose_focus, then apply_focus after a yes. set_focus does not write."
         ),
     )
 
@@ -68,10 +77,18 @@ def build_mcp() -> MCPServer:
         )
 
     @mcp.tool(
-        description="Patch task frontmatter (CAS expect_oid); focus key denied — use set_focus."
+        description=(
+            "Patch task frontmatter (CAS expect_oid). Focus is refused: use "
+            "propose_focus then apply_focus. A deadline that would put a parent "
+            "before an open descendant returns deadline_order."
+        )
     )
     def update_task(
-        path: str, patch_json: str, expect_oid: str | None = None
+        path: str,
+        patch_json: str,
+        expect_oid: str | None = None,
+        allow_parent_shift: bool = False,
+        dry_run: bool = False,
     ) -> str:
         patch = json.loads(patch_json) if isinstance(patch_json, str) else patch_json
         return _call(
@@ -79,6 +96,8 @@ def build_mcp() -> MCPServer:
             path=path,
             patch=patch,
             expect_oid=expect_oid,
+            allow_parent_shift=allow_parent_shift,
+            dry_run=dry_run,
         )
 
     @mcp.tool(
@@ -109,8 +128,9 @@ def build_mcp() -> MCPServer:
 
     @mcp.tool(
         description=(
-            "Set or clear task focus (current ISO week or empty). "
-            "Max 5 eligible TOP slots. Confirm with the user in chat before calling."
+            "Does not write focus. Returns focus_requires_proposal. "
+            "Call propose_focus, then apply_focus after an explicit yes. "
+            "Cap is 10 tasks/stories and 5 epics."
         )
     )
     def set_focus(
@@ -125,18 +145,159 @@ def build_mcp() -> MCPServer:
             expect_oid=expect_oid,
         )
 
+    @mcp.tool(
+        description=(
+            "Store a focus proposal. Nothing is written until apply_focus. "
+            "focus_week empty clears focus. Cap 10 tasks/stories and 5 epics."
+        )
+    )
+    def propose_focus(
+        task_path: str,
+        focus_week: str = "",
+        expect_oid: str | None = None,
+    ) -> str:
+        return _call(
+            focus_proposal_tool.propose_focus,
+            task_path=task_path,
+            focus_week=focus_week,
+            expect_oid=expect_oid,
+        )
+
+    @mcp.tool(description="Write a previously proposed focus. Second call is not found.")
+    def apply_focus(proposal_id: str) -> str:
+        return _call(focus_proposal_tool.apply_focus, proposal_id=proposal_id)
+
+    @mcp.tool(description="Find task files by title, body, id, project, type, parent, status, deadline, or focus.")
+    def find_tasks(
+        query: str | None = None,
+        task_id: str | None = None,
+        project: str | None = None,
+        work_type: str | None = None,
+        parent: str | None = None,
+        status_csv: str | None = None,
+        limit: int = 20,
+    ) -> str:
+        status = [item.strip() for item in status_csv.split(",")] if status_csv else None
+        return _call(
+            find_tasks_tool.find_tasks,
+            query=query,
+            task_id=task_id,
+            project=project,
+            work_type=work_type,
+            parent=parent,
+            status=status,
+            limit=limit,
+        )
+
+    @mcp.tool(description="Read one task by file id or by an old checkbox id inside the 90-day alias window.")
+    def get_task(task_id: str) -> str:
+        return _call(get_task_tool.get_task, task_id=task_id)
+
+    @mcp.tool(description="Children of an epic or story: id, title, status, deadline.")
+    def list_children(task_id: str) -> str:
+        return _call(task_tree_tool.list_children, task_id=task_id)
+
+    @mcp.tool(description="Tree under an epic or story, with open-descendant counts.")
+    def get_tree(task_id: str) -> str:
+        return _call(task_tree_tool.get_tree, task_id=task_id)
+
+    @mcp.tool(
+        description=(
+            "Edit one body line (replace, delete_line, insert_after). "
+            "Does not change frontmatter. Writes only when confirm is true and expected_hash matches. "
+            "source and reason are required."
+        )
+    )
+    def edit_task_body(
+        path: str,
+        operation: str,
+        match: str,
+        new_text: str = "",
+        expected_hash: str | None = None,
+        expect_oid: str | None = None,
+        confirm: bool = False,
+        dry_run: bool = False,
+        allow_migration_trace: bool = False,
+        source: str = "",
+        reason: str = "",
+    ) -> str:
+        return _call(
+            edit_task_body_tool.edit_task_body,
+            path=path,
+            operation=operation,
+            match=match,
+            new_text=new_text,
+            expected_hash=expected_hash,
+            expect_oid=expect_oid,
+            confirm=confirm,
+            dry_run=dry_run,
+            allow_migration_trace=allow_migration_trace,
+            source=source,
+            reason=reason,
+        )
+
+    @mcp.tool(description="Check or uncheck a micro-step on a task file. A story returns the child task ids.")
+    def toggle_step(
+        path: str,
+        step_id: str,
+        checked: bool = True,
+        source: str = "",
+        reason: str = "",
+        dry_run: bool = False,
+    ) -> str:
+        return _call(
+            toggle_step_tool.toggle_step,
+            path=path,
+            step_id=step_id,
+            checked=checked,
+            source=source,
+            reason=reason,
+            dry_run=dry_run,
+        )
+
+    @mcp.tool(
+        description=(
+            "Close one task file as done or cancelled. Does not close the parent story. "
+            "The result includes suggest_close_parent."
+        )
+    )
+    def close_task(
+        path: str,
+        resolution: str = "done",
+        note: str = "",
+        source: str = "",
+        reason: str = "",
+        dry_run: bool = False,
+    ) -> str:
+        return _call(
+            close_task_tool.close_task,
+            path=path,
+            resolution=resolution,
+            note=note,
+            source=source,
+            reason=reason,
+            dry_run=dry_run,
+        )
+
     @mcp.tool(description="Preview next task ID (non-reserving).")
     def allocate_task_id(slug: str, level: str | None = None) -> str:
         return _call(allocate_tool.allocate_task_id, slug=slug, level=level)
 
-    @mcp.tool(description="Create task file under 02-PROJEKTY/<slug>/tasks/.")
+    @mcp.tool(description="Create a task file. Hierarchy level=task requires parent. dry_run returns ids and writes nothing. items_json creates several in one call.")
     def create_task(
         slug: str,
-        title: str,
+        title: str = "",
         detail: str = "",
         level: str = "story",
         status: str = "Next",
+        parent: str = "",
+        deadline: str = "",
+        review_deadline: str = "",
+        promoted_from: str = "",
+        dry_run: bool = False,
+        items_json: str = "",
     ) -> str:
+        items = json.loads(items_json) if items_json else None
         return _call(
             create_task_tool.create_task,
             slug=slug,
@@ -144,6 +305,27 @@ def build_mcp() -> MCPServer:
             detail=detail,
             level=level,
             status=status,
+            parent=parent,
+            deadline=deadline,
+            review_deadline=review_deadline,
+            promoted_from=promoted_from,
+            dry_run=dry_run,
+            items=items,
+        )
+
+    @mcp.tool(
+        description=(
+            "Patch several tasks in one transaction. A deadline_order error writes nothing. "
+            "A focus key is refused; use propose_focus."
+        )
+    )
+    def bulk_update(updates_json: str, allow_parent_shift: bool = False, dry_run: bool = False) -> str:
+        updates = json.loads(updates_json) if isinstance(updates_json, str) else updates_json
+        return _call(
+            bulk_update_tool.bulk_update,
+            updates=updates,
+            allow_parent_shift=allow_parent_shift,
+            dry_run=dry_run,
         )
 
     @mcp.tool(description="Schedule reminder (attempt_count=0) into Reminders-Pending.")

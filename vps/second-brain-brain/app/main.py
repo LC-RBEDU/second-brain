@@ -34,6 +34,13 @@ from app.tools import set_focus as set_focus_tool
 from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
 from app.tools import append_task_note as append_task_note_tool
+from app.tools import close_task as close_task_tool
+from app.tools import edit_task_body as edit_task_body_tool
+from app.tools import find_tasks as find_tasks_tool
+from app.tools import focus_proposal as focus_proposal_tool
+from app.tools import get_task as get_task_tool
+from app.tools import task_tree as task_tree_tool
+from app.tools import toggle_step as toggle_step_tool
 
 
 def _push_ok() -> bool:
@@ -176,12 +183,18 @@ class UpdateTaskBody(BaseModel):
     path: str
     patch: dict[str, Any]
     expect_oid: str | None = None
+    allow_parent_shift: bool = False
+    dry_run: bool = False
 
 
 @app.patch("/v1/tasks")
 def rest_update_task(body: UpdateTaskBody, _auth: AuthPrincipal) -> dict:
     return update_task_tool.update_task(
-        path=body.path, patch=body.patch, expect_oid=body.expect_oid
+        path=body.path,
+        patch=body.patch,
+        expect_oid=body.expect_oid,
+        allow_parent_shift=body.allow_parent_shift,
+        dry_run=body.dry_run,
     )
 
 
@@ -214,6 +227,114 @@ def rest_set_focus(body: SetFocusBody, _auth: AuthPrincipal) -> dict:
         task_path=body.task_path,
         focus_week=body.focus_week,
         expect_oid=body.expect_oid,
+        principal=_auth,
+    )
+
+
+class FindTasksBody(BaseModel):
+    query: str | None = None
+    task_id: str | None = None
+    project: str | None = None
+    work_type: str | None = None
+    parent: str | None = None
+    status: list[str] | None = None
+    limit: int = 20
+
+
+@app.post("/v1/tasks/find")
+def rest_find_tasks(body: FindTasksBody, _auth: AuthPrincipal) -> dict:
+    return find_tasks_tool.find_tasks(
+        query=body.query,
+        task_id=body.task_id,
+        project=body.project,
+        work_type=body.work_type,
+        parent=body.parent,
+        status=body.status,
+        limit=body.limit,
+    )
+
+
+@app.get("/v1/tasks/item")
+def rest_get_task(task_id: str, _auth: AuthPrincipal) -> dict:
+    return get_task_tool.get_task(task_id=task_id)
+
+
+@app.get("/v1/tasks/tree")
+def rest_get_tree(task_id: str, _auth: AuthPrincipal) -> dict:
+    return task_tree_tool.get_tree(task_id=task_id)
+
+
+class EditBody(BaseModel):
+    path: str
+    operation: str
+    match: str
+    new_text: str = ""
+    expected_hash: str | None = None
+    expect_oid: str | None = None
+    confirm: bool = False
+    dry_run: bool = False
+    allow_migration_trace: bool = False
+    source: str = ""
+    reason: str = ""
+
+
+@app.post("/v1/tasks/edit-body")
+def rest_edit_body(body: EditBody, _auth: AuthPrincipal) -> dict:
+    return edit_task_body_tool.edit_task_body(**body.model_dump())
+
+
+class ToggleBody(BaseModel):
+    path: str
+    step_id: str
+    checked: bool = True
+    source: str = ""
+    reason: str = ""
+    dry_run: bool = False
+
+
+@app.post("/v1/tasks/toggle-step")
+def rest_toggle_step(body: ToggleBody, _auth: AuthPrincipal) -> dict:
+    return toggle_step_tool.toggle_step(**body.model_dump())
+
+
+class CloseBody(BaseModel):
+    path: str
+    resolution: str = "done"
+    note: str = ""
+    source: str = ""
+    reason: str = ""
+    dry_run: bool = False
+
+
+@app.post("/v1/tasks/close")
+def rest_close_task(body: CloseBody, _auth: AuthPrincipal) -> dict:
+    return close_task_tool.close_task(**body.model_dump())
+
+
+class ProposeFocusBody(BaseModel):
+    task_path: str
+    focus_week: str = ""
+    expect_oid: str | None = None
+
+
+@app.post("/v1/focus/propose")
+def rest_propose_focus(body: ProposeFocusBody, _auth: AuthPrincipal) -> dict:
+    return focus_proposal_tool.propose_focus(
+        task_path=body.task_path,
+        focus_week=body.focus_week,
+        expect_oid=body.expect_oid,
+        principal=str(_auth),
+    )
+
+
+class ApplyFocusBody(BaseModel):
+    proposal_id: str
+
+
+@app.post("/v1/focus/apply")
+def rest_apply_focus(body: ApplyFocusBody, _auth: AuthPrincipal) -> dict:
+    return focus_proposal_tool.apply_focus(
+        proposal_id=body.proposal_id,
         principal=_auth,
     )
 

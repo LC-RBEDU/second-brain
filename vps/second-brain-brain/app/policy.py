@@ -25,11 +25,12 @@ def allow_focus_write(principal: ServicePrincipal | str | None) -> PolicyDecisio
     return PolicyDecision(False, "focus_write_auth_required")
 
 
+FOCUS_PROPOSAL_MESSAGE = "napiš propose_focus, po ano apply_focus"
+
+
 def deny_focus_write() -> PolicyDecision:
-    """``update_task`` path — focus only via ``set_focus``."""
-    return PolicyDecision(
-        False, "focus via set_focus only; Brain refuses update_task focus patch"
-    )
+    """Direct focus writes are refused. The caller proposes, then applies."""
+    return PolicyDecision(False, FOCUS_PROPOSAL_MESSAGE)
 
 
 def deny_stav_auto_write() -> PolicyDecision:

@@ -73,6 +73,7 @@ from today_priority import (  # noqa: E402
     is_focus_eligible,
     is_queue_eligible,
     needs_decision,
+    parents_with_open_task_children,
     paused_project_slugs,
     select_top_priority,
 )
@@ -538,10 +539,12 @@ def build_snapshot(vault: Path) -> dict:
     focus_week = current_focus_week(today)
     focus_count = count_focus_slots(queue_tasks, today, paused_slugs=None)
     focus_epic_count = count_focus_epic_slots(queue_tasks, today, paused_slugs=None)
+    hidden_parents = parents_with_open_task_children(queue_tasks)
     suggestion_pool = [
         t
         for t in queue_tasks
-        if not is_focus_eligible(t, today) and is_queue_eligible(t, today)
+        if not is_focus_eligible(t, today)
+        and is_queue_eligible(t, today, open_child_parents=hidden_parents)
     ]
     focus_suggestions_raw = select_focus_suggestions(
         suggestion_pool,

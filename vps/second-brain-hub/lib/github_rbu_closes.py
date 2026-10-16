@@ -23,6 +23,7 @@ from hierarchy import (
     mark_checkbox_done,
     normalise_work_type,
     parse_closes_refs,
+    parse_parent_id,
     split_subtask_ref,
 )
 from task_io import (
@@ -177,12 +178,39 @@ def index_rbu_tasks(tasks: list[Any]) -> dict[str, Any]:
     return by_id
 
 
+def promoted_task_for_ref(tasks: list[Any], ref: str) -> Any | None:
+    """File whose ``promoted_from`` equals the Closes ref. RBU slug only."""
+    for task in tasks:
+        fm = getattr(task, "frontmatter", None) or (task if isinstance(task, dict) else {})
+        slug = str(fm.get("slug") or getattr(task, "slug", "") or "")
+        if slug != RBU_SLUG:
+            continue
+        if str(fm.get("promoted_from") or "") == ref:
+            return task
+    return None
+
+
+def story_has_open_child(tasks: list[Any], story_id: str) -> bool:
+    open_status = {"Doing", "Next", "Backlog", "Waiting"}
+    for task in tasks:
+        fm = getattr(task, "frontmatter", None) or (task if isinstance(task, dict) else {})
+        if str(fm.get("status") or "") not in open_status:
+            continue
+        if str(fm.get("type") or "").lower() != "task":
+            continue
+        if parse_parent_id(fm.get("parent")) == story_id:
+            return True
+    return False
+
+
 def apply_close_action(
     vault,
     task,
     action: CloseAction,
     *,
     today_str: str,
+    has_open_child: bool = False,
+    promoted_file: bool = False,
 ) -> tuple[str, str]:
     """Apply one CloseAction. Returns (result, detail).
 
@@ -192,6 +220,22 @@ def apply_close_action(
         return "epic_blocked", f"{action.ref}: epic cannot be closed via GitHub"
 
     src = action.source or action.sha or "github"
+    if promoted_file:
+        if task.is_terminal:
+            return "noop", f"{action.ref}: already terminal"
+        log = (
+            f"- {today_str}: Done — auto from GitHub Closes {action.ref} "
+            f"({src}, promoted_from). [lifecycle_github_rbu_closes]\n"
+        )
+        ok = update_task(
+            vault,
+            task,
+            new_status="Done",
+            today_str=today_str,
+            body_append=log,
+        )
+        return ("applied" if ok else "conflict"), action.ref
+
     if action.kind == "subtask":
         assert action.subtask_num is not None
         new_body, changed = mark_checkbox_done(task.body, action.task_id, action.subtask_num)
@@ -211,7 +255,7 @@ def apply_close_action(
             task.body = new_body
             # If all done after flip → Done
             new_status = None
-            if all_checkboxes_done(new_body):
+            if all_checkboxes_done(new_body) and not has_open_child:
                 new_status = "Done"
                 log += (
                     f"- {today_str}: Done — auto (všechny operativní kroky [x] "
@@ -226,7 +270,12 @@ def apply_close_action(
             )
             return ("applied" if ok else "conflict"), action.ref
 
-    # Story-level Closes
+    # Story-level Closes. An open child file blocks the cascade.
+    if has_open_child:
+        return (
+            "skipped",
+            f"{action.ref}: open child task remains — not marking story Done",
+        )
     if open_checkbox_count(task.body) > 0:
         return (
             "skipped",

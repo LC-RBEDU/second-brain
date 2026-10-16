@@ -415,25 +415,7 @@ Při jakékoli z těchto operací **vždy** projeď post-flight checklist, jinak
 
 Použij Python skript s replace logikou (ne sed — kvůli diakritice a non-ASCII filenames).
 
-**2. Bases `kanbanState`.** `00-System/Bases/All-tasks.base` má v `kanbanState.cardOrders.note.status.<column>:` ručně přetažené pořadí karet — list cest k task souborům. Po RE-ID / přesunu / smazání tasku tam zůstanou stale references na neexistující soubory. Když Obsidian rendruje kanban a klikne na stale link, hodí "nespecifikovanou chybu".
-
-Fix: po každé migraci tasků (RE-ID, přesun, smazání) **smaž celý `kanbanState` blok** z `All-tasks.base`. Bases se vrátí na default order (`order:` + `sort:` config). Nový state si user postaví organicky přetahováním karet.
-
-```yaml
-# All-tasks.base — sekce ProjectKanban
-- type: kanban
-  name: ProjectKanban
-  filters: ...
-  groupBy: ...
-  order: ...
-  # ⬇ smaž tento blok kompletně:
-  # kanbanState:
-  #   cardOrders:
-  #     note.status:
-  #       Next:
-  #         - 02-PROJEKTY/<starý>/<task>.md
-  #         ...
-```
+**2. Bases se nepoužívají.** Soubory `All-tasks.base` a `All-tasks-hierarchy.base` jsou smazané. Po RE-ID se `kanbanState` neupravuje a embed `![[*.base]]` se nepřidává.
 
 **3. Hub frontmatter `aliases`.** Pokud přejmenováváš hub `<starý>.md` → `<nový>.md`, přidej `<starý>` do `aliases` v novém hubu — body wikilinky `[[<starý>]]` v ostatních souborech zůstanou funkční:
 
@@ -455,13 +437,11 @@ aliases:
 grep -rl --include='*.md' --include='*.json' -F "[[<starý>]]" \
   02-PROJEKTY/ 07-ARCHIV/ 00-System/
 
-# žádné stale refs v Bases
-grep -F "kanbanState" 00-System/Bases/All-tasks.base
 ```
 
 ## Refresh dashboard + agent context
 
-V2 — žádný cron build pro dashboard nepotřebuje. **Bases dashboard** (`OBSIDIAN/Dashboard.md`) čte přímo z task `.md` frontmatterů.
+V2 — žádný cron build pro dashboard nepotřebuje. Přehled je `agent-context.json` a frontmatter task souborů. Obsidian Bases se nepoužívá.
 
 **Po každém zápisu** (apply triage batch / commit task changes):
 

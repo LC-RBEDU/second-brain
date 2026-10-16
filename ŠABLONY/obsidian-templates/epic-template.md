@@ -29,11 +29,7 @@ blocked_by: []
 
 ## Stories
 
-![[All-tasks-hierarchy.base#EpicStories]]
-
-### Uzavřené
-
-![[All-tasks-hierarchy.base#EpicStoriesDone]]
+Otevřené story jsou soubory s `parent` na tento epic. Embed Bases se nepřidává.
 
 ## Poznámky / log
 - {{date}}: Založen epic.

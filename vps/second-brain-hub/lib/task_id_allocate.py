@@ -128,6 +128,15 @@ def next_id(vault: Any, slug: str) -> tuple[str, str]:
     return f"{prefix}{ceiling + 1}", where
 
 
+def peek_ids(vault: Any, slug: str, count: int) -> list[tuple[str, str]]:
+    """Next ``count`` bare ids from one ceiling read. Nothing is written."""
+    if count < 1:
+        return []
+    prefix = prefix_for_slug(vault, slug)
+    ceiling, where = ceiling_for_prefix(vault, prefix)
+    return [(f"{prefix}{ceiling + offset}", where) for offset in range(1, count + 1)]
+
+
 def with_level(task_id: str, level: str) -> str:
     """Insert the hierarchy level into an ID: RBU73 + story -> RBU-S73."""
     m = re.match(r"^([A-Z]+)(?:-[EST])?(\d+)$", task_id)

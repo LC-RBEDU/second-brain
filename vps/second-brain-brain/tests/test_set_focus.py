@@ -87,7 +87,7 @@ def test_b1_oauth_sets_focus(monkeypatch):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    out = mod.set_focus(
+                    out = mod.set_focus(via_apply=True, 
                         task_path=PATH,
                         focus_week=WEEK,
                         principal="oauth:lukas@redbuttonedu.cz",
@@ -105,7 +105,7 @@ def test_b2_service_principal(monkeypatch):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    out = mod.set_focus(
+                    out = mod.set_focus(via_apply=True, 
                         task_path=PATH,
                         focus_week=WEEK,
                         principal=ServicePrincipal(),
@@ -120,7 +120,7 @@ def test_b4_clear(monkeypatch):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    out = mod.set_focus(
+                    out = mod.set_focus(via_apply=True, 
                         task_path=PATH,
                         focus_week="",
                         principal="dev",
@@ -136,7 +136,7 @@ def test_b20_clear_already_empty(monkeypatch):
         with patch.object(mod, "iter_active_tasks", return_value=iter([])):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                    out = mod.set_focus(
+                    out = mod.set_focus(via_apply=True, 
                         task_path=PATH,
                         focus_week="",
                         principal="dev",
@@ -172,7 +172,7 @@ def test_b5_reset_allows_when_full(monkeypatch):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with patch.object(mod, "count_focus_slots", return_value=10):
-                        out = mod.set_focus(
+                        out = mod.set_focus(via_apply=True, 
                             task_path=PATH,
                             focus_week=WEEK,
                             principal="dev",
@@ -191,7 +191,7 @@ def test_b6_limit_exceeded(monkeypatch):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with patch.object(mod, "count_focus_slots", return_value=10):
                         with pytest.raises(BrainClientError) as ei:
-                            mod.set_focus(
+                            mod.set_focus(via_apply=True, 
                                 task_path=PATH,
                                 focus_week=WEEK,
                                 principal="dev",
@@ -209,7 +209,7 @@ def test_b6_epic_limit_exceeded(monkeypatch):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with patch.object(mod, "count_focus_epic_slots", return_value=5):
                         with pytest.raises(BrainClientError) as ei:
-                            mod.set_focus(
+                            mod.set_focus(via_apply=True, 
                                 task_path=PATH,
                                 focus_week=WEEK,
                                 principal="dev",
@@ -228,7 +228,7 @@ def test_b6_epic_allows_when_task_slots_full(monkeypatch):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with patch.object(mod, "count_focus_slots", return_value=10):
                         with patch.object(mod, "count_focus_epic_slots", return_value=2):
-                            out = mod.set_focus(
+                            out = mod.set_focus(via_apply=True, 
                                 task_path=PATH,
                                 focus_week=WEEK,
                                 principal="dev",
@@ -247,7 +247,7 @@ def test_b6_story_allows_when_epic_slots_full(monkeypatch):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with patch.object(mod, "count_focus_slots", return_value=3):
                         with patch.object(mod, "count_focus_epic_slots", return_value=5):
-                            out = mod.set_focus(
+                            out = mod.set_focus(via_apply=True, 
                                 task_path=PATH,
                                 focus_week=WEEK,
                                 principal="dev",
@@ -264,7 +264,7 @@ def test_b16_waiting_allows_when_full(monkeypatch):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with patch.object(mod, "count_focus_slots", return_value=10):
-                        out = mod.set_focus(
+                        out = mod.set_focus(via_apply=True, 
                             task_path=PATH,
                             focus_week=WEEK,
                             principal="dev",
@@ -275,7 +275,7 @@ def test_b16_waiting_allows_when_full(monkeypatch):
 def test_b7_non_current_week(monkeypatch):
     monkeypatch.setattr(mod, "_prague_today", lambda env=None: TODAY)
     with pytest.raises(BrainClientError) as ei:
-        mod.set_focus(
+        mod.set_focus(via_apply=True, 
             task_path=PATH,
             focus_week="2020-W01",
             principal="dev",
@@ -292,7 +292,7 @@ def test_b8_cas_conflict(monkeypatch):
             with patch.object(mod, "delete_context_tombstone"):
                 with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
                     with pytest.raises(BrainClientError) as ei:
-                        mod.set_focus(
+                        mod.set_focus(via_apply=True, 
                             task_path=PATH,
                             focus_week=WEEK,
                             expect_oid="oid1",
@@ -308,7 +308,8 @@ def test_b9_update_task_focus_denied():
             patch={"focus": WEEK},
         )
     assert ei.value.status_code == 403
-    assert "set_focus" in ei.value.message
+    assert ei.value.error_reason == "focus_requires_proposal"
+    assert "propose_focus" in ei.value.message and "apply_focus" in ei.value.message
 
 
 def test_b19_not_found(monkeypatch):
@@ -318,7 +319,7 @@ def test_b19_not_found(monkeypatch):
     with patch.object(mod, "brain_vault", return_value=_CM(vault)):
         with patch.object(mod, "delete_context_tombstone"):
             with pytest.raises(BrainClientError) as ei:
-                mod.set_focus(task_path=PATH, focus_week=WEEK, principal="dev")
+                mod.set_focus(via_apply=True, task_path=PATH, focus_week=WEEK, principal="dev")
     assert ei.value.status_code == 404
 
 
@@ -332,10 +333,17 @@ def test_t12_contextvar_principal(monkeypatch):
             with patch.object(mod, "iter_active_tasks", return_value=iter([])):
                 with patch.object(mod, "delete_context_tombstone"):
                     with patch.object(mod, "_paused_slugs_from_vault", return_value=set()):
-                        out = mod.set_focus(task_path=PATH, focus_week=WEEK)
+                        out = mod.set_focus(via_apply=True, task_path=PATH, focus_week=WEEK)
         assert out["focus"] == WEEK
     finally:
         reset_brain_principal(tok)
+
+
+def test_set_focus_requires_proposal():
+    with pytest.raises(BrainClientError) as ei:
+        mod.set_focus(task_path=PATH, focus_week=WEEK, principal="dev")
+    assert ei.value.status_code == 403
+    assert ei.value.error_reason == "focus_requires_proposal"
 
 
 def test_count_focus_slots_a4():

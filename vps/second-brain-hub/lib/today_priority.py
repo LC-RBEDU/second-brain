@@ -37,7 +37,14 @@ from focus import (
     is_focus_current,
     is_terminal,
 )
-from hierarchy import is_epic, is_focusable
+from hierarchy import (
+    TYPE_TASK,
+    is_epic,
+    is_focusable,
+    is_story,
+    parse_parent_id,
+    work_type_of,
+)
 
 DEADLINE_HORIZON_DAYS = 7
 COMPANY_PRIORITY_BONUS = 5.0
@@ -295,9 +302,12 @@ def count_focus_slots(
     SSOT for Brain ``set_focus`` task limit and ``stats.focus_count``.
     """
     filtered = exclude_paused_project_tasks(tasks, paused_slugs or set())
+    hidden = parents_with_open_task_children(filtered)
     n = 0
     for t in filtered:
         if _excluded(t, exclude_path=exclude_path, exclude_id=exclude_id):
+            continue
+        if _story_hidden_by_open_child(t, hidden):
             continue
         if is_focus_eligible(t, today):
             n += 1
@@ -323,12 +333,43 @@ def count_focus_epic_slots(
     return n
 
 
-def is_queue_eligible(task: Any, today: date) -> bool:
+_OPEN_CHILD_STATUSES = frozenset({"Doing", "Next", "Backlog", "Waiting"})
+
+
+def parents_with_open_task_children(tasks: list[Any]) -> set[str]:
+    """Story ids that still have an open ``type: task`` child."""
+    parents: set[str] = set()
+    for task in tasks:
+        if work_type_of(task) != TYPE_TASK:
+            continue
+        if str(_task_get(task, "status") or "") not in _OPEN_CHILD_STATUSES:
+            continue
+        parent = parse_parent_id(_task_get(task, "parent"))
+        if parent:
+            parents.add(parent)
+    return parents
+
+
+def _story_hidden_by_open_child(task: Any, open_child_parents: set[str] | None) -> bool:
+    if not open_child_parents or not is_story(task):
+        return False
+    task_id = _task_id(task)
+    return bool(task_id and task_id in open_child_parents)
+
+
+def is_queue_eligible(
+    task: Any,
+    today: date,
+    *,
+    open_child_parents: set[str] | None = None,
+) -> bool:
     """True for the wider list: focused work plus everything queued as Doing/Next.
 
-    Epics stay out of ``top_priority`` — they are roadmap containers, not queue items.
+    Epics stay out of ``top_priority``. A story with an open child task stays out too.
     """
     if not is_focusable(task):
+        return False
+    if _story_hidden_by_open_child(task, open_child_parents):
         return False
     if is_focus_eligible(task, today):
         return True
@@ -396,8 +437,17 @@ def select_top_priority(
     def ranked(tasks: list[Any]) -> list[Any]:
         return sorted(tasks, key=lambda t: rank_key(t, today))
 
-    focused = ranked([t for t in open_tasks if is_focus_eligible(t, today)])
-    queued = ranked([t for t in open_tasks if is_queue_eligible(t, today)])
+    hidden = parents_with_open_task_children(open_tasks)
+    focused = ranked(
+        [
+            t
+            for t in open_tasks
+            if is_focus_eligible(t, today) and not _story_hidden_by_open_child(t, hidden)
+        ]
+    )
+    queued = ranked(
+        [t for t in open_tasks if is_queue_eligible(t, today, open_child_parents=hidden)]
+    )
 
     top_today = [_to_enriched(t, today) for t in focused[:today_limit]]
     top_general = [_to_enriched(t, today) for t in queued[:general_limit]]

@@ -24,7 +24,7 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 | Deploy key | `coolify-second-brain-hub` (read-write) + `openssh-client` v image |
 | Push | `git -c push.ff=only push` (Debian 2.39 nemá `push --ff-only`) |
 | Mac clone | `~/GitHub/second-brain-vault` — pull/read only |
-| Obsidian (F4) | Volitelný pull-only nad git klonem; Sync/Drive writer **neobnovovat** (dual-writer riziko) |
+| Obsidian | Zakázaný editor i klient. Zápis jde přes git vault a Brain. Sync a Drive writer se nezapínají. |
 | Drive vault SSOT | **Off** — Drive jen R9 (Docs/Sheets/shared/>limit); viz sync-architecture |
 | Ruleset A17 | **soft A17 schváleno** (2026-10-10, Free): deploy key + README Write policy + PR template. Hard ruleset odloženo do Pro → `bash scripts/vault_apply_ruleset_a17.sh`. |
 

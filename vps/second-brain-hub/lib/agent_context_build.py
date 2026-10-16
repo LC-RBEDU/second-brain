@@ -50,6 +50,7 @@ from today_priority import (  # noqa: E402
     is_active_project_status,
     is_focus_eligible,
     is_queue_eligible,
+    parents_with_open_task_children,
     needs_decision,
     paused_project_slugs,
     select_top_priority,
@@ -143,10 +144,14 @@ def task_to_dict(task) -> dict:
         mt = HUB_TITLE_RE.search(body)
         if mt:
             title = re.sub(rf"^{re.escape(tid)}\s*[—–-]\s*", "", mt.group(1).strip()).strip()
-    i = _to_int(fm.get("ice_i"))
-    c = _to_int(fm.get("ice_c"))
-    e = max(_to_int(fm.get("ice_e")), 1)
     work_type = normalise_work_type(fm.get("type"))
+    ice_missing = fm.get("ice_i") is None and fm.get("ice_c") is None and fm.get("ice_e") is None
+    if work_type == "task" and ice_missing:
+        i, c, e = 0, 0, 1
+    else:
+        i = _to_int(fm.get("ice_i"))
+        c = _to_int(fm.get("ice_c"))
+        e = max(_to_int(fm.get("ice_e")), 1)
     parent = parse_parent_id(fm.get("parent"))
     deadline = _date_str(fm.get("deadline"))
     review_deadline = _date_str(fm.get("review_deadline"))
@@ -371,10 +376,12 @@ def build_and_write_context_bundle(
     # Same slot definition as Brain set_focus (task eligible ∩ ¬paused; epics separate)
     focus_count = count_focus_slots(queue_tasks, today, paused_slugs=None)
     focus_epic_count = count_focus_epic_slots(queue_tasks, today, paused_slugs=None)
+    hidden_parents = parents_with_open_task_children(queue_tasks)
     suggestion_pool = [
         t
         for t in queue_tasks
-        if not is_focus_eligible(t, today) and is_queue_eligible(t, today)
+        if not is_focus_eligible(t, today)
+        and is_queue_eligible(t, today, open_child_parents=hidden_parents)
     ]
     focus_suggestions_raw = select_focus_suggestions(
         suggestion_pool,

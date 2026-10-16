@@ -8,18 +8,15 @@ Vault kopie: `OBSIDIAN/00-System/Templates/task-convention.md` (Drive).
 Zapnuto u **`rb-universe-development`**, **`it-ai-data`**, **`firemni-procesy`**, **`finance`**. (`vibe-coding` paused → merge do `it-ai-data`, SB10.)
 Jinde: hub `hierarchy: true` nebo presence alespoň jednoho `type: epic` v `tasks/`.
 
-> **Past (opraveno 20. 9. 2026):** flat `All-tasks.base` má root filtr `type != "epic"`
-> (dřív `type == "task"`, což schovávalo všechny stories). V hierarchickém projektu
-> stále platí: osamocený kus = `story` bez `parent`, ne `type: task` — hub views
-> filtrují `story` / `epic`.
+> **Od 16. 10. 2026:** v hierarchii je otevřená práce soubor `type: task` s `parent` na story. Checkbox `**ID-N**` se jako nová práce nezakládá. Osamocený kus bez story zůstává `story` bez `parent`.
 
 | Vrstva | `type` | Soubor | ICE | focus | Auto-Done |
 |--------|--------|--------|-----|-------|-----------|
 | Epic | `epic` | `.md` v `tasks/` | ne | ano (téma týdne; fronta se nerozbaluje v etapě 1) | **nikdy** (jen člověk) |
 | User story | `story` | `.md` v `tasks/` | ano | ano | checkboxy všechny `[x]` **nebo** GitHub `Closes ID` (bez otevřených kroků) |
-| Task (list) | — | checkbox `- [ ] **ID-N**` v `## Operativní kroky` story | — | — | GitHub `Closes ID-N` / ruční odškrtnutí |
+| Task (list) | `task` | `.md` v `tasks/`, `parent` na story | ne (skóre 0) | ano | `Closes` souboru / `close_task` |
 
-Mimo hierarchii zůstává `type: task` (legacy flat).
+Mimo hierarchii zůstává plochý `type: task` v jednom souboru.
 
 ## Frontmatter
 
@@ -63,7 +60,7 @@ review_deadline:  # kdy se k tomu vracím
 | Udělám to vůbec? | `status` |
 | Externí závazek? | `deadline` |
 | Kdy se k tomu vrátím? | `review_deadline` (jen když není `deadline`) |
-| Na co teď? | `focus` (ISO týden, max 5; člověk) |
+| Na co teď? | `focus` (ISO týden, max 10 tasků nebo stories a max 5 epiců; člověk) |
 
 `due = deadline` pokud existuje, jinak `review_deadline`. Při nastavení `deadline` se `review_deadline` vymaže. Lane **Rozhodni** = `due < today` (mimo Waiting).
 
@@ -71,20 +68,9 @@ review_deadline:  # kdy se k tomu vracím
 Volitelné `company_priorities: ["[[CP8 — …]]"]` (prázdné OK). Index: `00-System/Memory/firemni-priority-2hy-2026.md`.
 ## Hub page
 
-Hierarchický hub embeduje `All-tasks-hierarchy.base` (**ne** flat `All-tasks.base`, a to i u `ProjectRecentDone`):
+Sekce `## Aktivní práce (Epic → Story → Task)` je text charteru. Embed `![[*.base]]` se nepřidává. Soubory `All-tasks.base` a `All-tasks-hierarchy.base` jsou smazané.
 
-```markdown
-## Aktivní práce (Epic → Story → Task)
-
-![[All-tasks-hierarchy.base#ProjectStoriesFocus]]
-![[All-tasks-hierarchy.base#ProjectEpics]]
-![[All-tasks-hierarchy.base#ProjectStoriesKanban]]
-![[All-tasks-hierarchy.base#ProjectStoriesByParent]]
-![[All-tasks-hierarchy.base#ProjectStandaloneStories]]
-```
-
-Views filtrují `project == this.file.asLink()` — `project:` v tasku proto musí mířit na **název hub souboru**,
-ne na alias. `[[Vibe coding]]` místo `[[AI & Vibe coding]]` znamená prázdný view.
+`project:` v tasku míří na **název hub souboru**, ne na alias.
 
 Sekce je ve whitelistu validátoru (`ALLOWED_EXTRA_HUB_SECTIONS` v `scripts/vault_reference.py`).
 

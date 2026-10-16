@@ -16,7 +16,9 @@ for _lib in (
         break
 
 from context_tombstone import delete_context_tombstone  # noqa: E402
-from task_id_allocate import next_id, with_level  # noqa: E402
+from hierarchy import DEFAULT_HIERARCHY_SLUGS, parse_parent_id, project_uses_hierarchy  # noqa: E402
+from task_id_allocate import peek_ids, with_level  # noqa: E402
+from task_io import parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError  # noqa: E402
 from app.fm_contract import strip_aliases_for_new_write  # noqa: E402
@@ -60,6 +62,11 @@ def _render_task(
     level: str,
     status: str,
     detail: str,
+    parent: str = "",
+    deadline: str = "",
+    review_deadline: str = "",
+    promoted_from: str = "",
+    hierarchy: bool = False,
 ) -> str:
     today = date.today().isoformat()
     type_map = {"epic": "epic", "story": "story", "task": "task"}
@@ -71,22 +78,28 @@ def _render_task(
         "project": f"[[{hub}]]",
         "slug": slug,
         "status": status,
-        "parent": "",
+        "parent": parent,
         "focus": "",
         "agent": "none",
-        "ice_i": 5,
-        "ice_c": 5,
-        "ice_e": 5,
-        "deadline": "",
-        "review_deadline": "",
+        "deadline": deadline,
+        "review_deadline": review_deadline,
         "waitUntil": "",
         "created": today,
         "updated": today,
         "materials": [],
         "source": "brain-api",
+        "promoted_from": promoted_from,
         "company_priorities": [],
         "blocked_by": [],
     }
+    if not (hierarchy and work_type == "task"):
+        fm["ice_i"] = 5
+        fm["ice_c"] = 5
+        fm["ice_e"] = 5
+    if promoted_from:
+        fm["promoted_from"] = promoted_from
+    else:
+        fm.pop("promoted_from", None)
     fm = strip_aliases_for_new_write(fm)
     # YAML by hand — avoid dumping empty aliases
     lines = ["---"]
@@ -107,7 +120,8 @@ def _render_task(
     lines.append(f"**Detail:** {detail or '—'}")
     lines.append("")
     lines.append("## Operativní kroky")
-    lines.append(f"- [ ] **{task_id}-1** …")
+    if not (hierarchy and work_type in {"task", "story"}):
+        lines.append(f"- [ ] **{task_id}-1** …")
     lines.append("")
     lines.append("## Poznámky / log")
     lines.append(f"- {today}: Založeno přes Brain API.")
@@ -115,52 +129,161 @@ def _render_task(
     return "\n".join(lines)
 
 
+def _slug_is_hierarchy(vault: Any, slug: str) -> bool:
+    hub_fm: dict[str, Any] = {}
+    try:
+        metas = vault.list_dir("02-PROJEKTY", pattern="*.md", recursive=False)
+    except Exception:
+        metas = []
+    for meta in metas:
+        rel = getattr(meta, "rel_path", "")
+        try:
+            text, _ = vault.read_text(rel)
+        except Exception:
+            continue
+        if f"slug: {slug}" in text or f'slug: "{slug}"' in text:
+            if re.search(r"(?m)^hierarchy:\s*true\s*$", text, re.IGNORECASE):
+                hub_fm = {"hierarchy": True}
+            break
+    has_epic = False
+    try:
+        files = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md")
+    except Exception:
+        files = []
+    for meta in files:
+        try:
+            text, _ = vault.read_text(getattr(meta, "rel_path", ""))
+        except Exception:
+            continue
+        if re.search(r"(?m)^type:\s*epic\s*$", text):
+            has_epic = True
+            break
+    return project_uses_hierarchy(slug, hub_frontmatter=hub_fm, slug_has_epic=has_epic) or slug in DEFAULT_HIERARCHY_SLUGS
+
+
+def _parent_story(vault: Any, slug: str, parent: str) -> str:
+    wanted = parse_parent_id(parent) or parent.strip()
+    try:
+        files = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md")
+    except Exception:
+        files = []
+    for meta in files:
+        rel = getattr(meta, "rel_path", "")
+        try:
+            text, file_meta = vault.read_text(rel)
+        except Exception:
+            continue
+        parsed = parse_task_text(text, rel_path=rel, meta=file_meta)
+        if str(parsed.frontmatter.get("id") or "") != wanted:
+            continue
+        if str(parsed.frontmatter.get("type") or "").lower() != "story":
+            raise BrainClientError(message="parent must be a story", status_code=400, error_reason="parent_not_story")
+        if str(parsed.frontmatter.get("slug") or slug) != slug:
+            raise BrainClientError(message="parent slug mismatch", status_code=400, error_reason="parent_slug")
+        return f"[[{wanted}]]"
+    raise BrainClientError(message="parent story not found", status_code=400, error_reason="parent_not_found")
+
+
+def _promoted_taken(vault: Any, slug: str, promoted_from: str) -> bool:
+    if not promoted_from:
+        return False
+    try:
+        files = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md")
+    except Exception:
+        return False
+    needle = f"promoted_from: {promoted_from}"
+    open_box = f"- [ ] **{promoted_from}**"
+    for meta in files:
+        try:
+            text, _ = vault.read_text(getattr(meta, "rel_path", ""))
+        except Exception:
+            continue
+        if needle in text or open_box in text:
+            return True
+    return False
+
+
 def create_task(
     *,
     slug: str,
-    title: str,
+    title: str = "",
     detail: str = "",
     level: str = "story",
     status: str = "Next",
+    parent: str = "",
+    deadline: str = "",
+    review_deadline: str = "",
+    promoted_from: str = "",
+    dry_run: bool = False,
+    items: list[dict[str, Any]] | None = None,
     env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    title = (title or "").strip()
     slug = (slug or "").strip()
-    if not title or not slug:
-        raise BrainClientError(message="slug and title required", status_code=400)
-    if level not in ("epic", "story", "task"):
-        raise BrainClientError(message="level must be epic|story|task", status_code=400)
-
-    with brain_vault(mode="mutate", env=env) as vault:
-        delete_context_tombstone(vault)
-        bare, where = next_id(vault, slug)
-        task_id = with_level(bare, level) if level else bare
-        # Hierarchy projects use letter; flat may use bare — prefer with_level when asked.
-        hub = _hub_filename(vault, slug)
-        rel_dir = f"02-PROJEKTY/{slug}/tasks"
-        vault.mkdir_p(rel_dir)
-        fname = f"{task_id} — {_slugify_title(title)}.md"
-        rel = f"{rel_dir}/{fname}"
-        if vault.exists(rel):
-            raise BrainClientError(
-                message=f"task file exists: {rel}",
-                status_code=409,
-                error_reason="task_exists",
-            )
-        body = _render_task(
-            task_id=task_id,
-            title=title,
-            slug=slug,
-            hub=hub,
-            level=level,
-            status=status,
-            detail=detail,
-        )
-        vault.write_text(rel, body)
-        return {
-            "id": task_id,
-            "path": rel,
-            "ceiling_source": where,
+    if not slug:
+        raise BrainClientError(message="slug required", status_code=400, error_reason="missing_slug")
+    specs = items or [
+        {
             "title": title,
-            "slug": slug,
+            "detail": detail,
+            "level": level,
+            "status": status,
+            "parent": parent,
+            "deadline": deadline,
+            "review_deadline": review_deadline,
+            "promoted_from": promoted_from,
         }
+    ]
+    for spec in specs:
+        if not str(spec.get("title") or "").strip():
+            raise BrainClientError(message="title required", status_code=400, error_reason="missing_title")
+        if spec.get("level", "story") not in ("epic", "story", "task"):
+            raise BrainClientError(message="level must be epic|story|task", status_code=400, error_reason="bad_level")
+
+    mode = "read" if dry_run else "mutate"
+    with brain_vault(mode=mode, env=env) as vault:
+        if mode == "mutate":
+            delete_context_tombstone(vault)
+        hierarchy = _slug_is_hierarchy(vault, slug)
+        prepared: list[dict[str, Any]] = []
+        seen_promoted: set[str] = set()
+        for spec in specs:
+            spec_level = str(spec.get("level") or "story")
+            spec_parent = str(spec.get("parent") or "").strip()
+            if hierarchy and spec_level == "task" and not spec_parent:
+                raise BrainClientError(message="parent required", status_code=400, error_reason="parent_required")
+            parent_link = _parent_story(vault, slug, spec_parent) if spec_parent else ""
+            promo = str(spec.get("promoted_from") or "").strip()
+            if promo:
+                if promo in seen_promoted or _promoted_taken(vault, slug, promo):
+                    raise BrainClientError(message="promoted_from taken", status_code=409, error_reason="promoted_from_taken")
+                seen_promoted.add(promo)
+            prepared.append({**spec, "level": spec_level, "parent_link": parent_link, "promoted_from": promo})
+        bare_ids = peek_ids(vault, slug, len(prepared))
+        hub = _hub_filename(vault, slug)
+        created: list[dict[str, str]] = []
+        rel_dir = f"02-PROJEKTY/{slug}/tasks"
+        if not dry_run:
+            vault.mkdir_p(rel_dir)
+        for spec, (bare, where) in zip(prepared, bare_ids):
+            task_id = with_level(bare, spec["level"])
+            rel = f"{rel_dir}/{task_id} — {_slugify_title(str(spec['title']))}.md"
+            body = _render_task(
+                task_id=task_id,
+                title=str(spec["title"]).strip(),
+                slug=slug,
+                hub=hub,
+                level=spec["level"],
+                status=str(spec.get("status") or "Next"),
+                detail=str(spec.get("detail") or ""),
+                parent=spec["parent_link"],
+                deadline=str(spec.get("deadline") or ""),
+                review_deadline=str(spec.get("review_deadline") or ""),
+                promoted_from=spec["promoted_from"],
+                hierarchy=hierarchy,
+            )
+            if not dry_run:
+                vault.write_text(rel, body)
+            created.append({"id": task_id, "path": rel, "ceiling_source": where})
+    if len(created) == 1 and not items:
+        return {**created[0], "title": title, "slug": slug, "dry_run": dry_run}
+    return {"slug": slug, "dry_run": dry_run, "created": created}

@@ -15,19 +15,19 @@ alwaysApply: true
 
 ### Datový model (file-per-task)
 - TASK / STORY / EPIC = `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (single file, YAML frontmatter SSOT)
-- PROJECT = `02-PROJEKTY/<Hub>.md` (charter + Bases embed). Vault je single-user — owner = vždy Lukáš (nesepisujeme).
+- PROJECT = `02-PROJEKTY/<Hub>.md` (charter). Vault je single-user — owner = vždy Lukáš (nesepisujeme). Embed `![[*.base]]` se nepřidává.
 - MATERIAL = `02-PROJEKTY/<slug>/materials/<file>.md` (project-specific) nebo `05-RESOURCES/<category>/<file>.md` (cross-project)
 - AREA = `03-AREAS/<Name>.md`
 - ARCHIVE = `07-ARCHIV/tasks-done/<slug>/<ID>-*.md`
 
 ### Hierarchie Epic → Story → Task (opt-in)
 - **Zapnuto:** `rb-universe-development`, `it-ai-data`, `firemni-procesy`, `finance`. Jinde `hierarchy: true` v hubu nebo presence `type: epic` v `tasks/`. (`vibe-coding` paused → merge do `it-ai-data`, SB10.)
-- **V hierarchickém projektu `type: task` nepoužívej** — na hub page není vidět. Flat `All-tasks.base` má root filtr `type == "task"`, hierarchy views filtrují `story` / `epic`, takže plochý task propadne oběma. Osamocený kus = `story` bez `parent`.
-- **Hub embeduje `All-tasks-hierarchy.base`**, ne `All-tasks.base` — včetně `ProjectRecentDone`. Sekce se jmenuje `## Aktivní práce (Epic → Story → Task)`.
+- **V hierarchii je listový kus soubor `type: task`** s `parent` na story. Nový checkbox `**ID-N**` jako práce se nezakládá. Osamocený kus bez story = `story` bez `parent`.
+- **Hub Bases neembeduje.** Sekce `## Aktivní práce (Epic → Story → Task)` zůstává textem charteru. Soubory `*.base` se nekopírují.
 - **Přesun tasku mezi projekty:** nový ID v cílovém projektu, původní `Cancelled` s ukazatelem — smazané ID by `max+1` přidělil znovu.
 - **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, může mít `focus` (téma týdne); **ne** ICE; **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
-- **Story** (`type: story`) — doručitelná hodnota. ICE / `focus` / `agent` / `status` / `review_deadline` žijí tady. `parent: '[[RBU-E23 — …]]'` → epic. Checkboxy `**ID-N**` v `## Operativní kroky` = listové tasky.
-- **Task** (`type: task`) — legacy / flat (default mimo hierarchii). Osamocený tech kus bez epicu = `story` bez `parent` (např. Traefik).
+- **Story** (`type: story`) — doručitelná hodnota, kontejner. ICE / `focus` / `agent` / `status` žijí tady, dokud nemá otevřený child task. `parent: '[[RBU-E23 — …]]'` → epic. Otevřená práce pod ní je soubor `type: task`.
+- **Task** (`type: task`) — v hierarchii listový soubor s `parent` na story. Mimo hierarchii zůstává plochý úkol. Osamocený tech kus bez story = `story` bez `parent`.
 - **ID nese úroveň:** `<PREFIX>-E<N>` epic, `<PREFIX>-S<N>` story, `<PREFIX>-T<N>` task (`RBU-E69`, `RBU-S70`). Podúkol = `<ID>-<M>`, tedy `RBU-S70-1`.
 - **Čítač je jeden pro celý projekt, ne per úroveň** — epic i story berou další volné číslo přes `next_task_id.py`. Povýšení story na epic mění písmeno, ne číslo, takže se žádné číslo neuvolní k recyklaci.
 - Platí od 8. 9. 2026 v hierarchických projektech; mapping starých ID je v `00-System/hierarchy-id-migration.json`. Archiv a ploché projekty mají dál `<PREFIX><N>` — parsery umí obojí.
@@ -159,7 +159,7 @@ Z toho plyne (v README není):
 
 ## Co (ne)dělat
 - **NE** vytvářej tasky H3 v hubu (legacy v1) — vždy file-per-task.
-- **NE** dělej HTML dashboard — Obsidian Bases je live source.
+- **NE** dělej HTML dashboard. Živý přehled je `agent-context.json` a soubory úkolů. Embed `![[*.base]]` se nepřidává. Obsidian jako editor je zakázaný.
 - **NE** edituj `vps/second-brain-hub/cron/build_dashboard.py` ani `vps/web/` (deprecated, F-S9 cleanup).
 - **NE** zapisuj do `OBSIDIAN/00-System/dashboard-data.json` (legacy v1, nahrazeno `agent-context.json`).
 - **NE** nastavuj `focus` sám — nabídni kandidáty a nech volbu na uživateli.

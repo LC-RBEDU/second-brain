@@ -76,5 +76,10 @@ def get_batch(batch_id: str) -> Batch | None:
     return _STORE.get(batch_id)
 
 
+def consume_batch(batch_id: str) -> Batch | None:
+    _purge_expired()
+    return _STORE.pop(batch_id, None)
+
+
 def clear_for_tests() -> None:
     _STORE.clear()

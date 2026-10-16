@@ -21,7 +21,7 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 ## Architektura v2 (povinný kontext)
 
 - **TASK** = vlastní `.md` v `02-PROJEKTY/<slug>/tasks/<ID> — <sanitize(title)>.md` se YAML frontmatterem (SSOT) a body s checkboxy. Filename = ID + em-dash U+2014 (` — `) + sanitizovaný titulek (diakritika, emoji zachovány).
-- **PROJECT HUB** = `02-PROJEKTY/<HubName>.md` s charter sekcemi a embedy `![[All-tasks.base#ProjectKanban]]` (Bases plugin).
+- **PROJECT HUB** = `02-PROJEKTY/<HubName>.md` s charter sekcemi. Embed `![[*.base]]` se nepřidává.
 - **MATERIAL** = `02-PROJEKTY/<slug>/materials/<title>.md` (project-specific) nebo `05-RESOURCES/<kategorie>/<title>.md` (cross-project), s frontmatter `projects:` array (M:N).
 - Konvence: `OBSIDIAN/00-System/Templates/konvence-a-slovnik.md`, `task-convention.md`, `task-template.md`, `material-template.md`, `id-generation-spec.md`, `filename-normalization.md`.
 

@@ -35,8 +35,11 @@ from github_rbu_closes import (  # noqa: E402
     fetch_new_commit_messages,
     index_rbu_tasks,
     load_state,
+    promoted_task_for_ref,
     save_state,
+    story_has_open_child,
 )
+from promoted_alias import alias_is_active, load_applied_at, prague_today  # noqa: E402
 from task_io import iter_active_tasks  # noqa: E402
 from vault_factory import open_vault  # noqa: E402
 
@@ -106,7 +109,11 @@ def main() -> None:
             if dedupe in seen_refs:
                 continue
             seen_refs.add(dedupe)
-            task = by_id.get(action.task_id)
+            promoted = None
+            alias_on = alias_is_active(prague_today(), load_applied_at(vault))
+            if alias_on and action.kind == "subtask":
+                promoted = promoted_task_for_ref(list(by_id.values()), action.ref)
+            task = promoted or by_id.get(action.task_id)
             if not task:
                 counts["not_found"] += 1
                 print(f"  ? {action.ref} — no active RBU task {action.task_id}")
@@ -123,7 +130,14 @@ def main() -> None:
                 print(f"  ! re-read failed {action.task_id}: {e}")
                 continue
 
-            result, detail = apply_close_action(vault, task, action, today_str=today)
+            result, detail = apply_close_action(
+                vault,
+                task,
+                action,
+                today_str=today,
+                has_open_child=story_has_open_child(list(by_id.values()), action.task_id),
+                promoted_file=promoted is not None,
+            )
             counts[result] = counts.get(result, 0) + 1
             print(f"  {result}: {detail}")
             if result == "applied":

@@ -27,9 +27,11 @@ from focus import (  # noqa: E402
     parse_focus,
 )
 from task_io import FRONTMATTER_RE, iter_active_tasks, parse_task_text  # noqa: E402
+from hierarchy import is_story  # noqa: E402
 from today_priority import (  # noqa: E402
     count_focus_epic_slots,
     count_focus_slots,
+    parents_with_open_task_children,
     paused_project_slugs,
     would_consume_epic_focus_slot,
     would_consume_focus_slot,
@@ -37,7 +39,7 @@ from today_priority import (  # noqa: E402
 
 from app.auth_service import ServicePrincipal
 from app.errors import BrainClientError
-from app.policy import allow_focus_write
+from app.policy import FOCUS_PROPOSAL_MESSAGE, allow_focus_write
 from app.request_principal import get_brain_principal
 from app.vault_deps import brain_vault
 
@@ -115,7 +117,14 @@ def set_focus(
     expect_oid: str | None = None,
     principal: ServicePrincipal | str | None = None,
     env: dict[str, str] | None = None,
+    via_apply: bool = False,
 ) -> dict[str, Any]:
+    if not via_apply:
+        raise BrainClientError(
+            message=FOCUS_PROPOSAL_MESSAGE,
+            status_code=403,
+            error_reason="focus_requires_proposal",
+        )
     today = _prague_today(env)
     principal = principal if principal is not None else get_brain_principal()
     decision = allow_focus_write(principal)
@@ -176,6 +185,15 @@ def set_focus(
 
         parsed_task = parse_task_text(text, rel_path=path, meta=meta)
         already = is_focus_current(parsed_task.frontmatter.get("focus"), today)
+        if not clear and is_story(parsed_task):
+            active = list(iter_active_tasks(vault))
+            story_id = str(parsed_task.frontmatter.get("id") or "")
+            if story_id and story_id in parents_with_open_task_children(active):
+                raise BrainClientError(
+                    message="focus_story_has_open_child",
+                    status_code=403,
+                    error_reason="focus_story_has_open_child",
+                )
 
         if not clear and not already:
             paused = _paused_slugs_from_vault(vault)
