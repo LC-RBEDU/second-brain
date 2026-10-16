@@ -164,6 +164,22 @@ def test_title_with_colon_is_quoted_and_trace_lands_in_the_log():
     assert "RBU-S7-1 → [[RBU-T14 — A: B]]" in vault.files[story_path]
 
 
+def test_slash_in_the_title_stays_one_file():
+    from promote_open_checkboxes import write_plan
+
+    title = "Ověřit [Allfred](https://redbuttonedu.allfred.io/projects/detail/?id=187) a [[02-PROJEKTY/finance/x|materiál]]"
+    line = f"## Operativní kroky\n- [ ] **F-S1-1** {title}\n"
+    story = _story(line, id="F-S1", slug="finance", focus="", deadline="")
+    vault = _Mem({story.rel_path: "---\nid: F-S1\nstatus: Next\nfocus:\ndeadline:\n---\n" + line})
+    plans = plan_promotions([story], id_for_index=lambda i: "F94")
+    write_plan(vault, plans, today="2026-10-16")
+    child = next(path for path in vault.files if "F-T94" in path)
+    assert "/" not in child.split("tasks/", 1)[1]
+    assert "https://redbuttonedu.allfred.io/projects/detail/?id=187" in vault.files[child]
+    stem = child.rsplit("/", 1)[1].removesuffix(".md")
+    assert f"F-S1-1 → [[{stem}]]" in vault.files[story.rel_path]
+
+
 def test_dry_run_shows_a_date_blocked_by_the_epic(capsys):
     body = "## Operativní kroky\n- [ ] **RBU-S7-1** Jediný\n"
     epic = SimpleNamespace(

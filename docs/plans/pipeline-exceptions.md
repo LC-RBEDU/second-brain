@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-16 | `scripts/promote_open_checkboxes.py`, `scripts/tests/test_promote_apply_session.py` | jasná příčina: název checkboxu s `https://` nebo `/` rozbil cestu souboru (`Empty path segment`); filename se zkrátí na jeden segment, title v souboru zůstává | agent (uživatel: spusť převod) |
 | 2026-10-15 | `.cursor/rules/no-auto-new-project.mdc`, `second-brain-bootstrap.mdc`, `ŠABLONY/skills/agenda-{capture,triage,work}/SKILL.md`, vault: zrušení Marketing/MKT1 | čistě docs/rules/skill + vault housekeeping (Cancelled+archiv); bez hub/cron runtime | agent (uživatel: zruš Marketing, pravidlo proti auto-projektu) |
 | 2026-10-13 | `ŠABLONY/design-system/**`, `scripts/refresh_rb_design_system.py`, `.cursor/rules/design-system-refresh.mdc`, `ŠABLONY/skills/rbe-writing-style/SKILL.md` (+ pointer v RBU `rb-edu-ui-patterns`) | čistě docs/skill/rule + jednorázový fetch snapshot Claude artifactu; bez hub/cron/vault-batch runtime | agent (uživatel: brand DS SSOT pro Cursor/Grok) |
 | 2026-10-13 | `.cursor/rules/internal-meeting-slack.mdc`, `ŠABLONY/skills/agenda-zapis-ze-schuzky/SKILL.md`, `…/references/struktura-vystupu.md`, `…/references/drive-mapa.md` (+ meta MD/HTML Strategická 12.10.) | čistě docs/rules/skill — SSOT distribuce zápisů (HTML Slack attach, MD→Drive+link); bez uploadu/send | agent (uživatel: nový model distribuce) |

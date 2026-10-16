@@ -40,6 +40,20 @@ def apply_allowed(env: dict[str, str]) -> str | None:
     return None
 
 
+def _path_title(title: str, *, new_id: str) -> str:
+    """One path segment. Slashes in a checkbox title must not become directories."""
+    text = " ".join(str(title).replace("/", " ").replace("\\", " ").split())
+    text = "".join(ch for ch in text if ord(ch) >= 32)
+    if not text:
+        text = "krok"
+    stem = f"{new_id} — {text}.md"
+    if len(stem.encode("utf-8")) <= 200:
+        return text
+    budget = 200 - len(f"{new_id} — .md".encode("utf-8"))
+    cut = text.encode("utf-8")[: max(budget, 1)].decode("utf-8", "ignore").rstrip()
+    return cut or "krok"
+
+
 def _yaml(value: str) -> str:
     text = str(value)
     if not text:
@@ -203,7 +217,7 @@ def _rewrite_story(text: str, items: list[dict[str, Any]]) -> str:
     if text and not text.endswith("\n"):
         text += "\n"
     traces = [
-        f"- {item['checkbox_id']} → [[{item['new_id']} — {item['title']}]]"
+        f"- {item['checkbox_id']} → [[{item['new_id']} — {item['path_title']}]]"
         for item in items
     ]
     block = "\n".join(traces) + "\n"
@@ -261,11 +275,11 @@ def write_plan(vault: Any, plans: list[dict[str, Any]], *, today: str) -> dict[s
     grouped: dict[str, list[dict[str, Any]]] = {}
     written_paths: list[str] = []
     for item in plans:
-        payload = {**item, "today": today}
-        path = f"02-PROJEKTY/{item['slug']}/tasks/{item['new_id']} — {item['title']}.md"
+        payload = {**item, "today": today, "path_title": _path_title(item["title"], new_id=item["new_id"])}
+        path = f"02-PROJEKTY/{item['slug']}/tasks/{item['new_id']} — {payload['path_title']}.md"
         vault.write_text(path, _child_markdown(payload))
         written_paths.append(path)
-        grouped.setdefault(item["story_path"], []).append(item)
+        grouped.setdefault(item["story_path"], []).append(payload)
     for story_path, items in grouped.items():
         text, _meta = vault.read_text(story_path)
         vault.write_text(story_path, _rewrite_story(text, items))
