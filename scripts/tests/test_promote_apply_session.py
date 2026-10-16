@@ -164,6 +164,23 @@ def test_title_with_colon_is_quoted_and_trace_lands_in_the_log():
     assert "RBU-S7-1 → [[RBU-T14 — A: B]]" in vault.files[story_path]
 
 
+def test_dry_run_shows_a_date_blocked_by_the_epic(capsys):
+    body = "## Operativní kroky\n- [ ] **RBU-S7-1** Jediný\n"
+    epic = SimpleNamespace(
+        frontmatter={"id": "RBU-E1", "type": "epic", "slug": "rb-universe-development", "deadline": "2026-10-10"},
+        body="",
+        rel_path="e.md",
+    )
+    story = _story(body, deadline="2026-10-20")
+    assert main([], {}, tasks=[epic, story]) == 0
+    row = json.loads(capsys.readouterr().out)["plans"][0]
+    assert row["blocked_by_epic"] is True
+    assert row["story_deadline"] == "2026-10-20"
+    assert row["epic_id"] == "RBU-E1"
+    assert row["epic_deadline"] == "2026-10-10"
+    assert row["deadline"] == ""
+
+
 def test_dry_run_lists_focus_and_writes_nothing(capsys):
     body = "## Operativní kroky\n- [ ] **RBU-S7-1** První\n- [ ] **RBU-S7-2** Druhý\n"
     assert main([], {}, tasks=[_story(body)]) == 0
@@ -179,10 +196,11 @@ def test_apply_deletes_base_files():
 
     class _Vault(_Mem):
         def list_dir(self, path, pattern="*", recursive=False):
+            suffix = ".md" if str(pattern).endswith(".md") else ".base"
             return [
                 SimpleNamespace(rel_path=rel)
                 for rel in self.files
-                if rel.startswith(path) and rel.endswith(".base")
+                if rel.startswith(path) and rel.endswith(suffix)
             ]
 
         def delete(self, path):
@@ -190,14 +208,18 @@ def test_apply_deletes_base_files():
             self.writes.append("deleted:" + path)
 
     story_path = "02-PROJEKTY/rb-universe-development/tasks/RBU-S7 — Story.md"
+    hub_path = "02-PROJEKTY/RB Universe development.md"
     vault = _Vault(
         {
-            story_path: "---\nid: RBU-S7\nfocus:\n---\n## Poznámky / log\n",
+            story_path: "---\nid: RBU-S7\nfocus:\n---\n![[All-tasks-hierarchy.base#EpicStories]]\n## Poznámky / log\n",
+            hub_path: "# Hub\n\n![[All-tasks.base#ProjectKanban]]\n",
             "00-System/Bases/All-tasks.base": "views: []\n",
         }
     )
     write_plan(vault, [], today="2026-10-16")
     assert "00-System/Bases/All-tasks.base" not in vault.files
+    assert ".base" not in vault.files[story_path]
+    assert ".base" not in vault.files[hub_path]
 
 
 def test_single_check_later_than_epic_keeps_the_date_on_the_story():

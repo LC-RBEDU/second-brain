@@ -117,6 +117,7 @@ def build_mcp() -> MCPServer:
         text: str,
         target: str,
         expect_oid: str | None = None,
+        dry_run: bool = False,
     ) -> str:
         return _call(
             append_task_note_tool.append_task_note,
@@ -124,6 +125,7 @@ def build_mcp() -> MCPServer:
             text=text,
             target=target,
             expect_oid=expect_oid,
+            dry_run=dry_run,
         )
 
     @mcp.tool(

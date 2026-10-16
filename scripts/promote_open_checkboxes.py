@@ -141,6 +141,10 @@ def plan_promotions(tasks: list[Any], *, id_for_index) -> list[dict[str, Any]]:
                 "review_deadline": "" if not single or blocked_by_epic else str(fm.get("review_deadline") or "")[:10],
                 "clear_story_focus": bool(focus),
                 "move_dates": bool(single and not blocked_by_epic and (story_deadline or fm.get("review_deadline"))),
+                "blocked_by_epic": blocked_by_epic,
+                "story_deadline": story_deadline,
+                "epic_id": epic_id or "",
+                "epic_deadline": epic_deadline,
                 "outside_steps": _outside_steps(task.body or "", checkbox_id),
             }
             plans.append(item)
@@ -233,7 +237,7 @@ def strip_bases_and_embeds(vault: Any) -> list[str]:
         removed.append(rel)
     paths: list[str] = []
     try:
-        hubs = vault.list_dir("02-PROJEKTY", pattern="*.md", recursive=False)
+        hubs = vault.list_dir("02-PROJEKTY", pattern="*.md", recursive=True)
         paths.extend(getattr(meta, "rel_path", "") for meta in hubs)
     except Exception:
         pass
@@ -289,6 +293,10 @@ def _summarize(plans: list[dict[str, Any]]) -> dict[str, Any]:
                 "clear_story_focus": bool(item.get("clear_story_focus")),
                 "move_dates": bool(item.get("move_dates")),
                 "deadline": item.get("deadline") or "",
+                "blocked_by_epic": bool(item.get("blocked_by_epic")),
+                "story_deadline": item.get("story_deadline") or "",
+                "epic_id": item.get("epic_id") or "",
+                "epic_deadline": item.get("epic_deadline") or "",
                 "outside_steps": bool(item.get("outside_steps")),
             }
         )

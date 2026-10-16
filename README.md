@@ -18,9 +18,9 @@ Mirror na Google Drive — verzování řeší Drive native versioning (proto `O
 ## Architektura v2 (po file-per-task migraci)
 
 - **TASK** = single `.md` v `02-PROJEKTY/<slug>/tasks/<ID>-<slug>.md` se YAML frontmatterem (SSOT)
-- **PROJECT HUB** = `02-PROJEKTY/<Hub>.md` s charterem + Bases embedy (`![[All-tasks.base#ProjectKanban]]`)
+- **PROJECT HUB** = `02-PROJEKTY/<Hub>.md` s charterem. Embed `![[*.base]]` se nepřidává.
 - **MATERIAL** = `02-PROJEKTY/<slug>/materials/` (project-specific) nebo `05-RESOURCES/<category>/` (cross-project), M:N přes `materials:` array v task frontmatteru
-- **DASHBOARD** = `OBSIDIAN/Dashboard.md` + `Bases/*.base` plugins (live z frontmatteru, žádný HTML build)
+- **PŘEHLED** = `agent-context.json` a frontmatter task souborů. Soubory `*.base` se nepoužívají.
 - **AGENT CONTEXT** = `OBSIDIAN/00-System/agent-context.json` snapshot (every-write trigger / VPS cron 15 min)
 
 Detaily: `OBSIDIAN/00-System/Templates/agenda-system.md`, `agent-bootstrap.md`.

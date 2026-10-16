@@ -203,6 +203,7 @@ class AppendTaskBody(BaseModel):
     text: str
     target: str
     expect_oid: str | None = None
+    dry_run: bool = False
 
 
 @app.post("/v1/tasks/append")
@@ -212,6 +213,7 @@ def rest_append_task_note(body: AppendTaskBody, _auth: AuthPrincipal) -> dict:
         text=body.text,
         target=body.target,
         expect_oid=body.expect_oid,
+        dry_run=body.dry_run,
     )
 
 

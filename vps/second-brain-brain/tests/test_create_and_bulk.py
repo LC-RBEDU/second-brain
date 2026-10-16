@@ -74,6 +74,15 @@ def test_append_step_on_story_creates_a_file_after_the_anchor():
     vault.write_text.assert_not_called()
 
 
+def test_append_request_defaults_dry_run_off():
+    from app.main import AppendTaskBody
+
+    plain = AppendTaskBody(path="02-PROJEKTY/x/tasks/a.md", text="krok", target="step")
+    preview = AppendTaskBody(path="02-PROJEKTY/x/tasks/a.md", text="krok", target="step", dry_run=True)
+    assert plain.dry_run is False
+    assert preview.dry_run is True
+
+
 def test_hierarchy_task_without_parent_is_rejected():
     vault = _vault()
     with patch.object(create_mod, "brain_vault", return_value=_CM(vault)):

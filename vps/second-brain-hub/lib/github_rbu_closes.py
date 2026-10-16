@@ -178,6 +178,24 @@ def index_rbu_tasks(tasks: list[Any]) -> dict[str, Any]:
     return by_id
 
 
+def resolve_closes_target(action: CloseAction, tasks: list[Any], *, alias: str) -> tuple[Any, bool] | None:
+    """Return ``(file, promoted)`` or None when the ref must not write.
+
+    An expired checkbox id does not fall through onto the story.
+    """
+    if action.kind == "subtask" and alias == "expired":
+        return None
+    if action.kind == "subtask" and alias == "active":
+        promoted = promoted_task_for_ref(tasks, action.ref)
+        if promoted is None:
+            return None
+        return promoted, True
+    task = index_rbu_tasks(tasks).get(action.task_id)
+    if task is None:
+        return None
+    return task, False
+
+
 def promoted_task_for_ref(tasks: list[Any], ref: str) -> Any | None:
     """File whose ``promoted_from`` equals the Closes ref. RBU slug only."""
     for task in tasks:

@@ -65,7 +65,9 @@ Odpovědi:
 | 16 | 2026-10-16 | IMPLEMENT | hlavní | rozpracováno | — | Smazané šablony .base, zákaz Obsidianu jako editoru. |
 | 17 | 2026-10-16 | IMPLEMENT | hlavní | gate zelený | — | 423 hub + 139 brain. Commit 6fd95f7. |
 | 18 | 2026-10-16 | REVIEW | 13ae5ee7 | K OPRAVĚ | 7 BLOCKER, 5 MAJOR | NEW-1 cron Done, NEW-2 append checkbox, NEW-3 toggle okno, NEW-4 create deadline, NEW-5 .base, NEW-6 dry-run, NEW-7 YAML, NEW-8 pole, NEW-9 pozdější rodič, NEW-10 index Closes, NEW-11 log čtení, NEW-12 testy. |
-| 19 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Nálezy NEW-1 až NEW-12 v kódu. Gate: hub+scripts 431 passed, brain 142 passed. Živý vault se nezapisoval. |
+| 19 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | NEW-1 až NEW-12. Gate 431 + 142. Commit 906e2a8. NEW-13 byl minor: outside_steps hledá poslední nadpis v celém těle. |
+| 20 | 2026-10-16 | REVIEW | c317d4fc | K OPRAVĚ | 1 BLOCKER, 3 MAJOR | NEW-5 embed v tasks/, NEW-10 Closes po dni 91, NEW-14 dry-run epic, NEW-15 append dry_run na MCP/REST. |
+| 21 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Embed i v tasks/*.md, expirované checkbox id nezavře story, dry-run nese epic a deadline, append dry_run na MCP i REST. Gate: hub+scripts 434 passed, brain 143 passed. |
 
 ## Otevřené nálezy
 
