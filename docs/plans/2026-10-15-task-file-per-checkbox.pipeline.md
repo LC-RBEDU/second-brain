@@ -67,7 +67,9 @@ Odpovědi:
 | 18 | 2026-10-16 | REVIEW | 13ae5ee7 | K OPRAVĚ | 7 BLOCKER, 5 MAJOR | NEW-1 cron Done, NEW-2 append checkbox, NEW-3 toggle okno, NEW-4 create deadline, NEW-5 .base, NEW-6 dry-run, NEW-7 YAML, NEW-8 pole, NEW-9 pozdější rodič, NEW-10 index Closes, NEW-11 log čtení, NEW-12 testy. |
 | 19 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | NEW-1 až NEW-12. Gate 431 + 142. Commit 906e2a8. NEW-13 byl minor: outside_steps hledá poslední nadpis v celém těle. |
 | 20 | 2026-10-16 | REVIEW | c317d4fc | K OPRAVĚ | 1 BLOCKER, 3 MAJOR | NEW-5 embed v tasks/, NEW-10 Closes po dni 91, NEW-14 dry-run epic, NEW-15 append dry_run na MCP/REST. |
-| 21 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Embed i v tasks/*.md, expirované checkbox id nezavře story, dry-run nese epic a deadline, append dry_run na MCP i REST. Gate: hub+scripts 434 passed, brain 143 passed. |
+| 21 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Embed i v tasks/*.md, expirované checkbox id nezavře story, dry-run nese epic a deadline, append dry_run na MCP i REST. Gate: hub+scripts 434 passed, brain 143 passed. Commit ab92bfc. |
+| 22 | 2026-10-16 | REVIEW | 215c3f22 | K OPRAVĚ | 0 BLOCKER, 1 MAJOR | NEW-1: po kotvě Closes ID-N bez promoted_from nic neodškrtne, a po dni 91 už natrvalo. |
+| 23 | 2026-10-16 | IMPLEMENT | hlavní | opraveno | — | Expirované id s promoted_from story nezavře. Živý krok na souboru se odškrtne. Chybějící řádek je noop, ne Done story. Hub+scripts 437 passed. |
 
 ## Otevřené nálezy
 

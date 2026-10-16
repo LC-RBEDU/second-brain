@@ -183,13 +183,12 @@ def resolve_closes_target(action: CloseAction, tasks: list[Any], *, alias: str) 
 
     An expired checkbox id does not fall through onto the story.
     """
-    if action.kind == "subtask" and alias == "expired":
-        return None
-    if action.kind == "subtask" and alias == "active":
+    if action.kind == "subtask":
         promoted = promoted_task_for_ref(tasks, action.ref)
-        if promoted is None:
+        if alias == "expired" and promoted is not None:
             return None
-        return promoted, True
+        if promoted is not None and alias == "active":
+            return promoted, True
     task = index_rbu_tasks(tasks).get(action.task_id)
     if task is None:
         return None
@@ -258,12 +257,7 @@ def apply_close_action(
         assert action.subtask_num is not None
         new_body, changed = mark_checkbox_done(task.body, action.task_id, action.subtask_num)
         if not changed:
-            # Already checked or missing
-            if all_checkboxes_done(task.body) and not task.is_terminal:
-                # Still try story auto-done below
-                pass
-            else:
-                return "noop", f"{action.ref}: checkbox missing or already [x]"
+            return "noop", f"{action.ref}: checkbox missing or already [x]"
         else:
             log = (
                 f"- {today_str}: `{action.ref}` [x] — auto from GitHub "
