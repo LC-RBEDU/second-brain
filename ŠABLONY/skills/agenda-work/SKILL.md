@@ -37,7 +37,7 @@ Pokud slug není jasný → zobraz seznam aktivních projektů z `00-System/Inde
 
 ### 2. Ukaž orientační přehled
 
-U hierarchy projektů (`hierarchy: true` / RBU / `open_epics` v snapshotu) odděl **Epicy** od **Stories** — epicy nesoutěží o fokus ani `top_priority`.
+U hierarchy projektů (`hierarchy: true` / RBU / `open_epics` v snapshotu) odděl **Epicy** od **Stories** — epicy nesoutěží o fokus ani `top_priority`. Brain parent pravidla platí v každém projektu. Snapshot `hierarchy` je flag hubu, ne vypínač těch pravidel.
 
 ```
 ═══════════════════════════════════════════════

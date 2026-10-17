@@ -44,6 +44,56 @@ def test_rotation_blocked_leaves_the_tasks_path_alone():
     assert story.rel_path.startswith("02-PROJEKTY/")
 
 
+def test_rotation_blocked_by_an_epic_in_another_project():
+    story = _task(
+        id="OS-S7",
+        type="story",
+        status="Done",
+        slug="osobni",
+        deadline="2026-10-01",
+        recurring={"frequency": "weekly", "weekday": "thursday"},
+        parent="[[F-E1]]",
+        path="02-PROJEKTY/osobni/tasks/OS-S7.md",
+    )
+    epic = _task(
+        id="F-E1",
+        type="epic",
+        status="Doing",
+        deadline="2026-10-02",
+        slug="finance",
+        body="",
+        path="02-PROJEKTY/finance/tasks/F-E1.md",
+    )
+    blocked, _next, _order = rotation_blocked(story, [epic, story], date(2026, 10, 16))
+    assert blocked is True
+    assert story.rel_path.startswith("02-PROJEKTY/osobni/")
+
+
+def test_rotation_ignores_a_conflict_outside_its_cone():
+    story = _task(
+        id="OS-S7",
+        type="story",
+        status="Done",
+        deadline="2026-10-01",
+        recurring={"frequency": "weekly", "weekday": "thursday"},
+        parent="[[OS-E1]]",
+        path="02-PROJEKTY/osobni/tasks/OS-S7.md",
+    )
+    own_epic = _task(id="OS-E1", type="epic", status="Doing", deadline="2026-12-31", body="", path="02-PROJEKTY/osobni/tasks/OS-E1.md")
+    other_epic = _task(id="F-E1", type="epic", status="Doing", deadline="2026-10-01", body="", path="02-PROJEKTY/finance/tasks/F-E1.md")
+    cousin = _task(
+        id="F-S2",
+        type="story",
+        status="Next",
+        deadline="2026-10-20",
+        parent="[[F-E1]]",
+        body="",
+        path="02-PROJEKTY/finance/tasks/F-S2.md",
+    )
+    blocked, _next, _order = rotation_blocked(story, [own_epic, other_epic, cousin, story], date(2026, 10, 16))
+    assert blocked is False
+
+
 def test_story_with_open_child_is_not_auto_done():
     story = _task(id="RBU-S7", type="story", status="Doing", slug="rb-universe-development")
     child = _task(

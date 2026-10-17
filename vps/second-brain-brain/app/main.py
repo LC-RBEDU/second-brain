@@ -352,6 +352,7 @@ class CreateTaskBody(BaseModel):
     detail: str = ""
     level: str = "story"
     status: str = "Next"
+    parent: str = ""
 
 
 @app.post("/v1/tasks")
@@ -362,6 +363,7 @@ def rest_create_task(body: CreateTaskBody, _auth: AuthPrincipal) -> dict:
         detail=body.detail,
         level=body.level,
         status=body.status,
+        parent=body.parent,
     )
 
 

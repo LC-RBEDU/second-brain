@@ -269,7 +269,11 @@ def rotation_blocked(task: Any, siblings: list[Any], today: date) -> tuple[bool,
             # The next instance is open. The file on disk is still Done.
             node = type(node)(node.id, node.parent_id, "Next", node.deadline)
         nodes.append(node)
-    order = evaluate_deadline_order(nodes, {task.task_id: next_dl.isoformat()})
+    order = evaluate_deadline_order(
+        nodes,
+        {task.task_id: next_dl.isoformat()},
+        touched_ids={task.task_id},
+    )
     return (not order.get("ok", False), next_dl, order)
 
 

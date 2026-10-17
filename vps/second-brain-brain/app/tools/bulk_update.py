@@ -14,12 +14,14 @@ for _lib in (
         break
 
 from context_tombstone import delete_context_tombstone  # noqa: E402
-from deadline_order import evaluate_deadline_order, node_from_frontmatter  # noqa: E402
+from deadline_order import DeadlineNode, evaluate_deadline_order, node_from_frontmatter  # noqa: E402
+from hierarchy import parse_parent_id  # noqa: E402
 from task_query import card  # noqa: E402
 
 from app.errors import BrainClientError
 from app.policy import FOCUS_PROPOSAL_MESSAGE
 from app.tools.task_catalog import load_tasks
+from app.tools.parent_link import check_overlay, needs_forest
 from app.tools.update_task import render_frontmatter_patch
 from app.vault_deps import brain_vault
 
@@ -45,7 +47,9 @@ def bulk_update(
         tasks = load_tasks(vault)
         by_id = {card(task)["id"]: task for task in tasks}
         resolved: list[tuple[Any, dict[str, Any]]] = []
+        forest_items: list[dict[str, Any]] = []
         deadline_patches: dict[str, str | None] = {}
+        touched: set[str] = set()
         for item in updates:
             task_id = str(item.get("id") or "")
             task = by_id.get(task_id)
@@ -53,12 +57,40 @@ def bulk_update(
                 raise BrainClientError(message=f"not_found {task_id}", status_code=404, error_reason="not_found")
             patch = dict(item.get("patch") or {})
             resolved.append((task, patch))
+            if needs_forest(patch):
+                forest_items.append({"id": task_id, "patch": patch})
+            if "deadline" in patch or "parent" in patch:
+                touched.add(task_id)
             if "deadline" in patch:
                 raw = patch.get("deadline")
                 deadline_patches[task_id] = None if raw in (None, "") else str(raw)
-        if deadline_patches:
+        normalized: dict[str, dict[str, Any]] = {}
+        if forest_items:
+            normalized = check_overlay(tasks, forest_items)
+            resolved = [
+                (task, normalized.get(card(task)["id"], patch))
+                for task, patch in resolved
+            ]
+        if touched:
             nodes = [node_from_frontmatter(task.frontmatter) for task in tasks]
-            order = evaluate_deadline_order(nodes, deadline_patches, allow_parent_shift=allow_parent_shift)
+            if normalized:
+                nodes = [
+                    DeadlineNode(
+                        node.id,
+                        parse_parent_id(normalized[node.id].get("parent"))
+                        if node.id in normalized and "parent" in normalized[node.id]
+                        else node.parent_id,
+                        node.status,
+                        node.deadline,
+                    )
+                    for node in nodes
+                ]
+            order = evaluate_deadline_order(
+                nodes,
+                deadline_patches,
+                allow_parent_shift=allow_parent_shift,
+                touched_ids=touched,
+            )
             if not order.get("ok", False):
                 raise BrainClientError(
                     message="deadline_order",

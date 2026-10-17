@@ -3,20 +3,19 @@
 SSOT pro work-item frontmatter. Verzováno v gitu (`ŠABLONY/obsidian-templates/`).
 Vault kopie: `OBSIDIAN/00-System/Templates/task-convention.md` (Drive).
 
-## Tři vrstvy (opt-in)
+## Tři vrstvy
 
-Zapnuto u **`rb-universe-development`**, **`it-ai-data`**, **`firemni-procesy`**, **`finance`**. (`vibe-coding` paused → merge do `it-ai-data`, SB10.)
-Jinde: hub `hierarchy: true` nebo presence alespoň jednoho `type: epic` v `tasks/`.
+Pravidla parentu platí v každém projektu. Soubor zůstává ve své složce, parent id smí být z jiného projektu. Existující story bez parent se hromadně nepřepisují; navázání jde přes `update_task`.
 
-> **Od 16. 10. 2026:** v hierarchii je otevřená práce soubor `type: task` s `parent` na story. Checkbox `**ID-N**` se jako nová práce nezakládá. Osamocený kus bez story zůstává `story` bez `parent`.
+> **Od 16. 10. 2026:** otevřená práce je soubor `type: task`. Checkbox `**ID-N**` se jako nová práce nezakládá. Osamocený kus bez story je `type: task` bez parent.
 
 | Vrstva | `type` | Soubor | ICE | focus | Auto-Done |
 |--------|--------|--------|-----|-------|-----------|
-| Epic | `epic` | `.md` v `tasks/` | ne | ano (téma týdne; fronta se nerozbaluje v etapě 1) | **nikdy** (jen člověk) |
+| Epic | `epic` | `.md` v `tasks/` | Brain při create zapíše 5/5/5 a `**ID-1**` | ano (téma týdne; fronta se nerozbaluje v etapě 1) | **nikdy** (jen člověk) |
 | User story | `story` | `.md` v `tasks/` | ano | ano | checkboxy všechny `[x]` **nebo** GitHub `Closes ID` (bez otevřených kroků) |
 | Task (list) | `task` | `.md` v `tasks/`, `parent` na story | ne (skóre 0) | ano | `Closes` souboru / `close_task` |
 
-Mimo hierarchii zůstává plochý `type: task` v jednom souboru.
+Plochý `type: task` bez parent je povolený v každém projektu.
 
 ## Frontmatter
 
@@ -24,8 +23,8 @@ Mimo hierarchii zůstává plochý `type: task` v jednom souboru.
 
 ```yaml
 type: epic
-parent:   # vždy prázdné / null
-# ice_*: nevyplňovat (nesoutěží o fokus skóre)
+parent:   # vždy prázdné
+# Brain při create zapíše ice_i/c/e: 5 a zástupný **ID-1**
 focus:    # volitelné — téma týdne (ISO); etapa 3 rozbalí děti
 deadline: # jen externí závazek
 review_deadline:  # kdy se k epicu vrátím
@@ -35,7 +34,7 @@ review_deadline:  # kdy se k epicu vrátím
 
 ```yaml
 type: story
-parent: "[[RBU-E23 — MVP karet externistů]]"  # wikilink na epic; null = standalone
+parent: "[[RBU-E23 — MVP karet externistů]]"  # povinný epic, id smí být z jiného projektu
 focus:   # jen člověk, ISO týden
 agent: none | assist | solo
 ice_i: …
@@ -45,7 +44,7 @@ deadline:         # jen reálný externí závazek
 review_deadline:  # kdy se k tomu vracím (vlastní měkké datum)
 ```
 
-### Flat task (legacy / non-hierarchy slug)
+### Task (v každém projektu smí být bez parent)
 
 ```yaml
 type: task

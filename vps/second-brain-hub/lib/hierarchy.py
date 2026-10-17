@@ -1,13 +1,9 @@
-"""Epic / user-story / task hierarchy helpers (opt-in per project).
+"""Epic / story / task hierarchy. The rules apply in every project.
 
-Vault convention (RB Universe first, other projects via hub ``hierarchy: true``
-or presence of at least one ``type: epic`` in that slug's tasks/):
-
-- ``type: epic``  — outcome, months-long; no focus; never auto-Done from checkboxes/GitHub
-- ``type: story`` — deliverable user value; owns ICE / focus / status; children = checkbox ``ID-N``
-- ``type: task``  — legacy / flat work item (default when type missing)
-
-Parent link: story frontmatter ``parent: '[[RBU-E23 — Title]]'`` (wikilink to epic file).
+- ``type: epic`` has no parent.
+- ``type: story`` has a parent and that parent is an epic. The epic may live in another slug.
+- ``type: task`` has no parent, or its parent is a story (any project).
+- The file stays in its own project folder. Only the parent id crosses projects.
 """
 from __future__ import annotations
 
@@ -108,17 +104,57 @@ def project_uses_hierarchy(
     hub_frontmatter: dict[str, Any] | None = None,
     slug_has_epic: bool = False,
 ) -> bool:
-    """Whether hierarchy rules apply for this project slug."""
-    if slug in DEFAULT_HIERARCHY_SLUGS:
-        return True
-    fm = hub_frontmatter or {}
-    if fm.get("hierarchy") is True or str(fm.get("hierarchy") or "").lower() in {
-        "true",
-        "1",
-        "yes",
-    }:
-        return True
-    return bool(slug_has_epic)
+    """Hierarchy rules apply in every project. The arguments stay for callers."""
+    del slug, hub_frontmatter, slug_has_epic
+    return True
+
+
+def parent_type_error(
+    child_type: str,
+    child_id: str,
+    parent_id: str | None,
+    parent_type: str | None,
+) -> str | None:
+    """Return an error_reason, or None when the pair is legal.
+
+    An empty parent is success for an epic and a task, and ``parent_required``
+    for a story. A missing parent type means the id was not found.
+    """
+    kind = normalise_work_type(child_type)
+    if not parent_id:
+        if kind == TYPE_STORY:
+            return "parent_required"
+        return None
+    if parent_id == child_id:
+        return "parent_cycle"
+    if parent_type is None:
+        return "parent_not_found"
+    if kind == TYPE_EPIC:
+        return "epic_has_no_parent"
+    if kind == TYPE_STORY and parent_type != TYPE_EPIC:
+        return "parent_not_epic"
+    if kind == TYPE_TASK and parent_type != TYPE_STORY:
+        return "parent_not_story"
+    return None
+
+
+def parent_chain_cycle(
+    child_id: str,
+    parent_id: str | None,
+    parent_of: dict[str, str | None],
+    limit: int = 32,
+) -> bool:
+    """True when the chain loops or exceeds ``limit`` steps."""
+    seen: set[str] = set()
+    current = parent_id
+    steps = 0
+    while current and steps < limit:
+        if current == child_id or current in seen:
+            return True
+        seen.add(current)
+        current = parent_of.get(current)
+        steps += 1
+    return bool(current)
 
 
 def parse_closes_refs(text: str) -> list[str]:

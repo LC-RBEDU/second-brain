@@ -83,16 +83,16 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 ```yaml
 ---
 id: <ID>
-type: task   # RBU / hierarchy: story (nebo epic — viz epic-template); legacy flat = task
+type: task   # epic: parent prázdný. Nová story: vždy epic parent. Kus bez story: type task a parent prázdný.
 title: "<lidsky čitelný titulek bez ID prefixu>"
 project: "[[<HubFilename>]]"
 slug: <slug>
 aliases: [<ID>]
 status: Next | Doing | Backlog | Waiting | Done | Cancelled
-parent:  # jen story → "[[RBU-E23 — …]]"; epic/standalone prázdné
+parent:  # epic prázdné; nová story vždy "[[<epic id>]]"; task bez story prázdné
 focus:  (prázdné — nastavuje jen člověk; u epic = téma týdne OK)
 agent:  none | assist | solo
-ice_i: <1-10>   # u epic vynech
+ice_i: <1-10>   # epic z Brain dostane 5/5/5 a **ID-1**
 ice_c: <1-10>
 ice_e: <1-10>
 deadline: <YYYY-MM-DD or empty>          # jen reálný externí závazek
@@ -114,7 +114,7 @@ blocked_by: []
 
 **`review_deadline`:** u `Next` / `Doing` **bez** `deadline` vždy vyplň (i odhad). Má-li task `deadline`, `review_deadline` nech prázdné (a při zápisu deadline ho vymaž). `deadline` jen při reálném externím závazku.
 
-**RBU:** default nové doručení = `type: story` (+ `parent` pokud patří pod epic). Roadmap kontejner = `type: epic` ze `ŠABLONY/obsidian-templates/epic-template.md`. Konvence: `ŠABLONY/obsidian-templates/task-convention.md`.
+Nová story má vždy parent na epic. Kus bez story je `type: task` a parent prázdný. Roadmap kontejner = `type: epic` ze `ŠABLONY/obsidian-templates/epic-template.md`. Konvence: `ŠABLONY/obsidian-templates/task-convention.md`.
 
 **`agent` — vyplň podle toho, kdo práci udělá (ne slepý default `none`):**
 - `none` — Lukáš, agent nepomáhá

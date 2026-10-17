@@ -20,14 +20,18 @@ alwaysApply: true
 - AREA = `03-AREAS/<Name>.md`
 - ARCHIVE = `07-ARCHIV/tasks-done/<slug>/<ID>-*.md`
 
-### Hierarchie Epic → Story → Task (opt-in)
-- **Zapnuto:** `rb-universe-development`, `it-ai-data`, `firemni-procesy`, `finance`. Jinde `hierarchy: true` v hubu nebo presence `type: epic` v `tasks/`. (`vibe-coding` paused → merge do `it-ai-data`, SB10.)
-- **V hierarchii je listový kus soubor `type: task`** s `parent` na story. Nový checkbox `**ID-N**` jako práce se nezakládá. Osamocený kus bez story = `story` bez `parent`.
+### Hierarchie Epic → Story → Task
+- Pravidla parentu platí v každém projektu. Soubor zůstává ve složce svého projektu. Parent je jen id a smí ukazovat do jiného projektu.
+- **Epic** nemá parent. Nový epic z Brain dostane ICE 5/5/5 a zástupný `**ID-1**`.
+- **Story** musí mít parent a ten parent je epic. Story bez epicu se nezaloží a parent se jí nesmí vymazat.
+- **Task** smí být bez parent. Když parent má, je to story, ne epic.
+- Osamocený kus bez story je `type: task` bez parent. Existující soubory se hromadně nepřepisují. Pozdější navázání je `update_task`.
+- Nový hub vzniká jen přímým příkazem člověka (`create_project_hub.py`), ne přes `create_task`.
 - **Hub Bases neembeduje.** Sekce `## Aktivní práce (Epic → Story → Task)` zůstává textem charteru. Soubory `*.base` se nekopírují.
 - **Přesun tasku mezi projekty:** nový ID v cílovém projektu, původní `Cancelled` s ukazatelem — smazané ID by `max+1` přidělil znovu.
-- **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, může mít `focus` (téma týdne); **ne** ICE; **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
+- **Epic** (`type: epic`) — roadmap kontejner, měsíce. Má `status`, může mít `focus` (téma týdne); **nikdy** auto-Done (checkboxy ani GitHub `Closes`).
 - **Story** (`type: story`) — doručitelná hodnota, kontejner. ICE / `focus` / `agent` / `status` žijí tady, dokud nemá otevřený child task. `parent: '[[RBU-E23 — …]]'` → epic. Otevřená práce pod ní je soubor `type: task`.
-- **Task** (`type: task`) — v hierarchii listový soubor s `parent` na story. Mimo hierarchii zůstává plochý úkol. Osamocený tech kus bez story = `story` bez `parent`.
+- **Task** (`type: task`) — listový soubor. Parent, pokud je, ukazuje na story.
 - **ID nese úroveň:** `<PREFIX>-E<N>` epic, `<PREFIX>-S<N>` story, `<PREFIX>-T<N>` task (`RBU-E69`, `RBU-S70`). Podúkol = `<ID>-<M>`, tedy `RBU-S70-1`.
 - **Čítač je jeden pro celý projekt, ne per úroveň** — epic i story berou další volné číslo přes `next_task_id.py`. Povýšení story na epic mění písmeno, ne číslo, takže se žádné číslo neuvolní k recyklaci.
 - Platí od 8. 9. 2026 v hierarchických projektech; mapping starých ID je v `00-System/hierarchy-id-migration.json`. Archiv a ploché projekty mají dál `<PREFIX><N>` — parsery umí obojí.

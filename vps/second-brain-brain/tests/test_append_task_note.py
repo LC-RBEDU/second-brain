@@ -417,7 +417,7 @@ def test_t20_update_task_keeps_body_and_hub_append_is_eof():
     from app.tools import update_task as update_mod
     from task_io import ParsedTask, update_task as hub_update
 
-    original = _md(body="BODY\n## Poznámky / log\n- old\n")
+    original = _md(body="BODY\n## Poznámky / log\n- old\n", typ="task", task_id="SB-T17")
     vault = _vault(original)
     with patch.object(update_mod, "brain_vault", return_value=_CM(vault)):
         update_mod.update_task(path=PATH, patch={"status": "Doing"})

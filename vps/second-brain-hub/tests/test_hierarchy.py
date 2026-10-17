@@ -22,6 +22,8 @@ from hierarchy import (  # noqa: E402
     normalise_work_type,
     parse_closes_refs,
     parse_parent_id,
+    parent_chain_cycle,
+    parent_type_error,
     project_uses_hierarchy,
     split_subtask_ref,
 )
@@ -47,9 +49,23 @@ def test_parse_parent_id():
 
 def test_project_uses_hierarchy():
     assert project_uses_hierarchy("rb-universe-development") is True
-    assert project_uses_hierarchy("finance") is False
-    assert project_uses_hierarchy("finance", hub_frontmatter={"hierarchy": True}) is True
-    assert project_uses_hierarchy("finance", slug_has_epic=True) is True
+    assert project_uses_hierarchy("finance") is True
+    assert project_uses_hierarchy(
+        "finance", hub_frontmatter={"hierarchy": False}, slug_has_epic=False
+    ) is True
+
+
+def test_parent_type_error_and_cycle():
+    assert parent_type_error("story", "S1", None, None) == "parent_required"
+    assert parent_type_error("task", "T1", None, None) is None
+    assert parent_type_error("epic", "E1", "E0", "epic") == "epic_has_no_parent"
+    assert parent_type_error("story", "S1", "S2", "story") == "parent_not_epic"
+    assert parent_type_error("task", "T1", "E1", "epic") == "parent_not_story"
+    assert parent_type_error("task", "T1", "S1", "story") is None
+    assert parent_type_error("task", "T1", "T1", "story") == "parent_cycle"
+    assert parent_type_error("task", "T1", "MISSING", None) == "parent_not_found"
+    assert parent_chain_cycle("T1", "S1", {"S1": "T1"}) is True
+    assert parent_chain_cycle("", "E1", {"E1": None}) is False
 
 
 def test_closes_refs():

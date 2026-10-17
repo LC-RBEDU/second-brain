@@ -199,16 +199,72 @@ def _options(conflicts: list[DeadlineConflict]) -> list[dict[str, str]]:
     return options
 
 
+def narrow_conflicts(
+    nodes: list[DeadlineNode],
+    conflicts: list[DeadlineConflict],
+    touched_ids: set[str],
+    *,
+    limit: int = 32,
+) -> list[DeadlineConflict]:
+    """Keep a pair only when the child is downstream of a touched id and the parent is upstream.
+
+    Down walks only from the touched ids, not from their ancestors, so a sibling
+    is outside ``down``. Up walks ``parent_id`` only.
+    """
+    by_id = _index(nodes)
+    children = _children_by_parent(nodes)
+    down: set[str] = set()
+    up: set[str] = set()
+    for touched in touched_ids:
+        down.add(touched)
+        up.add(touched)
+        stack: list[tuple[str, int]] = [(touched, 0)]
+        seen_down = {touched}
+        while stack:
+            node, depth = stack.pop()
+            if depth >= limit:
+                continue
+            for child in children.get(node, []):
+                if child in seen_down:
+                    continue
+                seen_down.add(child)
+                down.add(child)
+                stack.append((child, depth + 1))
+        current = by_id.get(touched)
+        seen_up = {touched}
+        steps = 0
+        while current and current.parent_id and steps < limit:
+            parent = current.parent_id
+            if parent in seen_up:
+                break
+            seen_up.add(parent)
+            up.add(parent)
+            steps += 1
+            current = by_id.get(parent)
+    return [
+        row
+        for row in conflicts
+        if row.child_id in down and row.parent_id in up
+    ]
+
+
 def evaluate_deadline_order(
     nodes: list[DeadlineNode],
     patches: dict[str, str | None] | None = None,
     *,
     allow_parent_shift: bool = False,
+    touched_ids: set[str] | None = None,
 ) -> dict[str, Any]:
-    """Return ``{"ok": True}`` or a ``deadline_order`` payload. Nothing is written."""
+    """Return ``{"ok": True}`` or a ``deadline_order`` payload. Nothing is written.
+
+    ``touched_ids is None`` keeps every conflict in the list. A set keeps only
+    the narrow cone of those ids.
+    """
     patches = patches or {}
     proposed = _apply(nodes, patches)
     tree_conflicts = conflicts_in_tree(proposed)
+    if touched_ids is not None:
+        tree_conflicts = narrow_conflicts(proposed, tree_conflicts, touched_ids)
     if allow_parent_shift:
         # The flag does not relax the inequality. A day before the latest
         # open descendant stays a conflict.

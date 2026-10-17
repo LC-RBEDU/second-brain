@@ -6,7 +6,7 @@ project: "[[{{HubFilename}}]]"
 slug: {{slug}}
 aliases: [{{ID}}]
 status: Next  # Doing | Next | Backlog | Waiting | Done | Cancelled
-parent:  # "[[RBU-E23 — …]]" nebo prázdné (standalone / flat projekty: type task)
+parent: "[[{{EpicID}} — …]]"  # nová story má epic. Prázdný parent jen u epicu a u type task bez story.
 focus:
 agent: none
 ice_i: 5
@@ -39,7 +39,7 @@ blocked_by: []
 - {{date}}: Založeno.
 
 <!--
-Mimo hierarchy projekty (ne RBU): nastav type: task a parent smaž.
-Epic: použij epic-template.md — ICE/focus sem nepatří.
+Nová story má parent na epic. Prázdný parent jen u epicu a u type task bez story.
+Epic: použij epic-template.md. Brain při create zapíše ICE 5/5/5 a **ID-1**.
 GitHub (RBU): commit "Closes {{ID}}-1 — popis" na větev dev.
 -->

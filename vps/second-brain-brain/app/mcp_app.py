@@ -79,7 +79,8 @@ def build_mcp() -> MCPServer:
     @mcp.tool(
         description=(
             "Patch task frontmatter (CAS expect_oid). Focus is refused: use "
-            "propose_focus then apply_focus. A deadline that would put a parent "
+            "propose_focus then apply_focus. parent and type in the patch follow "
+            "the same parent rules as create. A deadline that would put a parent "
             "before an open descendant returns deadline_order."
         )
     )
@@ -195,11 +196,11 @@ def build_mcp() -> MCPServer:
     def get_task(task_id: str) -> str:
         return _call(get_task_tool.get_task, task_id=task_id)
 
-    @mcp.tool(description="Children of an epic or story: id, title, status, deadline.")
+    @mcp.tool(description="Children of an epic or story: id, title, status, deadline, project. project is the folder slug of the file.")
     def list_children(task_id: str) -> str:
         return _call(task_tree_tool.list_children, task_id=task_id)
 
-    @mcp.tool(description="Tree under an epic or story, with open-descendant counts.")
+    @mcp.tool(description="Tree under an epic or story, with open-descendant counts. project on each node is the folder slug of the file.")
     def get_tree(task_id: str) -> str:
         return _call(task_tree_tool.get_tree, task_id=task_id)
 
@@ -285,7 +286,7 @@ def build_mcp() -> MCPServer:
     def allocate_task_id(slug: str, level: str | None = None) -> str:
         return _call(allocate_tool.allocate_task_id, slug=slug, level=level)
 
-    @mcp.tool(description="Create a task file. Hierarchy level=task requires parent. dry_run returns ids and writes nothing. items_json creates several in one call.")
+    @mcp.tool(description="Create a task file. A story needs an epic parent. A task may have no parent, or a story parent in any project. An unknown project slug is refused. dry_run returns ids and writes nothing. items_json creates several in one call and does not see siblings.")
     def create_task(
         slug: str,
         title: str = "",
@@ -317,7 +318,8 @@ def build_mcp() -> MCPServer:
 
     @mcp.tool(
         description=(
-            "Patch several tasks in one transaction. A deadline_order error writes nothing. "
+            "Patch several tasks in one transaction. parent and type in a patch follow "
+            "the same parent rules as create. A deadline_order error writes nothing. "
             "A focus key is refused; use propose_focus."
         )
     )

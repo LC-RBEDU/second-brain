@@ -50,10 +50,22 @@ def test_append_step_on_story_creates_a_file_after_the_anchor():
     def _read(path):
         if path.endswith("task-promotion-applied.json"):
             return anchor, meta
+        if path == "02-PROJEKTY/RB Universe.md":
+            return "---\ntype: project\nslug: rb-universe-development\n---\n", meta
         return story, meta
 
+    hub = MagicMock()
+    hub.name = "RB Universe.md"
+    hub.rel_path = "02-PROJEKTY/RB Universe.md"
+    hub.is_folder = False
+
+    def _list(path, pattern=None, recursive=False, include_folders=False):
+        if path == "02-PROJEKTY":
+            return [hub]
+        return []
+
     vault.read_text.side_effect = _read
-    vault.list_dir.return_value = []
+    vault.list_dir.side_effect = _list
     with patch.object(append_mod, "brain_vault", return_value=_CM(vault)):
         with patch.object(append_mod, "peek_ids", create=True):
             pass
@@ -83,12 +95,49 @@ def test_append_request_defaults_dry_run_off():
     assert preview.dry_run is True
 
 
-def test_hierarchy_task_without_parent_is_rejected():
+def _hub(slug: str = "rb-universe-development") -> MagicMock:
+    hub = MagicMock()
+    hub.name = "RB Universe.md"
+    hub.rel_path = "02-PROJEKTY/RB Universe.md"
+    hub._slug = slug
+    return hub
+
+
+def _bind_hub(vault: MagicMock, slug: str = "rb-universe-development") -> None:
+    hub = _hub(slug)
+
+    def _list(path, pattern=None, recursive=False, include_folders=False):
+        if path == "02-PROJEKTY":
+            return [hub]
+        return []
+
+    def _read(path):
+        if path == hub.rel_path:
+            return f"---\ntype: project\nslug: {slug}\n---\n", MagicMock()
+        return "", MagicMock()
+
+    vault.list_dir.side_effect = _list
+    vault.read_text.side_effect = _read
+
+
+def test_unknown_project_is_rejected():
     vault = _vault()
     with patch.object(create_mod, "brain_vault", return_value=_CM(vault)):
         with pytest.raises(BrainClientError) as ei:
-            create_mod.create_task(slug="rb-universe-development", title="Krok", level="task", dry_run=True)
+            create_mod.create_task(slug="auto-superb", title="Krok", level="task", dry_run=True)
+    assert ei.value.error_reason == "unknown_project"
+    vault.write_text.assert_not_called()
+    vault.mkdir_p.assert_not_called()
+
+
+def test_story_without_parent_is_rejected():
+    vault = _vault()
+    _bind_hub(vault)
+    with patch.object(create_mod, "brain_vault", return_value=_CM(vault)):
+        with pytest.raises(BrainClientError) as ei:
+            create_mod.create_task(slug="rb-universe-development", title="Krok", level="story", dry_run=True)
     assert ei.value.error_reason == "parent_required"
+    assert ei.value.detail["errors"] == ["parent_required"]
     vault.write_text.assert_not_called()
 
 

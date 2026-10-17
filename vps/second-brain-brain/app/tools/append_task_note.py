@@ -193,15 +193,19 @@ def _log_bullet(remainder: str, today: date) -> str:
     return f"- {today.isoformat()}: {remainder}"
 
 
-def _spawn_child(vault: Any, fm: dict[str, Any], title: str, *, dry_run: bool) -> dict[str, Any]:
+def _spawn_child(vault: Any, fm: dict[str, Any], title: str, *, dry_run: bool, path: str) -> dict[str, Any]:
     """After the migration anchor, a step on a story becomes a task file."""
     from hierarchy import parse_parent_id
     from task_id_allocate import peek_ids, with_level
     from task_io import parse_task_text
 
-    from app.tools.create_task import _hub_filename, _render_task, _slugify_title
+    from app.tools.create_task import _render_task, _slugify_title
+    from app.tools.project_guard import folder_slug_from_path, require_project
 
-    slug = str(fm.get("slug") or "")
+    slug = folder_slug_from_path(path)
+    if not slug:
+        raise _client("invalid task path", 400, "invalid_task_path")
+    hub = require_project(vault, slug)
     parent_id = str(fm.get("id") or "")
     wanted = title.strip()
     open_status = {"Doing", "Next", "Backlog", "Waiting"}
@@ -241,7 +245,7 @@ def _spawn_child(vault: Any, fm: dict[str, Any], title: str, *, dry_run: bool) -
         task_id=task_id,
         title=wanted,
         slug=slug,
-        hub=_hub_filename(vault, slug),
+        hub=hub,
         level="task",
         status="Next",
         detail="",
@@ -354,7 +358,7 @@ def append_task_note(
             if task_id is None:
                 raise _client("task id missing", 400, "task_id_missing")
             if is_story(fm) and load_applied_at(vault) is not None:
-                return _spawn_child(vault, fm, remainder, dry_run=dry_run)
+                return _spawn_child(vault, fm, remainder, dry_run=dry_run, path=cleaned_path)
             if any(line.startswith("### ") for line in section):
                 raise _client(
                     "step section has subheadings",

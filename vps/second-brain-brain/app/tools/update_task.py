@@ -15,13 +15,16 @@ for _lib in (
         break
 
 from deadline_order import (  # noqa: E402
+    DeadlineNode,
     evaluate_deadline_order,
     node_from_frontmatter,
 )
 from drive_io import DriveConflictError  # noqa: E402
-from task_io import parse_task_text  # noqa: E402
+from hierarchy import parse_parent_id  # noqa: E402
+from task_io import iter_active_tasks, parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError
+from app.tools.parent_link import check_overlay, needs_forest
 from app.policy import FOCUS_PROPOSAL_MESSAGE, deny_focus_write, deny_stav_auto_write
 from app.vault_deps import brain_vault
 
@@ -118,34 +121,54 @@ def update_task(
             m = _FM_RE.match(text)
             if not m:
                 raise BrainClientError(message="no frontmatter", status_code=400)
-            if "deadline" in patch:
-                parts = path.split("/")
-                slug = parts[1] if len(parts) > 2 and parts[0] == "02-PROJEKTY" else ""
-                parsed = parse_task_text(text, rel_path=path, meta=meta)
-                nodes = _deadline_nodes(vault, slug) if slug else []
-                current_id = str(parsed.frontmatter.get("id") or "")
-                if current_id and not any(node.id == current_id for node in nodes):
-                    nodes.append(node_from_frontmatter(parsed.frontmatter))
-                raw_deadline = patch.get("deadline")
-                proposed = None if raw_deadline in (None, "") else str(raw_deadline)
-                order = evaluate_deadline_order(
-                    nodes,
-                    {current_id: proposed} if current_id else {},
-                    allow_parent_shift=allow_parent_shift,
-                )
-                if not order.get("ok", False):
-                    raise BrainClientError(
-                        message="deadline_order",
-                        status_code=409,
-                        error_reason="deadline_order",
-                        detail=order,
+            parsed = parse_task_text(text, rel_path=path, meta=meta)
+            current_id = str(parsed.frontmatter.get("id") or "")
+            write_patch = dict(patch)
+            if needs_forest(patch) and current_id:
+                active = list(iter_active_tasks(vault))
+                if not any(str(task.frontmatter.get("id") or "") == current_id for task in active):
+                    active.append(parsed)
+                normalized = check_overlay(active, [{"id": current_id, "patch": patch}])
+                write_patch = normalized[current_id]
+                parent_changed = "parent" in patch and parse_parent_id(write_patch.get("parent")) != parse_parent_id(parsed.frontmatter.get("parent"))
+                if "deadline" in patch or parent_changed:
+                    nodes = [node_from_frontmatter(task.frontmatter) for task in active]
+                    if not any(node.id == current_id for node in nodes):
+                        nodes.append(node_from_frontmatter(parsed.frontmatter))
+                    if parent_changed:
+                        new_parent = parse_parent_id(write_patch.get("parent"))
+                        nodes = [
+                            DeadlineNode(
+                                node.id,
+                                new_parent if node.id == current_id else node.parent_id,
+                                node.status,
+                                node.deadline,
+                            )
+                            for node in nodes
+                        ]
+                    deadline_patch: dict[str, str | None] = {}
+                    if "deadline" in patch:
+                        raw_deadline = patch.get("deadline")
+                        deadline_patch[current_id] = None if raw_deadline in (None, "") else str(raw_deadline)
+                    order = evaluate_deadline_order(
+                        nodes,
+                        deadline_patch,
+                        allow_parent_shift=allow_parent_shift,
+                        touched_ids={current_id},
                     )
-            new_text = render_frontmatter_patch(text, patch)
+                    if not order.get("ok", False):
+                        raise BrainClientError(
+                            message="deadline_order",
+                            status_code=409,
+                            error_reason="deadline_order",
+                            detail=order,
+                        )
+            new_text = render_frontmatter_patch(text, write_patch)
             if dry_run:
                 return {
                     "path": path,
                     "dry_run": True,
-                    "patched": sorted(patch.keys()),
+                    "patched": sorted(write_patch.keys()),
                     "oid": oid,
                 }
             kwargs: dict[str, Any] = {}
@@ -161,5 +184,5 @@ def update_task(
         return {
             "path": path,
             "oid": getattr(meta2, "oid", None),
-            "patched": sorted(patch.keys()),
+            "patched": sorted(write_patch.keys()),
         }

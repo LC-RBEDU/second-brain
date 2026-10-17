@@ -145,12 +145,25 @@ def resolve_task(tasks: list[Any], ref: str, *, applied_at, today) -> tuple[Any 
     return None, None, "not_found"
 
 
+def file_project(task: Any) -> str:
+    parts = _path(task).split("/")
+    if len(parts) >= 2 and parts[0] == "02-PROJEKTY":
+        return parts[1]
+    return ""
+
+
 def children_of(tasks: list[Any], parent_id: str) -> list[dict[str, Any]]:
     rows = []
     for task in tasks:
         row = card(task)
         if row["parent"] == parent_id:
-            rows.append({"id": row["id"], "title": row["title"], "status": row["status"], "deadline": row["deadline"]})
+            rows.append({
+                "id": row["id"],
+                "title": row["title"],
+                "status": row["status"],
+                "deadline": row["deadline"],
+                "project": file_project(task),
+            })
     return rows
 
 
@@ -186,6 +199,7 @@ def tree_for(tasks: list[Any], root_id: str) -> dict[str, Any] | None:
         "title": row["title"],
         "status": row["status"],
         "deadline": row["deadline"],
+        "project": file_project(root),
         "open_descendants": open_descendant_count(tasks, root_id),
         "children": [
             {

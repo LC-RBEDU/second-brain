@@ -16,12 +16,14 @@ for _lib in (
         break
 
 from context_tombstone import delete_context_tombstone  # noqa: E402
-from hierarchy import DEFAULT_HIERARCHY_SLUGS, parse_parent_id, project_uses_hierarchy  # noqa: E402
-from deadline_order import evaluate_deadline_order, node_from_frontmatter, DeadlineNode  # noqa: E402
+from deadline_order import DeadlineNode, evaluate_deadline_order, node_from_frontmatter  # noqa: E402
+from hierarchy import parse_parent_id  # noqa: E402
 from task_id_allocate import peek_ids, with_level  # noqa: E402
-from task_io import parse_task_text  # noqa: E402
+from task_io import iter_active_tasks, parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError  # noqa: E402
+from app.tools.parent_link import resolve_parent_raw  # noqa: E402
+from app.tools.project_guard import require_project  # noqa: E402
 from app.fm_contract import strip_aliases_for_new_write  # noqa: E402
 from app.vault_deps import brain_vault  # noqa: E402
 
@@ -32,26 +34,6 @@ def _slugify_title(title: str) -> str:
     t = _SAFE_TITLE.sub("", title).strip()
     t = re.sub(r"\s+", "-", t)
     return t[:80] or "task"
-
-
-def _hub_filename(vault: Any, slug: str) -> str:
-    """Best-effort hub display name from 02-PROJEKTY/*.md frontmatter slug match."""
-    try:
-        metas = vault.list_dir("02-PROJEKTY", pattern="*.md", recursive=False)
-    except Exception:
-        return slug
-    for meta in metas:
-        rel = getattr(meta, "rel_path", "")
-        name = getattr(meta, "name", "")
-        if not rel or "/" in name:
-            continue
-        try:
-            text, _ = vault.read_text(rel)
-        except Exception:
-            continue
-        if f"slug: {slug}" in text or f'slug: "{slug}"' in text:
-            return Path(name).stem
-    return slug
 
 
 def _render_task(
@@ -67,8 +49,9 @@ def _render_task(
     deadline: str = "",
     review_deadline: str = "",
     promoted_from: str = "",
-    hierarchy: bool = False,
+    hierarchy: bool = True,
 ) -> str:
+    hierarchy = True
     today = date.today().isoformat()
     type_map = {"epic": "epic", "story": "story", "task": "task"}
     work_type = type_map.get(level, "story")
@@ -130,61 +113,6 @@ def _render_task(
     return "\n".join(lines)
 
 
-def _slug_is_hierarchy(vault: Any, slug: str) -> bool:
-    hub_fm: dict[str, Any] = {}
-    try:
-        metas = vault.list_dir("02-PROJEKTY", pattern="*.md", recursive=False)
-    except Exception:
-        metas = []
-    for meta in metas:
-        rel = getattr(meta, "rel_path", "")
-        try:
-            text, _ = vault.read_text(rel)
-        except Exception:
-            continue
-        if f"slug: {slug}" in text or f'slug: "{slug}"' in text:
-            if re.search(r"(?m)^hierarchy:\s*true\s*$", text, re.IGNORECASE):
-                hub_fm = {"hierarchy": True}
-            break
-    has_epic = False
-    try:
-        files = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md")
-    except Exception:
-        files = []
-    for meta in files:
-        try:
-            text, _ = vault.read_text(getattr(meta, "rel_path", ""))
-        except Exception:
-            continue
-        if re.search(r"(?m)^type:\s*epic\s*$", text):
-            has_epic = True
-            break
-    return project_uses_hierarchy(slug, hub_frontmatter=hub_fm, slug_has_epic=has_epic) or slug in DEFAULT_HIERARCHY_SLUGS
-
-
-def _parent_story(vault: Any, slug: str, parent: str) -> str:
-    wanted = parse_parent_id(parent) or parent.strip()
-    try:
-        files = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md")
-    except Exception:
-        files = []
-    for meta in files:
-        rel = getattr(meta, "rel_path", "")
-        try:
-            text, file_meta = vault.read_text(rel)
-        except Exception:
-            continue
-        parsed = parse_task_text(text, rel_path=rel, meta=file_meta)
-        if str(parsed.frontmatter.get("id") or "") != wanted:
-            continue
-        if str(parsed.frontmatter.get("type") or "").lower() != "story":
-            raise BrainClientError(message="parent must be a story", status_code=400, error_reason="parent_not_story")
-        if str(parsed.frontmatter.get("slug") or slug) != slug:
-            raise BrainClientError(message="parent slug mismatch", status_code=400, error_reason="parent_slug")
-        return f"[[{wanted}]]"
-    raise BrainClientError(message="parent story not found", status_code=400, error_reason="parent_not_found")
-
-
 def _promoted_taken(vault: Any, slug: str, promoted_from: str) -> bool:
     if not promoted_from:
         return False
@@ -204,8 +132,12 @@ def _promoted_taken(vault: Any, slug: str, promoted_from: str) -> bool:
     return False
 
 
-def _reject_deadline_order(vault: Any, slug: str, prepared: list[dict[str, Any]], bare_ids: list[tuple[str, str]]) -> None:
-    """409 and zero writes when a new deadline sits after an open ancestor."""
+def _reject_deadline_order(
+    prepared: list[dict[str, Any]],
+    bare_ids: list[tuple[str, str]],
+    existing_tasks: list[Any],
+) -> None:
+    """409 and zero writes when a new deadline sits after an ancestor in the narrow cone."""
     fresh: list[DeadlineNode] = []
     for spec, (bare, _where) in zip(prepared, bare_ids):
         deadline = str(spec.get("deadline") or "").strip()
@@ -222,22 +154,14 @@ def _reject_deadline_order(vault: Any, slug: str, prepared: list[dict[str, Any]]
         )
     if not fresh:
         return
-    existing: list[DeadlineNode] = []
-    try:
-        metas = vault.list_dir(f"02-PROJEKTY/{slug}/tasks", pattern="*.md", recursive=False)
-    except Exception:
-        metas = []
-    for meta in metas:
-        rel = getattr(meta, "rel_path", "")
-        if not rel:
-            continue
-        try:
-            text, file_meta = vault.read_text(rel)
-        except Exception:
-            continue
-        parsed = parse_task_text(text, rel_path=rel, meta=file_meta)
-        existing.append(node_from_frontmatter(parsed.frontmatter))
-    order = evaluate_deadline_order(existing + fresh)
+    existing = [
+        node_from_frontmatter(task.frontmatter)
+        for task in existing_tasks
+    ]
+    order = evaluate_deadline_order(
+        existing + fresh,
+        touched_ids={node.id for node in fresh},
+    )
     if order.get("ok"):
         return
     raise BrainClientError(
@@ -286,17 +210,21 @@ def create_task(
 
     mode = "read" if dry_run else "mutate"
     with brain_vault(mode=mode, env=env) as vault:
+        hub = require_project(vault, slug)
         if mode == "mutate":
             delete_context_tombstone(vault)
-        hierarchy = _slug_is_hierarchy(vault, slug)
+        active = list(iter_active_tasks(vault))
         prepared: list[dict[str, Any]] = []
         seen_promoted: set[str] = set()
         for spec in specs:
             spec_level = str(spec.get("level") or "story")
             spec_parent = str(spec.get("parent") or "").strip()
-            if hierarchy and spec_level == "task" and not spec_parent:
-                raise BrainClientError(message="parent required", status_code=400, error_reason="parent_required")
-            parent_link = _parent_story(vault, slug, spec_parent) if spec_parent else ""
+            parent_link = resolve_parent_raw(
+                spec_parent,
+                active,
+                child_id="",
+                child_type=spec_level,
+            )
             promo = str(spec.get("promoted_from") or "").strip()
             if promo:
                 if promo in seen_promoted or _promoted_taken(vault, slug, promo):
@@ -304,8 +232,7 @@ def create_task(
                 seen_promoted.add(promo)
             prepared.append({**spec, "level": spec_level, "parent_link": parent_link, "promoted_from": promo})
         bare_ids = peek_ids(vault, slug, len(prepared))
-        _reject_deadline_order(vault, slug, prepared, bare_ids)
-        hub = _hub_filename(vault, slug)
+        _reject_deadline_order(prepared, bare_ids, active)
         created: list[dict[str, str]] = []
         rel_dir = f"02-PROJEKTY/{slug}/tasks"
         if not dry_run:
@@ -325,7 +252,7 @@ def create_task(
                 deadline=str(spec.get("deadline") or ""),
                 review_deadline=str(spec.get("review_deadline") or ""),
                 promoted_from=spec["promoted_from"],
-                hierarchy=hierarchy,
+                hierarchy=True,
             )
             if not dry_run:
                 vault.write_text(rel, body)

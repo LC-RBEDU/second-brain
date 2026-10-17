@@ -10,7 +10,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from task_query import find_tasks, resolve_task, tree_for  # noqa: E402
+from task_query import children_of, find_tasks, resolve_task, tree_for  # noqa: E402
 
 APPLIED = date(2026, 10, 1)
 INSIDE = date(2026, 10, 16)
@@ -60,3 +60,23 @@ def test_tree_counts_open_descendants():
     assert tree["open_descendants"] == 2
     assert tree["children"][0]["id"] == "S1"
     assert tree["children"][0]["open_descendants"] == 1
+
+
+def test_tree_project_comes_from_the_folder_not_the_frontmatter_slug():
+    tasks = [
+        _task(id="E1", title="Epic", status="Doing", type="epic", slug="finance", path="02-PROJEKTY/osobni/tasks/E1.md"),
+        _task(
+            id="T1",
+            title="Task",
+            status="Next",
+            type="task",
+            slug="rb-universe-development",
+            parent="[[E1]]",
+            path="02-PROJEKTY/finance/tasks/T1.md",
+        ),
+    ]
+    tree = tree_for(tasks, "E1")
+    assert tree["project"] == "osobni"
+    assert tree["children"][0]["project"] == "finance"
+    assert children_of(tasks, "missing") == []
+    assert tree_for(tasks, "nope") is None

@@ -77,3 +77,24 @@ def test_shift_flag_accepts_any_day_on_or_after_the_max():
     ]
     out = evaluate_deadline_order(nodes, {"E1": "2026-10-19"}, allow_parent_shift=True)
     assert out["ok"] is True
+
+
+def test_narrow_cone_ignores_a_sibling_and_keeps_a_descendant():
+    nodes = [
+        DeadlineNode("E", None, "Doing", "2026-10-20"),
+        DeadlineNode("S", "E", "Next", "2026-10-25"),
+        DeadlineNode("T", "E", "Next", "2026-10-18"),
+        DeadlineNode("D", "T", "Next", "2026-10-18"),
+    ]
+    sibling = evaluate_deadline_order(nodes, touched_ids={"T"})
+    assert sibling["ok"] is True
+    whole = evaluate_deadline_order(nodes)
+    assert whole["ok"] is False
+    broken = [
+        DeadlineNode("E", None, "Doing", "2026-10-20"),
+        DeadlineNode("T", "E", "Next", "2026-10-18"),
+        DeadlineNode("D", "T", "Next", "2026-10-25"),
+    ]
+    descendant = evaluate_deadline_order(broken, touched_ids={"T"})
+    assert descendant["ok"] is False
+    assert descendant["conflicts"][0]["child_id"] == "D"
