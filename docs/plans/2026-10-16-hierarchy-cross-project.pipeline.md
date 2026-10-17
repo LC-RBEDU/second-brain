@@ -4,8 +4,8 @@ Plán: docs/plans/2026-10-16-hierarchy-cross-project.md
 Schvalování plánu uživatelem: ne
 Architekt: 70f91dc7-ff87-425b-ab71-1cb603af5ccf, otevření plánu #4, generace v otevření 1/3, kolo 2/3
 Šťoural: e43969a5-b9b5-4d6b-8a30-90cd94383057 · kolo grill 2 otevření #4 · HOTOVÝ GRILL
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): 83877808710d74a1a6a20719d8af7f322eefac59 · Kódový SHA: 343cdbe36ddfa6938ac7ad0319a2149f29f978ed · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main před pipeline): 83877808710d74a1a6a20719d8af7f322eefac59 · Kódový SHA: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -79,6 +79,8 @@ ok, přidej i poslední zábranu do pipeline a spusť na to celé /rbu-pipeline
 | 22 | 2026-10-17 | IMPLEMENT | — | commit | — | Lokální commit `e952541` na main, bez push. Gate 623 passed. Přechod REVIEW. |
 | 23 | 2026-10-17 | REVIEW | ccc1daff-6dfd-476d-bf7c-d6114aadcfff | K OPRAVĚ | 0 BLOCKER, 1 MAJOR, 2 MINOR | D1–D3, vše IMPL. Přechod IMPLEMENT. |
 | 24 | 2026-10-17 | IMPLEMENT | — | commit | — | Oprava D1–D3 v `343cdbe`. Gate 627 passed. Přechod REVIEW. |
+| 25 | 2026-10-17 | REVIEW | 1a895aec-1d9b-4fe1-98dd-8de566459759 | K OPRAVĚ | 0 BLOCKER, 1 MAJOR, 1 MINOR | D1–D3 potvrzeny. D4 major, D5 minor. Přechod IMPLEMENT. |
+| 26 | 2026-10-17 | IMPLEMENT | — | commit | — | Oprava D4 a D5 v `c95b780`. Gate 630 passed. Přechod REVIEW. |
 
 ## Otevřené nálezy
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
@@ -91,6 +93,8 @@ ok, přidej i poslední zábranu do pipeline a spusť na to celé /rbu-pipeline
 | C7 | MAJOR | PLAN | vyřešen v #18 | 1 |
 | C8 | MAJOR | PLAN | vyřešen v #20 | 1 |
 | C9 | MINOR | PLAN | vyřešen v #20 | 1 |
-| D1 | MAJOR | IMPL | opraveno v 343cdbe, čeká review | 1 |
-| D2 | MINOR | IMPL | opraveno v 343cdbe, čeká review | 1 |
-| D3 | MINOR | IMPL | opraveno v 343cdbe, čeká review | 1 |
+| D1 | MAJOR | IMPL | vyřešen v #25 | 1 |
+| D2 | MINOR | IMPL | vyřešen v #25 | 1 |
+| D3 | MINOR | IMPL | vyřešen v #25 | 1 |
+| D4 | MAJOR | IMPL | opraveno v c95b780, čeká review | 1 |
+| D5 | MINOR | IMPL | opraveno v c95b780, čeká review | 1 |
