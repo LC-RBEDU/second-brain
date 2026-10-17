@@ -1,11 +1,11 @@
 # Pipeline: Hierarchie všude, křížový rodič, zábrana nového projektu
-Stav: REVIEW
+Stav: QA
 Plán: docs/plans/2026-10-16-hierarchy-cross-project.md
 Schvalování plánu uživatelem: ne
 Architekt: 70f91dc7-ff87-425b-ab71-1cb603af5ccf, otevření plánu #4, generace v otevření 1/3, kolo 2/3
 Šťoural: e43969a5-b9b5-4d6b-8a30-90cd94383057 · kolo grill 2 otevření #4 · HOTOVÝ GRILL
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): 83877808710d74a1a6a20719d8af7f322eefac59 · Kódový SHA: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main před pipeline): 83877808710d74a1a6a20719d8af7f322eefac59 · Kódový SHA: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · Review SCHVÁLENO na: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -81,6 +81,7 @@ ok, přidej i poslední zábranu do pipeline a spusť na to celé /rbu-pipeline
 | 24 | 2026-10-17 | IMPLEMENT | — | commit | — | Oprava D1–D3 v `343cdbe`. Gate 627 passed. Přechod REVIEW. |
 | 25 | 2026-10-17 | REVIEW | 1a895aec-1d9b-4fe1-98dd-8de566459759 | K OPRAVĚ | 0 BLOCKER, 1 MAJOR, 1 MINOR | D1–D3 potvrzeny. D4 major, D5 minor. Přechod IMPLEMENT. |
 | 26 | 2026-10-17 | IMPLEMENT | — | commit | — | Oprava D4 a D5 v `c95b780`. Gate 630 passed. Přechod REVIEW. |
+| 27 | 2026-10-17 | REVIEW | 3e911ef6-fbf7-4909-94bc-01eac4e915d4 | SCHVÁLENO | 0 | D4 a D5 drží. Přechod push main → QA. |
 
 ## Otevřené nálezy
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
@@ -96,5 +97,5 @@ ok, přidej i poslední zábranu do pipeline a spusť na to celé /rbu-pipeline
 | D1 | MAJOR | IMPL | vyřešen v #25 | 1 |
 | D2 | MINOR | IMPL | vyřešen v #25 | 1 |
 | D3 | MINOR | IMPL | vyřešen v #25 | 1 |
-| D4 | MAJOR | IMPL | opraveno v c95b780, čeká review | 1 |
-| D5 | MINOR | IMPL | opraveno v c95b780, čeká review | 1 |
+| D4 | MAJOR | IMPL | vyřešen v #27 | 1 |
+| D5 | MINOR | IMPL | vyřešen v #27 | 1 |
