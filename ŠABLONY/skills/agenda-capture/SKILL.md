@@ -1,6 +1,6 @@
 ---
 name: agenda-capture
-description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new files in OBSIDIAN/01-INBOX/. Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (file-per-task + frontmatter, em-dash U+2014, human-readable filename), archives source to 07-ARCHIV/inbox-processed/. Triggers: capture, zapiš si, INBOX. Spotify/podcast URL or show title → queue via MCP spotify (not a listen-task). ALWAYS preview before write. Preserve subtask checklisty (číslované **<ID>-N**) + source links."
+description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new files in ~/GitHub/second-brain-vault/01-INBOX/. Creates task files in 02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md (file-per-task + frontmatter, em-dash U+2014, human-readable filename), archives source to 07-ARCHIV/inbox-processed/. Triggers: capture, zapiš si, INBOX. Spotify/podcast URL or show title → queue via MCP spotify (not a listen-task). ALWAYS preview before write. Preserve subtask checklisty (číslované **<ID>-N**) + source links."
 ---
 
 **F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
@@ -15,15 +15,15 @@ description: "Capture into MrLUC Second Brain v2 vault: paste, files, or new fil
 
 > Bere libovolný střípek a integruje ho do živého systému jako **soubor-per-task** v `02-PROJEKTY/<slug>/tasks/`.
 
-**Vault (SSOT):** `OBSIDIAN/` v repo `SECOND_BRAIN` (Google Drive).
-Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault (SSOT):** git `~/GitHub/second-brain-vault`. Čtení z klonu, zápis přes Brain API.
+Cesta: `~/GitHub/second-brain-vault`
 
 ## Architektura v2 (povinný kontext)
 
 - **TASK** = vlastní `.md` v `02-PROJEKTY/<slug>/tasks/<ID> — <sanitize(title)>.md` se YAML frontmatterem (SSOT) a body s checkboxy. Filename = ID + em-dash U+2014 (` — `) + sanitizovaný titulek (diakritika, emoji zachovány).
 - **PROJECT HUB** = `02-PROJEKTY/<HubName>.md` s charter sekcemi. Embed `![[*.base]]` se nepřidává.
 - **MATERIAL** = `02-PROJEKTY/<slug>/materials/<title>.md` (project-specific) nebo `05-RESOURCES/<kategorie>/<title>.md` (cross-project), s frontmatter `projects:` array (M:N).
-- Konvence: `OBSIDIAN/00-System/Templates/konvence-a-slovnik.md`, `task-convention.md`, `task-template.md`, `material-template.md`, `id-generation-spec.md`, `filename-normalization.md`.
+- Konvence: `~/GitHub/second-brain-vault/00-System/Templates/konvence-a-slovnik.md`, `task-convention.md`, `task-template.md`, `material-template.md`, `id-generation-spec.md`, `filename-normalization.md`.
 
 ## Kdy spouštět
 
@@ -36,8 +36,8 @@ Cesta: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
 
 ### 1. Načti kontext
 
-1. Přečti `OBSIDIAN/00-System/Memory/about-me.md` (1× per session)
-2. Přečti `OBSIDIAN/00-System/Index.md` (existující projekty)
+1. Přečti `~/GitHub/second-brain-vault/00-System/Memory/about-me.md` (1× per session)
+2. Přečti `~/GitHub/second-brain-vault/00-System/Index.md` (existující projekty)
 3. Při čtení INBOXu: `01-INBOX/*/` soubory novější než archiv v `07-ARCHIV/inbox-processed/`
 
 ### 2. Vytěž obsah podle zdroje
@@ -212,4 +212,4 @@ Krátká, akční: kolik task souborů, do kterých projektů, top v pořadí ze
 
 ## Tone
 
-`OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`
+`~/GitHub/second-brain-vault/00-System/Memory/anti-ai-writing-tools.md`

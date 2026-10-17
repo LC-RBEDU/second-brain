@@ -11,6 +11,8 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import json
 import re
@@ -242,7 +244,7 @@ def main() -> int:
     ap.add_argument(
         "--vault",
         type=Path,
-        default=REPO / "OBSIDIAN",
+        default=Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault")),
     )
     args = ap.parse_args()
     vault = args.vault.expanduser().resolve()

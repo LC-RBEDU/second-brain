@@ -21,7 +21,7 @@ def default_vault() -> Path:
     return Path(
         os.environ.get(
             "SECOND_BRAIN_VAULT",
-            str(Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"),
+            str(Path.home() / "GitHub" / "second-brain-vault"),
         )
     )
 
@@ -29,8 +29,7 @@ def default_vault() -> Path:
 def backup_root(vault: Path | None = None) -> Path:
     """Outside-vault backup root (Obsidian Bases must not index these files).
 
-    Default: ``SECOND_BRAIN/OBSIDIAN_BACKUP`` (Google Drive folder
-    1YW8LVWacvuhb9bI0CpaZBWNWwZ9b6S_1), sibling of ``OBSIDIAN/``.
+    Default: directory ``OBSIDIAN_BACKUP`` next to the vault root.
     Override with env ``SECOND_BRAIN_BACKUP_ROOT``.
     """
     env = os.environ.get("SECOND_BRAIN_BACKUP_ROOT")

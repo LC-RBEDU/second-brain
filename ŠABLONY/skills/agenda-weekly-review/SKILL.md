@@ -13,12 +13,12 @@ description: "Use when user asks for týdenní shrnutí, weekly review, schvál 
 ## Kdy spouštět
 
 - "Týdenní shrnutí" / "weekly review" / "schval weekly draft"
-- Po cronu: soubor `OBSIDIAN/00-System/weekly/YYYY-Www-draft.md` existuje
+- Po cronu: soubor `~/GitHub/second-brain-vault/00-System/weekly/YYYY-Www-draft.md` existuje
 - Neděle večer — hned po otevření draftu
 
 ## Cesty (vault, v2)
 
-- Vault: `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+- Vault: `~/GitHub/second-brain-vault`
 - Draft: `00-System/weekly/YYYY-Www-draft.md`
 - Finální: `00-System/weekly/YYYY-Www.md`
 - Procesy: `00-System/Memory/procesy-mrluc.md`

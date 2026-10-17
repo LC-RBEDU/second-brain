@@ -1,8 +1,8 @@
 ---
 description: PARA pravidla pro 05-RESOURCES/ a materiály v projektech
 globs:
-  - OBSIDIAN/05-RESOURCES/**
-  - OBSIDIAN/02-PROJEKTY/**/materials/**
+  - ~/GitHub/second-brain-vault/05-RESOURCES/**
+  - ~/GitHub/second-brain-vault/02-PROJEKTY/**/materials/**
 alwaysApply: false
 ---
 

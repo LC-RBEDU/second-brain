@@ -1,6 +1,6 @@
 ---
 name: agenda-cursor-inbox
-description: "Uloží task, popis nebo plán z Cursor konverzace do MrLUC Second Brain: .md soubor v OBSIDIAN/01-INBOX/daily/ s odkazem na chat. Triggers: ulož do Second Brain, ulož do SB, zapiš do inboxu, ulož task/plán/popis do Obsidianu, capture konverzace, second brain inbox. ALWAYS preview before write."
+description: "Uloží task, popis nebo plán z Cursor konverzace do MrLUC Second Brain: .md soubor v ~/GitHub/second-brain-vault/01-INBOX/daily/ s odkazem na chat. Triggers: ulož do Second Brain, ulož do SB, zapiš do inboxu, ulož task/plán/popis do Obsidianu, capture konverzace, second brain inbox. ALWAYS preview before write."
 ---
 
 **F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
@@ -10,10 +10,10 @@ description: "Uloží task, popis nebo plán z Cursor konverzace do MrLUC Second
 
 > Rychlý capture **z Cursor chatu** do INBOX — bez rovnou zakládat task v `02-PROJEKTY/`. Triáž později přes `agenda-triage`.
 
-**Vault (SSOT):** `OBSIDIAN/` v repo `SECOND_BRAIN` (Google Drive).
+**Vault (SSOT):** git `~/GitHub/second-brain-vault`. Čtení z klonu, zápis přes Brain API.
 
 ```
-/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN
+~/GitHub/second-brain-vault
 ```
 
 **Cílová složka:** `01-INBOX/daily/` (viz `01-INBOX/daily/README.md`)

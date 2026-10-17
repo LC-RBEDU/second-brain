@@ -9,12 +9,12 @@ description: >-
   (using-n8n-skills-official and related) — not agenda skills alone.
 ---
 
-**F2+ (Brain write):** vault mutate = Brain MCP/REST (`brain.cyprovi.cz`) — `create_task`, `update_task`, `append_task_note`, `capture_daily`, … Git klon / Drive folder = read (+ legacy FS fail-path jen když Brain down a uživatel dovolí). Drive Desktop offline už není provozní předpoklad zápisu.
+**F2+ (Brain write):** vault mutate = Brain MCP/REST (`brain.cyprovi.cz`) — `create_task`, `update_task`, `append_task_note`, `capture_daily`, … Lokální čtení = git klon `~/GitHub/second-brain-vault`. Legacy FS fail-path jen když Brain down a uživatel dovolí.
 
 
 # MrLUC loader
 
-Working folder must be the repo root `SECOND_BRAIN/` (ŠABLONY + OBSIDIAN), not only `OBSIDIAN/`. Prefer Brain tools for vault writes. Local folder read still helps for skills on disk; streaming placeholders are not a filesystem.
+Working folder is the tooling repo `SECOND_BRAIN/` (ŠABLONY, scripts). Vault SSOT is git `~/GitHub/second-brain-vault`. Prefer Brain tools for vault writes.
 
 ## Start of a task
 

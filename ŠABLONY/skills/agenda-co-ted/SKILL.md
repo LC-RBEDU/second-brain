@@ -10,7 +10,7 @@ description: "Use when user asks 'co teď', 'co dnes', 'na co se mám zaměřit'
 
 > "Sednu si, jednou se podívám, vím co dělat." Ad-hoc prioritní kapka — bez týdenního review.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 
 ## Kdy spouštět
 
@@ -24,7 +24,7 @@ V2 priority pořadí (F4):
 
 1. **PRIMARY — Brain `GET /v1/context/light`** (human OAuth) — light projection (`top_priority_today`, `needs_decision`, `due_soon`, …). Join ID → `tasks[]` dle artifact docs. **Ne** local `agent-context.json` + `build_agent_context.py` jako primár.
 2. **Fail-path MCP:** plný `get_context` (warm/rebuild). **Bez** MCP `get_context_light`.
-3. Fallback jen když Brain nedostupný: lokální `OBSIDIAN/00-System/agent-context.json` (read-only; ne spouštěj rebuild jako default).
+3. Fallback jen když Brain nedostupný: lokální `~/GitHub/second-brain-vault/00-System/agent-context.json` (read-only; ne spouštěj rebuild jako default).
 4. **Lessons pending:** pokud `00-System/Lessons-Pending/*.md` (ne `.gitkeep`) není prázdný → v dashboardu řádek `Lessons ke schválení: N` (+ **stale** pokud mtime > 7 dní). Příkaz: „schval lessons“ → skill `agenda-lessons`.
 
 ## Lane Rozhodni (SSOT: `needs_decision`)

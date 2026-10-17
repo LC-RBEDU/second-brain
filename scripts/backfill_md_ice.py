@@ -18,7 +18,7 @@ from pathlib import Path
 VAULT = Path(
     os.environ.get(
         "VAULT_PATH",
-        Path("/Users/lukascypra/My Drive - PRV/# WORK/SECOND_BRAIN/OBSIDIAN"),
+        Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault")),
     )
 )
 PROJEKTY = VAULT / "02-PROJEKTY"

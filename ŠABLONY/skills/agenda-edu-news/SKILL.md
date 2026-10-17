@@ -10,7 +10,7 @@ description: "Připraví návrh témat pro EDU News (~30s firemní video): zpět
 
 > EDU News = krátké video pro tým: **čemu jsem se věnoval** (tento / minulý týden) a **čemu se budu věnovat** (příští). Témata s dopadem pro parťáky — ne technické detaily ani admin maličkosti.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`  
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 **Task:** **OPS2 — Nahrát EDU news ♻️ weekly (čtvrtek)** · `02-PROJEKTY/operations/tasks/OPS2 — *.md` · `agent: assist`
 
 ## Kdy spouštět
@@ -34,7 +34,7 @@ Headline = věta do kamery, **ne** surový `title` tasku. Provenance (`ID — ti
 
 ### 1. Načti vault kontext
 
-1. `OBSIDIAN/00-System/agent-context.json` — pokud chybí nebo `generated_at` > 24 h → `python3 scripts/build_agent_context.py`
+1. `~/GitHub/second-brain-vault/00-System/agent-context.json` — pokud chybí nebo `generated_at` > 24 h → `python3 scripts/build_agent_context.py`
 2. Z snapshotu:
    - `recently_done[]` (lookback od **posledního čtvrtka** včetně, ne jen „7 dní slepě“)
    - `top_priority_today[]` / tasky s `focus` = aktuální ISO týden

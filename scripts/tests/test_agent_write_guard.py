@@ -1,6 +1,8 @@
 """Režimy zápisu Cowork / Grok Bot (T1–T14)."""
 from __future__ import annotations
 
+import os
+
 import sys
 from pathlib import Path
 
@@ -598,7 +600,7 @@ def test_t9_focus_cap():
 
 
 def test_t10_guide_codes_when_vault_present():
-    vault = REPO / "OBSIDIAN"
+    vault = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
     if not vault.is_dir():
         pytest.skip("vault není na tomhle stroji")
     guide = vault / "00-System" / "agent-guide-mimo-cursor.md"
@@ -670,6 +672,6 @@ def test_t14_disk_overwrite_without_frontmatter():
 
 def test_t12_cowork_instructions_point_at_guide():
     text = (REPO / "cowork-instructions.md").read_text(encoding="utf-8")
-    assert "OBSIDIAN/00-System/agent-guide-mimo-cursor.md" in text
+    assert "second-brain-vault/00-System/agent-guide-mimo-cursor.md" in text
     assert "01-INBOX/daily/" in text
     assert "platí návod" in text

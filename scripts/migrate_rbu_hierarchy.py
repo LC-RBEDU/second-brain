@@ -16,9 +16,11 @@ into new story IDs later with next_task_id.py). Auto-Done never closes epics.
 Usage:
   python3 scripts/migrate_rbu_hierarchy.py
   python3 scripts/migrate_rbu_hierarchy.py --apply \\
-    --vault "/Users/.../SECOND_BRAIN/OBSIDIAN"
+    --vault "$HOME/GitHub/second-brain-vault"
 """
 from __future__ import annotations
+
+import os
 
 import argparse
 import re
@@ -29,7 +31,7 @@ from pathlib import Path
 import yaml
 
 REPO = Path(__file__).resolve().parents[1]
-DEFAULT_VAULT = Path.home() / "My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN"
+DEFAULT_VAULT = Path.home() / "GitHub" / "second-brain-vault"
 PREVIEW_OUT = REPO / "docs" / "rbu-hierarchy-migration-preview.md"
 SLUG = "rb-universe-development"
 HUB_NAME = "RB Universe development.md"

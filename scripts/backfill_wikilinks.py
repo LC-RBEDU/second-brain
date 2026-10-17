@@ -2,10 +2,12 @@
 """One-off wikilink backfill for OBSIDIAN vault."""
 from __future__ import annotations
 
+import os
+
 import re
 from pathlib import Path
 
-VAULT = Path(__file__).resolve().parents[1] / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 HUB_DIR = VAULT / "02-PROJEKTY"
 
 SKIP_PARTS = {".obsidian", "__pycache__"}

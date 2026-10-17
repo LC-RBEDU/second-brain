@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 DEFAULT_VAULT = Path(
-    "/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN"
+    "~/GitHub/second-brain-vault"
 )
 MAPPING_PATH = Path(
     "/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/scripts/migration-mapping.json"

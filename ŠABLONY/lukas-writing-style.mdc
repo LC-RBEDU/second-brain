@@ -28,7 +28,7 @@ Ty/Tě/Ti/Tvoje a Vy/Vám/Vás/Vaše — **velké písmeno**.
 - Nesouhlas OK; pochlebování ne. Mírně suchý humor OK.
 - Chyba = krátce přiznat a řešit („moje chyba, vyřeším“ / „ok, to je moje chyba“).
 - Textové smajlíky :-) :) střídmě; emoji výjimečně (🙂 🤷🏻‍♂️). Ne emoji jako tečka 👍.
-- Blacklist AI frází: `OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`
+- Blacklist AI frází: `~/GitHub/second-brain-vault/00-System/Memory/anti-ai-writing-tools.md`
 
 **Ignoruj šablony** (neimituj): „Fakturace dealu“, OOO „dobíjím baterky“,
 audits/noční sync, Gmail reaction-only.
@@ -146,4 +146,4 @@ Vzory:
 - Před odesláním: škrtni výplň, ověř registr, první věta = pointa.
 
 ---
-*Master blacklist AI frází: OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md*
+*Master blacklist AI frází: ~/GitHub/second-brain-vault/00-System/Memory/anti-ai-writing-tools.md*

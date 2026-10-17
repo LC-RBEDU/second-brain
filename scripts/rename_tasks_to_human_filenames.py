@@ -19,6 +19,8 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import re
 import sys
@@ -36,7 +38,7 @@ except ImportError:
     sys.exit(1)
 
 VAULT_ROOT = Path(__file__).resolve().parent.parent
-OBSIDIAN_ROOT = VAULT_ROOT / "OBSIDIAN"
+OBSIDIAN_ROOT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 PROJEKTY_DIR = OBSIDIAN_ROOT / "02-PROJEKTY"
 ARCHIV_DIR = OBSIDIAN_ROOT / "07-ARCHIV" / "tasks-done"
 

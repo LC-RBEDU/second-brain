@@ -6,11 +6,13 @@ Use: scripts/patch_hub_sources.py --strip-workspace if legacy hubs resurface.
 """
 from __future__ import annotations
 
+import os
+
 import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-HUBS = REPO / "OBSIDIAN" / "02-PROJEKTY"
+HUBS = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 
 BAD = re.compile(
     r"^(  (?:calendar|gmail|drive):)\n  \[\]\n",

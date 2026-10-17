@@ -14,6 +14,8 @@ of them is rewritten everywhere, archive included, or the links would break.
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import json
 import re
@@ -21,10 +23,10 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-VAULT = REPO / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 HIER_SLUGS = ("rb-universe-development", "finance", "firemni-procesy", "vibe-coding")
 LEVEL_LETTER = {"epic": "E", "story": "S", "task": "T"}
-SCAN_ROOTS = ("OBSIDIAN", "ŠABLONY", "scripts", "vps", ".cursor")
+SCAN_ROOTS = ("ŠABLONY", "scripts", "vps", ".cursor")
 SCAN_SUFFIXES = {".md", ".base", ".json", ".py", ".mdc", ".js", ".yaml", ".yml"}
 # Third-party code shares the token space: pygments' shell lexer lists F19, F26
 # and F33 as function keys, and a blind rewrite would corrupt the library.
@@ -76,8 +78,9 @@ def build_mapping() -> dict[str, str]:
 
 def scan_files() -> list[Path]:
     out: list[Path] = []
-    for root in SCAN_ROOTS:
-        base = REPO / root
+    bases = [REPO / root for root in SCAN_ROOTS]
+    bases.append(VAULT)
+    for base in bases:
         if not base.exists():
             continue
         for f in base.rglob("*"):
@@ -135,9 +138,9 @@ def main() -> int:
     if args.apply:
         for src, dst in renames:
             src.rename(dst)
-        mapfile = REPO / "OBSIDIAN/00-System/hierarchy-id-migration.json"
+        mapfile = VAULT / "00-System" / "hierarchy-id-migration.json"
         mapfile.write_text(json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"hotovo — mapping uložen do {mapfile.relative_to(REPO)}")
+        print(f"hotovo — mapping uložen do {mapfile}")
     else:
         print("\n(dry run — nic se nezměnilo)")
         for old, new in list(mapping.items())[:8]:

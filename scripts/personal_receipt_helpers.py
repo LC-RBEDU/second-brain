@@ -2,6 +2,8 @@
 """Smoke helpers for personal payment docs pipeline (T1–T18 checklist)."""
 from __future__ import annotations
 
+import os
+
 import hashlib
 import json
 import sys
@@ -20,7 +22,7 @@ from payment_doc import (  # noqa: E402
     load_payment_config,
 )
 
-VAULT = ROOT / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 MANIFEST = VAULT / "00-System" / "Personal-Docs-Uploaded" / "manifest.json"
 
 

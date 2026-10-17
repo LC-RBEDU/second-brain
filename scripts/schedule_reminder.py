@@ -2,6 +2,8 @@
 """Schedule a Slack reminder via vault queue (00-System/Reminders-Pending/)."""
 from __future__ import annotations
 
+import os
+
 import argparse
 import json
 import sys
@@ -23,7 +25,7 @@ from reminders import (  # noqa: E402
 )
 
 TZ = ZoneInfo("Europe/Prague")
-DEFAULT_VAULT = Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"
+DEFAULT_VAULT = Path.home() / "GitHub" / "second-brain-vault"
 
 
 def vault_path() -> Path:

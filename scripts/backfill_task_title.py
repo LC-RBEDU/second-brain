@@ -9,9 +9,9 @@ Convention handled:
   ``# <ID> — <Title>`` → ``title: <Title>`` (drops ID prefix + em/en/hyphen dash)
   ``# <Title>``         → ``title: <Title>``
 
-Targets (default):
-  - OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md
-  - OBSIDIAN/07-ARCHIV/tasks-done/<slug>/*.md
+Targets (default): git vault `~/GitHub/second-brain-vault`
+  - 02-PROJEKTY/<slug>/tasks/*.md
+  - 07-ARCHIV/tasks-done/<slug>/*.md
 
 Usage:
   python3 scripts/backfill_task_title.py            # dry-run, summary + samples
@@ -20,6 +20,8 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import re
 import sys
@@ -27,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VAULT_DEFAULT = REPO_ROOT / "OBSIDIAN"
+VAULT_DEFAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 
 # Task ID prefix used in H1 headings (e.g. "S2 — ...", "RBU13 — ...").
 ID_RE = re.compile(r"^[A-Z]{1,5}(?:-[EST])?\d+$")
@@ -160,7 +162,7 @@ def apply_plan(plan: Plan) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="actually patch files (default: dry-run)")
-    parser.add_argument("--root", type=Path, default=VAULT_DEFAULT, help="vault root (defaults to OBSIDIAN/)")
+    parser.add_argument("--root", type=Path, default=VAULT_DEFAULT, help="vault root (default: ~/GitHub/second-brain-vault)")
     parser.add_argument("--samples", type=int, default=8, help="sample count to print in dry-run")
     args = parser.parse_args()
 

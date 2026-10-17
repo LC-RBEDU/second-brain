@@ -10,13 +10,15 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VAULT = ROOT / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 TASKS_GLOB = "02-PROJEKTY/*/tasks/*.md"
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 

@@ -10,7 +10,7 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus
 
 > Ad-hoc srovnání priorit napříč vaultem. Ne cron — spouštíš, když cítíš chaos v prioritách. **V2:** čte task `.md` frontmattery (file-per-task), ne H3 v hubu.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 
 ## Kdy spouštět
 
@@ -21,7 +21,7 @@ description: "Use when user asks revize priorit, přehodnotit ICE, srovnat fokus
 ## Načti data
 
 1. Všechny `02-PROJEKTY/<slug>/tasks/*.md` aktivní (status != Done) — frontmatter
-2. `OBSIDIAN/00-System/agent-context.json` → top_priority list, overdue, waiting
+2. `~/GitHub/second-brain-vault/00-System/agent-context.json` → top_priority list, overdue, waiting
 3. `00-System/Memory/procesy-mrluc.md` — pravidla Waiting / SSOT
 
 ## Scoring (sjednoceno s `today_priority.py` / agent-context)

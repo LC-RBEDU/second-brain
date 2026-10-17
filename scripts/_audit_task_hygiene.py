@@ -26,8 +26,8 @@ from typing import Any
 
 import yaml
 
-VAULT = Path("/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN")
-OBS = VAULT / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
+OBS = VAULT
 PROJ_DIR = OBS / "02-PROJEKTY"
 ARCH_DIR = OBS / "07-ARCHIV" / "tasks-done"
 MAPPING_PATH = OBS / "00-System" / "migration-mapping.json"

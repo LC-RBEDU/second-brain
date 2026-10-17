@@ -22,7 +22,7 @@ except ImportError:
     sys.stderr.write("ERROR: pip3 install pyyaml\n")
     sys.exit(1)
 
-DEFAULT_VAULT = Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"
+DEFAULT_VAULT = Path.home() / "GitHub" / "second-brain-vault"
 CATALOG_REL = "00-System/Zdroje-katalog.md"
 OUTPUT_REL = "00-System/sources-routing.json"
 

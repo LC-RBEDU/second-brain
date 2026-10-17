@@ -1,7 +1,7 @@
 ---
 description: Slack INBOX triage — dva zdroje ve 01-INBOX/slack/, relevance routing archive/batch/deep
 globs:
-  - OBSIDIAN/01-INBOX/slack/**
+  - ~/GitHub/second-brain-vault/01-INBOX/slack/**
   - vps/second-brain-hub/lib/triage_slack_relevance.py
 alwaysApply: false
 ---

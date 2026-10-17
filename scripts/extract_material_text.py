@@ -6,7 +6,7 @@ Sidecar frontmatter: type: attachment, project, source, captured, file.
 
 Usage:
   python3 scripts/extract_material_text.py path/to/file.pdf
-  python3 scripts/extract_material_text.py --dir OBSIDIAN/02-PROJEKTY/finance/materials/
+  python3 scripts/extract_material_text.py --dir ~/GitHub/second-brain-vault/02-PROJEKTY/finance/materials/
   python3 scripts/extract_material_text.py --dry-run file.pdf
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ except ImportError:
     sys.stderr.write("ERROR: pip3 install pyyaml\n")
     sys.exit(1)
 
-DEFAULT_VAULT = Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"
+DEFAULT_VAULT = Path.home() / "GitHub" / "second-brain-vault"
 TEXT_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".xml", ".html", ".htm"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff"}
 BINARY_EXTENSIONS = {".pdf", ".docx", ".doc", ".xlsx", ".pptx"} | IMAGE_EXTENSIONS

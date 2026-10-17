@@ -33,7 +33,7 @@ from hub_state import (  # noqa: E402
 DEFAULT_VAULT = Path(
     os.environ.get(
         "SECOND_BRAIN_VAULT",
-        str(Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"),
+        str(Path.home() / "GitHub" / "second-brain-vault"),
     )
 )
 

@@ -19,7 +19,7 @@ try:
 except ImportError:
     sys.exit(1)
 
-DEFAULT_VAULT = Path.home() / "My Drive (lukas@redbuttonedu.cz)" / "SECOND_BRAIN" / "OBSIDIAN"
+DEFAULT_VAULT = Path.home() / "GitHub" / "second-brain-vault"
 FM_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
 
 

@@ -7,7 +7,7 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 > Otevři projekt, zorientuj se, udělej výstup. Hub `02-PROJEKTY/<HubName>.md` (charter), tasky `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (em-dash U+2014), outputs v `02-PROJEKTY/<slug>/`.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 
 **F1 (git vault):** pokud `SECOND_BRAIN_VAULT` ukazuje na git klon (`~/GitHub/second-brain-vault`), skills = **pull + read only**. Žádný FS zápis do klonu (tasky, capture, snapshot). Snapshot píše VPS; lidský zápis = GitHub web UI PR. Až F2 Brain MCP.
 
@@ -24,11 +24,11 @@ description: "Use when user works on a MrLUC Second Brain v2 project — 'jdeme 
 
 ### 1. Načti kontext (v2)
 
-1. **PRIMARY:** `OBSIDIAN/00-System/agent-context.json` → najdi `projects[]` podle `slug`; briefing pole: `charter_cil`, `charter_scope`, `charter_definition_of_done`, `charter_people`, `charter_kontext`, status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug, **`sources`**, `notebooklm`
-2. **Work-context bundle:** `OBSIDIAN/00-System/Work-Context/<slug>.md` — **freshness check:** pokud chybí, nebo existuje `<slug>.stale`, nebo `generated_at` je starší než nejnovější mtime tasků v `02-PROJEKTY/<slug>/tasks/` → spusť `python3 scripts/build_work_context.py <slug>`. Při práci na konkrétním tasku: `python3 scripts/build_work_context.py --task <ID>` (efemérní stdout, nepersistuje).
-3. (1× per session) `OBSIDIAN/00-System/Memory/about-me.md`
-4. Hub `OBSIDIAN/02-PROJEKTY/<HubName>.md` — frontmatter + body (Scope, Kontext, ## Zdroje dat)
-5. Tasky `OBSIDIAN/02-PROJEKTY/<slug>/tasks/*.md`
+1. **PRIMARY:** `~/GitHub/second-brain-vault/00-System/agent-context.json` → najdi `projects[]` podle `slug`; briefing pole: `charter_cil`, `charter_scope`, `charter_definition_of_done`, `charter_people`, `charter_kontext`, status, area, open_tasks_count, top tasks ze `top_priority` filtered by slug, **`sources`**, `notebooklm`
+2. **Work-context bundle:** `~/GitHub/second-brain-vault/00-System/Work-Context/<slug>.md` — **freshness check:** pokud chybí, nebo existuje `<slug>.stale`, nebo `generated_at` je starší než nejnovější mtime tasků v `02-PROJEKTY/<slug>/tasks/` → spusť `python3 scripts/build_work_context.py <slug>`. Při práci na konkrétním tasku: `python3 scripts/build_work_context.py --task <ID>` (efemérní stdout, nepersistuje).
+3. (1× per session) `~/GitHub/second-brain-vault/00-System/Memory/about-me.md`
+4. Hub `~/GitHub/second-brain-vault/02-PROJEKTY/<HubName>.md` — frontmatter + body (Scope, Kontext, ## Zdroje dat)
+5. Tasky `~/GitHub/second-brain-vault/02-PROJEKTY/<slug>/tasks/*.md`
 6. Outputs + Materials (sidecar `type: attachment` s `## Extrahovaný text`)
 7. **MCP enrichment (povinný):** `python3 scripts/build_sources_routing.py --check` → regeneruj pokud stale; načti `sources-routing.json`; pro každý hub `sources:` tag volej MCP/CLI dle routes
 8. **Lessons / guardy (max 3):** z `agent-context.json` → `lessons[]` vyber Active, kde `projects` obsahuje hub NEBO `topics` overlap. Cituj `takeaway` (Guard → Příště udělej). Celý soubor jen když takeaway nestačí. Skill: `agenda-lessons`.
@@ -196,6 +196,6 @@ Uzavřen 1 task (RBU13), přidán 1 nový (RBU30, Score 8.4).
 - **Výstupy do `02-PROJEKTY/<slug>/` (root projektu); tasky do `tasks/`; materials do `materials/`**
 - **Při nejasném zadání** — polož 1 konkrétní otázku, nezačínej hádat
 - **Provenance:** ve výstupu uveď, které materiály/zdroje jsi použil (wikilink nebo cesta). Pokud klíčový zdroj chyběl v bundlu, explicitně to napiš.
-- **Tone:** `OBSIDIAN/00-System/Memory/anti-ai-writing-tools.md`
+- **Tone:** `~/GitHub/second-brain-vault/00-System/Memory/anti-ai-writing-tools.md`
 - **RBU hierarchy:** epic vs story vs checkbox — viz `ŠABLONY/obsidian-templates/task-convention.md`. Nový epic = `epic-template.md`; nová story = `task-template.md` s `type: story` + `parent`. Epic **neoznačuj Done** automaticky.
 - **Implementace v Universe:** commity musí nést `Closes RBU…` dle rule v RB-Universe (zdroj `ŠABLONY/cursor-rules/rbu-commit-closes.mdc`). Skills v tomto vaultu to jen připomínají — zápis do Universe repo je mimo SECOND_BRAIN.

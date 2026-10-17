@@ -1,6 +1,8 @@
 """Tests for lib/vault_factory.open_vault."""
 from __future__ import annotations
 
+import os
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -81,16 +83,13 @@ def test_default_drive_needs_env():
         open_vault(env=env)
 
 
-def test_default_backend_is_drive():
-    env = {"VAULT_DRIVE_ID": "root123"}
-    fake_creds = object()
-    with patch("drive_io.credentials_from_env", return_value=(fake_creds, "oauth")) as creds_fn:
-        with patch("drive_io.DriveVault") as DV:
-            DV.return_value = MagicMock(name="drive_vault")
-            vault = open_vault(env=env)
-            creds_fn.assert_called_once_with(env)
-            DV.assert_called_once_with("root123", credentials=fake_creds)
-            assert vault is DV.return_value
+def test_default_backend_is_git():
+    env = {"GIT_VAULT_ROOT": "/tmp/vault", "GIT_VAULT_PUSH": "0"}
+    with patch("git_io.GitVault") as GV:
+        GV.return_value = MagicMock(name="git_vault")
+        vault = open_vault(env=env)
+        GV.assert_called_once()
+        assert vault is GV.return_value
 
 
 def test_drive_context_manager():

@@ -18,12 +18,14 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-LIDE = REPO / "OBSIDIAN" / "05-RESOURCES" / "lide"
+LIDE = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 SKIP = {"_ŠABLONA-person.md", "_index.md"}
 
 sys.path.insert(0, str(REPO / "scripts"))

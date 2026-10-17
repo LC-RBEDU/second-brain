@@ -62,14 +62,14 @@ def open_vault(
     strict_push: bool = False,
     discard_dirty_on_error: bool = False,
 ):
-    """Return DriveVault or GitVault according to VAULT_BACKEND (default drive).
+    """Return GitVault or DriveVault according to VAULT_BACKEND (default git).
 
     Prefer: ``with open_vault() as vault:``.
     When ``VAULT_WRITERS_PAUSED=1``, mutate methods raise ``VaultPausedError``.
     ``strict_push`` / ``discard_dirty_on_error`` apply only to GitVault (Brain).
     """
     env_map = env if env is not None else os.environ
-    backend = (env_map.get("VAULT_BACKEND") or "drive").strip().lower() or "drive"
+    backend = (env_map.get("VAULT_BACKEND") or "git").strip().lower() or "git"
 
     if backend == "git":
         from git_io import GitVault

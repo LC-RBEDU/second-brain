@@ -25,7 +25,7 @@ Plán: [docs/plans/2026-10-10-sb-operacni-model-f1.md](plans/2026-10-10-sb-opera
 | Push | `git -c push.ff=only push` (Debian 2.39 nemá `push --ff-only`) |
 | Mac clone | `~/GitHub/second-brain-vault` — pull/read only |
 | Obsidian | Zakázaný editor i klient. Zápis jde přes git vault a Brain. Sync a Drive writer se nezapínají. |
-| Drive vault SSOT | **Off** — Drive jen R9 (Docs/Sheets/shared/>limit); viz sync-architecture |
+| Složka vaultu na Google Drive | nepoužívat |
 | Ruleset A17 | **soft A17 schváleno** (2026-10-10, Free): deploy key + README Write policy + PR template. Hard ruleset odloženo do Pro → `bash scripts/vault_apply_ruleset_a17.sh`. |
 
 ## Tooling před importem
@@ -55,8 +55,7 @@ bash scripts/vault_secrets_scan.sh /path/to/OBSIDIAN
 - Env: `export SECOND_BRAIN_VAULT="$HOME/GitHub/second-brain-vault"` (volitelně `SB_VAULT_PATH` stejná hodnota)
 - Žádný lokální zápis do git klonu (`build_agent_context`, `schedule_reminder` schedule/cancel → exit ≠0).
 - Snapshot píše jen VPS; Mac `git pull`.
-- Lidský zápis = GitHub web UI PR → Merge (ruleset až Pro).
-- Drive Desktop `…/SECOND_BRAIN/OBSIDIAN/` už **není** SSOT — po cutoveru jen legacy mirror.
+- Lidský zápis = Brain API. GitHub web UI PR jen když Brain nejde.
 
 ## Coolify env (live)
 
@@ -72,6 +71,6 @@ bash scripts/vault_secrets_scan.sh /path/to/OBSIDIAN
 | `GIT_VAULT_PUSH` | `1` |
 | `GIT_SSH_COMMAND` | `ssh -i /root/.ssh/sb-vault-deploy -o IdentitiesOnly=yes -o UserKnownHostsFile=/tmp/sb_known_hosts -o StrictHostKeyChecking=accept-new` |
 
-## Rollback ≤24 h
+## Rollback
 
-Coolify: `VAULT_BACKEND=drive` + `CRONTAB_MODE=live` + `PAUSED=0`.
+`VAULT_BACKEND=drive` vault nevrací. Rollback = předchozí git tip `second-brain-vault` a předchozí image hubu.

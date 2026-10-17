@@ -10,7 +10,7 @@ description: "Analyzuje materiály (URL, vault) k tématu/úkolu. Výstup: struk
 
 > Paralelní skill. Rozbor materiálů → **stručný, strukturovaný** `.md` ve výstupech — **ne** jedna fixní šablona, ale **tvar podle typu dokumentu**.
 
-**Vault (v2):** `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 **Referenční příručka tvarů výstupu:** `00-System/Templates/analyze-output-guide.md` (varianty, ne kopírovat 1:1)
 **V2 změna:** analýza je **material soubor** se YAML frontmatter `type: material` v `02-PROJEKTY/<slug>/materials/` (project-specific) nebo `05-RESOURCES/<kategorie>/` (cross-project). M:N linkování přes `projects:` array. Konvence: `00-System/Templates/material-template.md`.
 

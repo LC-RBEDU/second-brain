@@ -11,13 +11,15 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import re
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-HUBS = REPO / "OBSIDIAN" / "02-PROJEKTY"
+HUBS = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 
 # slug -> optional sources tags (URLs live in ## Zdroje dat table only)
 HUB_CONFIG: dict[str, dict] = {

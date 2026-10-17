@@ -63,10 +63,7 @@ INLINE_IMAGE_SKIP_BYTES = 8 * 1024
 def load_payment_config(vault: Path | None = None) -> dict[str, Any]:
     if vault is None:
         vault = (
-            Path.home()
-            / "My Drive (lukas@redbuttonedu.cz)"
-            / "SECOND_BRAIN"
-            / "OBSIDIAN"
+            Path.home() / "GitHub" / "second-brain-vault"
         )
     path = vault / "00-System" / "personal-payment-docs.json"
     if not path.is_file():

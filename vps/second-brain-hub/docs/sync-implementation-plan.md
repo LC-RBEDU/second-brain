@@ -14,7 +14,7 @@
 >
 > **Předchozí smoke (image `29df869`, před redeploy):** `triage_run` OK (`proposals=1`); `build_dashboard` OK (`inbox=1 pending=3`); `edu_news_refresh` běžel, ale bez `progressBaseline` logiky z novějších commitů.
 
-**Aktuální vault root:** `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/` na lukas@redbuttonedu.cz).
+**Aktuální vault root:** git `~/GitHub/second-brain-vault` (VPS `GIT_VAULT_ROOT=/data/vault`). Drive folder `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/`) je historický F0 mirror, ne SSOT.
 
 ## Phase 0 — Prerequisites
 

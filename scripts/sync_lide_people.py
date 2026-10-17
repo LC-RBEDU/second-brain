@@ -8,13 +8,15 @@ Usage:
 
 from __future__ import annotations
 
+import os
+
 import argparse
 import re
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-VAULT = REPO / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 LIDE = VAULT / "05-RESOURCES" / "lide"
 
 # canonical name -> plain-text aliases (longest match wins; inflected forms use PIPE_ALIASES)
@@ -765,7 +767,7 @@ def main() -> None:
         default="",
         help="Vault-relative .md paths (with --incremental); odděluj středníkem (;). Čárka v názvu souboru je OK.",
     )
-    ap.add_argument("--vault", default="", help="Vault root (default: OBSIDIAN/ in repo)")
+    ap.add_argument("--vault", default="", help="Vault root (default: ~/GitHub/second-brain-vault)")
     args = ap.parse_args()
 
     global VAULT, LIDE

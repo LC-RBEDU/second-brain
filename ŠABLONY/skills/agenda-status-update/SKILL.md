@@ -10,7 +10,7 @@ description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš (C
 
 > Rychlá změna stavu jednoho tasku. Pro hromadné operace použij `agenda-work` nebo `agenda-co-ted`. Pro re-prioritizaci napříč vault použij `agenda-priority-review`.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 
 ## Kdy spouštět
 
@@ -25,8 +25,8 @@ description: "Single-task status flip in MrLUC Second Brain v2: hotovo, zruš (C
 
 1. ID syntax: `[A-Z]+(-[EST])?\d+[a-z]?` — s úrovní `RBU-E69`, `RBU-S70` (hierarchické projekty), bez ní `S2`, `AF7`, `OPS2` (ploché projekty a archiv)
 2. Hledej (filename po F-fundamental refactoru = `<ID> — <Title>.md`, em-dash U+2014):
-   - `OBSIDIAN/02-PROJEKTY/*/tasks/<ID> — *.md` (nebo `<ID>.md` jako fallback) — pokud match, použij
-   - `OBSIDIAN/07-ARCHIV/tasks-done/*/<ID> — *.md` — pokud archived, varuj a ptej se zda zpět aktivovat
+   - `~/GitHub/second-brain-vault/02-PROJEKTY/*/tasks/<ID> — *.md` (nebo `<ID>.md` jako fallback) — pokud match, použij
+   - `~/GitHub/second-brain-vault/07-ARCHIV/tasks-done/*/<ID> — *.md` — pokud archived, varuj a ptej se zda zpět aktivovat
 3. Pokud více matchů → ptej se který slug
 4. Při odkazu z chatu / jiných tasků: uživatel může psát `[[<ID>]]` (resolvuje přes `aliases: [<ID>]` ve frontmatteru) nebo `<ID>-N` pro konkrétní subtask
 

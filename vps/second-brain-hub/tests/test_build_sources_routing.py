@@ -1,6 +1,8 @@
 """Tests for build_sources_routing.py"""
 from __future__ import annotations
 
+import os
+
 import hashlib
 import json
 import subprocess
@@ -8,8 +10,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-CATALOG = REPO / "OBSIDIAN" / "00-System" / "Zdroje-katalog.md"
-ROUTING = REPO / "OBSIDIAN" / "00-System" / "sources-routing.json"
+CATALOG = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault")) / "00-System" / "Zdroje-katalog.md"
+ROUTING = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault")) / "00-System" / "sources-routing.json"
 BUILD = REPO / "scripts" / "build_sources_routing.py"
 
 

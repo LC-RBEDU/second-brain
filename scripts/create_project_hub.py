@@ -7,6 +7,8 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import json
 import re
@@ -16,7 +18,7 @@ from datetime import date
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-VAULT = REPO / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 TEMPLATE = VAULT / "00-System" / "Templates" / "topic-template-v2.md"
 MAPPING = REPO / "scripts" / "migration-mapping.json"
 PROJEKTY = VAULT / "02-PROJEKTY"

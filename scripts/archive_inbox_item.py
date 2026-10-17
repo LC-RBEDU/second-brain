@@ -2,6 +2,8 @@
 """Archive one INBOX capture (``.md`` + co-located attachments) or fix orphan attachments."""
 from __future__ import annotations
 
+import os
+
 import argparse
 import sys
 from pathlib import Path
@@ -15,7 +17,7 @@ from inbox_archive import archive_inbox_capture, archive_orphan_inbox_attachment
 
 
 def default_vault() -> Path:
-    return _REPO / "OBSIDIAN"
+    return Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 
 
 def main() -> int:

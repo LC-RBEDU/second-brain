@@ -21,6 +21,8 @@ rotation guard lives in the library and every caller goes through it.
 """
 from __future__ import annotations
 
+import os
+
 import argparse
 import re
 import sys
@@ -34,7 +36,7 @@ except ImportError:
     sys.exit(1)
 
 ROOT = Path(__file__).resolve().parents[1]
-VAULT = ROOT / "OBSIDIAN"
+VAULT = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault"))
 sys.path.insert(0, str(ROOT / "vps" / "second-brain-hub" / "lib"))
 
 from task_identity import (  # noqa: E402

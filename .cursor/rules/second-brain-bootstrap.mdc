@@ -8,10 +8,10 @@ alwaysApply: true
 ## Statický kontext (vždy platí)
 
 ### Vault
-- Root: `~/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/`
-- Obsidian vault: `OBSIDIAN/`
-- Repo (git versioned): `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/`
-- `OBSIDIAN/` je **git-ignored** — verzování řeší Google Drive native versioning
+- SSOT: git repo `LC-RBEDU/second-brain-vault`
+- Lokální klon (čtení): `~/GitHub/second-brain-vault`
+- Zápis: Brain API (`brain.cyprovi.cz`) a VPS GitVault (`GIT_VAULT_ROOT=/data/vault`, `VAULT_BACKEND=git`)
+- Tooling repo: `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/`
 
 ### Datový model (file-per-task)
 - TASK / STORY / EPIC = `02-PROJEKTY/<slug>/tasks/<ID> — <Title>.md` (single file, YAML frontmatter SSOT)
@@ -87,12 +87,12 @@ alwaysApply: true
 - **`## Zdroje dat`** v hubu = SSOT konkrétních URL, složek Drive, dashboardů, vault cest.
 - **Google Workspace** (Gmail, Calendar, Drive) = **globálně dostupný** u všech projektů — nepiš per-project `workspace:` frontmatter ani gmail labely.
 - **Frontmatter hubu** (jen strojová vrstva): `sources:` = MCP/automation tagy (`rb-mcp`, `pipedrive`, `github`, …); `notebooklm:` = UUID notebooků pro CLI; `context_source:` = volitelně jeden primární doc.
-- **Nový projekt:** `OBSIDIAN/00-System/Templates/new-project-workflow.md` · `python3 scripts/create_project_hub.py`.
+- **Nový projekt:** `~/GitHub/second-brain-vault/00-System/Templates/new-project-workflow.md` · `python3 scripts/create_project_hub.py`.
 
 ## Dynamický kontext
 
 ### agent-context.json (primary)
-**VŽDY si načti** `OBSIDIAN/00-System/agent-context.json` jako první akci, pokud řešíš:
+**VŽDY si načti** `~/GitHub/second-brain-vault/00-System/agent-context.json` jako první akci, pokud řešíš:
 - "co teď", "co dnes", "top priority", dashboard, status
 - konkrétní projekt — najdi ho v `projects[]` podle `slug`
 - recently done, upcoming deadlines, blocked tasks
@@ -165,7 +165,7 @@ Z toho plyne (v README není):
 - **NE** vytvářej tasky H3 v hubu (legacy v1) — vždy file-per-task.
 - **NE** dělej HTML dashboard. Živý přehled je `agent-context.json` a soubory úkolů. Embed `![[*.base]]` se nepřidává. Obsidian jako editor je zakázaný.
 - **NE** edituj `vps/second-brain-hub/cron/build_dashboard.py` ani `vps/web/` (deprecated, F-S9 cleanup).
-- **NE** zapisuj do `OBSIDIAN/00-System/dashboard-data.json` (legacy v1, nahrazeno `agent-context.json`).
+- **NE** zapisuj do `~/GitHub/second-brain-vault/00-System/dashboard-data.json` (legacy v1, nahrazeno `agent-context.json`).
 - **NE** nastavuj `focus` sám — nabídni kandidáty a nech volbu na uživateli.
 - **NE** označuj zrušený úkol jako `Done` — od 4. 8. 2026 je na to `Cancelled`.
 - **NE** používej **dev RB Universe** (`dev-universe`, `api.dev-universe`) pro pracovní data — jen produkce + MCP `user-rb-universe`; viz `rb-universe-production-data.mdc`.
@@ -174,6 +174,6 @@ Z toho plyne (v README není):
 - **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
 
 ## Související
-- `OBSIDIAN/00-System/agent-bootstrap.md` — uživatelská kopie tohoto kontextu
-- `OBSIDIAN/00-System/Templates/agenda-system.md` — kompletní průvodce v2 architekturou
-- `OBSIDIAN/00-System/Templates/konvence-a-slovnik.md`
+- `~/GitHub/second-brain-vault/00-System/agent-bootstrap.md` — uživatelská kopie tohoto kontextu
+- `~/GitHub/second-brain-vault/00-System/Templates/agenda-system.md` — kompletní průvodce v2 architekturou
+- `~/GitHub/second-brain-vault/00-System/Templates/konvence-a-slovnik.md`

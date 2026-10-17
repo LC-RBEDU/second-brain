@@ -1,6 +1,5 @@
 # Second Brain v2 — Europe/Prague (supercronic)
-# Vault: VAULT_BACKEND=drive|git (factory open_vault). Default drive until F1-h cutover.
-# Git: GIT_VAULT_ROOT=/data/vault + deploy key; dirty-only commit/push (A25).
+# Vault: VAULT_BACKEND=git. GIT_VAULT_ROOT=/data/vault + deploy key; dirty-only commit/push.
 # Pause schedule: deploy/crontab.pause when CRONTAB_MODE=pause or VAULT_WRITERS_PAUSED=1.
 #
 # V2 architecture (since F6/F7):

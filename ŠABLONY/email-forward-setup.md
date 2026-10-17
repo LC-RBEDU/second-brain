@@ -24,7 +24,7 @@ Hotovo (2026-09-22): credential `Gmail - lukas.cypra@gmail.com`, workflow Active
 
 Personal starred (`yuFyLHlioxuE2Jhj`) stahuje MIME přílohy (B0 filtr) jako co-located `{sb-personal-{threadId}}__{name}` + sekce `## Přílohy` (→ DEEP triáž). Odkaz „stáhnout fakturu/doklad/PDF“ (B4) best-effort před HTML stripem; session-gated → ručně `~/Downloads`.
 
-Platební doklad po schválení v `agenda-triage` (`upload_personal_receipt`) → Drive složka [`1CpvJdkIgtzNqz33Bf61tseyyWXWySqDK`](https://drive.google.com/drive/folders/1CpvJdkIgtzNqz33Bf61tseyyWXWySqDK) / `MM-YYYY` dle DUZP. Config: `OBSIDIAN/00-System/personal-payment-docs.json`. Manifest: `00-System/Personal-Docs-Uploaded/manifest.json`.
+Platební doklad po schválení v `agenda-triage` (`upload_personal_receipt`) → Drive složka [`1CpvJdkIgtzNqz33Bf61tseyyWXWySqDK`](https://drive.google.com/drive/folders/1CpvJdkIgtzNqz33Bf61tseyyWXWySqDK) / `MM-YYYY` dle DUZP. Config: `~/GitHub/second-brain-vault/00-System/personal-payment-docs.json`. Manifest: `00-System/Personal-Docs-Uploaded/manifest.json`.
 
 ## Odeslané (nové maily, ne odpovědi)
 

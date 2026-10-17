@@ -1,6 +1,6 @@
 ---
 description: Exponential Summit — Ti.to terminologie (STT chyba Tyto)
-globs: OBSIDIAN/02-PROJEKTY/exponential-summit/**,OBSIDIAN/07-ARCHIV/**/exponential-summit/**
+globs: ~/GitHub/second-brain-vault/02-PROJEKTY/exponential-summit/**,~/GitHub/second-brain-vault/07-ARCHIV/**/exponential-summit/**
 alwaysApply: false
 ---
 

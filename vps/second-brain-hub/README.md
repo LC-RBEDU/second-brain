@@ -9,21 +9,18 @@ Detailní architektura: [`docs/sync-architecture.md`](docs/sync-architecture.md)
 
 ```mermaid
 flowchart LR
-  n8n[n8n workflows] -->|.md| DriveInbox[Drive 01-INBOX]
-  DriveInbox -->|Drive API| Cron[coolify-dev supercronic]
-  Cron -->|Drive API + CAS| Vault[Drive OBSIDIAN root]
-  Vault <-->|Drive Desktop| Mac[Mac mirror + Obsidian]
-  Mac -->|Bases plugin| Dashboard[Live dashboard]
-  Cron -->|agent-context.json| Agent[Cursor agent bootstrap]
+  Brain[Brain API] -->|GitVault| Vault[git second-brain-vault]
+  Cron[coolify supercronic] -->|GIT_VAULT_ROOT=/data/vault| Vault
+  Mac[Mac klon ~/GitHub/second-brain-vault] -->|git pull read| Vault
 ```
 
 | Kde | Co běží |
 |-----|---------|
-| **Google Drive** | Vault root `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` (`SECOND_BRAIN/OBSIDIAN/`) — SSOT |
-| **coolify-dev** | Docker stateless: lifecycle, `inbox_inventory.py`, `build_agent_context.py` — Drive API + CAS. Triáž jen v chatu (`agenda-triage`). |
-| **Mac** | Obsidian + Bases plugin čte frontmatter live, agent-context.json sync přes Drive Desktop |
+| **git `second-brain-vault`** | Vault SSOT. Coolify `VAULT_BACKEND=git`, `GIT_VAULT_ROOT=/data/vault` |
+| **coolify** | Docker: lifecycle, `inbox_inventory.py`, `build_agent_context.py` přes GitVault. Triáž jen v chatu (`agenda-triage`). |
+| **Mac** | Klon `~/GitHub/second-brain-vault` jen na čtení. Zápis přes Brain API |
 
-INBOX = `OBSIDIAN/01-INBOX/{slack,sembly,email,email/sent,daily,Clippings}/`.
+INBOX = `01-INBOX/{slack,sembly,email,email/sent,daily,Clippings}/` ve vaultu.
 
 ## Datový model v2 (file-per-task)
 
@@ -69,9 +66,10 @@ git push origin main
 
 | Proměnná | Význam |
 |----------|--------|
-| `VAULT_DRIVE_ID` | `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-` — OBSIDIAN root |
-| `GOOGLE_DRIVE_OAUTH_JSON` | OAuth single-line JSON |
-| `GOOGLE_DRIVE_SA_JSON` | volitelný SA fallback |
+| `VAULT_BACKEND` | `git` |
+| `GIT_VAULT_ROOT` | `/data/vault` |
+| `GIT_VAULT_REMOTE` | `git@github.com:LC-RBEDU/second-brain-vault.git` |
+| `GIT_VAULT_PUSH` | `1` |
 | `TZ` | `Europe/Prague` |
 | `CALENDAR_USER_EMAIL` | `lukas@redbuttonedu.cz` (DWD pro kalendář) |
 | `CALENDAR_DAYS_AHEAD` | `2` (max 14) |
@@ -124,8 +122,7 @@ Cron návrhy už nevznikají. Triáž je jen v chatu: „projeď inbox“ (skill
 3. Volitelně vyčistit marker:
 
 ```bash
-GOOGLE_DRIVE_OAUTH_JSON="$(cat ~/.config/mrluc/oauth_creds.json)" \
-VAULT_DRIVE_ID=1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz- \
+VAULT_BACKEND=git GIT_VAULT_ROOT=/data/vault \
 python3 cron/lifecycle_extra_edu_news.py --reset
 ```
 
@@ -166,8 +163,9 @@ Každý zápis nese `expect_mtime`. Pokud user mezitím upravil v Obsidianu, cro
 ```bash
 docker build -t second-brain-hub:test .
 docker run --rm \
-  -e VAULT_DRIVE_ID=1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz- \
-  -e GOOGLE_DRIVE_OAUTH_JSON="$(cat ~/.config/mrluc/oauth_creds.json)" \
+  -e VAULT_BACKEND=git \
+  -e GIT_VAULT_ROOT=/data/vault \
+  -e GIT_VAULT_PUSH=0 \
   second-brain-hub:test
 ```
 
@@ -177,10 +175,10 @@ docker run --rm \
 python3 ../../scripts/build_agent_context.py
 ```
 
-(píše `OBSIDIAN/00-System/agent-context.json` přes Drive Desktop mirror — pro Cursor agent bootstrap.)
+(píše `~/GitHub/second-brain-vault/00-System/agent-context.json`, když skript není v read-only režimu klonu.)
 
 ## Související
 
-- `OBSIDIAN/00-System/agent-bootstrap.md`
-- `OBSIDIAN/00-System/Templates/agenda-system.md` — kompletní průvodce v2
+- `~/GitHub/second-brain-vault/00-System/agent-bootstrap.md`
+- `~/GitHub/second-brain-vault/00-System/Templates/agenda-system.md` — kompletní průvodce v2
 - `.cursor/rules/second-brain-bootstrap.mdc` — always-applied agent rule

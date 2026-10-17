@@ -10,7 +10,7 @@ description: "Capture lessons = guardy proti třídám chyb (assist): návrh ze 
 
 > Guard proti třídě chyby — ne záznam incidentu. Ty schvaluješ — agent jen připraví.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 
 | Cesta | Účel |
 |-------|------|

@@ -1,7 +1,7 @@
 # Task convention (v2) — Epic / Story / Task
 
 SSOT pro work-item frontmatter. Verzováno v gitu (`ŠABLONY/obsidian-templates/`).
-Vault kopie: `OBSIDIAN/00-System/Templates/task-convention.md` (Drive).
+Vault kopie: `~/GitHub/second-brain-vault/00-System/Templates/task-convention.md`.
 
 ## Tři vrstvy
 

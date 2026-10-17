@@ -25,11 +25,11 @@ RUN chmod 0644 /app/crontab /app/crontab.pause \
     && chmod +x /entrypoint.sh \
     && mkdir -p /var/log/second-brain /data/vault
 
-# Vault I/O: VAULT_BACKEND=drive (default) or git (GIT_VAULT_ROOT=/data/vault).
+# Vault I/O: VAULT_BACKEND=git (default; GIT_VAULT_ROOT=/data/vault). drive is legacy.
 # Coolify: mount persistent volume ≥3 GB on /data/vault for git WC.
 ENV TZ=Europe/Prague \
     PYTHONUNBUFFERED=1 \
-    VAULT_BACKEND=drive \
+    VAULT_BACKEND=git \
     CRONTAB_MODE=live \
     GIT_VAULT_ROOT=/data/vault \
     GIT_AUTHOR_NAME="Second Brain Hub" \

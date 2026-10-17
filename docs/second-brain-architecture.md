@@ -2,7 +2,7 @@
 
 > **Účel:** jeden dokument, ze kterého jde vygenerovat zjednodušené schéma propojení (klienti ↔ Brain ↔ git ↔ cron ↔ Slack/Gmail).  
 > **Stav:** po F0–F5 (2026-10-11). Detail fází = `docs/plans/2026-10-10-sb-operacni-model-f*.md`.  
-> **Kopiе ve vaultu:** `OBSIDIAN/02-PROJEKTY/second-brain/materials/2026-10-11 — Architektura Second Brain.md`
+> **Kopie ve vaultu:** `~/GitHub/second-brain-vault/02-PROJEKTY/second-brain/materials/2026-10-11 — Architektura Second Brain.md`
 
 ## 1) Dva GitHub repozitáře
 
@@ -11,7 +11,7 @@
 | [`LC-RBEDU/second-brain`](https://github.com/LC-RBEDU/second-brain) | **Tooling** — `vps/`, `scripts/`, `ŠABLONY/skills`, plány, runbooky |
 | [`LC-RBEDU/second-brain-vault`](https://github.com/LC-RBEDU/second-brain-vault) | **Vault SSOT** — úkoly, materiály, INBOX, Areas (privátní) |
 
-Lokální Drive složka `…/SECOND_BRAIN/OBSIDIAN/` je pracovní pohled / mirror; **SSOT zápisu** = git vault přes VPS `GitVault` + Brain API, ne Drive dual-writer.
+Lokální čtení vaultu je git klon `~/GitHub/second-brain-vault`. **SSOT zápisu** = git vault přes VPS `GitVault` + Brain API.
 
 ## 2) Celkové propojení (mermaid)
 

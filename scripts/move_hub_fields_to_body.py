@@ -38,7 +38,7 @@ except ImportError:
     sys.exit(1)
 
 DEFAULT_VAULT = Path(
-    "/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN"
+    "~/GitHub/second-brain-vault"
 )
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)
 WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")

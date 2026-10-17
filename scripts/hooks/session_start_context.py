@@ -2,13 +2,15 @@
 """sessionStart hook — inject compressed agent-context summary into session."""
 from __future__ import annotations
 
+import os
+
 import json
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-CTX = REPO / "OBSIDIAN" / "00-System" / "agent-context.json"
-LESSONS_PENDING = REPO / "OBSIDIAN" / "00-System" / "Lessons-Pending"
+CTX = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault")) / "00-System" / "agent-context.json"
+LESSONS_PENDING = Path(os.environ.get("SECOND_BRAIN_VAULT") or os.environ.get("SB_VAULT_PATH") or (Path.home() / "GitHub" / "second-brain-vault")) / "00-System" / "Lessons-Pending"
 _STALE_PENDING_DAYS = 7
 
 

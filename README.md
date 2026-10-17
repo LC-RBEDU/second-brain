@@ -1,19 +1,23 @@
 # SECOND_BRAIN — repo (automatizace v2)
 
-Git + tooling kolem Obsidian vaultu. **Vault (poznámky) není v kořeni repa.**
+Git + tooling kolem vaultu. **Vault (poznámky) není v tomhle repu.**
 
-## Obsidian vault (SSOT)
+## Vault (SSOT)
+
+Git repo [`LC-RBEDU/second-brain-vault`](https://github.com/LC-RBEDU/second-brain-vault).
+
+Lokální klon (čtení):
 
 ```
-/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN/
+~/GitHub/second-brain-vault
 ```
 
-Mirror na Google Drive — verzování řeší Drive native versioning (proto `OBSIDIAN/` = git-ignored).
+Zápis jde přes Brain API (`brain.cyprovi.cz`) a VPS GitVault (`GIT_VAULT_ROOT=/data/vault`, `VAULT_BACKEND=git`).
 
 | Složka | Účel |
 |--------|------|
-| `Home.md`, `00-System/`, `01-INBOX/`, `02-PROJEKTY/`, `03-AREAS/`, `05-RESOURCES/`, `07-ARCHIV/` | Second Brain v Obsidianu |
-| `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/` | Jen v **kořeni repa** — neotevírat ve vaultu |
+| `Home.md`, `00-System/`, `01-INBOX/`, `02-PROJEKTY/`, `03-AREAS/`, `05-RESOURCES/`, `07-ARCHIV/` | Second Brain ve vaultu |
+| `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/` | Jen v **tomhle tooling repu** |
 
 ## Architektura v2 (po file-per-task migraci)
 
@@ -21,9 +25,9 @@ Mirror na Google Drive — verzování řeší Drive native versioning (proto `O
 - **PROJECT HUB** = `02-PROJEKTY/<Hub>.md` s charterem. Embed `![[*.base]]` se nepřidává.
 - **MATERIAL** = `02-PROJEKTY/<slug>/materials/` (project-specific) nebo `05-RESOURCES/<category>/` (cross-project), M:N přes `materials:` array v task frontmatteru
 - **PŘEHLED** = `agent-context.json` a frontmatter task souborů. Soubory `*.base` se nepoužívají.
-- **AGENT CONTEXT** = `OBSIDIAN/00-System/agent-context.json` snapshot (every-write trigger / VPS cron 15 min)
+- **AGENT CONTEXT** = `~/GitHub/second-brain-vault/00-System/agent-context.json` snapshot (every-write trigger / VPS cron 15 min)
 
-Detaily: `OBSIDIAN/00-System/Templates/agenda-system.md`, `agent-bootstrap.md`.
+Detaily: `~/GitHub/second-brain-vault/00-System/Templates/agenda-system.md`, `agent-bootstrap.md`.
 
 ## Příkazy
 
@@ -34,7 +38,7 @@ python3 scripts/build_agent_context.py
 python3 scripts/sync_lide_people.py --incremental --paths "02-PROJEKTY/.../tasks/foo.md,07-ARCHIV/..."
 ```
 
-`build_agent_context` → `OBSIDIAN/00-System/agent-context.json`. `sync_lide_people` (incremental po triáži/capture) → wikilinky + tabulky `05-RESOURCES/lide/*.md`. Skills `agenda-triage` / `agenda-capture` to spouštějí automaticky po apply.
+`build_agent_context` → `~/GitHub/second-brain-vault/00-System/agent-context.json`. `sync_lide_people` (incremental po triáži/capture) → wikilinky + tabulky `05-RESOURCES/lide/*.md`. Skills `agenda-triage` / `agenda-capture` to spouštějí automaticky po apply.
 
 ### Sync skills (po editaci ŠABLONY/skills/<skill>/SKILL.md)
 
@@ -95,14 +99,13 @@ Po inventuře doplň `notebooklm:` v hub frontmatteru (např. Allfred).
 
 ## Git
 
-Viz `.gitignore` — `OBSIDIAN/` je celé excluded (Drive versioning).
-Versioned: `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/`.
+Viz `.gitignore`. Versioned: `vps/`, `scripts/`, `ŠABLONY/`, `.cursor/`. Vault v tomhle repu není.
 
 ## Související dokumentace
 
 - [`docs/second-brain-architecture.md`](docs/second-brain-architecture.md) — **přehled architektury** (schémata klientů / Brain / git / cron)
-- `OBSIDIAN/00-System/agent-bootstrap.md` — uživatelská kopie agent kontextu
-- `OBSIDIAN/00-System/Templates/agenda-system.md` — kompletní průvodce v2
-- `OBSIDIAN/00-System/Templates/konvence-a-slovnik.md`
-- `OBSIDIAN/00-System/Memory/vault-gdrive-migration.md` — historie Phase 1 migrace
+- `~/GitHub/second-brain-vault/00-System/agent-bootstrap.md` — uživatelská kopie agent kontextu
+- `~/GitHub/second-brain-vault/00-System/Templates/agenda-system.md` — kompletní průvodce v2
+- `~/GitHub/second-brain-vault/00-System/Templates/konvence-a-slovnik.md`
+- `~/GitHub/second-brain-vault/00-System/Memory/vault-gdrive-migration.md` — historická poznámka staré migrace na Drive
 - `vps/second-brain-hub/README.md` — VPS deployment

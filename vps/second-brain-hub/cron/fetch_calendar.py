@@ -11,8 +11,8 @@ Domain-Wide Delegation user (impersonation):
   CALENDAR_USER_EMAIL (výchozí lukas@redbuttonedu.cz)
 
 **Vault output** (přes vault_factory.open_vault):
-  VAULT_BACKEND — drive (default) | git
-  VAULT_DRIVE_ID — folder ID OBSIDIAN rootu (drive backend)
+  VAULT_BACKEND — git (default) | drive
+  VAULT_DRIVE_ID — folder ID starého Drive rootu, jen když VAULT_BACKEND=drive
   GOOGLE_DRIVE_OAUTH_JSON — OAuth refresh token JSON (preferred)
   GOOGLE_DRIVE_SA_JSON — SA JSON (fallback)
 

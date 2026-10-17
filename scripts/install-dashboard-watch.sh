@@ -5,7 +5,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PLIST_SRC="$REPO/vps/second-brain-hub/deploy/com.rbedu.mrluc-dashboard-watch.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/com.rbedu.mrluc-dashboard-watch.plist"
-VAULT="${VAULT_PATH:-/Users/lukascypra/My Drive - PRV/# WORK/SECOND_BRAIN/OBSIDIAN}"
+VAULT="${VAULT_PATH:-$HOME/GitHub/second-brain-vault}"
 
 sed "s|REPO_PATH|$REPO|g; s|VAULT_PATH|$VAULT|g" "$PLIST_SRC" > "$PLIST_DST"
 launchctl bootout "gui/$(id -u)/com.rbedu.mrluc-dashboard-watch" 2>/dev/null || true

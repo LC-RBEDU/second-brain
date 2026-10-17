@@ -3,7 +3,7 @@
 
 Příklad:
   python3 scripts/agent_write_guard.py --op append_bus --actor Cowork \\
-    --path OBSIDIAN/00-System/Agent_Bus/2026-10-05.md --target-read absent \\
+    --path 00-System/Agent_Bus/2026-10-05.md --target-read absent \\
     --block-file blok.md
 """
 

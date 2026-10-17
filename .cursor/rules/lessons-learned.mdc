@@ -6,7 +6,7 @@ alwaysApply: true
 # Lessons learned (guardy)
 
 Lesson = **guard proti třídě chyby**, ne záznam incidentu. Skill: `agenda-lessons`.
-Soubory: `OBSIDIAN/00-System/Lessons/`.
+Soubory: `~/GitHub/second-brain-vault/00-System/Lessons/`.
 
 ## Situační guardy (vždy)
 

@@ -1,10 +1,10 @@
 # Cowork — folder instructions
 
-Working folder is this repo (`SECOND_BRAIN/`), not only `OBSIDIAN/`.
+Working folder is this tooling repo (`SECOND_BRAIN/`). Vault je git `~/GitHub/second-brain-vault`.
 
 On every task, follow `ŠABLONY/skills/mrluc-loader/SKILL.md`: read `ŠABLONY/skills/*/SKILL.md` descriptions from disk and open the matching skill.
 
-Po loaderu otevři `OBSIDIAN/00-System/agent-guide-mimo-cursor.md` a řiď se jím (Brain-first). Inventář botů: `OBSIDIAN/02-PROJEKTY/second-brain/materials/2026-10-11 — boti-prehled.md`. Když návod nejde otevřít a Brain MCP taky ne, do existujícího `.md` nezapisuj; smíš jen nový soubor do `01-INBOX/daily/`. Když skill a návod nesedí u skriptů, archivu, focus, `## Stav (auto)` a write path, platí návod.
+Po loaderu otevři `~/GitHub/second-brain-vault/00-System/agent-guide-mimo-cursor.md` a řiď se jím (Brain-first). Inventář botů: `~/GitHub/second-brain-vault/02-PROJEKTY/second-brain/materials/2026-10-11 — boti-prehled.md`. Když návod nejde otevřít a Brain MCP taky ne, do existujícího `.md` nezapisuj; smíš jen nový soubor do `01-INBOX/daily/`. Když skill a návod nesedí u skriptů, archivu, focus, `## Stav (auto)` a write path, platí návod.
 
 **Vault write:** Brain MCP (`capture_daily`, `create_task`, `update_task`, …). FS overwrite jen legacy fail-path po explicitním dovolení.
 

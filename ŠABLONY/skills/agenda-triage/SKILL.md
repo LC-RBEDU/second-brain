@@ -21,7 +21,7 @@ description: "INBOX triage in MrLUC Second Brain v2 vault or re-priority. Trigge
 - **Brain `*/apply` nepoužívej** jako provozní cestu (403/501). DONE gate client-apply = **Cursor** (Claude/Grok best-effort).
 - **Partial apply:** vrať `{succeeded[], failed[{id,error_reason}]}` — nikdy tiché all-OK když `failed` neprázdné.
 
-**Vault:** `OBSIDIAN/` — `/Users/lukascypra/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
+**Vault:** git `~/GitHub/second-brain-vault` (SSOT). Čtení z klonu, zápis přes Brain API.
 
 ## Kdy spouštět
 
@@ -283,7 +283,7 @@ python3 scripts/slack_watch_ignore.py <channel_id> <thread_ts>
 
 - `channel_id` / `thread_ts` z frontmatter dumpů (`channel_id:`, `thread_ts:`). U flat IM/MPIM je `thread_ts` = `0`.
 - V preview tabulce měj akci **ignorovat (přestat sledovat)** jako samostatnou volbu, ne jako synonymum ARCHIVE.
-- Vyžaduje Drive env (`VAULT_DRIVE_ID` + OAuth) — stejné jako jiné vault skripty.
+- Vault je git (`VAULT_BACKEND=git`, klon `~/GitHub/second-brain-vault` / VPS `GIT_VAULT_ROOT`). `VAULT_DRIVE_ID` jen když backend je drive.
 
 ## Deep
 
