@@ -1,13 +1,13 @@
 # Pipeline: Hierarchie všude, křížový rodič, zábrana nového projektu
-Stav: QA
+Stav: DONE
 Plán: docs/plans/2026-10-16-hierarchy-cross-project.md
 Schvalování plánu uživatelem: ne
 Architekt: 70f91dc7-ff87-425b-ab71-1cb603af5ccf, otevření plánu #4, generace v otevření 1/3, kolo 2/3
 Šťoural: e43969a5-b9b5-4d6b-8a30-90cd94383057 · kolo grill 2 otevření #4 · HOTOVÝ GRILL
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): 83877808710d74a1a6a20719d8af7f322eefac59 · Kódový SHA: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · Review SCHVÁLENO na: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main před pipeline): 83877808710d74a1a6a20719d8af7f322eefac59 · Kódový SHA: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · Review SCHVÁLENO na: c95b780646667ee9cf86ad21d4e8b13f4ffd1a9b · QA PASS na: 09e4f0837e4daf8cfa5f4ac853fb24d1d7a95034 · TESTER: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: complete po auditu
 
 ## Projekt
 SECOND_BRAIN. Kořen `~/My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN`. Větev `main`, base = origin/main `83877808710d74a1a6a20719d8af7f322eefac59`. Nasazení: push `main` → Coolify `second-brain-hub` a `second-brain-brain` na coolify-dev. Ostrý zápis do vaultu tato pipeline nedělá. Gate: `python3 -m pytest vps/second-brain-hub/tests vps/second-brain-brain/tests scripts/tests -q` (brain testy, které importují FastAPI, mohou lokálně chybět modul — to není důvod je přeskočit v plánu). Tester: vždy přeskočeno.
@@ -83,6 +83,9 @@ ok, přidej i poslední zábranu do pipeline a spusť na to celé /rbu-pipeline
 | 26 | 2026-10-17 | IMPLEMENT | — | commit | — | Oprava D4 a D5 v `c95b780`. Gate 630 passed. Přechod REVIEW. |
 | 27 | 2026-10-17 | REVIEW | 3e911ef6-fbf7-4909-94bc-01eac4e915d4 | SCHVÁLENO | 0 | D4 a D5 drží. Přechod push main → QA. |
 | 28 | 2026-10-17 | QA | — | deploy | — | Push `09e4f08`. Hub i brain image `09e4f083`, webhook finished. healthz ok. |
+| 29 | 2026-10-17 | QA | da017c30-8bb8-4c93-b151-046244ba1b15 | PASS | 0 | Image `09e4f083` na hub i brain, healthz ok, 31 nástrojů. Pytest 630 passed. Do vaultu se nezapisovalo. |
+| 30 | 2026-10-17 | testerGate | hlavní | TESTER: přeskočeno (profil SECOND_BRAIN) | — | rbu-tester se nevolá. |
+| 31 | 2026-10-17 | DONE | hlavní | audit | — | Kritik SCHVÁLENO, review SCHVÁLENO na c95b780, QA PASS na nasazeném 09e4f08. Vlastní gate 630 passed, exit 0. |
 
 ## Otevřené nálezy
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
