@@ -596,6 +596,53 @@ def test_close_sees_an_open_child_in_another_project_and_only_suggests_the_paren
     assert lone.files[parent] == parent_before
 
 
+def test_create_and_bulk_ignore_a_sibling_deadline_outside_the_cone():
+    vault = _vault(("finance", "Finance"), ("osobni", "Osobni"))
+    _seed(vault, "osobni", "OS-E1", "epic", deadline="2026-10-10")
+    _seed(vault, "osobni", "OS-S1", "story", parent="[[OS-E1]]", deadline="2026-10-10")
+    _seed(vault, "osobni", "OS-S9", "story", parent="[[OS-E1]]", deadline="2026-10-20")
+    out = _create(
+        vault,
+        slug="finance",
+        title="V kuželu",
+        level="task",
+        parent="OS-S1",
+        deadline="2026-10-10",
+        peeks=[("F6", "t")],
+    )
+    assert "deadline: 2026-10-10" in vault.files[out["path"]]
+    task = _seed(vault, "finance", "F-T1", "task", parent="[[OS-S1]]", deadline="2026-10-09")
+    _bulk(vault, [{"id": "F-T1", "patch": {"deadline": "2026-10-10"}}])
+    assert "deadline: 2026-10-10" in vault.files[task]
+
+
+def test_bulk_done_plus_deadline_after_an_ancestor_writes_nothing():
+    vault = _vault(("finance", "Finance"), ("osobni", "Osobni"))
+    _seed(vault, "osobni", "OS-E1", "epic", deadline="2026-10-10")
+    story = _seed(vault, "finance", "F-S1", "story", parent="[[OS-E1]]", deadline="2026-10-09")
+    before = dict(vault.files)
+    with pytest.raises(BrainClientError) as ei:
+        _bulk(vault, [{"id": "F-S1", "patch": {"status": "Done", "deadline": "2026-10-20"}}])
+    assert ei.value.error_reason == "deadline_order"
+    assert vault.files == before
+    assert story in vault.files
+
+
+def test_rejected_story_does_not_delete_the_context_snapshot():
+    vault = _vault(("finance", "Finance"))
+    vault.deleted = []
+    vault.exists = lambda _path: True
+
+    def _delete(rel, permanent=True):
+        vault.deleted.append(rel)
+
+    vault.delete = _delete
+    with pytest.raises(BrainClientError) as ei:
+        _create(vault, slug="finance", title="Story", level="story")
+    assert ei.value.error_reason == "parent_required"
+    assert vault.deleted == []
+
+
 def test_create_body_declares_parent():
     text = Path(_BRAIN / "app" / "main.py").read_text()
     assert "parent: str = \"\"" in text

@@ -211,8 +211,6 @@ def create_task(
     mode = "read" if dry_run else "mutate"
     with brain_vault(mode=mode, env=env) as vault:
         hub = require_project(vault, slug)
-        if mode == "mutate":
-            delete_context_tombstone(vault)
         active = list(iter_active_tasks(vault))
         prepared: list[dict[str, Any]] = []
         seen_promoted: set[str] = set()
@@ -233,6 +231,8 @@ def create_task(
             prepared.append({**spec, "level": spec_level, "parent_link": parent_link, "promoted_from": promo})
         bare_ids = peek_ids(vault, slug, len(prepared))
         _reject_deadline_order(prepared, bare_ids, active)
+        if mode == "mutate":
+            delete_context_tombstone(vault)
         created: list[dict[str, str]] = []
         rel_dir = f"02-PROJEKTY/{slug}/tasks"
         if not dry_run:

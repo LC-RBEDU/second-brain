@@ -152,7 +152,6 @@ def check_overlay(
         if "parent" in patch:
             parent_id, err = _lookup_id(patch.get("parent"), tasks)
             if err:
-                node.parent_id = None
                 patch["_parent_error"] = err
             else:
                 node.parent_id = parent_id
@@ -212,7 +211,7 @@ def check_overlay(
                             child.type, child.id, child.parent_id, child_parent_type
                         ),
                     )
-        if "status" in original and node.status in OPEN_STATUSES:
+        if "status" in original and node.status in OPEN_STATUSES and not patch.get("_parent_error"):
             parent = nodes.get(node.parent_id or "")
             parent_type = parent.type if parent is not None else (None if node.parent_id else None)
             if node.parent_id and parent is None:

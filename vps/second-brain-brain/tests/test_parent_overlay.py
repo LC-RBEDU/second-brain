@@ -84,3 +84,15 @@ def test_combined_bulk_reports_the_child_once():
             ],
         )
     assert ei.value.detail["errors"] == ["epic_has_no_parent", "parent_not_story"]
+
+
+def test_unreadable_parent_with_an_active_status_is_only_not_found():
+    epic = _task("E1", "epic", None)
+    story = _task("S1", "story", "[[E1]]")
+    with pytest.raises(BrainClientError) as ei:
+        check_overlay(
+            [epic, story],
+            [{"id": "S1", "patch": {"status": "Doing", "parent": "not an id"}}],
+        )
+    assert ei.value.error_reason == "parent_not_found"
+    assert ei.value.detail["errors"] == ["parent_not_found"]
