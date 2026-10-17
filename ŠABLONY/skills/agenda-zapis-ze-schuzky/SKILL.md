@@ -28,7 +28,7 @@ jde jen to, co v přepisu explicitně zaznělo.
 2. Napíše plný zápis (default `variant: full`).
 2a. Jazykový průchod draftu MD přes `rbedu-grammar-nazi` (GN-1 / GN-2, s fingerprint kontrolou) — Krok 5; běží u `full` i `shared`.
 3. Vyrobí **HTML** → `~/Downloads/YYYY-MM-DD_<slug>_zapis.html`.
-4. Vyrobí **MD** → `OBSIDIAN/05-RESOURCES/vystupy/zapisy/YYYY-MM/…_zapis.md`.
+4. Vyrobí **MD** → `~/GitHub/second-brain-vault/05-RESOURCES/vystupy/zapisy/YYYY-MM/…_zapis.md`.
 5. U jasných projektů přidá **wikilink stub** do `02-PROJEKTY/<slug>/materials/`.
 6. Z tabulky úkolů **rovnou založí** Lukášovy tasky (Lukáš-only filter) — bez druhého schválení.
 7. Archivuje zdroj přes `scripts/archive_inbox_item.py`.
@@ -56,8 +56,7 @@ Ostatní DEEP zůstává u `agenda-triage` Deep + `agenda-analyze`.
 
 ## Krok 1 — přepis a kalendář
 
-Vault root: `OBSIDIAN/`. Lokálně čti soubory z disku; Drive MCP jen když soubor
-není syncnutý.
+Vault root: `~/GitHub/second-brain-vault`. Čti přepis z git klonu.
 
 | Co | Cesta / poznámka |
 |---|---|
@@ -239,7 +238,7 @@ Assety: `assets/style.css`, `assets/logo-rb-edu.txt` (offline base64 logo).
 ### MD → vault
 
 ```
-OBSIDIAN/05-RESOURCES/vystupy/zapisy/YYYY-MM/YYYY-MM-DD_<slug>_zapis.md
+~/GitHub/second-brain-vault/05-RESOURCES/vystupy/zapisy/YYYY-MM/YYYY-MM-DD_<slug>_zapis.md
 ```
 
 Frontmatter **musí** mít (kromě meeting polí z `struktura-vystupu.md`):

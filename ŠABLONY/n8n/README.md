@@ -2,7 +2,7 @@
 
 Workflows. Každý JSON je importovatelný do n8n.
 
-## Google Drive — vault INBOX (SECOND_BRAIN)
+## Git vault — INBOX (second-brain-vault)
 
 **Vault INBOX:** git `~/GitHub/second-brain-vault/01-INBOX/`. n8n writers do té složky jsou off.
 

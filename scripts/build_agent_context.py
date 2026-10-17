@@ -18,7 +18,7 @@ Usage:
 
 Designed to run in <2s for typical vault size (every-write trigger or hooked into
 agenda-* skills). For VPS cron, see vps/second-brain-hub/cron/build_agent_context.py
-which uses DriveVault.
+which opens the vault via vault_factory (default git, `~/GitHub/second-brain-vault`).
 """
 from __future__ import annotations
 

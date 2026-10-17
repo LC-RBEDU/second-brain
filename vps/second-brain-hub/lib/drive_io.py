@@ -12,7 +12,9 @@ Supports two authentication modes (auto-detected via env in
   `GOOGLE_DRIVE_SA_JSON` (+ optional `GOOGLE_DRIVE_IMPERSONATE`).
 
 DriveVault wraps the Drive API v3 with a path-based interface (mirroring
-the layout of the OBSIDIAN vault). It provides:
+the vault folder layout). Live vault is GitVault via `vault_factory`
+(`VAULT_BACKEND=git`, `~/GitHub/second-brain-vault`). This module is the
+legacy Drive backend. It provides:
 
 * read / write text and JSON files
 * directory listing with optional pattern filter and recursion
@@ -24,9 +26,9 @@ the layout of the OBSIDIAN vault). It provides:
   the cron job runs)
 * exponential backoff retry on transient HTTP errors
 
-Designed to replace `pathlib.Path` usage in the cron scripts so that the
-container can run completely stateless against Google Drive as the single
-source of truth.
+Designed to replace `pathlib.Path` usage in the cron scripts. Live cron
+opens GitVault (`GIT_VAULT_ROOT=/data/vault`); this Drive client is the
+rollback backend, not the place agents read or write the vault.
 
 Typical usage:
 

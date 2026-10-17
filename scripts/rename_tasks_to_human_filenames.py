@@ -4,7 +4,7 @@
 Drives the F-fundamental refactor:
 1. Rename `02-PROJEKTY/<slug>/tasks/<ID>-<slugify>.md` (+ archive variant) to
    `<ID> — <sanitize(title)>.md` (em-dash U+2014).
-2. Rewrite wikilinks across the whole `OBSIDIAN/` vault — bare, pipe-aliased,
+2. Rewrite wikilinks across the git vault (`~/GitHub/second-brain-vault`) — bare, pipe-aliased,
    anchor, and path-style variants.
 3. Append `<ID>` to `aliases:` in each task frontmatter so `[[<ID>]]` keeps
    resolving in Obsidian.

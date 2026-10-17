@@ -1,25 +1,18 @@
-# Mapa Obsidian vaultu na Google Drive
+# Mapa cest vaultu a sdílených Drive složek zápisů
 
-Vault: `My Drive (lukas@redbuttonedu.cz)/SECOND_BRAIN/OBSIDIAN`
-Kořen: `1YTTsTWFzrH6cNcZfvO_R-rhmSyFvlfz-`
+Vault SSOT: git `~/GitHub/second-brain-vault`. Přepis čti z klonu, zápis přes Brain.
 
-| Složka | ID |
+| Co | Cesta v klonu |
 |---|---|
-| `00-System` | `1WoFjIHe6N33WTxHOEsxAg8MWdRWNazol` |
-| `01-INBOX` | `19RqMWHiOdTsiHwkyKylU4SVPOWTKLG9N` |
-| `01-INBOX/sembly` | `1ZpH6GiQu5IdUefhck5kVAgoZgw3Xp1Tt` |
-| `01-INBOX/daily` | `1moQEEiLVpoMSayZMKkAbLu8aDvfKprEG` |
-| `01-INBOX/slack` | `1EppTJt45A8kOyQJoZ8BuneHtiU5nWlXN` |
-| `01-INBOX/email` | `1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC` |
-| `02-PROJEKTY` | `1V3Gd_sM7Fqds8WPj6EXDixsYVe5ZuG3o` |
-| `03-AREAS` | `1A1Bub7CAZagNPslxsHtqajhbRHY22Oog` |
-| `05-RESOURCES` | `1xxAOznczfQFNqUeG2iHPXjqP0LxiO01P` |
-| `05-RESOURCES/lide` | `1Tn56S6Jl7Y2oT69cliPhYoLzjUMNiCjI` |
-| `05-RESOURCES/vystupy` | `1k1sVAxx0eFLHEPogut-TF4n8aCicpb9m` |
-| `05-RESOURCES/attachments` | `1pk3zsocXSE8BMzFYNwKMLTA-6K7PJtSE` |
-| `06-CANVAS` | `10otXXkC1claq07PQ3LZbLJyHaoPrGN_C` |
-| `07-ARCHIV` | `1wZrOAz1BTQw-Ti0dc8eWZ6gGfGO1Z1Vk` |
-| `07-ARCHIV/inbox-processed` | `1F4NzjEopRpiOuZZ6irFZjJhViTVSTLij` |
+| `00-System` | `~/GitHub/second-brain-vault/00-System/` |
+| `01-INBOX` | `~/GitHub/second-brain-vault/01-INBOX/` |
+| `01-INBOX/sembly` | `~/GitHub/second-brain-vault/01-INBOX/sembly/` |
+| `01-INBOX/daily` | `~/GitHub/second-brain-vault/01-INBOX/daily/` |
+| `02-PROJEKTY` | `~/GitHub/second-brain-vault/02-PROJEKTY/` |
+| `05-RESOURCES` | `~/GitHub/second-brain-vault/05-RESOURCES/` |
+| `05-RESOURCES/lide` | `~/GitHub/second-brain-vault/05-RESOURCES/lide/` |
+| `05-RESOURCES/vystupy` | `~/GitHub/second-brain-vault/05-RESOURCES/vystupy/` |
+| `07-ARCHIV/inbox-processed` | `~/GitHub/second-brain-vault/07-ARCHIV/inbox-processed/` |
 
 `inbox-processed` je členěný `<rok>/<měsíc>/<zdroj>`, např. `2026/09/sembly`.
 Starší přepisy hledej tam, ne v živém inboxu.
@@ -28,17 +21,7 @@ Starší přepisy hledej tam, ne v živém inboxu.
 
 ## Postup hledání přepisu
 
-```
-search_files: title contains '2026-09-14'
-```
-
-Názvy mají tvar `RRRR-MM-DD-HHMM-<slug>.md`. Když je výsledků víc, ukaž seznam
-(čas + název) a nech vybrat.
-
-**Známý problém:** ID vrácené z jednoho hledání se někdy nedá otevřít —
-`read_file_content` vrátí „Requested entity was not found". Řešení: zopakovat
-`search_files` se `snippetVerbosity: BRIEF` (bez `excludeContentSnippets`).
-Druhý dotaz vrátí platné ID a rovnou i náhled hlavičky s účastníky.
+V klonu `~/GitHub/second-brain-vault` hledej soubor `RRRR-MM-DD-HHMM-<slug>.md` v `01-INBOX/sembly/` a v `07-ARCHIV/inbox-processed/`. Když je výsledků víc, ukaž seznam (čas + název) a nech vybrat.
 
 ## Párování s kalendářem
 

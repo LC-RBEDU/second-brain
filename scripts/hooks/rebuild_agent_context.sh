@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-VAULT="${SECOND_BRAIN_VAULT:-$REPO/OBSIDIAN}"
+VAULT="${SECOND_BRAIN_VAULT:-$HOME/GitHub/second-brain-vault}"
 LOCK="/tmp/sb-agent-context-rebuild.lock"
 DEBOUNCE_SEC=3
 
