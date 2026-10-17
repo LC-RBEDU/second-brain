@@ -82,6 +82,7 @@ ok, přidej i poslední zábranu do pipeline a spusť na to celé /rbu-pipeline
 | 25 | 2026-10-17 | REVIEW | 1a895aec-1d9b-4fe1-98dd-8de566459759 | K OPRAVĚ | 0 BLOCKER, 1 MAJOR, 1 MINOR | D1–D3 potvrzeny. D4 major, D5 minor. Přechod IMPLEMENT. |
 | 26 | 2026-10-17 | IMPLEMENT | — | commit | — | Oprava D4 a D5 v `c95b780`. Gate 630 passed. Přechod REVIEW. |
 | 27 | 2026-10-17 | REVIEW | 3e911ef6-fbf7-4909-94bc-01eac4e915d4 | SCHVÁLENO | 0 | D4 a D5 drží. Přechod push main → QA. |
+| 28 | 2026-10-17 | QA | — | deploy | — | Push `09e4f08`. Hub i brain image `09e4f083`, webhook finished. healthz ok. |
 
 ## Otevřené nálezy
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
