@@ -49,6 +49,7 @@ def bulk_update(
         resolved: list[tuple[Any, dict[str, Any]]] = []
         forest_items: list[dict[str, Any]] = []
         deadline_patches: dict[str, str | None] = {}
+        parent_ids_before: dict[str, str | None] = {}
         touched: set[str] = set()
         for item in updates:
             task_id = str(item.get("id") or "")
@@ -59,18 +60,28 @@ def bulk_update(
             resolved.append((task, patch))
             if needs_forest(patch):
                 forest_items.append({"id": task_id, "patch": patch})
-            if "deadline" in patch or "parent" in patch:
-                touched.add(task_id)
+            if "parent" in patch:
+                parent_ids_before[task_id] = parse_parent_id(task.frontmatter.get("parent"))
             if "deadline" in patch:
+                touched.add(task_id)
                 raw = patch.get("deadline")
                 deadline_patches[task_id] = None if raw in (None, "") else str(raw)
         normalized: dict[str, dict[str, Any]] = {}
         if forest_items:
-            normalized = check_overlay(tasks, forest_items)
+            # A pure Done in the same request still changes the overlay, so a
+            # child closed here does not block turning its story into an epic.
+            normalized = check_overlay(
+                tasks,
+                [{"id": card(task)["id"], "patch": patch} for task, patch in resolved],
+            )
             resolved = [
                 (task, normalized.get(card(task)["id"], patch))
                 for task, patch in resolved
             ]
+            for task, patch in resolved:
+                task_id = card(task)["id"]
+                if task_id in parent_ids_before and parse_parent_id(patch.get("parent")) != parent_ids_before[task_id]:
+                    touched.add(task_id)
         if touched:
             nodes = [node_from_frontmatter(task.frontmatter) for task in tasks]
             if normalized:

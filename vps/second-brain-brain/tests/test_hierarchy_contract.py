@@ -643,6 +643,38 @@ def test_rejected_story_does_not_delete_the_context_snapshot():
     assert vault.deleted == []
 
 
+def test_bulk_can_close_the_open_child_while_the_story_becomes_an_epic():
+    vault = _vault(("finance", "Finance"), ("osobni", "Osobni"))
+    _seed(vault, "osobni", "OS-E1", "epic")
+    story = _seed(vault, "finance", "F-S1", "story", parent="[[OS-E1]]")
+    child = _seed(vault, "osobni", "OS-T1", "task", parent="[[F-S1]]")
+    _bulk(
+        vault,
+        [
+            {"id": "F-S1", "patch": {"type": "epic", "parent": ""}},
+            {"id": "OS-T1", "patch": {"status": "Done"}},
+        ],
+    )
+    assert "type: epic" in vault.files[story]
+    assert "status: Done" in vault.files[child]
+
+
+def test_bulk_same_parent_does_not_trip_an_existing_deadline_conflict():
+    vault = _vault(("finance", "Finance"), ("osobni", "Osobni"))
+    _seed(vault, "osobni", "OS-E1", "epic", deadline="2026-10-10")
+    story = _seed(vault, "osobni", "OS-S1", "story", parent="[[OS-E1]]", deadline="2026-10-20")
+    _bulk(vault, [{"id": "OS-S1", "patch": {"parent": "OS-E1", "status": "Doing"}}])
+    assert 'parent: "[[OS-E1]]"' in vault.files[story]
+    assert "status: Doing" in vault.files[story]
+
+
+def test_bulk_pure_done_on_a_parentless_story_writes():
+    vault = _vault(("finance", "Finance"))
+    story = _seed(vault, "finance", "F-S1", "story")
+    _bulk(vault, [{"id": "F-S1", "patch": {"status": "Done"}}])
+    assert "status: Done" in vault.files[story]
+
+
 def test_create_body_declares_parent():
     text = Path(_BRAIN / "app" / "main.py").read_text()
     assert "parent: str = \"\"" in text
