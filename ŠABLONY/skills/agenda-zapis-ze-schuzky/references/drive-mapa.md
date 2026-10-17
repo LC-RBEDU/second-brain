@@ -50,9 +50,18 @@ a nech si potvrdit list i sloupce, které mají tvořit osnovu.
 
 | Výstup | Kam |
 |---|---|
-| HTML (sdílení) | `~/Downloads/YYYY-MM-DD_<slug>_zapis.html` |
-| MD (kanón) | `05-RESOURCES/vystupy/zapisy/YYYY-MM/` |
-| Odkaz v projektu | stub v `02-PROJEKTY/<slug>/materials/` → wikilink na MD |
+| HTML (Slack příloha) | `~/Downloads/YYYY-MM-DD_<slug>_zapis.html` |
+| MD (pracovní kopie agenta) | `05-RESOURCES/vystupy/zapisy/YYYY-MM/` |
+| MD (kanonické sdílení s týmem) | sdílený **Drive folder** schůzky (`drive_folder:` v zápisu) → Slack jen **odkaz** |
+| Odkaz v projektu | stub v `02-PROJEKTY/<slug>/materials/` → wikilink na vault MD |
 
-Ukládej **MD** do vaultu. HTML do Downloads (Obsidian ho nerenderuje).
-Detail workflow: `../SKILL.md`.
+### Drive foldery pro týmové MD zápisy
+
+Lookup primárně: `.cursor/rules/internal-meeting-slack.mdc`. Není v tabulce → zeptej se.
+
+| Schůzka | Folder ID | URL |
+|---|---|---|
+| Strategická schůzka / Strategy sync | `16AhvQQ9l1Ad76_N9AVh72WH9GCw1qc49` | https://drive.google.com/drive/folders/16AhvQQ9l1Ad76_N9AVh72WH9GCw1qc49?usp=drive_link |
+
+Vault MD = agentí pracovní kopie. HTML do Downloads (Obsidian ho nerenderuje) → Slack attach.
+Detail workflow: `../SKILL.md` → Krok 9.

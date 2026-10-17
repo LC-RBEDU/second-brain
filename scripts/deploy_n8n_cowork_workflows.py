@@ -48,13 +48,12 @@ DEPLOYS = [
         "name": "SECOND BRAIN: Mobile → INBOX/daily",
         "daily_folder_id": "1hJWgIxgq5lJpMmjV7OILpRpmUu7zpA2K",
     },
-    # F3 — Sembly → Brain ingest (keep inactive until cutover; Bearer = BRAIN_SERVICE_TOKEN)
+    # F3 — Sembly → Brain ingest (live 2026-10-12; webhook path = legacy sembly-cowork-transcript)
     {
         "template": "sembly-to-brain.json",
-        "workflow_id": None,
-        "action": "post",
+        "workflow_id": "zZpTwhV8Z18OFaNO",
+        "action": "put",
         "name": "SECOND BRAIN: Sembly → Brain ingest",
-        "active": False,
     },
 ]
 
@@ -278,6 +277,7 @@ def main() -> int:
         "gmail-starred-to-inbox-workspace.json": "xtnI0PYaTp8Ou2la",
         "workspace-sent-to-inbox.json": "7fhDXThOaxl1yNtE",
         "gmail-starred-to-inbox-personal.json": "yuFyLHlioxuE2Jhj",
+        "sembly-to-brain.json": "zZpTwhV8Z18OFaNO",
     }
     for spec, res in zip(
         [s for s in DEPLOYS if wanted is None or s["template"] in wanted],

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-21T22:00:40.017Z",
+  "updatedAt": "2026-10-07T22:56:54.168Z",
   "createdAt": "2026-09-21T21:51:11.623Z",
   "id": "xtnI0PYaTp8Ou2la",
   "name": "SECOND BRAIN: Gmail starred → INBOX (workspace)",
@@ -51,7 +51,7 @@
       "credentials": {
         "gmailOAuth2": {
           "id": "oBPPDPfB7W66DTxZ",
-          "name": "Gmail account 2"
+          "name": "Gmail - lukas@redbuttonedu.cz"
         }
       },
       "webhookId": "6a321147-8217-4741-ba99-b3e222679201"
@@ -90,23 +90,10 @@
       "credentials": {
         "gmailOAuth2": {
           "id": "oBPPDPfB7W66DTxZ",
-          "name": "Gmail account 2"
+          "name": "Gmail - lukas@redbuttonedu.cz"
         }
       },
       "webhookId": "424f1bf5-9ccd-4b8a-a63e-6914cabb2ce8"
-    },
-    {
-      "parameters": {
-        "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(prázdné tělo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
-      },
-      "id": "e41b7d03-2a84-46a2-a4f4-6a0364f4643c",
-      "name": "Format thread → Markdown",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        880,
-        300
-      ]
     },
     {
       "parameters": {
@@ -117,7 +104,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
+        3740,
         300
       ]
     },
@@ -150,7 +137,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1320,
+        3960,
         300
       ]
     },
@@ -172,7 +159,7 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1540,
+        4180,
         160
       ],
       "credentials": {
@@ -206,7 +193,7 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1540,
+        4180,
         420
       ],
       "credentials": {
@@ -225,7 +212,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
+        4400,
         300
       ]
     },
@@ -240,13 +227,13 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        1980,
+        4620,
         300
       ],
       "credentials": {
         "gmailOAuth2": {
           "id": "oBPPDPfB7W66DTxZ",
-          "name": "Gmail account 2"
+          "name": "Gmail - lukas@redbuttonedu.cz"
         }
       },
       "executeOnce": true,
@@ -261,7 +248,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2200,
+        4840,
         300
       ]
     },
@@ -294,7 +281,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2420,
+        5060,
         300
       ]
     },
@@ -313,13 +300,13 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        2640,
+        5280,
         160
       ],
       "credentials": {
         "gmailOAuth2": {
           "id": "oBPPDPfB7W66DTxZ",
-          "name": "Gmail account 2"
+          "name": "Gmail - lukas@redbuttonedu.cz"
         }
       },
       "webhookId": "68fab39e-8db9-4528-b598-67ebca646008"
@@ -333,7 +320,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2860,
+        5500,
         300
       ]
     },
@@ -349,13 +336,13 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3080,
+        5720,
         300
       ],
       "credentials": {
         "gmailOAuth2": {
           "id": "oBPPDPfB7W66DTxZ",
-          "name": "Gmail account 2"
+          "name": "Gmail - lukas@redbuttonedu.cz"
         }
       },
       "webhookId": "f4e0e12e-e9c3-4329-8f70-92dd40e5c5b2"
@@ -374,17 +361,287 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3300,
+        5940,
         300
       ],
       "credentials": {
         "gmailOAuth2": {
           "id": "oBPPDPfB7W66DTxZ",
-          "name": "Gmail account 2"
+          "name": "Gmail - lukas@redbuttonedu.cz"
         }
       },
       "onError": "continueRegularOutput",
       "webhookId": "68ccc558-22d6-461e-ac08-5c121f6a2c83"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const threadId = String(j.id || j.threadId || '').trim();\n  const messages = j.messages;\n  if (!threadId || !Array.isArray(messages)) continue;\n  for (const m of messages) {\n    const messageId = String(m.id || '').trim();\n    if (!messageId) continue;\n    out.push({ json: { threadId, messageId } });\n  }\n}\nreturn out;",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "892e673f-ef01-47ea-993c-e0ed45dbf841",
+      "name": "Split messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "get",
+        "messageId": "={{ $json.messageId }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "9d78e3d2-c2bf-4e8b-a1cb-9fc6891ac1b2",
+      "name": "Gmail: get message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1100,
+        440
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oBPPDPfB7W66DTxZ",
+          "name": "Gmail - lukas@redbuttonedu.cz"
+        }
+      },
+      "webhookId": "1564dd75-7928-4bfc-8b99-86d24daf2c1e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALLOW_EXT = new Set(['pdf','png','jpeg','jpg','gif','webp','heic','doc','docx','xls','xlsx','ppt','pptx','zip','txt','csv']);\nconst SKIP_MIME = /(?:calendar|ics|message\\/rfc822|smime|vnd\\.ms-outlook|winmail\\.dat)/i;\nconst B4_PHRASES = /stáhnout fakturu|stáhnout doklad|stáhnout pdf|download invoice|download pdf|daňový doklad/i;\nconst PAYMENT_FROM = ['alza','neo','alzaneo','vodafone','o2','tmobile','t-mobile','innogy','cez','pre','eon','fakturoid'];\nconst MAX_FILE_BYTES = 25 * 1024 * 1024;\n\nfunction asHeaderString(v) {\n  if (v == null || v === '') return '';\n  if (typeof v === 'string' || typeof v === 'number') return String(v);\n  if (typeof v === 'object') {\n    if (typeof v.value === 'string') return v.value;\n    if (typeof v.text === 'string') return v.text;\n    if (typeof v.email === 'string') {\n      const n = v.name || v.displayName || '';\n      return n ? `${n} <${v.email}>` : v.email;\n    }\n    if (Array.isArray(v)) return v.map(asHeaderString).filter(Boolean).join(', ');\n    try { return JSON.stringify(v); } catch (_) { return ''; }\n  }\n  return String(v);\n}\n\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? asHeaderString(row.value) : '';\n  }\n  return asHeaderString(msg[name] || msg[String(name)] || '');\n}\n\n\nfunction decodePart(p) {\n  if (!p || !p.body || !p.body.data) return '';\n  try {\n    const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n    return Buffer.from(b64, 'base64').toString('utf8');\n  } catch (_) { return ''; }\n}\nfunction extractBodies(msg) {\n  const payload = msg.payload || msg;\n  let html = '';\n  let plain = '';\n  function walk(p) {\n    if (!p) return;\n    const mime = String(p.mimeType || '').toLowerCase();\n    if (mime === 'text/html' && p.body && p.body.data) html += decodePart(p);\n    if (mime === 'text/plain' && p.body && p.body.data) plain += decodePart(p);\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  if (!plain && !html) plain = asHeaderString(msg.text) || asHeaderString(msg.textPlain) || asHeaderString(msg.snippet) || asHeaderString(msg.html) || '';\n  return { html, plain };\n}\nfunction htmlToText(html) {\n  if (!html) return '';\n  return String(html).replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<script[\\s\\S]*?<\\/script>/gi,' ')\n    .replace(/<br\\s*\\/?>/gi,'\\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&')\n    .replace(/\\n{3,}/g,'\\n\\n').trim();\n}\nfunction isPaymentDoc(from, subject, body) {\n  const f = String(from || '').toLowerCase();\n  if (PAYMENT_FROM.some((t) => f.includes(t))) return true;\n  if (/(faktur|vyúčtov|invoice|doklad|receipt|účtenk|platb|neo)/i.test(String(subject || ''))) return true;\n  const b = String(body || '');\n  if (/\\b(\\d{6,10})\\b/.test(b) && /(\\d[\\d\\s]*\\s*(Kč|CZK|EUR|USD)|faktura|invoice|vyúčtov)/i.test(b)) return true;\n  return false;\n}\nfunction extractB4Links(html, paymentDoc) {\n  const links = [];\n  const seen = new Set();\n  if (!html) return links;\n  const re = /<a\\b[^>]*href\\s*=\\s*[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n  let m;\n  while ((m = re.exec(html)) !== null) {\n    const href = String(m[1] || '').trim();\n    const anchor = String(m[2] || '').replace(/<[^>]+>/g, ' ').trim();\n    if (!href || seen.has(href)) continue;\n    const barePdf = /\\.pdf(?:\\?|#|$)/i.test(href);\n    const phraseHit = B4_PHRASES.test(anchor) || B4_PHRASES.test(href);\n    if (phraseHit || (barePdf && paymentDoc)) {\n      seen.add(href);\n      links.push(href);\n    }\n  }\n  return links;\n}\nfunction extOf(name, mime) {\n  const n = String(name || '').toLowerCase();\n  const dot = n.lastIndexOf('.');\n  if (dot >= 0) return n.slice(dot + 1);\n  const m = String(mime || '').toLowerCase();\n  if (m.includes('pdf')) return 'pdf';\n  if (m.includes('png')) return 'png';\n  if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';\n  if (m.includes('gif')) return 'gif';\n  if (m.includes('webp')) return 'webp';\n  if (m.includes('heic')) return 'heic';\n  return '';\n}\nfunction shouldIncludeBinary(meta) {\n  const fileName = String(meta.fileName || meta.filename || '').trim();\n  const mime = String(meta.mimeType || meta.mime || '').toLowerCase();\n  const size = Number(meta.fileSize || meta.size || 0);\n  const disp = String(meta.contentDisposition || meta.disposition || '').toLowerCase();\n  if (!fileName && mime === 'application/octet-stream') return false;\n  if (!fileName && !size) return false;\n  if (SKIP_MIME.test(mime) || /\\.ics$/i.test(fileName)) return false;\n  if (/winmail\\.dat|smime/i.test(fileName + mime)) return false;\n  const ext = extOf(fileName, mime);\n  const isInlineImg = /^image\\//i.test(mime) && /inline/i.test(disp);\n  if (isInlineImg && size > 0 && size < 8192) return false;\n  const hasAttachmentDisp = /attachment/i.test(disp);\n  if (!hasAttachmentDisp && !fileName) return false;\n  if (ext && !ALLOW_EXT.has(ext)) return false;\n  if (size > MAX_FILE_BYTES) return false;\n  return !!(fileName || hasAttachmentDisp);\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const msg = item.json;\n  const threadId = String(msg.threadId || $('Split messages').item.json.threadId || '').trim();\n  const messageId = String(msg.id || msg.messageId || '').trim();\n  const from = asHeaderString(headerOf(msg, 'from') || msg.From || msg.from);\n  const to = asHeaderString(headerOf(msg, 'to') || msg.To || msg.to);\n  const subject = asHeaderString(headerOf(msg, 'subject') || msg.Subject || msg.subject);\n  const date = asHeaderString(headerOf(msg, 'date') || msg.Date || msg.date);\n  const { html, plain } = extractBodies(msg);\n  let bodyText = plain || htmlToText(html) || asHeaderString(msg.text) || asHeaderString(msg.snippet) || '';\n  if (/<html|<div|<table/i.test(bodyText)) bodyText = htmlToText(bodyText) || bodyText;\n  const paymentDoc = isPaymentDoc(from, subject, bodyText);\n  const linkDownloads = extractB4Links(html, paymentDoc);\n\n  const keptBin = {};\n  let idx = 0;\n  const skipped = [];\n  for (const [key, b] of Object.entries(item.binary || {})) {\n    const meta = {\n      fileName: (b && (b.fileName || b.filename)) || key,\n      mimeType: (b && b.mimeType) || '',\n      fileSize: (b && (b.fileSize || b.size)) || 0,\n      contentDisposition: (b && b.contentDisposition) || '',\n    };\n    if (shouldIncludeBinary(meta)) {\n      keptBin['att_' + idx++] = b;\n    } else {\n      skipped.push({ name: meta.fileName, reason: 'b0-skip' });\n    }\n  }\n\n  const row = {\n    json: {\n      threadId,\n      messageId,\n      messageMeta: { from, to, subject, date, bodyText },\n      linkDownloads,\n      b0Skipped: skipped,\n    },\n  };\n  if (Object.keys(keptBin).length) row.binary = keptBin;\n  out.push(row);\n}\nreturn out;",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "a0863da3-3c17-4732-ba27-adad530c2460",
+      "name": "Code: B0 + B4 per message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return (async () => {\nconst MAX_FILES = 20;\nconst byThread = new Map();\n\nfunction addThread(threadId) {\n  if (!byThread.has(threadId)) {\n    byThread.set(threadId, { threadId, messages: [], binaries: [], b4Notes: [], b0Skipped: [] });\n  }\n  return byThread.get(threadId);\n}\n\nfor (const item of $input.all()) {\n  const j = item.json;\n  const threadId = String(j.threadId || '').trim();\n  if (!threadId) continue;\n  const t = addThread(threadId);\n  if (j.messageMeta) t.messages.push({ ...j.messageMeta, messageId: j.messageId });\n  if (Array.isArray(j.b0Skipped)) t.b0Skipped.push(...j.b0Skipped);\n  for (const [k, b] of Object.entries(item.binary || {})) {\n    t.binaries.push({\n      binary: b,\n      name: (b && b.fileName) || k,\n      size: Number((b && b.fileSize) || 0),\n      source: 'mime',\n    });\n  }\n  t.pendingLinks = t.pendingLinks || [];\n  for (const url of j.linkDownloads || []) t.pendingLinks.push({ url, messageId: j.messageId });\n}\n\nasync function downloadB4(url) {\n  return await this.helpers.httpRequest({\n    method: 'GET',\n    url,\n    encoding: 'arraybuffer',\n    returnFullResponse: true,\n    timeout: 120000,\n    skipSslCertificateValidation: false,\n  });\n}\n\nfor (const t of byThread.values()) {\n  const seenUrls = new Set();\n  for (const link of t.pendingLinks || []) {\n    const url = String(link.url || '').trim();\n    if (!url || seenUrls.has(url)) continue;\n    seenUrls.add(url);\n    try {\n      const res = await downloadB4.call(this, url);\n      const body = res.body || res;\n      const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);\n      if (!buf.length) throw new Error('empty body');\n      const b64 = buf.toString('base64');\n      t.binaries.push({\n        binary: {\n          data: b64,\n          mimeType: 'application/pdf',\n          fileName: 'invoice-link.pdf',\n          fileSize: buf.length,\n        },\n        name: 'invoice-link.pdf',\n        size: buf.length,\n        source: 'b4',\n      });\n    } catch (e) {\n      t.b4Notes.push(`PDF z odkazu se nepodařilo stáhnout (${url}). Ulož prosím ručně do ~/Downloads.`);\n    }\n  }\n  delete t.pendingLinks;\n  if (t.binaries.length > MAX_FILES) {\n    t.binaries = [...t.binaries].sort((a, b) => (b.size || 0) - (a.size || 0)).slice(0, MAX_FILES);\n  }\n  t.messages.sort((a, b) => String(a.date).localeCompare(String(b.date)));\n}\n\nreturn [...byThread.values()].map((t) => ({\n  json: {\n    threadId: t.threadId,\n    messages: t.messages,\n    binaries: t.binaries,\n    b4Notes: t.b4Notes,\n    b0Skipped: t.b0Skipped,\n  },\n}));\n})();",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "8eb6dc66-9818-4e9f-aa23-2470ef7ad993",
+      "name": "Aggregate by thread",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const MAILBOX = 'workspace';\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.attachmentsByThread) staticData.attachmentsByThread = {};\nif (!staticData.fileByThread) staticData.fileByThread = {};\n\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction safeName(raw) {\n  return String(raw || 'attachment.bin').replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n}\n\nconst out = [];\nconst scratchUploads = [];\nconst scratchDeletes = [];\n\nfor (const item of $input.all()) {\n  const j = item.json;\n  const threadId = String(j.threadId || '').trim();\n  if (!threadId) continue;\n  const messages = j.messages || [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  const parts = [];\n  for (const m of messages) {\n    if (!subject && m.subject) subject = m.subject;\n    if (!firstFrom && m.from) firstFrom = m.from;\n    if (m.date) lastDate = m.date;\n    parts.push(`### ${m.date || '?'}\\n**From**: ${m.from || ''}\\n**To**: ${m.to || ''}\\n\\n${m.bodyText || '_(prázdné tělo)_'}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const stem = filename.replace(/\\.md$/i, '');\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  let md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  if (j.b4Notes && j.b4Notes.length) {\n    md += '\\n\\n> **Poznámka:** ' + [...new Set(j.b4Notes)].join(' ') + '\\n';\n  }\n\n  const desiredNames = [];\n  for (const b of j.binaries || []) {\n    const uploadFileName = stem + '__' + safeName(b.name);\n    desiredNames.push(uploadFileName);\n    scratchUploads.push({\n      json: { threadId, uploadFileName, skipUpload: false },\n      binary: { data: b.binary },\n    });\n  }\n\n  const oldAtt = staticData.attachmentsByThread[threadId] || [];\n  for (const old of oldAtt) {\n    if (old.fileId) {\n      scratchDeletes.push({ json: { threadId, fileId: old.fileId, name: old.name || '' } });\n    }\n  }\n\n  out.push({\n    json: {\n      filename,\n      content: md,\n      threadId,\n      mailbox: MAILBOX,\n      desiredNames,\n      hasUploads: desiredNames.length > 0,\n      hasDeletes: scratchDeletes.some((d) => d.json.threadId === threadId),\n    },\n  });\n}\n\nstaticData._scratchUploads = scratchUploads;\nstaticData._scratchDeletes = scratchDeletes;\nreturn out;",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "485e3dbb-dff7-4a4c-b69e-b82be4653719",
+      "name": "Format MD + prep uploads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst deletes = staticData._scratchDeletes || [];\nif (!deletes.length) return [{ json: { skipDelete: true } }];\nreturn deletes.map((d) => ({ json: { ...d.json, skipDelete: false } }));",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "ecbdc81d-f247-408a-89fa-6ebb7bd9cde2",
+      "name": "Prep delete stale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ !$json.skipDelete }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ec4af72c-376c-4a4e-8561-efd6eaa6a4eb",
+      "name": "Má stale delete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "deleteFile",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.fileId }}",
+          "mode": "id"
+        },
+        "options": {},
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+          "mode": "url"
+        }
+      },
+      "id": "e8828e5e-6f1e-49d5-896f-89c9bd993467",
+      "name": "Drive: delete stale",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2420,
+        440
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst uploads = staticData._scratchUploads || [];\nif (!uploads.length) {\n  const base = $('Format MD + prep uploads').first().json;\n  return [{ json: { skipUpload: true, threadId: base.threadId } }];\n}\nreturn uploads.map((u) => ({ json: { ...u.json, skipUpload: false }, binary: u.binary }));",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "6e1d7e61-ab40-4985-b679-b734c626d9ed",
+      "name": "Prep upload items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.skipUpload }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fd4ca221-1157-4823-9d29-7add27233212",
+      "name": "Skip upload?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2860,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{ $json.uploadFileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "c2390bf2-56c4-4beb-8291-a32d67182be7",
+      "name": "Drive: Upload příloh",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3080,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "IKFHnIw3Csp8FHyI",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.attachmentsByThread) staticData.attachmentsByThread = {};\n\nconst uploaded = [];\ntry { uploaded.push(...$('Drive: Upload příloh').all()); } catch (_) {}\n\nconst byThread = new Map();\nfor (const item of uploaded) {\n  const j = item.json;\n  const name = String(j.name || j.uploadFileName || '').trim();\n  const fileId = String(j.id || '').trim();\n  let threadId = String(j.threadId || '').trim();\n  if (!threadId) {\n    const m = name.match(/^sb-workspace-(.+?)__/);\n    if (m) threadId = m[1];\n  }\n  if (!threadId || !fileId || !name) continue;\n  if (!byThread.has(threadId)) byThread.set(threadId, []);\n  byThread.get(threadId).push({ fileId, name });\n}\n\nfor (const item of $('Format MD + prep uploads').all()) {\n  const threadId = String(item.json.threadId || '').trim();\n  if (!byThread.has(threadId)) byThread.set(threadId, []);\n  staticData.attachmentsByThread[threadId] = byThread.get(threadId);\n}\n\nreturn $('Format MD + prep uploads').all();",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "005c9fb0-7931-42e2-8e5c-d405b80e5327",
+      "name": "Update attachments map",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatFileSize(bytes) {\n  const n = Number(bytes);\n  if (!n || n <= 0) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} kB`;\n  return `${(n / (1024 * 1024)).toFixed(1)} MB`;\n}\nfunction buildAttachmentsSectionLines(attachments) {\n  const list = Array.isArray(attachments) ? attachments : [];\n  if (!list.length) return [];\n  const heading = list.length === 1 ? '## Přílohy' : `## Přílohy (${list.length})`;\n  const lines = [heading, ''];\n  for (const a of list) {\n    const name = String(a.name || a.fileName || 'attachment').trim();\n    const link = a.webViewLink || a.webContentLink || a.url || '';\n    const meta = [a.mimeType || a.mime || '', formatFileSize(a.size)].filter(Boolean).join(', ');\n    lines.push(link ? `- [${name}](${link})${meta ? ` — ${meta}` : ''}` : `- ${name}${meta ? ` — ${meta}` : ''}`);\n  }\n  lines.push('');\n  return lines;\n}\nfunction injectAttachmentsSection(content, attachments) {\n  let md = String(content || '');\n  md = md.replace(/\\n## Přílohy(?: \\(stažené v n8n\\)| \\(\\d+\\))?\\s*\\n[\\s\\S]*?(?=\\n## |\\n*$)/i, '\\n');\n  const section = buildAttachmentsSectionLines(attachments);\n  if (!section.length) return md.trimEnd() + '\\n';\n  return md.trimEnd() + '\\n\\n' + section.join('\\n');\n}\n\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map((i) => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  }));\n} catch (_) {}\n\nreturn $('Format MD + prep uploads').all().map((item) => {\n  const j = item.json;\n  const threadId = j.threadId;\n  const prefix = `sb-workspace-${threadId}__`;\n  const threadAtt = uploadedAttachments.filter((a) => String(a.name || '').startsWith(prefix));\n  return { json: { ...j, content: injectAttachmentsSection(j.content, threadAtt) } };\n});",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "23ad51f5-2d2e-4da2-80a4-f9edf1838552",
+      "name": "Code: Finalize ## Přílohy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        300
+      ]
     }
   ],
   "connections": {
@@ -414,18 +671,7 @@
       "main": [
         [
           {
-            "node": "Format thread → Markdown",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format thread → Markdown": {
-      "main": [
-        [
-          {
-            "node": "Route create/update",
+            "node": "Split messages",
             "type": "main",
             "index": 0
           }
@@ -577,21 +823,207 @@
           }
         ]
       ]
+    },
+    "Split messages": {
+      "main": [
+        [
+          {
+            "node": "Gmail: get message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: get message": {
+      "main": [
+        [
+          {
+            "node": "Code: B0 + B4 per message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: B0 + B4 per message": {
+      "main": [
+        [
+          {
+            "node": "Aggregate by thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate by thread": {
+      "main": [
+        [
+          {
+            "node": "Format MD + prep uploads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format MD + prep uploads": {
+      "main": [
+        [
+          {
+            "node": "Prep delete stale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep delete stale": {
+      "main": [
+        [
+          {
+            "node": "Má stale delete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Má stale delete?": {
+      "main": [
+        [
+          {
+            "node": "Drive: delete stale",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep upload items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: delete stale": {
+      "main": [
+        [
+          {
+            "node": "Prep upload items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep upload items": {
+      "main": [
+        [
+          {
+            "node": "Skip upload?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip upload?": {
+      "main": [
+        [
+          {
+            "node": "Update attachments map",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive: Upload příloh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Upload příloh": {
+      "main": [
+        [
+          {
+            "node": "Update attachments map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update attachments map": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize ## Přílohy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Finalize ## Přílohy": {
+      "main": [
+        [
+          {
+            "node": "Route create/update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "PCmXS1X3xB8hWfy0"
   },
   "staticData": {
     "node:Every 2 min": {
+      "recurrenceRules": []
+    },
+    "global": {
+      "fileByThread": {
+        "19cfbb2e93c17d6e": "1jvOzDyGsw_l10rMlHzjZA_fLMyBPVbe-",
+        "19a035984b96af94": "1gPqF8nMVfOPM2I8QV1WyLgBas5ldaOck",
+        "1997563193eb10c3": "1aE2X5ofGMBp6qjVjLdqvEGrSHvbRKBbj",
+        "19ff1939f15af57b": "1kwDylh-dJgQ_hr6-EErNwtzm5NWX7svq",
+        "1a0c7b6a2a1485e1": "1WtmYpB0clO0rfEtyg9zvo48BIevU-81I",
+        "1a0cf4ded254687d": "1AgLCcuJOUNSdrVCZNF1WqW_by7kWv13j",
+        "1a0d31e711936903": "1_UmenxNigO1sjAXQNNkzXFAWBPX8PhBE",
+        "1a0d392602b33c90": "10syPrU4NnmSIjp5dsvTt9v2wrGXxELqS",
+        "1a0d2ee4d20338c1": "1ANWDggujCjxjV5mvc0opus5LnKMSN-k3",
+        "1a0d70778f56c63f": "1Rd7bEnn_v0WAm0buzKMS3HPi5Lv0Ua8G",
+        "1a0db79917783b2b": "1SJR_9YfHw8Yd0HPQ9IiKyy04-WiPOhN3",
+        "1a0d7511b34da050": "1W529U0Ilz1hKPAD6hnBP_CdHq8q1HiJ4",
+        "1a0f1b227415a4cd": "1D8gKOvChYK3wTAmCQVyL5L_yg94zEP_m",
+        "1a0f156e79626f86": "1Ywsgp8CYR3tQlWGDLIBb_Qh_Ixt6gAzd",
+        "1a0b4d50759769cb": "1zXpaKNbEJxrBNYT2ieIWgeEb2OcsUS2-",
+        "1a0f60cd9d24e2bf": "1Xd9jxh3JBfy7ezNk9wDP2fjPnD-w8w0Q",
+        "1a0fd391cd020670": "1AOtqXbWgIPP2JBu8p9UznJSXf_G7KPWx",
+        "1a11359f0323336d": "1y54B2JgSmzc5vlE89Nat6dHz_MY63DEF",
+        "1a111662d885c3a0": "1rwpU8ZQijMM-gAk9EuuBKoMuOCLEV172",
+        "1a116f73ab169653": "1UYq4xh-uxFrwkfcYLmJeWUqQp89SeAZU"
+      },
+      "sbSavedLabelId": "Label_14"
+    },
+    "node:Every 5 min": {
       "recurrenceRules": []
     }
   },
   "meta": null,
   "pinData": null,
-  "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
-  "activeVersionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
-  "versionCounter": 15,
+  "versionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
+  "activeVersionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
+  "versionCounter": 441,
   "triggerCount": 1,
   "shared": [
     {
@@ -614,9 +1046,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-09-21T22:00:40.019Z",
-    "createdAt": "2026-09-21T22:00:40.019Z",
-    "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+    "updatedAt": "2026-10-07T22:56:54.170Z",
+    "createdAt": "2026-10-07T22:56:54.170Z",
+    "versionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
     "workflowId": "xtnI0PYaTp8Ou2la",
     "nodes": [
       {
@@ -663,7 +1095,7 @@
         "credentials": {
           "gmailOAuth2": {
             "id": "oBPPDPfB7W66DTxZ",
-            "name": "Gmail account 2"
+            "name": "Gmail - lukas@redbuttonedu.cz"
           }
         },
         "webhookId": "6a321147-8217-4741-ba99-b3e222679201"
@@ -702,23 +1134,10 @@
         "credentials": {
           "gmailOAuth2": {
             "id": "oBPPDPfB7W66DTxZ",
-            "name": "Gmail account 2"
+            "name": "Gmail - lukas@redbuttonedu.cz"
           }
         },
         "webhookId": "424f1bf5-9ccd-4b8a-a63e-6914cabb2ce8"
-      },
-      {
-        "parameters": {
-          "jsCode": "\nconst TZ = 'Europe/Prague';\nconst MAILBOX = 'workspace';\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? String(row.value || '') : '';\n  }\n  if (headers && typeof headers === 'object') {\n    for (const [k, v] of Object.entries(headers)) {\n      if (String(k).toLowerCase() === want) return String(v || '');\n    }\n  }\n  return String(msg[name] || '');\n}\nfunction decodeBody(msg) {\n  const payload = msg.payload || msg;\n  const chunks = [];\n  function walk(p) {\n    if (!p) return;\n    if (p.body && p.body.data) {\n      try {\n        const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n        chunks.push(Buffer.from(b64, 'base64').toString('utf8'));\n      } catch (e) {}\n    }\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  let text = chunks.join('\\n').trim();\n  if (!text) text = String(msg.snippet || msg.text || '').trim();\n  if (/<html|<div|<br/i.test(text)) {\n    text = text.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();\n  }\n  return text || '_(prázdné tělo)_';\n}\nconst out = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  const j = item.json;\n  let threadId = String(j.id || j.threadId || '').trim();\n  let messages = j.messages;\n  if (!Array.isArray(messages)) continue;\n  if (!threadId) threadId = String((messages[0] && messages[0].threadId) || '').trim();\n  if (!threadId || seen.has(threadId)) continue;\n  seen.add(threadId);\n  const parts = [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  for (const m of messages) {\n    const sub = headerOf(m, 'subject') || m.Subject || m.subject || '';\n    const from = headerOf(m, 'from') || m.From || '';\n    const to = headerOf(m, 'to') || m.To || '';\n    const date = headerOf(m, 'date') || m.Date || m.date || '';\n    if (!subject && sub) subject = sub;\n    if (!firstFrom && from) firstFrom = from;\n    if (date) lastDate = date;\n    parts.push(`### ${date || '?'}\\n**From**: ${from}\\n**To**: ${to}\\n\\n${decodeBody(m)}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  const md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  out.push({ json: { filename, content: md, threadId, mailbox: MAILBOX } });\n}\nreturn out;\n"
-        },
-        "id": "e41b7d03-2a84-46a2-a4f4-6a0364f4643c",
-        "name": "Format thread → Markdown",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          880,
-          300
-        ]
       },
       {
         "parameters": {
@@ -729,7 +1148,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1100,
+          3740,
           300
         ]
       },
@@ -762,7 +1181,7 @@
         "type": "n8n-nodes-base.if",
         "typeVersion": 2.2,
         "position": [
-          1320,
+          3960,
           300
         ]
       },
@@ -784,7 +1203,7 @@
         "type": "n8n-nodes-base.googleDrive",
         "typeVersion": 3,
         "position": [
-          1540,
+          4180,
           160
         ],
         "credentials": {
@@ -818,7 +1237,7 @@
         "type": "n8n-nodes-base.googleDrive",
         "typeVersion": 3,
         "position": [
-          1540,
+          4180,
           420
         ],
         "credentials": {
@@ -837,7 +1256,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1760,
+          4400,
           300
         ]
       },
@@ -852,13 +1271,13 @@
         "type": "n8n-nodes-base.gmail",
         "typeVersion": 2.1,
         "position": [
-          1980,
+          4620,
           300
         ],
         "credentials": {
           "gmailOAuth2": {
             "id": "oBPPDPfB7W66DTxZ",
-            "name": "Gmail account 2"
+            "name": "Gmail - lukas@redbuttonedu.cz"
           }
         },
         "executeOnce": true,
@@ -873,7 +1292,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2200,
+          4840,
           300
         ]
       },
@@ -906,7 +1325,7 @@
         "type": "n8n-nodes-base.if",
         "typeVersion": 2.2,
         "position": [
-          2420,
+          5060,
           300
         ]
       },
@@ -925,13 +1344,13 @@
         "type": "n8n-nodes-base.gmail",
         "typeVersion": 2.1,
         "position": [
-          2640,
+          5280,
           160
         ],
         "credentials": {
           "gmailOAuth2": {
             "id": "oBPPDPfB7W66DTxZ",
-            "name": "Gmail account 2"
+            "name": "Gmail - lukas@redbuttonedu.cz"
           }
         },
         "webhookId": "68fab39e-8db9-4528-b598-67ebca646008"
@@ -945,7 +1364,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2860,
+          5500,
           300
         ]
       },
@@ -961,13 +1380,13 @@
         "type": "n8n-nodes-base.gmail",
         "typeVersion": 2.1,
         "position": [
-          3080,
+          5720,
           300
         ],
         "credentials": {
           "gmailOAuth2": {
             "id": "oBPPDPfB7W66DTxZ",
-            "name": "Gmail account 2"
+            "name": "Gmail - lukas@redbuttonedu.cz"
           }
         },
         "webhookId": "f4e0e12e-e9c3-4329-8f70-92dd40e5c5b2"
@@ -986,31 +1405,290 @@
         "type": "n8n-nodes-base.gmail",
         "typeVersion": 2.1,
         "position": [
-          3300,
+          5940,
           300
         ],
         "credentials": {
           "gmailOAuth2": {
             "id": "oBPPDPfB7W66DTxZ",
-            "name": "Gmail account 2"
+            "name": "Gmail - lukas@redbuttonedu.cz"
           }
         },
         "onError": "continueRegularOutput",
         "webhookId": "68ccc558-22d6-461e-ac08-5c121f6a2c83"
+      },
+      {
+        "parameters": {
+          "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const threadId = String(j.id || j.threadId || '').trim();\n  const messages = j.messages;\n  if (!threadId || !Array.isArray(messages)) continue;\n  for (const m of messages) {\n    const messageId = String(m.id || '').trim();\n    if (!messageId) continue;\n    out.push({ json: { threadId, messageId } });\n  }\n}\nreturn out;",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "892e673f-ef01-47ea-993c-e0ed45dbf841",
+        "name": "Split messages",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "message",
+          "operation": "get",
+          "messageId": "={{ $json.messageId }}",
+          "simple": false,
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "9d78e3d2-c2bf-4e8b-a1cb-9fc6891ac1b2",
+        "name": "Gmail: get message",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          1100,
+          440
+        ],
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "oBPPDPfB7W66DTxZ",
+            "name": "Gmail - lukas@redbuttonedu.cz"
+          }
+        },
+        "webhookId": "1564dd75-7928-4bfc-8b99-86d24daf2c1e"
+      },
+      {
+        "parameters": {
+          "jsCode": "const ALLOW_EXT = new Set(['pdf','png','jpeg','jpg','gif','webp','heic','doc','docx','xls','xlsx','ppt','pptx','zip','txt','csv']);\nconst SKIP_MIME = /(?:calendar|ics|message\\/rfc822|smime|vnd\\.ms-outlook|winmail\\.dat)/i;\nconst B4_PHRASES = /stáhnout fakturu|stáhnout doklad|stáhnout pdf|download invoice|download pdf|daňový doklad/i;\nconst PAYMENT_FROM = ['alza','neo','alzaneo','vodafone','o2','tmobile','t-mobile','innogy','cez','pre','eon','fakturoid'];\nconst MAX_FILE_BYTES = 25 * 1024 * 1024;\n\nfunction asHeaderString(v) {\n  if (v == null || v === '') return '';\n  if (typeof v === 'string' || typeof v === 'number') return String(v);\n  if (typeof v === 'object') {\n    if (typeof v.value === 'string') return v.value;\n    if (typeof v.text === 'string') return v.text;\n    if (typeof v.email === 'string') {\n      const n = v.name || v.displayName || '';\n      return n ? `${n} <${v.email}>` : v.email;\n    }\n    if (Array.isArray(v)) return v.map(asHeaderString).filter(Boolean).join(', ');\n    try { return JSON.stringify(v); } catch (_) { return ''; }\n  }\n  return String(v);\n}\n\nfunction headerOf(msg, name) {\n  const want = String(name).toLowerCase();\n  const headers = (msg && msg.payload && msg.payload.headers) || msg.headers || [];\n  if (Array.isArray(headers)) {\n    const row = headers.find((h) => String(h.name || '').toLowerCase() === want);\n    return row ? asHeaderString(row.value) : '';\n  }\n  return asHeaderString(msg[name] || msg[String(name)] || '');\n}\n\n\nfunction decodePart(p) {\n  if (!p || !p.body || !p.body.data) return '';\n  try {\n    const b64 = String(p.body.data).replace(/-/g, '+').replace(/_/g, '/');\n    return Buffer.from(b64, 'base64').toString('utf8');\n  } catch (_) { return ''; }\n}\nfunction extractBodies(msg) {\n  const payload = msg.payload || msg;\n  let html = '';\n  let plain = '';\n  function walk(p) {\n    if (!p) return;\n    const mime = String(p.mimeType || '').toLowerCase();\n    if (mime === 'text/html' && p.body && p.body.data) html += decodePart(p);\n    if (mime === 'text/plain' && p.body && p.body.data) plain += decodePart(p);\n    if (Array.isArray(p.parts)) p.parts.forEach(walk);\n  }\n  walk(payload);\n  if (!plain && !html) plain = asHeaderString(msg.text) || asHeaderString(msg.textPlain) || asHeaderString(msg.snippet) || asHeaderString(msg.html) || '';\n  return { html, plain };\n}\nfunction htmlToText(html) {\n  if (!html) return '';\n  return String(html).replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<script[\\s\\S]*?<\\/script>/gi,' ')\n    .replace(/<br\\s*\\/?>/gi,'\\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&')\n    .replace(/\\n{3,}/g,'\\n\\n').trim();\n}\nfunction isPaymentDoc(from, subject, body) {\n  const f = String(from || '').toLowerCase();\n  if (PAYMENT_FROM.some((t) => f.includes(t))) return true;\n  if (/(faktur|vyúčtov|invoice|doklad|receipt|účtenk|platb|neo)/i.test(String(subject || ''))) return true;\n  const b = String(body || '');\n  if (/\\b(\\d{6,10})\\b/.test(b) && /(\\d[\\d\\s]*\\s*(Kč|CZK|EUR|USD)|faktura|invoice|vyúčtov)/i.test(b)) return true;\n  return false;\n}\nfunction extractB4Links(html, paymentDoc) {\n  const links = [];\n  const seen = new Set();\n  if (!html) return links;\n  const re = /<a\\b[^>]*href\\s*=\\s*[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n  let m;\n  while ((m = re.exec(html)) !== null) {\n    const href = String(m[1] || '').trim();\n    const anchor = String(m[2] || '').replace(/<[^>]+>/g, ' ').trim();\n    if (!href || seen.has(href)) continue;\n    const barePdf = /\\.pdf(?:\\?|#|$)/i.test(href);\n    const phraseHit = B4_PHRASES.test(anchor) || B4_PHRASES.test(href);\n    if (phraseHit || (barePdf && paymentDoc)) {\n      seen.add(href);\n      links.push(href);\n    }\n  }\n  return links;\n}\nfunction extOf(name, mime) {\n  const n = String(name || '').toLowerCase();\n  const dot = n.lastIndexOf('.');\n  if (dot >= 0) return n.slice(dot + 1);\n  const m = String(mime || '').toLowerCase();\n  if (m.includes('pdf')) return 'pdf';\n  if (m.includes('png')) return 'png';\n  if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';\n  if (m.includes('gif')) return 'gif';\n  if (m.includes('webp')) return 'webp';\n  if (m.includes('heic')) return 'heic';\n  return '';\n}\nfunction shouldIncludeBinary(meta) {\n  const fileName = String(meta.fileName || meta.filename || '').trim();\n  const mime = String(meta.mimeType || meta.mime || '').toLowerCase();\n  const size = Number(meta.fileSize || meta.size || 0);\n  const disp = String(meta.contentDisposition || meta.disposition || '').toLowerCase();\n  if (!fileName && mime === 'application/octet-stream') return false;\n  if (!fileName && !size) return false;\n  if (SKIP_MIME.test(mime) || /\\.ics$/i.test(fileName)) return false;\n  if (/winmail\\.dat|smime/i.test(fileName + mime)) return false;\n  const ext = extOf(fileName, mime);\n  const isInlineImg = /^image\\//i.test(mime) && /inline/i.test(disp);\n  if (isInlineImg && size > 0 && size < 8192) return false;\n  const hasAttachmentDisp = /attachment/i.test(disp);\n  if (!hasAttachmentDisp && !fileName) return false;\n  if (ext && !ALLOW_EXT.has(ext)) return false;\n  if (size > MAX_FILE_BYTES) return false;\n  return !!(fileName || hasAttachmentDisp);\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const msg = item.json;\n  const threadId = String(msg.threadId || $('Split messages').item.json.threadId || '').trim();\n  const messageId = String(msg.id || msg.messageId || '').trim();\n  const from = asHeaderString(headerOf(msg, 'from') || msg.From || msg.from);\n  const to = asHeaderString(headerOf(msg, 'to') || msg.To || msg.to);\n  const subject = asHeaderString(headerOf(msg, 'subject') || msg.Subject || msg.subject);\n  const date = asHeaderString(headerOf(msg, 'date') || msg.Date || msg.date);\n  const { html, plain } = extractBodies(msg);\n  let bodyText = plain || htmlToText(html) || asHeaderString(msg.text) || asHeaderString(msg.snippet) || '';\n  if (/<html|<div|<table/i.test(bodyText)) bodyText = htmlToText(bodyText) || bodyText;\n  const paymentDoc = isPaymentDoc(from, subject, bodyText);\n  const linkDownloads = extractB4Links(html, paymentDoc);\n\n  const keptBin = {};\n  let idx = 0;\n  const skipped = [];\n  for (const [key, b] of Object.entries(item.binary || {})) {\n    const meta = {\n      fileName: (b && (b.fileName || b.filename)) || key,\n      mimeType: (b && b.mimeType) || '',\n      fileSize: (b && (b.fileSize || b.size)) || 0,\n      contentDisposition: (b && b.contentDisposition) || '',\n    };\n    if (shouldIncludeBinary(meta)) {\n      keptBin['att_' + idx++] = b;\n    } else {\n      skipped.push({ name: meta.fileName, reason: 'b0-skip' });\n    }\n  }\n\n  const row = {\n    json: {\n      threadId,\n      messageId,\n      messageMeta: { from, to, subject, date, bodyText },\n      linkDownloads,\n      b0Skipped: skipped,\n    },\n  };\n  if (Object.keys(keptBin).length) row.binary = keptBin;\n  out.push(row);\n}\nreturn out;",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "a0863da3-3c17-4732-ba27-adad530c2460",
+        "name": "Code: B0 + B4 per message",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "return (async () => {\nconst MAX_FILES = 20;\nconst byThread = new Map();\n\nfunction addThread(threadId) {\n  if (!byThread.has(threadId)) {\n    byThread.set(threadId, { threadId, messages: [], binaries: [], b4Notes: [], b0Skipped: [] });\n  }\n  return byThread.get(threadId);\n}\n\nfor (const item of $input.all()) {\n  const j = item.json;\n  const threadId = String(j.threadId || '').trim();\n  if (!threadId) continue;\n  const t = addThread(threadId);\n  if (j.messageMeta) t.messages.push({ ...j.messageMeta, messageId: j.messageId });\n  if (Array.isArray(j.b0Skipped)) t.b0Skipped.push(...j.b0Skipped);\n  for (const [k, b] of Object.entries(item.binary || {})) {\n    t.binaries.push({\n      binary: b,\n      name: (b && b.fileName) || k,\n      size: Number((b && b.fileSize) || 0),\n      source: 'mime',\n    });\n  }\n  t.pendingLinks = t.pendingLinks || [];\n  for (const url of j.linkDownloads || []) t.pendingLinks.push({ url, messageId: j.messageId });\n}\n\nasync function downloadB4(url) {\n  return await this.helpers.httpRequest({\n    method: 'GET',\n    url,\n    encoding: 'arraybuffer',\n    returnFullResponse: true,\n    timeout: 120000,\n    skipSslCertificateValidation: false,\n  });\n}\n\nfor (const t of byThread.values()) {\n  const seenUrls = new Set();\n  for (const link of t.pendingLinks || []) {\n    const url = String(link.url || '').trim();\n    if (!url || seenUrls.has(url)) continue;\n    seenUrls.add(url);\n    try {\n      const res = await downloadB4.call(this, url);\n      const body = res.body || res;\n      const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);\n      if (!buf.length) throw new Error('empty body');\n      const b64 = buf.toString('base64');\n      t.binaries.push({\n        binary: {\n          data: b64,\n          mimeType: 'application/pdf',\n          fileName: 'invoice-link.pdf',\n          fileSize: buf.length,\n        },\n        name: 'invoice-link.pdf',\n        size: buf.length,\n        source: 'b4',\n      });\n    } catch (e) {\n      t.b4Notes.push(`PDF z odkazu se nepodařilo stáhnout (${url}). Ulož prosím ručně do ~/Downloads.`);\n    }\n  }\n  delete t.pendingLinks;\n  if (t.binaries.length > MAX_FILES) {\n    t.binaries = [...t.binaries].sort((a, b) => (b.size || 0) - (a.size || 0)).slice(0, MAX_FILES);\n  }\n  t.messages.sort((a, b) => String(a.date).localeCompare(String(b.date)));\n}\n\nreturn [...byThread.values()].map((t) => ({\n  json: {\n    threadId: t.threadId,\n    messages: t.messages,\n    binaries: t.binaries,\n    b4Notes: t.b4Notes,\n    b0Skipped: t.b0Skipped,\n  },\n}));\n})();",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "8eb6dc66-9818-4e9f-aa23-2470ef7ad993",
+        "name": "Aggregate by thread",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1540,
+          440
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const MAILBOX = 'workspace';\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.attachmentsByThread) staticData.attachmentsByThread = {};\nif (!staticData.fileByThread) staticData.fileByThread = {};\n\nfunction yamlQuote(s) {\n  return JSON.stringify(String(s || '').replace(/\\n/g, ' '));\n}\nfunction safeName(raw) {\n  return String(raw || 'attachment.bin').replace(/[/\\\\]/g, '-').trim() || 'attachment.bin';\n}\n\nconst out = [];\nconst scratchUploads = [];\nconst scratchDeletes = [];\n\nfor (const item of $input.all()) {\n  const j = item.json;\n  const threadId = String(j.threadId || '').trim();\n  if (!threadId) continue;\n  const messages = j.messages || [];\n  let subject = '';\n  let firstFrom = '';\n  let lastDate = '';\n  const parts = [];\n  for (const m of messages) {\n    if (!subject && m.subject) subject = m.subject;\n    if (!firstFrom && m.from) firstFrom = m.from;\n    if (m.date) lastDate = m.date;\n    parts.push(`### ${m.date || '?'}\\n**From**: ${m.from || ''}\\n**To**: ${m.to || ''}\\n\\n${m.bodyText || '_(prázdné tělo)_'}\\n`);\n  }\n  subject = subject || 'no-subject';\n  const filename = `sb-${MAILBOX}-${threadId}.md`;\n  const stem = filename.replace(/\\.md$/i, '');\n  const fm = ['---','source: email',`mailbox: ${MAILBOX}`,`gmail_thread_id: ${yamlQuote(threadId)}`,`from: ${yamlQuote(firstFrom)}`,`subject: ${yamlQuote(subject)}`,`date: ${yamlQuote(lastDate)}`,'---',''].join('\\n');\n  let md = fm + `# Email: ${subject}\\n\\n**Mailbox**: ${MAILBOX}\\n**Thread**: ${threadId}\\n\\n` + parts.join('\\n---\\n\\n');\n  if (j.b4Notes && j.b4Notes.length) {\n    md += '\\n\\n> **Poznámka:** ' + [...new Set(j.b4Notes)].join(' ') + '\\n';\n  }\n\n  const desiredNames = [];\n  for (const b of j.binaries || []) {\n    const uploadFileName = stem + '__' + safeName(b.name);\n    desiredNames.push(uploadFileName);\n    scratchUploads.push({\n      json: { threadId, uploadFileName, skipUpload: false },\n      binary: { data: b.binary },\n    });\n  }\n\n  const oldAtt = staticData.attachmentsByThread[threadId] || [];\n  for (const old of oldAtt) {\n    if (old.fileId) {\n      scratchDeletes.push({ json: { threadId, fileId: old.fileId, name: old.name || '' } });\n    }\n  }\n\n  out.push({\n    json: {\n      filename,\n      content: md,\n      threadId,\n      mailbox: MAILBOX,\n      desiredNames,\n      hasUploads: desiredNames.length > 0,\n      hasDeletes: scratchDeletes.some((d) => d.json.threadId === threadId),\n    },\n  });\n}\n\nstaticData._scratchUploads = scratchUploads;\nstaticData._scratchDeletes = scratchDeletes;\nreturn out;",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "485e3dbb-dff7-4a4c-b69e-b82be4653719",
+        "name": "Format MD + prep uploads",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst deletes = staticData._scratchDeletes || [];\nif (!deletes.length) return [{ json: { skipDelete: true } }];\nreturn deletes.map((d) => ({ json: { ...d.json, skipDelete: false } }));",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "ecbdc81d-f247-408a-89fa-6ebb7bd9cde2",
+        "name": "Prep delete stale",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1980,
+          440
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ !$json.skipDelete }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "ec4af72c-376c-4a4e-8561-efd6eaa6a4eb",
+        "name": "Má stale delete?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "deleteFile",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ $json.fileId }}",
+            "mode": "id"
+          },
+          "options": {},
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+            "mode": "url"
+          }
+        },
+        "id": "e8828e5e-6f1e-49d5-896f-89c9bd993467",
+        "name": "Drive: delete stale",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          2420,
+          440
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst uploads = staticData._scratchUploads || [];\nif (!uploads.length) {\n  const base = $('Format MD + prep uploads').first().json;\n  return [{ json: { skipUpload: true, threadId: base.threadId } }];\n}\nreturn uploads.map((u) => ({ json: { ...u.json, skipUpload: false }, binary: u.binary }));",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "6e1d7e61-ab40-4985-b679-b734c626d9ed",
+        "name": "Prep upload items",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $json.skipUpload }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "fd4ca221-1157-4823-9d29-7add27233212",
+        "name": "Skip upload?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2860,
+          440
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "upload",
+          "inputDataFieldName": "data",
+          "name": "={{ $json.uploadFileName }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list",
+            "cachedResultName": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "https://drive.google.com/drive/u/0/folders/1P_vA0pfNSxfj6ykb-MEEreKspoUJkmYC",
+            "mode": "url"
+          },
+          "options": {}
+        },
+        "id": "c2390bf2-56c4-4beb-8291-a32d67182be7",
+        "name": "Drive: Upload příloh",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          3080,
+          300
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "IKFHnIw3Csp8FHyI",
+            "name": "Google Drive account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.attachmentsByThread) staticData.attachmentsByThread = {};\n\nconst uploaded = [];\ntry { uploaded.push(...$('Drive: Upload příloh').all()); } catch (_) {}\n\nconst byThread = new Map();\nfor (const item of uploaded) {\n  const j = item.json;\n  const name = String(j.name || j.uploadFileName || '').trim();\n  const fileId = String(j.id || '').trim();\n  let threadId = String(j.threadId || '').trim();\n  if (!threadId) {\n    const m = name.match(/^sb-workspace-(.+?)__/);\n    if (m) threadId = m[1];\n  }\n  if (!threadId || !fileId || !name) continue;\n  if (!byThread.has(threadId)) byThread.set(threadId, []);\n  byThread.get(threadId).push({ fileId, name });\n}\n\nfor (const item of $('Format MD + prep uploads').all()) {\n  const threadId = String(item.json.threadId || '').trim();\n  if (!byThread.has(threadId)) byThread.set(threadId, []);\n  staticData.attachmentsByThread[threadId] = byThread.get(threadId);\n}\n\nreturn $('Format MD + prep uploads').all();",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "005c9fb0-7931-42e2-8e5c-d405b80e5327",
+        "name": "Update attachments map",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3300,
+          440
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "function formatFileSize(bytes) {\n  const n = Number(bytes);\n  if (!n || n <= 0) return '';\n  if (n < 1024) return `${n} B`;\n  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} kB`;\n  return `${(n / (1024 * 1024)).toFixed(1)} MB`;\n}\nfunction buildAttachmentsSectionLines(attachments) {\n  const list = Array.isArray(attachments) ? attachments : [];\n  if (!list.length) return [];\n  const heading = list.length === 1 ? '## Přílohy' : `## Přílohy (${list.length})`;\n  const lines = [heading, ''];\n  for (const a of list) {\n    const name = String(a.name || a.fileName || 'attachment').trim();\n    const link = a.webViewLink || a.webContentLink || a.url || '';\n    const meta = [a.mimeType || a.mime || '', formatFileSize(a.size)].filter(Boolean).join(', ');\n    lines.push(link ? `- [${name}](${link})${meta ? ` — ${meta}` : ''}` : `- ${name}${meta ? ` — ${meta}` : ''}`);\n  }\n  lines.push('');\n  return lines;\n}\nfunction injectAttachmentsSection(content, attachments) {\n  let md = String(content || '');\n  md = md.replace(/\\n## Přílohy(?: \\(stažené v n8n\\)| \\(\\d+\\))?\\s*\\n[\\s\\S]*?(?=\\n## |\\n*$)/i, '\\n');\n  const section = buildAttachmentsSectionLines(attachments);\n  if (!section.length) return md.trimEnd() + '\\n';\n  return md.trimEnd() + '\\n\\n' + section.join('\\n');\n}\n\nlet uploadedAttachments = [];\ntry {\n  uploadedAttachments = $('Drive: Upload příloh').all().map((i) => ({\n    name: i.json.name || i.json.uploadFileName || 'attachment',\n    webViewLink: i.json.webViewLink || i.json.webContentLink || '',\n    mimeType: i.json.mimeType || '',\n    size: i.json.size || 0,\n  }));\n} catch (_) {}\n\nreturn $('Format MD + prep uploads').all().map((item) => {\n  const j = item.json;\n  const threadId = j.threadId;\n  const prefix = `sb-workspace-${threadId}__`;\n  const threadAtt = uploadedAttachments.filter((a) => String(a.name || '').startsWith(prefix));\n  return { json: { ...j, content: injectAttachmentsSection(j.content, threadAtt) } };\n});",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "23ad51f5-2d2e-4da2-80a4-f9edf1838552",
+        "name": "Code: Finalize ## Přílohy",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3520,
+          300
+        ]
       }
     ],
     "connections": {
-      "Every 2 min": {
-        "main": [
-          [
-            {
-              "node": "Gmail: starred or recent SB Saved",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "Gmail: starred or recent SB Saved": {
         "main": [
           [
@@ -1037,18 +1715,7 @@
         "main": [
           [
             {
-              "node": "Format thread → Markdown",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Format thread → Markdown": {
-        "main": [
-          [
-            {
-              "node": "Route create/update",
+              "node": "Split messages",
               "type": "main",
               "index": 0
             }
@@ -1189,6 +1856,174 @@
             }
           ]
         ]
+      },
+      "Every 5 min": {
+        "main": [
+          [
+            {
+              "node": "Gmail: starred or recent SB Saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split messages": {
+        "main": [
+          [
+            {
+              "node": "Gmail: get message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail: get message": {
+        "main": [
+          [
+            {
+              "node": "Code: B0 + B4 per message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: B0 + B4 per message": {
+        "main": [
+          [
+            {
+              "node": "Aggregate by thread",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aggregate by thread": {
+        "main": [
+          [
+            {
+              "node": "Format MD + prep uploads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format MD + prep uploads": {
+        "main": [
+          [
+            {
+              "node": "Prep delete stale",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prep delete stale": {
+        "main": [
+          [
+            {
+              "node": "Má stale delete?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Má stale delete?": {
+        "main": [
+          [
+            {
+              "node": "Drive: delete stale",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Prep upload items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: delete stale": {
+        "main": [
+          [
+            {
+              "node": "Prep upload items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prep upload items": {
+        "main": [
+          [
+            {
+              "node": "Skip upload?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Skip upload?": {
+        "main": [
+          [
+            {
+              "node": "Update attachments map",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Drive: Upload příloh",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Drive: Upload příloh": {
+        "main": [
+          [
+            {
+              "node": "Update attachments map",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update attachments map": {
+        "main": [
+          [
+            {
+              "node": "Code: Finalize ## Přílohy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code: Finalize ## Přílohy": {
+        "main": [
+          [
+            {
+              "node": "Route create/update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "authors": "Michal Šrajer",
@@ -1197,34 +2032,34 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-09-21T22:00:40.318Z",
-        "id": 444,
+        "createdAt": "2026-10-07T22:56:54.280Z",
+        "id": 598,
         "workflowId": "xtnI0PYaTp8Ou2la",
-        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "versionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
         "event": "deactivated",
         "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
       },
       {
-        "createdAt": "2026-09-21T22:00:40.352Z",
-        "id": 445,
+        "createdAt": "2026-10-07T22:56:54.764Z",
+        "id": 600,
         "workflowId": "xtnI0PYaTp8Ou2la",
-        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "versionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
+        "event": "deactivated",
+        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
+      },
+      {
+        "createdAt": "2026-10-07T22:56:54.788Z",
+        "id": 601,
+        "workflowId": "xtnI0PYaTp8Ou2la",
+        "versionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
         "event": "activated",
         "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
       },
       {
-        "createdAt": "2026-09-21T22:00:40.112Z",
-        "id": 442,
+        "createdAt": "2026-10-07T22:56:54.371Z",
+        "id": 599,
         "workflowId": "xtnI0PYaTp8Ou2la",
-        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
-        "event": "deactivated",
-        "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
-      },
-      {
-        "createdAt": "2026-09-21T22:00:40.144Z",
-        "id": 443,
-        "workflowId": "xtnI0PYaTp8Ou2la",
-        "versionId": "0d6b2aca-92ff-4ee2-b22d-e56e09283970",
+        "versionId": "25b908a3-f9d0-42a0-a987-3cb7d26548d4",
         "event": "activated",
         "userId": "ab9cdb84-1cd7-44c2-a37f-279184e818e1"
       }

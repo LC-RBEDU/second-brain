@@ -19,14 +19,16 @@ meta.json (všechna pole kromě title/h1 jsou volitelná):
     ["Zdroj", "přepis schůzky (Sembly, 14. 9. 2026)"]
   ],
   # Párové objekty {"label","value"} jsou taky OK.
-  "intro":   "Volitelný odstavec pod meta řádky (účastníci/zdroj) — ne do kickera.",
-  "footer":  ["Odstavec 1 patičky.", "Odstavec 2 patičky."]
+  "intro":   "Volitelný odstavec pod meta řádky (účastníci/zdroj) — ne do kickera."
+  # footer: default vynechat. Nikdy boilerplate o vault/Downloads.
 }
 
 Pravidla (SSOT = skill agenda-zapis-ze-schuzky → HTML vzhled):
 - kicker = max 1 krátká úderná věta (ne celý highlight, ne „Rámec:“)
 - meta_lines + stamp + intro = pod hero (hero-meta), ne side-by-side s h1
 - body.html = skutečné HTML tagy; Rámec z MD ## 0. Meta do body nepatří
+- ## 0. Meta nikdy jako section.area; div.owner přes scripts/owner_line.py (owner ∉ klíčoví)
+- footer: default prázdné (žádný <footer>); nikdy boilerplate vault/Downloads/Rámec
 """
 import argparse
 import html

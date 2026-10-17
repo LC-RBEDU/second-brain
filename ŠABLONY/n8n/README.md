@@ -26,8 +26,8 @@ Workflows. Každý JSON je importovatelný do n8n.
 | `workspace-sent-to-inbox.json` | `7fhDXThOaxl1yNtE` | Nové odeslané (ne reply) → `email/sent/` + SB Saved |
 | `slack-cowork-inbox-with-attachments.json` | `rCOoXlfbD1XcVmtn` | Slack capture + přílohy |
 | `mobile-capture-to-cowork.json` | `k5p32VUAgaPL0KPe` | Webhook → daily/ |
-| `sembly-to-cowork.json` | `hKL04ATDDRSt0FOG` | Sembly → Drive (legacy; F3 off) |
-| `sembly-to-brain.json` | (deploy F3) | Sembly webhook → Brain `ingest_sembly` |
+| `sembly-to-cowork.json` | `hKL04ATDDRSt0FOG` | Sembly → Drive (legacy; **off**) |
+| `sembly-to-brain.json` | `zZpTwhV8Z18OFaNO` | Sembly webhook → Brain `ingest_sembly` → git `01-INBOX/sembly/` (**active** 2026-10-12). Webhook path `sembly-cowork-transcript` (stejná URL jako legacy). |
 
 **Smazáno:** `email-to-cowork` (`omQRpDBa48ePiKnT`, forward `+cowork`), Slack Odpověz (`jpeTZfRw42XujVw4`).
 

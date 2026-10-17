@@ -16,6 +16,8 @@ patička) dělá `build_html.py` z `meta.json`.
 - Blok **Rámec** / meta šum z MD `## 0. Meta` do body **nevkládej** (ani jako
   `p.lead` / sekce „Rámec“). Patří jen do vault MD; HTML hero bere krátký `kicker`
   z `meta.json` (1 věta), ne celý Rámec ani celý highlight.
+- **`## 0. Meta` nikdy jako `section.area`** (ani „0 — oblast / Meta / 0 karty“).
+  Highlights → `.big-thesis`; oblasti v HTML až od `## 1.` …
 
 ### Highlights — tři teze
 
@@ -86,6 +88,12 @@ Přesně tři bloky, jinak se rozbije barevný rytmus (červená / tmavá / zele
 </article>
 ```
 
+**`div.owner` (povinné):** `klíčoví` = `key_people` **bez** `owner` (dedupe
+case-insensitive). Když po odebrání ownera nikdo nezbyde → jen `Vlastní: …`
+(bez `· klíčoví:`). Sestavuj přes `scripts/owner_line.py`
+(`format_owner_div` / `format_owner_line`) — ne ručně kopíruj celý seznam
+účastníků včetně ownera.
+
 Karta bez diskuse dostane navíc třídu `quiet`: `<article class="card quiet">`.
 
 ### Badge podle statusu
@@ -110,21 +118,48 @@ Dvousloupcová mřížka karet:
 </div>
 ```
 
-### Tabulka úkolů
+### Konsolidovaný seznam úkolů (povinné v HTML)
+
+MD sekce `## Konsolidovaný seznam úkolů` → v `body.html` **vždy HTML `<table>`**,
+ne `div.block.tasks` / `<ul>` uvnitř karty. `block tasks` + šipkové `<li>` patří
+**jen** na kartu oblasti („Úkoly, které padly“), ne na závěrečný přehled.
+
+Preferovaný vzor (Finance Sync / Lucie&Luky / Strategická 5. 10.):
 
 ```html
-<table>
-  <thead><tr><th>Kdo</th><th>Úkol</th><th>Kontext / termín</th></tr></thead>
-  <tbody>
-    <tr><td class="who">Jméno</td><td>Úkol</td><td>termín</td></tr>
-  </tbody>
-</table>
+<section class="area">
+  <div class="area-head">
+    <div>
+      <div class="section-label">Úkoly</div>
+      <h2>Konsolidovaný seznam</h2>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Kdo</th><th>Úkol</th><th>Kontext / termín</th><th>Sekce</th></tr></thead>
+    <tbody>
+      <tr><td class="who">Jméno</td><td>Úkol</td><td>termín</td><td>1.2</td></tr>
+    </tbody>
+  </table>
+</section>
 ```
+
+Sloupec `Sekce` je volitelný (stačí 3 sloupce). Alternativa bez `section.area`:
+jen `<div class="section-label">Úkoly, které padly</div>` + stejná `<table>`.
+**Zakázáno:** `<h4>Úkoly ze schůzky</h4>` + flat list s šedým `(kontext · sekce)`.
 
 ### Plán dalších setkání
 
-Buď vlastní `section.area` s kartou, nebo tabulka `datum | co | kdo | pozn.`
-Použij tabulku, když jsou termíny víc než tři.
+Tabulka `datum | co | kdo | pozn.` (stejný `section.area` vzor jako u úkolů).
+Seznam v kartě jen když jsou termíny ≤ 3.
+
+**Tvrdé — jen setkání/eventy:** řádek = budoucí schůzka, recurring meeting, offsite,
+workshop, call **jako kalendářní event**. **Nikdy** úkol s deadlinem / action item
+(„rozhodnout X do konce měsíce“, „doplnit milníky do huddle“, „call s Y“ bez slotu
+v kalendáři jako samostatný event — pokud je to follow-up úkol, patří do Úkolů).
+Příští recurring Strategy / Huddle doplň z kalendáře, když v přepisu chybí datum.
+Test: „šlo by to založit v Google Calendar?“ — ne → do konsolidované tabulky úkolů.
+
+**HTML footer:** default žádný. Zakázaný boilerplate o vaultu / Downloads / Rámci.
 
 ---
 
@@ -146,6 +181,7 @@ audience: "komu je zápis určen"
 variant: full          # full | shared
 language: cs
 participants: [ ... ]
+drive_folder: "https://drive.google.com/drive/folders/<ID>"  # povinné — kanonické MD pro tým
 extraction_rules:
   - "Obsahuje POUZE to, co v přepisu explicitně zaznělo."
   - "Úkoly jsou pouze explicitně zadané a přidělené konkrétní osobě."
@@ -158,6 +194,12 @@ name_aliases:
 
 U `variant: shared` přidej i `redacted: true` a jednu větu, co bylo vynecháno.
 
+**`drive_folder` (povinné):** URL sdílené Drive složky, kam se po zápisu nahraje kanonické MD
+pro tým. Lookup: tabulka ve `.cursor/rules/internal-meeting-slack.mdc` (Strategická /
+Strategy sync má folder). Jiná schůzka bez řádku → zeptej se. Vault
+`05-RESOURCES/vystupy/zapisy/` = pracovní kopie; Slack dostane jen odkaz na Drive MD
++ HTML jako přílohu. V `## 0. Meta` doplň řádek `Úložiště MD: …`.
+
 ### Položka
 
 ```markdown
@@ -165,7 +207,7 @@ U `variant: shared` přidej i `redacted: true` a jednu větu, co bylo vynecháno
 - **id:** `oblast/aktivita`
 - **status:** discussed
 - **owner:** Jméno
-- **key_people:** Jméno, Jméno
+- **key_people:** Jméno, Jméno   # bez ownera; v HTML přes owner_line.py
 
 **Co zaznělo**
 - …
@@ -199,6 +241,8 @@ vstupu už máš — pak také přesně 3.
 
 Rámec: …
 
+Úložiště MD: https://drive.google.com/drive/folders/<ID>  # kanonické sdílení (Drive); vault = pracovní kopie
+
 ### Highlights
 - První klíčový závěr.
 - Druhý klíčový závěr.
@@ -207,6 +251,8 @@ Rámec: …
 
 `Rámec:` zůstává **jen v MD** (agentí kontext). Do HTML hero / lead / kicker se
 nekopíruje — viz skill „HTML vzhled — standard“.
+`Úložiště MD:` patří do Meta; v HTML stačí **jedna krátká věta** v howto / meta
+(ne starý footer boilerplate o vaultu/Downloads).
 
 Fingerprint (`rbedu-grammar-nazi` / `md_fingerprint.py`) počítá jen tyto top-level `-`.
 

@@ -32,7 +32,7 @@ jde jen to, co v přepisu explicitně zaznělo.
 5. U jasných projektů přidá **wikilink stub** do `02-PROJEKTY/<slug>/materials/`.
 6. Z tabulky úkolů **rovnou založí** Lukášovy tasky (Lukáš-only filter) — bez druhého schválení.
 7. Archivuje zdroj přes `scripts/archive_inbox_item.py`.
-8. Interní schůzku rozešle na Slack (HTML + MD). Pravidlo: `.cursor/rules/internal-meeting-slack.mdc`.
+8. Interní schůzku rozešle na Slack (**HTML jako příloha** + **odkaz na MD na Drive**). Pravidlo: `.cursor/rules/internal-meeting-slack.mdc`.
 
 **Sdílená / stručná varianta** jen když uživatel **výslovně** řekne „pro tým“ /
 „sdílená verze“ / „stručný zápis" — kratší, bez úkolů a citlivin (viz krok Varianta).
@@ -121,9 +121,18 @@ Nesedí-li číslo: zapiš co zaznělo + v závorce co je v systému. Haléře �
 1. Highlights — pod `## 0. Meta` blok `### Highlights` + přesně 3 top-level `-` (viz `struktura-vystupu.md`).
 2. Body osnovy — status, owner, key_people, „co zaznělo“, tasks.
 3. Konsolidovaná tabulka úkolů (všichni lidé — MD/HTML pro tým).
-4. Plán dalších setkání (když padl).
+4. Plán dalších setkání (když padl) — **jen kalendářní setkání/eventy**, nikdy úkoly.
 5. Parkoviště / mimo strukturu.
 6. Poznámky k věrohodnosti.
+
+**Plán / Další setkání (tvrdé):** do sekce patří **jen** budoucí schůzky, callsy jako
+kalendářní event, offsite, workshopy — věci s datem/slotem v kalendáři (nebo
+explicitně domluveným termínem setkání). **Nikdy** sem nedávej úkoly s deadlinem
+(„call s X do …“, „rozhodnout vlastníka“, „doplnit milníky“, „org chart na příští …“
+jako action item). To patří **jen** do konsolidované tabulky úkolů + checkboxů na
+kartách. Chybí-li příští recurring Strategy / Huddle a z kalendáře/přepisu jde
+doplnit, doplň ho sem. Sebe-check před zápisem: každý řádek Plánu = „šlo by to
+dát do Google Calendar jako event?“ — ne → vyhodit do Úkolů.
 
 **Statusy:** `discussed` | `mentioned_only` | `not_discussed` | `removed` | `context`  
 Body `mentioned_only` / `not_discussed` **nevynechávej**.
@@ -185,7 +194,8 @@ side-by-side hero.
 | `kicker` | **max 1 krátká úderná věta**. Nesmí být celý highlight, odstavec ani text začínající „Rámec:“ |
 | `stamp` | ← `meeting_date` + typ schůzky |
 | `meta_lines` | participants + zdroj — v HTML **pod** `hero-main` (účastníci, stamp, zdroj), ne vedle nadpisu |
-| `intro` / `eyebrow` / `footer` | jen 1:1 z MD/frontmatter pokud už existují; `intro` ≠ Rámec |
+| `intro` / `eyebrow` | jen 1:1 z MD/frontmatter pokud už existují; `intro` ≠ Rámec |
+| `footer` | **default vynechat** (prázdné → `build_html.py` patičku negeneruje). **Zakázáno** boilerplate typu „Kanónický MD ve vaultu…“, „HTML ke sdílení v Downloads…“, „Úkoly jen explicitní…“, „Rámec je ve vault MD“. Footer jen když meeting sám vygeneruje smysluplný closing text (vzácné). |
 
 **body.html (povinné):**
 
@@ -193,9 +203,18 @@ side-by-side hero.
    markdown (`**tučné**`, `- odrážka`) v body fragmentu.
 2. Blok `Rámec:` / meta šum z `## 0. Meta` **zůstává jen v MD vaultu**. Do HTML
    **nepatří** jako `p.lead`, sekce „Rámec“, ani do kickera / hero.
-3. Lead v body (pokud vůbec) = max 1 krátká věta jiného účelu než Rámec; default = žádný
+3. **`## 0. Meta` nikdy jako `section.area`** — ani prázdná „0 — oblast / Meta / 0 karty“.
+   Highlights → hero teze; Rámec se v HTML neukazuje. Oblasti v body začínají od `## 1.` …
+4. Lead v body (pokud vůbec) = max 1 krátká věta jiného účelu než Rámec; default = žádný
    lead z Meta.
-4. Komponenty (teze, karty, badge, tabulky) dle `references/struktura-vystupu.md`.
+5. **`div.owner`:** `key_people` / „klíčoví“ = všichni **kromě** `owner` (dedupe
+   case-insensitive). Po odebrání ownera prázdní klíčoví → jen `Vlastní: …` (bez
+   `· klíčoví:`). Helper: `scripts/owner_line.py` → `format_owner_div` / `format_owner_line`
+   (povinně při sestavení řádku z MD `owner` / `key_people`).
+6. **Konsolidovaný seznam úkolů v HTML = `<table>`** (`Kdo | Úkol | Kontext/termín`
+   [+| `Sekce`]) — **ne** `div.block.tasks` / flat `<ul>` v kartě. `block tasks` jen
+   na kartě oblasti. Vzor: `references/struktura-vystupu.md` → „Konsolidovaný seznam“.
+7. Komponenty (teze, karty, badge, tabulky) dle `references/struktura-vystupu.md`.
 
 **Layout hero (shell):** kicker + h1 na **celou šířku** (`.hero-main`); účastníci + stamp
 + zdroj **pod** nimi (`.hero-meta`), ne side-by-side.
@@ -205,6 +224,10 @@ side-by-side hero.
 - [ ] `body.html` bez literálního `**` / MD syntaxe — jen HTML tagy
 - [ ] `kicker` = 1 krátká věta (ne highlight, ne „Rámec:“)
 - [ ] Rámec / `## 0. Meta` šum **není** v body ani v kickeru / `intro`
+- [ ] **žádná** `section.area` pro Meta / „0 — oblast“ / id meta
+- [ ] každý `div.owner`: owner **není** znovu v „klíčoví“ (přes `owner_line.py`)
+- [ ] konsolidované úkoly = `<table class…>` / plain `<table>` se sloupci Kdo/Úkol/…,
+      **ne** `block tasks` + `<ul>` („Úkoly ze schůzky“)
 - [ ] `meta_lines` + stamp jdou do shell meta (pod hero), ne do body leadu
 - [ ] žádné `<style>` v body; layout jen přes `build_html.py`
 
@@ -248,11 +271,19 @@ type: material
 material_kind: schuzka
 doc_type: meeting_summary
 variant: full          # nebo shared
+drive_folder: "https://drive.google.com/drive/folders/<ID>"   # povinné — kam jde kanonické MD
 projects:
   - "[[<slug>]]"       # 0–N projektů
 related_tasks: []      # doplň po apply tasků
 created: YYYY-MM-DD
 ```
+
+**Úložiště MD (povinné u každého zápisu):**
+
+1. `drive_folder:` ve frontmatter (URL sdílené Drive složky).
+2. V `## 0. Meta` jeden řádek `Úložiště MD: <URL nebo název složky>` (agentí + lidský kontext).
+3. Folder ber z tabulky v `.cursor/rules/internal-meeting-slack.mdc` (Strategická / Strategy sync = známý folder). Není v tabulce → **zeptej se** před rozesláním; do preview uveď „Drive folder: ???“.
+4. Vault soubor výše = **pracovní kopie** agenta. **Kanonické sdílení s týmem** = upload MD do `drive_folder` + Slack odkaz na ten soubor (ne MD příloha).
 
 Existující soubor se stejným názvem **nepřepisuj** — zeptej se.
 
@@ -276,12 +307,13 @@ zdroje:
 
 # Zápis — <název>
 
-Kanónický zápis: [[05-RESOURCES/vystupy/zapisy/YYYY-MM/YYYY-MM-DD_<slug-schuzky>_zapis]].
+Pracovní kopie (vault): [[05-RESOURCES/vystupy/zapisy/YYYY-MM/YYYY-MM-DD_<slug-schuzky>_zapis]].
 
-HTML ke sdílení: `~/Downloads/YYYY-MM-DD_<slug-schuzky>_zapis.html` (mimo vault).
+Kanonické MD: Drive folder z `drive_folder:` v zápisu (po uploadu odkaz do Slacku).
+HTML ke sdílení: `~/Downloads/YYYY-MM-DD_<slug-schuzky>_zapis.html` → Slack jako příloha.
 ```
 
-**Jedna kopie těla** = soubor v `vystupy/zapisy/`. V `materials/` jen odkaz.
+**Jedna kopie těla ve vaultu** = `vystupy/zapisy/` (agent). Týmové MD = Drive. V `materials/` jen odkaz.
 
 ---
 
@@ -353,15 +385,25 @@ v preview stačí navrhovaný title + 1 věta o čem (editovatelný seznam před
 
 ---
 
-## Krok 9 — rozeslání
+## Krok 9 — rozeslání (Drive MD + Slack)
 
-Až jsou HTML a MD na disku. Detail a tabulka kanálů: `.cursor/rules/internal-meeting-slack.mdc` (při rozporu vyhraje pravidlo).
+Až jsou HTML (`~/Downloads/`) a vault MD na disku. Detail, Slack kanály a Drive foldery: `.cursor/rules/internal-meeting-slack.mdc` (při rozporu vyhraje pravidlo).
+
+**Model (pevný):**
+
+1. **MD** → upload do `drive_folder` (sdílený disk / Drive složka schůzky). Ve Slacku jen **odkaz** na nahraný soubor — **nikdy** MD jako Slack příloha.
+2. **HTML** → Slack jako **příloha** (soubor z Downloads).
+3. Vault MD zůstává pracovní kopie; nemaž ho po uploadu.
+
+**Postup:**
 
 1. Účastníci z kalendáře. Všichni `@redbuttonedu.cz` / `@redbutton.cz` → Slack. Jinak e-mail.
-2. Týmová nebo opakovaná schůzka: kanál z pravidla. Není tam → zeptej se, neposílej.
-3. Jinak DM / skupinový DM účastníků.
-4. Jedna zpráva, oslovení Hoj / Hojte nebo vokativ z `05-RESOURCES/lide/` či historie Slacku. Přílohy: HTML i MD. Na konec vždy kurzívou `_(jménem Lukáše posílá jeho AsIstent)_` — viz `.cursor/rules/asist-send-signature.mdc`.
-5. Známý kanál = pošli, nečekej na další schválení. Příkaz: `python3 scripts/slack_send_message.py`. Token jen z `~/.config/second-brain/slack.env` (user `xoxp-`). Do chatu ho nedávej, login keychain ani Slack cookies nečti.
+2. Ověř `drive_folder:` v zápisu (= tabulka v pravidle, nebo odpověď uživatele). Chybí → zeptej se, **neposílej**.
+3. Nahraj MD do té složky (Drive MCP / Workspace). Získej shareable / view link souboru.
+4. Týmová nebo opakovaná schůzka: Slack kanál z pravidla. Není tam → zeptej se, neposílej.
+5. Jinak DM / skupinový DM účastníků.
+6. Jedna zpráva: oslovení Hoj / Hojte nebo vokativ z `05-RESOURCES/lide/` či historie Slacku; v textu **odkaz na MD na Drive**; **příloha jen HTML**. Na konec vždy kurzívou `_(jménem Lukáše posílá jeho AsIstent)_` — viz `.cursor/rules/asist-send-signature.mdc`.
+7. Známý kanál **a** známý Drive folder = pošli, nečekej na další schválení (ledaže uživatel řekl jen „upiš“ / „neposílej“). Příkaz: `python3 scripts/slack_send_message.py`. Token jen z `~/.config/second-brain/slack.env` (user `xoxp-`). Do chatu ho nedávej, login keychain ani Slack cookies nečti.
 
 ---
 
@@ -373,9 +415,10 @@ Až jsou HTML a MD na disku. Detail a tabulka kanálů: `.cursor/rules/internal-
 - 3 highlights
 - počet položek osnovy (stačí číslo + 1 řádek témat)
 - **konkrétní úkoly** — tabulka níže (povinné; hlavní místo úprav před schválením)
-- cílové cesty HTML a MD
+- cílové cesty HTML (Downloads) a MD (vault pracovní + **Drive `drive_folder`**)
 - řádek „Jazykový průchod: proběhl / přeskočen (důvod)“
-- kam to půjde: Slack kanál / DM, nebo e-mail když je někdo mimo RB
+- kam to půjde: Slack kanál / DM (+ HTML attach, MD = odkaz po uploadu), nebo e-mail když je někdo mimo RB
+- Drive folder: URL z tabulky / návrh / „??? — zeptám se“
 - navržené projekty pro `projects:` / materials stubs
 
 ### Úkoly v preview (povinné)
@@ -421,14 +464,19 @@ Preview = kontrola úkolů a **routing** (Vault?/Projekt) + Slack — ne šablon
 - [ ] Krok 8 routing z upraveného preview; wording z post-merge MD
 - [ ] `### Highlights` + 3× `-` (full); meta.json bez volného stylu
 - [ ] HTML standard: kicker 1 věta; Rámec jen v MD; body = HTML tagy (ne `**`); hero full-width + meta pod ním
+- [ ] HTML: žádná `section.area` pro `## 0. Meta`; `div.owner` přes `owner_line.py` (owner ∉ klíčoví)
+- [ ] HTML: konsolidované úkoly = `<table>` (ne `block tasks` / „Úkoly ze schůzky“ ul)
+- [ ] Plán / Další setkání = jen kalendářní setkání/eventy (žádné úkoly s deadlinem)
+- [ ] HTML: žádný footer boilerplate (vault/Downloads/„Úkoly jen…“) — default bez `<footer>`
 - [ ] Checklist před `build_html.py` (výše) splněný
 - [ ] Jména + `name_aliases`
 - [ ] HTML bez vlastního CSS, přes `build_html.py` (až po GN-2)
-- [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material`
+- [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material` + **`drive_folder:`** + řádek Úložiště MD v Meta
 - [ ] Stubs v `materials/` u jasných projektů
 - [ ] Lukášovy tasky založené / updatované ve stejném tahu (bez druhého schválení)
 - [ ] Finální tabulka tasků v chatu (# | ID — title | projekt | status | Cíl)
 - [ ] Každý task/update ze zápisu: **Z:** + **Cíl** + **Kontext ze zápisu** + checkbox *proč/DoD* + `materials:` na zápis
 - [ ] Zdroj archivován
-- [ ] Interní zápis na Slacku (HTML + MD), kanál z pravidla nebo dotaz; podpis kurzívou
+- [ ] MD nahráno do Drive `drive_folder` (nebo folder chybí → dotaz, neposílat)
+- [ ] Interní zápis na Slacku: **HTML příloha** + **odkaz na MD na Drive** (ne MD attach); kanál z pravidla nebo dotaz; podpis kurzívou
 - [ ] Default = full DEEP (ne shared / ne stručný)

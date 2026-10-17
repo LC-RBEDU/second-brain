@@ -1,11 +1,11 @@
 {
-  "name": "Sembly → Brain ingest",
-  "active": false,
+  "name": "SECOND BRAIN: Sembly → Brain ingest",
+  "active": true,
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "sembly-to-brain",
+        "path": "sembly-cowork-transcript",
         "responseMode": "onReceived",
         "options": {}
       },
@@ -13,24 +13,31 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0]
+      "position": [0, 0],
+      "webhookId": "b8e0d888-0e2a-490c-a7b0-9baa2c19c737"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.BRAIN_PUBLIC_URL}}/v1/ingest_sembly",
+        "url": "https://brain.cyprovi.cz/v1/ingest_sembly",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ payload: $json }) }}",
+        "jsonBody": "={{ JSON.stringify({ payload: $json.body || $json }) }}",
         "options": {}
       },
       "id": "http-brain",
       "name": "Brain ingest_sembly",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [260, 0]
+      "position": [260, 0],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "cU4OJhMVuBHIzy17",
+          "name": "SECOND BRAIN Brain service Bearer"
+        }
+      }
     }
   ],
   "connections": {
@@ -39,6 +46,7 @@
     }
   },
   "meta": {
-    "description": "F3 thin Sembly webhook → Brain ingest_sembly (Bearer service). Activate after cutover; keep sembly-to-cowork off."
+    "description": "F3 thin Sembly webhook → Brain ingest_sembly (Bearer service). Path sembly-cowork-transcript = same URL as legacy Drive writer so Sembly automation need not change. Keep legacy Sembly→INBOX inactive.",
+    "workflowId": "zZpTwhV8Z18OFaNO"
   }
 }
