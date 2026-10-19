@@ -1,4 +1,4 @@
-"""export_tasks snapshot — T1–T6, T9–T13, T15–T16, T20–T23."""
+"""export_tasks snapshot — T1–T6, T9–T13, T15–T16, T20–T23, T28."""
 from __future__ import annotations
 
 import os
@@ -516,7 +516,14 @@ def test_t23_six_hundred_files_under_budget(git_repo: Path):
         )
     _git(git_repo, "add", "-A")
     _git(git_repo, "commit", "-m", "bulk")
-    vault = GitVault(git_repo, dry_run=True, push=False)
+    vault = GitVault(
+        git_repo,
+        dry_run=False,
+        push=True,
+        fetch_on_begin=False,
+        check_dirty_on_begin=False,
+        commit_on_end=False,
+    )
     with vault:
         started = time.perf_counter()
         out = export_tasks(vault)
@@ -525,3 +532,77 @@ def test_t23_six_hundred_files_under_budget(git_repo: Path):
     assert out["count"] == 600
     assert elapsed < 1.5
     assert not any("hash-object" in arg for cmd in vault._git_cmds for arg in cmd)
+    ops = _git_ops(vault._git_cmds)
+    for forbidden in ("fetch", "status", "add", "commit", "push"):
+        assert forbidden not in ops
+
+
+def _git_ops(cmds: list[list[str]]) -> list[str]:
+    ops: list[str] = []
+    for cmd in cmds:
+        args = cmd[1:]
+        if args[:1] == ["-c"]:
+            args = args[2:]
+        if args:
+            ops.append(args[0])
+    return ops
+
+
+def test_t28_projects_match_collect_projects_four_fields():
+    from agent_context_build import collect_projects
+    import task_export
+
+    src = Path(task_export.__file__).read_text(encoding="utf-8")
+    assert "collect_projects" not in src
+    assert "_section_excerpt" not in src
+
+    mem = MemVault()
+    mem.add(
+        "02-PROJEKTY/Alpha.md",
+        "---\ntype: project\nslug: alpha\nstatus: paused\nhierarchy: true\ntitle: Frontmatter\n---\n"
+        "# Alpha z nadpisu\n\n## Scope\n\nDlouhý excerpt, který export nepočítá.\n",
+    )
+    mem.add(
+        "02-PROJEKTY/Beta.md",
+        "---\ntype: project\nslug: beta\nhierarchy: \"yes\"\n---\n# Beta\n",
+    )
+    mem.add(
+        "02-PROJEKTY/Universe.md",
+        "---\ntype: project\nslug: rb-universe-development\nstatus: active\ntitle: Universe\n---\n"
+        "bez hierarchy flagu\n",
+    )
+    mem.add(
+        "02-PROJEKTY/My Hub.md",
+        "---\ntype: project\nstatus: active\n---\n# Muj hub\n",
+    )
+    mem.add(
+        "02-PROJEKTY/_draft.md",
+        "---\ntype: project\nslug: hidden\nhierarchy: true\n---\n# Hidden\n",
+    )
+    mem.add(
+        "02-PROJEKTY/notes.md",
+        "---\ntype: note\nslug: notes\n---\n# Not a hub\n",
+    )
+    out = export_tasks(mem)
+    expected = [
+        {
+            "slug": str(row["slug"]),
+            "title": str(row["title"]),
+            "status": str(row["status"] or "active"),
+            "hierarchy": bool(row["hierarchy"]),
+        }
+        for row in collect_projects(mem)
+    ]
+    assert out["projects"] == sorted(expected, key=lambda row: row["slug"])
+    by_slug = {row["slug"]: row for row in out["projects"]}
+    assert by_slug["alpha"]["hierarchy"] is True
+    assert by_slug["alpha"]["title"] == "Alpha z nadpisu"
+    assert by_slug["alpha"]["status"] == "paused"
+    assert by_slug["beta"]["hierarchy"] is True
+    assert by_slug["beta"]["status"] == "active"
+    assert by_slug["rb-universe-development"]["hierarchy"] is True
+    assert by_slug["my-hub"]["hierarchy"] is False
+    assert by_slug["my-hub"]["title"] == "Muj hub"
+    assert "hidden" not in by_slug
+    assert "notes" not in by_slug
+    assert all("charter_scope" not in row for row in out["projects"])

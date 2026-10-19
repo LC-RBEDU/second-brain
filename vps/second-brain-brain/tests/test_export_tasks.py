@@ -1,4 +1,4 @@
-"""Brain export_tasks — T7, T8, T14, T17–T19."""
+"""Brain export_tasks — T7, T8, T14, T17–T19, T25, T26."""
 from __future__ import annotations
 
 import asyncio
@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 _BRAIN = Path(__file__).resolve().parents[1]
@@ -149,8 +150,9 @@ def test_t7_find_tasks_fields_match_for_non_terminal(monkeypatch):
     vault.add("02-PROJEKTY/alpha/tasks/D1 — Hotovo.md", _task("D1", "Hotovo", status="Done"))
     vault.add("02-PROJEKTY/alpha/tasks/C1 — Zruseno.md", _task("C1", "Zruseno", status="Cancelled"))
 
-    def _open(*, mode, env=None):
+    def _open(*, mode, env=None, check_dirty=True):
         assert mode == "read"
+        del env, check_dirty
         return _CM(vault)
 
     monkeypatch.setattr(find_mod, "brain_vault", _open)
@@ -248,7 +250,8 @@ def test_t17_read_mode_does_not_rebuild_context(monkeypatch):
     monkeypatch.setattr(get_context_mod, "get_context", boom)
     seen: dict[str, str] = {}
 
-    def _open(*, mode, env=None):
+    def _open(*, mode, env=None, check_dirty=True):
+        del env, check_dirty
         seen["mode"] = mode
         return _CM(MemVault())
 
@@ -298,3 +301,158 @@ def test_t18_rest_auth_and_t19_validation(tmp_path: Path, monkeypatch):
     )
     assert since.status_code == 400
     assert since.json()["error_reason"] == "invalid_since"
+
+
+def _repo_with_origin(tmp_path: Path) -> Path:
+    root = _repo(tmp_path)
+    bare = tmp_path / "origin.git"
+    _git(tmp_path, "clone", "--bare", str(root), str(bare))
+    _git(root, "remote", "add", "origin", str(bare))
+    _git(root, "fetch", "origin")
+    _git(root, "branch", "--set-upstream-to=origin/main", "main")
+    return root
+
+
+def _git_ops(cmds: list[list[str]]) -> list[str]:
+    ops: list[str] = []
+    for cmd in cmds:
+        args = cmd[1:]
+        if args[:1] == ["-c"]:
+            args = args[2:]
+        if args:
+            ops.append(args[0])
+    return ops
+
+
+def _spy_vaults(monkeypatch, held: list) -> None:
+    import app.vault_deps as vault_deps
+
+    real = vault_deps.open_vault
+
+    def _open(**kwargs):
+        vault = real(**kwargs)
+        held.append(vault)
+        return vault
+
+    monkeypatch.setattr(vault_deps, "open_vault", _open)
+
+
+def test_t25_read_skips_fetch_and_commit_mutate_rebuild_keep_them(tmp_path: Path, monkeypatch):
+    root = _repo_with_origin(tmp_path)
+    env = _env(root)
+    env["GIT_VAULT_PUSH"] = "1"
+    head = _git(root, "rev-parse", "HEAD").stdout.strip()
+    _git(root, "fetch", "origin")
+    assert _git(root, "rev-parse", "HEAD").stdout.strip() == head
+
+    held: list = []
+    _spy_vaults(monkeypatch, held)
+    from app.vault_deps import brain_vault
+
+    with brain_vault(mode="read", env=env) as vault:
+        assert vault.head_sha() == head
+    read_ops = _git_ops(held[-1]._git_cmds)
+    for forbidden in ("fetch", "add", "commit", "push"):
+        assert forbidden not in read_ops
+    assert _git(root, "rev-parse", "HEAD").stdout.strip() == head
+
+    out = export_mod.export_tasks(env=env)
+    assert out["vault_head"] == head
+    assert out["count"] == len(out["tasks"])
+    assert "open_count" not in out
+    export_ops = _git_ops(held[-1]._git_cmds)
+    for forbidden in ("fetch", "status", "add", "commit", "push"):
+        assert forbidden not in export_ops
+    assert _git(root, "rev-parse", "HEAD").stdout.strip() == head
+
+    with brain_vault(mode="mutate", env=env) as vault:
+        vault.write_text("02-PROJEKTY/mutate.md", "mutate\n")
+    mutate_ops = _git_ops(held[-1]._git_cmds)
+    for required in ("fetch", "add", "commit"):
+        assert required in mutate_ops
+    assert (root / "02-PROJEKTY" / "mutate.md").read_text(encoding="utf-8") == "mutate\n"
+    assert _git(root, "rev-parse", "HEAD").stdout.strip() != head
+
+    with brain_vault(mode="rebuild", env=env) as vault:
+        vault.write_text("02-PROJEKTY/rebuild.md", "rebuild\n")
+    rebuild_ops = _git_ops(held[-1]._git_cmds)
+    for required in ("fetch", "add", "commit"):
+        assert required in rebuild_ops
+    assert (root / "02-PROJEKTY" / "rebuild.md").read_text(encoding="utf-8") == "rebuild\n"
+
+
+def test_t26_dirty_export_stays_200_other_read_is_503(tmp_path: Path, monkeypatch):
+    root = _repo_with_origin(tmp_path)
+    env = _env(root)
+    env["GIT_VAULT_PUSH"] = "1"
+    tasks = root / "02-PROJEKTY" / "alpha" / "tasks"
+    tasks.mkdir(parents=True)
+    (tasks / "Z9 — Spinavy.md").write_text(
+        "---\nid: Z9\ntitle: Spinavy unikat\nstatus: Next\ntype: task\nslug: alpha\n---\n",
+        encoding="utf-8",
+    )
+    head = _git(root, "rev-parse", "HEAD").stdout.strip()
+    held: list = []
+    _spy_vaults(monkeypatch, held)
+
+    out = export_mod.export_tasks(env=env)
+    assert out["count"] == len(out["tasks"]) == 1
+    assert out["tasks"][0]["id"] == "Z9"
+    assert out["tasks"][0]["title"] == "Spinavy unikat"
+    assert _git(root, "rev-parse", "HEAD").stdout.strip() == head
+    ops = _git_ops(held[-1]._git_cmds)
+    for forbidden in ("fetch", "status", "add", "commit", "push"):
+        assert forbidden not in ops
+
+    from app.errors import BrainVaultError
+
+    with pytest.raises(BrainVaultError) as other_read:
+        find_mod.find_tasks(env=env)
+    assert other_read.value.error_reason == "vault_dirty_start"
+    assert other_read.value.status_code == 503
+
+    from app.vault_deps import brain_vault
+
+    marker = root / "02-PROJEKTY" / "mutate-should-not.md"
+    with pytest.raises(BrainVaultError) as mutate:
+        with brain_vault(mode="mutate", env=env) as vault:
+            vault.write_text("02-PROJEKTY/mutate-should-not.md", "nope\n")
+    assert mutate.value.error_reason == "vault_dirty_start"
+    assert not marker.exists()
+    assert _git(root, "rev-parse", "HEAD").stdout.strip() == head
+
+
+def test_t26_invalid_since_does_not_reset_tracked_bytes(tmp_path: Path, monkeypatch):
+    root = _repo_with_origin(tmp_path)
+    env = _env(root)
+    env["GIT_VAULT_PUSH"] = "1"
+    rel = "02-PROJEKTY/alpha/tracked.md"
+    path = root / rel
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"committed-head\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "track")
+    dirty = b"worktree-dirty-bytes\n"
+    path.write_bytes(dirty)
+    before = path.read_bytes()
+    head_bytes = subprocess.run(
+        ["git", "show", f"HEAD:{rel}"],
+        cwd=str(root),
+        check=True,
+        capture_output=True,
+    ).stdout
+    assert before == dirty
+    assert before != head_bytes
+
+    held: list = []
+    _spy_vaults(monkeypatch, held)
+    from app.errors import BrainClientError
+
+    with pytest.raises(BrainClientError) as ei:
+        export_mod.export_tasks(since="not-a-date", env=env)
+    assert ei.value.status_code == 400
+    assert ei.value.error_reason == "invalid_since"
+    assert path.read_bytes() == before
+    assert path.read_bytes() != head_bytes
+    assert path.is_file()
+    assert not any("reset" in cmd and "--hard" in cmd for cmd in held[-1]._git_cmds)

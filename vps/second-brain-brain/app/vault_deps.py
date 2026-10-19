@@ -81,14 +81,31 @@ def _gate_after_open(vault: Any, *, mode: VaultMode, env: Mapping[str, str]) -> 
             raise vault_error("vault_tip_ahead")
 
 
+def _session_flags(mode: VaultMode, check_dirty: bool) -> dict[str, bool]:
+    """Read never fetches, commits, or resets. Mutate and rebuild always do."""
+    if mode == "read":
+        return {
+            "fetch_on_begin": False,
+            "check_dirty_on_begin": check_dirty,
+            "commit_on_end": False,
+            "discard_dirty_on_error": False,
+        }
+    return {
+        "fetch_on_begin": True,
+        "check_dirty_on_begin": True,
+        "commit_on_end": True,
+        "discard_dirty_on_error": True,
+    }
+
+
 def _open_and_gate(
-    *, mode: VaultMode, env: Mapping[str, str]
+    *, mode: VaultMode, env: Mapping[str, str], check_dirty: bool
 ) -> tuple[Any, Any]:
     """Enter open_vault + A60 gate. On flock_busy may raise for retry."""
     cm = open_vault(
         env=env,
         strict_push=True,
-        discard_dirty_on_error=True,
+        **_session_flags(mode, check_dirty),
     )
     vault = cm.__enter__()
     try:
@@ -104,10 +121,13 @@ def brain_vault(
     *,
     mode: VaultMode,
     env: Mapping[str, str] | None = None,
+    check_dirty: bool = True,
 ) -> Iterator[Any]:
     """Open vault with Brain flags; apply A60 gate; map GitPushError → 503.
 
     Tools/rest MUST use this — never bare ``open_vault`` (A64).
+    ``check_dirty`` applies only to ``mode="read"``. Mutate and rebuild always
+    fetch, check dirty, commit, and discard dirty work on error.
     """
     if mode not in ("read", "mutate", "rebuild"):
         raise ValueError(f"mode must be read|mutate|rebuild, got {mode!r}")
@@ -117,7 +137,7 @@ def brain_vault(
     vault: Any = None
     for attempt in range(_FLOCK_MAX_ATTEMPTS):
         try:
-            cm, vault = _open_and_gate(mode=mode, env=env_map)
+            cm, vault = _open_and_gate(mode=mode, env=env_map, check_dirty=check_dirty)
             break
         except BrainVaultError as exc:
             if (

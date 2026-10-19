@@ -61,12 +61,16 @@ def open_vault(
     env: Mapping[str, str] | None = None,
     strict_push: bool = False,
     discard_dirty_on_error: bool = False,
+    fetch_on_begin: bool = True,
+    check_dirty_on_begin: bool = True,
+    commit_on_end: bool = True,
 ):
     """Return GitVault or DriveVault according to VAULT_BACKEND (default git).
 
     Prefer: ``with open_vault() as vault:``.
     When ``VAULT_WRITERS_PAUSED=1``, mutate methods raise ``VaultPausedError``.
-    ``strict_push`` / ``discard_dirty_on_error`` apply only to GitVault (Brain).
+    Session flags apply only to GitVault (Brain). Defaults keep hub cron on
+    fetch, dirty check, and commit.
     """
     env_map = env if env is not None else os.environ
     backend = (env_map.get("VAULT_BACKEND") or "git").strip().lower() or "git"
@@ -78,6 +82,9 @@ def open_vault(
             env=env_map,
             strict_push=strict_push,
             discard_dirty_on_error=discard_dirty_on_error,
+            fetch_on_begin=fetch_on_begin,
+            check_dirty_on_begin=check_dirty_on_begin,
+            commit_on_end=commit_on_end,
         )
     elif backend == "drive":
         from drive_io import DriveVault, credentials_from_env

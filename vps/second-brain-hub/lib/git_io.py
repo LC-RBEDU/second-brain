@@ -1,7 +1,8 @@
 """Git working-copy vault I/O (GitVault) for second-brain-hub cron jobs.
 
 Path API mirrors DriveVault. CAS uses git blob SHA (`expect_oid`); session
-lifecycle: flock → fetch → dirty-skip → ops → commit_if_dirty → optional push.
+lifecycle: flock → optional fetch → optional dirty-skip → ops → optional
+commit_if_dirty → optional push. Read sessions turn the optional steps off.
 """
 from __future__ import annotations
 
@@ -133,6 +134,9 @@ class GitVault:
         require_git: bool = True,
         strict_push: bool = False,
         discard_dirty_on_error: bool = False,
+        fetch_on_begin: bool = True,
+        check_dirty_on_begin: bool = True,
+        commit_on_end: bool = True,
     ) -> None:
         env_map = env if env is not None else os.environ
         self._env = env_map
@@ -165,6 +169,9 @@ class GitVault:
         self.flock_timeout = flock_timeout
         self.strict_push = strict_push
         self.discard_dirty_on_error = discard_dirty_on_error
+        self.fetch_on_begin = fetch_on_begin
+        self.check_dirty_on_begin = check_dirty_on_begin
+        self.commit_on_end = commit_on_end
 
         self._session_active = False
         self.skipped = False
@@ -205,11 +212,12 @@ class GitVault:
             self.skipped = True
             self.skip_reason = "vault_flock_busy"
             return
-        try:
-            self._git(["fetch", "origin"], check=False)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("git_io: fetch failed: %s", exc)
-        if self._is_dirty():
+        if self.fetch_on_begin:
+            try:
+                self._git(["fetch", "origin"], check=False)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("git_io: fetch failed: %s", exc)
+        if self.check_dirty_on_begin and self._is_dirty():
             log.warning(
                 "git_io: working tree dirty at session start under %s — "
                 "skip+log only (no reset)",
@@ -222,7 +230,7 @@ class GitVault:
         if not self._session_active:
             return
         try:
-            if self.skipped or self.dry_run or exc_type is not None:
+            if self.skipped or self.dry_run or exc_type is not None or not self.commit_on_end:
                 return
             committed = self.commit_if_dirty()
             if committed and self.push_enabled:
@@ -534,10 +542,27 @@ class GitVault:
         return results
 
     def read_text(self, rel_path: str, *, encoding: str = "utf-8") -> tuple[str, FileMeta]:
-        meta = self._meta_for_path(rel_path)
-        if meta.is_folder:
+        rel = _norm_rel(rel_path)
+        path = self._abspath(rel)
+        if not path.exists():
+            raise DriveNotFoundError(f"Path not found: {rel!r}")
+        if path.is_dir():
             raise DriveVaultError(f"Cannot read folder as text: {rel_path!r}")
-        data = self._abspath(rel_path).read_bytes()
+        data = path.read_bytes()
+        parent_rel = ""
+        if rel:
+            parent_rel = "/".join(_split_rel(rel)[:-1])
+        oid = self._blob_oid_for_bytes(data)
+        meta = FileMeta(
+            id=rel or oid or "",
+            name=path.name if rel else self.root.name,
+            mime_type=_guess_mime(path, is_dir=False),
+            modified_time=_utc_mtime(path),
+            size=len(data),
+            parent_id=parent_rel or None,
+            rel_path=rel,
+            oid=oid,
+        )
         return data.decode(encoding), meta
 
     def read_json(self, rel_path: str) -> tuple[Any, FileMeta]:

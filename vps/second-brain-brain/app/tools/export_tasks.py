@@ -81,7 +81,7 @@ def export_tasks(
     since: str | None = None,
     env: dict[str, str] | None = None,
 ) -> ExportTasksResult:
-    with brain_vault(mode="read", env=env) as vault:
+    with brain_vault(mode="read", env=env, check_dirty=False) as vault:
         try:
             return build_export(
                 vault,

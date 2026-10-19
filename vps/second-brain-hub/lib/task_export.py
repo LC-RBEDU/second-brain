@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from agent_context_build import collect_projects
+from agent_context_build import HUB_TITLE_RE
 from drive_io import DriveNotFoundError
 from focus import (
     AGENT_VALUES,
@@ -28,7 +28,7 @@ from hierarchy import (
 from operational_steps import is_operational_header
 from promoted_alias import PRAGUE, prague_today
 from task_identity import ROTATION_RE, _norm, expected_stem
-from task_io import ARCHIV_DIR, FRONTMATTER_RE, PROJEKTY_DIR, parse_iso_date
+from task_io import ARCHIV_DIR, FRONTMATTER_RE, PROJEKTY_DIR, parse_iso_date, parse_task_text
 from task_query import _date10
 
 _CHECKBOX_RE = re.compile(r"^-\s+\[([ xX])\]")
@@ -334,18 +334,48 @@ def _prague_day(value: Any) -> date | None:
     return parse_iso_date(value)
 
 
+def _project_hierarchy(fm: dict[str, Any]) -> bool:
+    return bool(
+        fm.get("hierarchy") is True
+        or str(fm.get("hierarchy") or "").lower() in {"true", "1", "yes"}
+        or (fm.get("slug") or "") == "rb-universe-development"
+    )
+
+
 def _projects(vault: Any, slug_filter: set[str]) -> list[dict[str, Any]]:
+    """Charter slug, title, status, hierarchy. No section excerpts, no charter oid."""
     rows: list[dict[str, Any]] = []
-    for project in collect_projects(vault):
-        slug = str(project.get("slug") or "")
+    try:
+        hubs = vault.list_dir("02-PROJEKTY", pattern="*.md")
+    except DriveNotFoundError:
+        return rows
+    for meta in sorted(hubs, key=lambda item: item.name):
+        if meta.name.startswith("_"):
+            continue
+        try:
+            text, _meta = vault.read_text(meta.rel_path)
+        except DriveNotFoundError:
+            continue
+        parsed = parse_task_text(text, rel_path=meta.rel_path)
+        fm = parsed.frontmatter
+        if (fm.get("type") or "").lower() != "project":
+            continue
+        body = parsed.body or ""
+        slug = fm.get("slug") or meta.name.removesuffix(".md").lower().replace(" ", "-")
+        slug = str(slug)
         if slug_filter and slug not in slug_filter:
             continue
+        heading = HUB_TITLE_RE.search(body)
+        if heading:
+            title = heading.group(1).strip()
+        else:
+            title = fm.get("title") or meta.name.removesuffix(".md")
         rows.append(
             {
                 "slug": slug,
-                "title": str(project.get("title") or ""),
-                "status": str(project.get("status") or "active"),
-                "hierarchy": bool(project.get("hierarchy")),
+                "title": str(title).strip(),
+                "status": str(fm.get("status") or "active"),
+                "hierarchy": _project_hierarchy(fm),
             }
         )
     rows.sort(key=lambda row: row["slug"])
