@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -33,6 +34,11 @@ from task_query import _date10
 
 _CHECKBOX_RE = re.compile(r"^-\s+\[([ xX])\]")
 _FIELDS = frozenset({"standard", "full"})
+# Level letter is case-insensitive. Subtask ids (S-S70-1) do not fullmatch.
+_ID_LEVEL_RE = re.compile(r"^[A-Za-z]+-([EST])\d+[a-z]?$", re.IGNORECASE)
+_LEVEL_TO_TYPE = {"E": "epic", "S": "story", "T": "task"}
+# ID at the start of an archive filename. OS6-2026-08-05 does not match (hyphen, not space/end).
+_ARCHIVE_STEM_RE = re.compile(r"^([A-Za-z]+(?:-[EST])?\d+[a-z]?)(?:\s|$)")
 
 
 @dataclass
@@ -83,6 +89,11 @@ def export_tasks(
             continue
         chosen.append(rec)
     chosen.extend(archive)
+    # Name scan only when a chosen parent is absent from the index. projects_csv
+    # and since do not narrow it. No missing parent → do not list the archive.
+    closed_ids: set[str] = (
+        _archive_stem_ids(vault) if _chosen_has_missing_parent(chosen, id_index) else set()
+    )
 
     tasks: list[dict[str, Any]] = []
     slug_filter = set(slugs)
@@ -97,6 +108,7 @@ def export_tasks(
                 fields=fields,
                 id_index=id_index,
                 duplicate_ids=duplicate_ids,
+                closed_ids=closed_ids,
             )
         )
     tasks.sort(key=lambda row: row["path"])
@@ -382,12 +394,46 @@ def _projects(vault: Any, slug_filter: set[str]) -> list[dict[str, Any]]:
     return rows
 
 
+def _chosen_has_missing_parent(chosen: list[_Rec], id_index: dict[str, _Rec]) -> bool:
+    for rec in chosen:
+        parent, unparsed = _parent_field(rec.fm.get("parent"))
+        if unparsed or not parent:
+            continue
+        if parent not in id_index:
+            return True
+    return False
+
+
+def _archive_stem_ids(vault: Any) -> set[str]:
+    """IDs from archive filenames. Two levels, like ``_read_archive``. No ``read_text``."""
+    found: set[str] = set()
+    try:
+        entries = vault.list_dir(ARCHIV_DIR, include_folders=True)
+    except DriveNotFoundError:
+        return found
+    for entry in entries:
+        if not getattr(entry, "is_folder", False):
+            continue
+        slug = entry.name
+        try:
+            files = vault.list_dir(f"{ARCHIV_DIR}/{slug}", pattern="*.md")
+        except DriveNotFoundError:
+            continue
+        for meta in files:
+            stem = _stem(getattr(meta, "rel_path", None) or getattr(meta, "name", ""))
+            matched = _ARCHIVE_STEM_RE.match(stem)
+            if matched:
+                found.add(matched.group(1))
+    return found
+
+
 def _map_task(
     rec: _Rec,
     *,
     fields: str,
     id_index: dict[str, _Rec],
     duplicate_ids: set[str],
+    closed_ids: set[str],
 ) -> dict[str, Any]:
     fm = rec.fm
     task_id = _text(fm.get("id"))
@@ -414,6 +460,7 @@ def _map_task(
         unknown_agent=unknown_agent,
         focus_unparsed=focus_unparsed,
         ice_bad=ice_bad,
+        closed_ids=closed_ids,
     )
     steps_total, steps_done = _count_steps(rec.body)
     row: dict[str, Any] = {
@@ -466,6 +513,7 @@ def _parse_errors(
     unknown_agent: bool,
     focus_unparsed: bool,
     ice_bad: bool,
+    closed_ids: set[str],
 ) -> list[str]:
     errors: list[str] = []
     if rec.parse_kind == "missing_frontmatter":
@@ -484,7 +532,17 @@ def _parse_errors(
     parent_missing = False
     if parent_unparsed:
         errors.append("parent_unparsed")
-    elif parent and parent not in id_index:
+    elif parent and parent in id_index:
+        parent_rec = id_index[parent]
+        # Active Done/Cancelled (archived False) is not parent_closed.
+        # A non-terminal loaded from the archive is not parent_closed either.
+        if parent_rec.archived and _bucket_status(parent_rec.fm.get("status")) in TERMINAL_STATUSES:
+            errors.append("parent_closed")
+    elif parent and parent in closed_ids:
+        # Stem hit only. Type is not read, so parent_missing blocks parent_not_found.
+        errors.append("parent_closed")
+        parent_missing = True
+    elif parent:
         errors.append("parent_not_found")
         parent_missing = True
     if not parent_unparsed and not parent_missing:
@@ -505,6 +563,8 @@ def _parse_errors(
         errors.append("duplicate_id")
     if _nonempty(raw_type) and str(raw_type).strip().lower() not in HIERARCHY_TYPES:
         errors.append("unknown_type")
+    if _id_type_mismatch(task_id, raw_type):
+        errors.append("id_type_mismatch")
     if unknown_agent:
         errors.append("unknown_agent")
     if focus_unparsed:
@@ -594,11 +654,31 @@ def _count_steps(body: str) -> tuple[int, int]:
     return total, done
 
 
+def _alnum(text: str) -> str:
+    """NFC, then casefold, then letters and digits in order."""
+    folded = unicodedata.normalize("NFC", str(text)).casefold()
+    return "".join(ch for ch in folded if ch.isalnum())
+
+
+def _id_type_mismatch(task_id: str, raw_type: Any) -> bool:
+    """Raw epic|story|task vs the level letter. Missing/unknown type adds nothing."""
+    if not _nonempty(raw_type):
+        return False
+    raw = str(raw_type).strip().lower()
+    if raw not in _LEVEL_TO_TYPE.values():
+        return False
+    matched = _ID_LEVEL_RE.fullmatch(task_id)
+    if not matched:
+        return False
+    expected = _LEVEL_TO_TYPE[matched.group(1).upper()]
+    return expected != raw
+
+
 def _filename_mismatch(path: str, task_id: str, title: str) -> bool:
     stem = _stem(path)
     if not task_id or not title or ROTATION_RE.match(stem):
         return False
-    return _norm(stem) != _norm(expected_stem(task_id, title))
+    return _alnum(stem) != _alnum(expected_stem(task_id, title))
 
 
 def _stem(path: str) -> str:

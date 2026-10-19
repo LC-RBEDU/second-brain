@@ -1,4 +1,4 @@
-"""export_tasks snapshot — T1–T6, T9–T13, T15–T16, T20–T23, T28."""
+"""export_tasks snapshot — T1–T6, T9–T13, T15–T16, T20–T23, T28–T32."""
 from __future__ import annotations
 
 import os
@@ -555,6 +555,7 @@ def test_t28_projects_match_collect_projects_four_fields():
     src = Path(task_export.__file__).read_text(encoding="utf-8")
     assert "collect_projects" not in src
     assert "_section_excerpt" not in src
+    assert "project_uses_hierarchy" not in src
 
     mem = MemVault()
     mem.add(
@@ -606,3 +607,270 @@ def test_t28_projects_match_collect_projects_four_fields():
     assert "hidden" not in by_slug
     assert "notes" not in by_slug
     assert all("charter_scope" not in row for row in out["projects"])
+
+
+def test_t29_source_does_not_hardcode_hierarchy_slugs():
+    import task_export
+
+    src = Path(task_export.__file__).read_text(encoding="utf-8")
+    assert "project_uses_hierarchy" not in src
+    for name in ("Finance", "Firemní procesy", "IT AI Data", "RB Universe", "Vibe coding"):
+        assert name not in src
+
+
+def test_t30_filename_alnum_string_not_set_or_prefix():
+    from task_export import _alnum, _filename_mismatch
+    from task_identity import expected_stem
+
+    mismatches = [
+        (
+            "AF15 — Nový formát Allfred budgetu — pro delivery",
+            "AF15",
+            "Nový formát Allfred budgetu — jedna struktura šablony",
+        ),
+        (
+            "AF37 — přehodit planned expenses Our Work→Production",
+            "AF37",
+            "přehodit planned expenses Our Work→Production Po Dominikově překlopení",
+        ),
+        (
+            "F-S63 — Sledovat: Honza × Luboš — potvrzení net odměny 120k",
+            "F-S63",
+            "Sledovat: Honza × Luboš — potvrzení net odměny 120k (socko/zdrávko)",
+        ),
+        (
+            "RBU-S99 — Delivery karta projektu — Lucie skill vs Universe (1)",
+            "RBU-S99",
+            "Delivery karta projektu — Lucie skill vs Universe",
+        ),
+    ]
+    for stem, task_id, title in mismatches:
+        assert _filename_mismatch(f"02-PROJEKTY/alpha/tasks/{stem}.md", task_id, title) is True
+    fs63_stem, fs63_id, fs63_title = mismatches[2]
+    expected = _alnum(expected_stem(fs63_id, fs63_title))
+    stem_alnum = _alnum(fs63_stem)
+    assert stem_alnum != expected
+    assert expected.startswith(stem_alnum)
+    assert _alnum("120") != _alnum("012")
+    assert _filename_mismatch(
+        "02-PROJEKTY/alpha/tasks/N1 — odmena 120.md",
+        "N1",
+        "odmena 012",
+    ) is True
+    assert _filename_mismatch(
+        "02-PROJEKTY/alpha/tasks/C1 — Navrh -dodavka.md",
+        "C1",
+        "Navrh/dodavka",
+    ) is False
+    assert _filename_mismatch(
+        "02-PROJEKTY/alpha/tasks/C2 — Hello — world.md",
+        "C2",
+        "Hello world",
+    ) is False
+    assert _filename_mismatch(
+        "02-PROJEKTY/alpha/tasks/OS6-2026-08-05.md",
+        "OS6",
+        "Uplne jiny nazev",
+    ) is False
+    assert _filename_mismatch(
+        "02-PROJEKTY/alpha/tasks/ZZ1 — Spatne.md",
+        "ZZ1",
+        "Spravne",
+    ) is True
+
+    mem = MemVault()
+    mem.add("02-PROJEKTY/alpha/tasks/ZZ1 — Spatne.md", _md("ZZ1", "Spravne"))
+    mem.add("02-PROJEKTY/alpha/tasks/C1 — Navrh -dodavka.md", _md("C1", "Navrh/dodavka"))
+    rows = _by_id(export_tasks(mem))
+    assert rows["ZZ1"]["filename_title_mismatch"] is True
+    assert rows["C1"]["filename_title_mismatch"] is False
+    assert "filename_title_mismatch" not in rows["ZZ1"]["parse_errors"]
+    assert "filename_title_mismatch" not in rows["C1"]["parse_errors"]
+
+
+def test_t31_id_type_mismatch_uses_raw_type():
+    def _raw(task_id: str, title: str, *, type_line: str | None) -> str:
+        type_row = f"type: {type_line}\n" if type_line is not None else ""
+        return (
+            f"---\nid: {task_id}\ntitle: {title}\n{type_row}"
+            "slug: alpha\nstatus: Next\nupdated: 2026-10-01\n---\n"
+        )
+
+    mem = MemVault()
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/S-S33 — Inspirace.md",
+        _raw("S-S33", "Inspirace", type_line="task"),
+    )
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/S-S34 — Bez type.md",
+        _raw("S-S34", "Bez type", type_line=None),
+    )
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/S-S35 — Widget.md",
+        _raw("S-S35", "Widget", type_line="widget"),
+    )
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/RBU-S99 — Story.md",
+        _raw("RBU-S99", "Story", type_line="story"),
+    )
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/AF15 — Task.md",
+        _raw("AF15", "Task", type_line="task"),
+    )
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/RBU-E1 — Task.md",
+        _raw("RBU-E1", "Task", type_line="task"),
+    )
+    mem.add(
+        "02-PROJEKTY/alpha/tasks/S-S70-1 — Krok.md",
+        _raw("S-S70-1", "Krok", type_line="task"),
+    )
+    before = dict(mem.files)
+    rows = _by_id(export_tasks(mem))
+    assert mem.files == before
+    assert "id_type_mismatch" in rows["S-S33"]["parse_errors"]
+    assert rows["S-S33"]["type"] == "task"
+    assert "id_type_mismatch" not in rows["S-S34"]["parse_errors"]
+    assert "unknown_type" not in rows["S-S34"]["parse_errors"]
+    assert rows["S-S34"]["type"] == "task"
+    assert rows["S-S35"]["parse_errors"].count("unknown_type") == 1
+    assert "id_type_mismatch" not in rows["S-S35"]["parse_errors"]
+    assert rows["S-S35"]["type"] == "task"
+    assert "id_type_mismatch" not in rows["RBU-S99"]["parse_errors"]
+    assert rows["RBU-S99"]["type"] == "story"
+    assert "id_type_mismatch" not in rows["AF15"]["parse_errors"]
+    assert "id_type_mismatch" in rows["RBU-E1"]["parse_errors"]
+    assert rows["RBU-E1"]["type"] == "task"
+    assert "id_type_mismatch" not in rows["S-S70-1"]["parse_errors"]
+    same_id = MemVault()
+    same_id.add(
+        "02-PROJEKTY/alpha/tasks/S-S33 — bez type.md",
+        _raw("S-S33", "Inspirace", type_line=None),
+    )
+    bare = _by_id(export_tasks(same_id))["S-S33"]
+    assert "id_type_mismatch" not in bare["parse_errors"]
+    assert "unknown_type" not in bare["parse_errors"]
+    assert bare["type"] == "task"
+
+
+class _SpyVault(MemVault):
+    def __init__(self):
+        super().__init__()
+        self.reads: list[str] = []
+        self.lists: list[str] = []
+
+    def read_text(self, path: str):
+        self.reads.append(path)
+        return super().read_text(path)
+
+    def list_dir(self, path, pattern=None, recursive=False, include_folders=False):
+        self.lists.append(str(path))
+        return super().list_dir(
+            path,
+            pattern=pattern,
+            recursive=recursive,
+            include_folders=include_folders,
+        )
+
+
+def test_t32_parent_closed_archive_only():
+    hung = _SpyVault()
+    hung.add(
+        "02-PROJEKTY/alpha/tasks/F-T161 — dite.md",
+        _md("F-T161", "dite", parent="F-S71", updated="2026-10-19"),
+    )
+    hung.add(
+        "02-PROJEKTY/alpha/tasks/KOS1 — rotace.md",
+        _md("KOS1", "rotace", parent="OS6", updated="2026-10-19"),
+    )
+    hung.add(
+        "07-ARCHIV/tasks-done/finance/F-S71 — x.md",
+        _md("ZZZ9", "cizi id uvnitr", status="Done", updated="2020-01-01"),
+    )
+    hung.add(
+        "07-ARCHIV/tasks-done/alpha/OS6-2026-08-05.md",
+        _md("OS6", "rotace", status="Done", updated="2020-01-01"),
+    )
+    out = export_tasks(hung, include_closed_days=0, projects_csv="alpha", since="2026-10-01")
+    rows = _by_id(out)
+    assert set(rows) == {"F-T161", "KOS1"}
+    child = rows["F-T161"]["parse_errors"]
+    assert "parent_closed" in child
+    assert "parent_not_found" not in child
+    rotation = rows["KOS1"]["parse_errors"]
+    assert "parent_not_found" in rotation
+    assert "parent_closed" not in rotation
+    assert not any(path.startswith("07-ARCHIV/") for path in hung.reads)
+
+    ghost = _SpyVault()
+    ghost.add(
+        "02-PROJEKTY/alpha/tasks/G1 — nikde.md",
+        _md("G1", "nikde", parent="ZZ9"),
+    )
+    ghost_rows = _by_id(export_tasks(ghost))
+    ghost_err = ghost_rows["G1"]["parse_errors"]
+    assert "parent_not_found" in ghost_err
+    assert "parent_closed" not in ghost_err
+
+    active = _SpyVault()
+    active.add(
+        "02-PROJEKTY/alpha/tasks/D1 — Hotovo.md",
+        _md("D1", "Hotovo", status="Done"),
+    )
+    active.add(
+        "02-PROJEKTY/alpha/tasks/K1 — Dite.md",
+        _md("K1", "Dite", parent="D1"),
+    )
+    active.add(
+        "02-PROJEKTY/alpha/tasks/C9 — Zruseno.md",
+        _md("C9", "Zruseno", status="Cancelled"),
+    )
+    active.add(
+        "02-PROJEKTY/alpha/tasks/K9 — Dite.md",
+        _md("K9", "Dite", parent="C9"),
+    )
+    active_rows = _by_id(export_tasks(active))
+    assert "D1" not in active_rows
+    assert "C9" not in active_rows
+    for task_id in ("K1", "K9"):
+        errs = active_rows[task_id]["parse_errors"]
+        assert "parent_not_found" not in errs
+        assert "parent_closed" not in errs
+        assert "parent_not_story" in errs
+    assert not any(path.startswith("07-ARCHIV") for path in active.lists)
+
+    today = prague_today().isoformat()
+    window = _SpyVault()
+    window.add(
+        "07-ARCHIV/tasks-done/alpha/F-S82 — hotovo.md",
+        _md("F-S82", "hotovo", status="Done", work_type="story", updated=today),
+    )
+    window.add(
+        "02-PROJEKTY/alpha/tasks/F-T176 — dite.md",
+        _md("F-T176", "dite", parent="F-S82"),
+    )
+    window.add(
+        "07-ARCHIV/tasks-done/alpha/F-S83 — zruseno.md",
+        _md("F-S83", "zruseno", status="Cancelled", work_type="story", updated=today),
+    )
+    window.add(
+        "02-PROJEKTY/alpha/tasks/F-T177 — dite.md",
+        _md("F-T177", "dite", parent="F-S83"),
+    )
+    window.add(
+        "07-ARCHIV/tasks-done/alpha/F-S84 — next.md",
+        _md("F-S84", "next", status="Next", work_type="story", updated=today),
+    )
+    window.add(
+        "02-PROJEKTY/alpha/tasks/F-T178 — dite.md",
+        _md("F-T178", "dite", parent="F-S84"),
+    )
+    window_rows = _by_id(export_tasks(window, include_closed_days=7))
+    for task_id in ("F-T176", "F-T177"):
+        errs = window_rows[task_id]["parse_errors"]
+        assert "parent_closed" in errs
+        assert "parent_not_found" not in errs
+        assert "parent_not_story" not in errs
+    open_parent = window_rows["F-T178"]["parse_errors"]
+    assert "parent_closed" not in open_parent
+    assert "parent_not_found" not in open_parent

@@ -116,7 +116,8 @@ def update_task(
                 raise BrainClientError(
                     message=f"CAS conflict expect_oid={expect_oid!r} got={oid!r}",
                     status_code=409,
-                    error_reason="cas_conflict",
+                    error_reason="oid_mismatch",
+                    oid=str(oid),
                 )
             m = _FM_RE.match(text)
             if not m:
@@ -176,6 +177,14 @@ def update_task(
                 kwargs["expect_oid"] = expect_oid
             meta2 = vault.write_text(path, new_text, **kwargs)
         except DriveConflictError as exc:
+            conflict_oid = getattr(exc, "oid", None)
+            if expect_oid is not None and conflict_oid is not None:
+                raise BrainClientError(
+                    message=str(exc),
+                    status_code=409,
+                    error_reason="oid_mismatch",
+                    oid=str(conflict_oid),
+                ) from exc
             raise BrainClientError(
                 message=str(exc),
                 status_code=409,

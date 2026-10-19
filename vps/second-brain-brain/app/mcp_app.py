@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.types import CallToolResult, TextContent
 
 from app.errors import BrainClientError, BrainVaultError
 from app.tools import allocate_task_id as allocate_tool
@@ -46,7 +47,9 @@ def _call(fn, **kwargs: Any) -> str:
         result = fn(**kwargs)
         return json.dumps(result, ensure_ascii=False, default=str)
     except (BrainVaultError, BrainClientError) as exc:
-        # MCPServer wraps Exception → CallToolResult(is_error=True, text=str(exc))
+        # RuntimeError is a crash. The library raises UnexpectedToolError whose
+        # text is only "Error executing tool {name}" (tools/base.py 211–213).
+        # The JSON stays on __cause__ and the client never sees it.
         raise RuntimeError(_err_text(exc)) from exc
 
 
@@ -94,14 +97,33 @@ def build_mcp() -> MCPServer:
         dry_run: bool = False,
     ) -> str:
         patch = json.loads(patch_json) if isinstance(patch_json, str) else patch_json
-        return _call(
-            update_task_tool.update_task,
-            path=path,
-            patch=patch,
-            expect_oid=expect_oid,
-            allow_parent_shift=allow_parent_shift,
-            dry_run=dry_run,
-        )
+        try:
+            result = update_task_tool.update_task(
+                path=path,
+                patch=patch,
+                expect_oid=expect_oid,
+                allow_parent_shift=allow_parent_shift,
+                dry_run=dry_run,
+            )
+        except BrainClientError as exc:
+            if exc.error_reason == "oid_mismatch":
+                payload = exc.as_dict()
+                return CallToolResult(
+                    is_error=True,
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=json.dumps(payload, ensure_ascii=False),
+                        )
+                    ],
+                    structured_content=payload,
+                )
+
+            def _reraise() -> None:
+                raise exc
+
+            return _call(_reraise)
+        return json.dumps(result, ensure_ascii=False, default=str)
 
     @mcp.tool(
         description=(

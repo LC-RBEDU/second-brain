@@ -76,6 +76,7 @@ class BrainClientError(Exception):
     status_code: int = 403
     error_reason: str = "client_error"
     detail: dict[str, Any] | None = None
+    oid: str | None = None
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.message)
@@ -84,6 +85,8 @@ class BrainClientError(Exception):
         out: dict[str, Any] = {"error_reason": self.error_reason, "message": self.message}
         if self.detail is not None:
             out["detail"] = self.detail
+        if self.oid is not None:
+            out["oid"] = self.oid
         return out
 
 

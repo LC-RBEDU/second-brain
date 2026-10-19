@@ -456,3 +456,82 @@ def test_t26_invalid_since_does_not_reset_tracked_bytes(tmp_path: Path, monkeypa
     assert path.read_bytes() != head_bytes
     assert path.is_file()
     assert not any("reset" in cmd and "--hard" in cmd for cmd in held[-1]._git_cmds)
+
+
+def test_t34_mcp_and_rest_oid_mismatch():
+    import json
+    from unittest.mock import MagicMock, patch
+
+    from fastapi.testclient import TestClient
+
+    from app.errors import BrainClientError
+    from app.main import app
+
+    vault = MagicMock()
+    meta = MagicMock()
+    meta.oid = "live-oid"
+    vault.read_text.return_value = (
+        "---\nid: X1\ntitle: T\n---\n\n# X1 — T\n",
+        meta,
+    )
+
+    class _VaultCM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *args):
+            return False
+
+    path = "02-PROJEKTY/alpha/tasks/X1.md"
+    with patch.object(update_mod, "brain_vault", return_value=_VaultCM()):
+        with pytest.raises(BrainClientError) as ei:
+            update_mod.update_task(
+                path=path,
+                patch={"status": "Doing"},
+                expect_oid="stale-oid",
+            )
+        direct = ei.value.as_dict()
+        assert direct["error_reason"] == "oid_mismatch"
+        assert direct["oid"] == "live-oid"
+        vault.write_text.assert_not_called()
+
+        response = TestClient(app).patch(
+            "/v1/tasks",
+            headers={"Authorization": "Bearer test-service-token"},
+            json={"path": path, "patch": {"status": "Doing"}, "expect_oid": "stale-oid"},
+        )
+        assert response.status_code == 409
+        assert response.json() == direct
+
+        from mcp.server.mcpserver.exceptions import UnexpectedToolError
+
+        mcp = build_mcp()
+        result = asyncio.run(
+            mcp.call_tool(
+                "update_task",
+                {
+                    "path": path,
+                    "patch_json": json.dumps({"status": "Doing"}),
+                    "expect_oid": "stale-oid",
+                },
+            )
+        )
+        assert result.is_error is True
+        assert result.structured_content["error_reason"] == "oid_mismatch"
+        assert result.structured_content["oid"] == "live-oid"
+        text = result.content[0].text
+        assert not text.startswith("Error executing tool")
+        assert json.loads(text) == result.structured_content == direct
+
+        with pytest.raises(UnexpectedToolError) as empty:
+            asyncio.run(
+                mcp.call_tool(
+                    "update_task",
+                    {
+                        "path": path,
+                        "patch_json": "{}",
+                        "expect_oid": "stale-oid",
+                    },
+                )
+            )
+        assert str(empty.value) == "Error executing tool update_task"

@@ -479,7 +479,8 @@ class GitVault:
             current = self._blob_oid_for_path(path)
             if current != expect_oid:
                 raise DriveConflictError(
-                    f"{rel!r} oid mismatch: current={current!r} expect={expect_oid!r}"
+                    f"{rel!r} oid mismatch: current={current!r} expect={expect_oid!r}",
+                    oid=current,
                 )
             return
         if expect_mtime is not None:

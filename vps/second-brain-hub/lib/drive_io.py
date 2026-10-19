@@ -141,6 +141,10 @@ class DriveNotFoundError(DriveVaultError):
 class DriveConflictError(DriveVaultError):
     """CAS mismatch: file modified externally since `expect_mtime` / `expect_oid`."""
 
+    def __init__(self, message: str = "", *, oid: str | None = None) -> None:
+        super().__init__(message)
+        self.oid = oid
+
 
 @dataclass(frozen=True)
 class FileMeta:

@@ -41,3 +41,69 @@ def test_drive_conflict_maps_to_409():
             mod.update_task(path="02-PROJEKTY/test/tasks/X1.md", patch={"status": "Next"})
     assert ei.value.status_code == 409
     assert ei.value.error_reason == "cas_conflict"
+    assert "oid" not in ei.value.as_dict()
+
+
+def _vault(oid: str, write_error: DriveConflictError | None = None):
+    vault = MagicMock()
+    meta = MagicMock()
+    meta.oid = oid
+    vault.read_text.return_value = (
+        "---\nid: X1\ntitle: T\n---\n\n# X1 — T\n",
+        meta,
+    )
+    if write_error is not None:
+        vault.write_text.side_effect = write_error
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *args):
+            return False
+
+    return vault, _CM()
+
+
+def test_t33_b42_precheck_oid_mismatch_does_not_write():
+    vault, cm = _vault("current-oid")
+    with patch.object(mod, "brain_vault", return_value=cm):
+        for dry_run in (True, False):
+            vault.write_text.reset_mock()
+            with pytest.raises(BrainClientError) as ei:
+                mod.update_task(
+                    path="02-PROJEKTY/test/tasks/X1.md",
+                    patch={"status": "Next"},
+                    expect_oid="stale-oid",
+                    dry_run=dry_run,
+                )
+            assert ei.value.status_code == 409
+            body = ei.value.as_dict()
+            assert body["error_reason"] == "oid_mismatch"
+            assert body["oid"] == "current-oid"
+            vault.write_text.assert_not_called()
+
+
+def test_t33_b43_drive_conflict_oid_follows_expect_oid():
+    vault, cm = _vault("abc", DriveConflictError("oid mismatch", oid="newer-oid"))
+    with patch.object(mod, "brain_vault", return_value=cm):
+        with pytest.raises(BrainClientError) as ei:
+            mod.update_task(
+                path="02-PROJEKTY/test/tasks/X1.md",
+                patch={"status": "Next"},
+                expect_oid="abc",
+            )
+        body = ei.value.as_dict()
+        assert ei.value.status_code == 409
+        assert body["error_reason"] == "oid_mismatch"
+        assert body["oid"] == "newer-oid"
+
+        with pytest.raises(BrainClientError) as plain:
+            mod.update_task(
+                path="02-PROJEKTY/test/tasks/X1.md",
+                patch={"status": "Next"},
+            )
+        plain_body = plain.value.as_dict()
+        assert plain.value.status_code == 409
+        assert plain_body["error_reason"] == "cas_conflict"
+        assert "oid" not in plain_body
