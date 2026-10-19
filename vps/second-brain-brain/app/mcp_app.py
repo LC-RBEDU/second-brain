@@ -26,6 +26,8 @@ from app.tools import update_task as update_task_tool
 from app.tools import append_task_note as append_task_note_tool
 from app.tools import close_task as close_task_tool
 from app.tools import edit_task_body as edit_task_body_tool
+from app.tools import export_tasks as export_tasks_tool
+from app.tools.export_tasks import ExportTasksResult
 from app.tools import find_tasks as find_tasks_tool
 from app.tools import focus_proposal as focus_proposal_tool
 from app.tools import get_task as get_task_tool
@@ -169,6 +171,29 @@ def build_mcp() -> MCPServer:
     @mcp.tool(description="Write a previously proposed focus. Second call is not found.")
     def apply_focus(proposal_id: str) -> str:
         return _call(focus_proposal_tool.apply_focus, proposal_id=proposal_id)
+
+    @mcp.tool(
+        description=(
+            "Read-only snapshot of vault tasks (frontmatter, no body) for a dashboard. "
+            "Does not rebuild agent-context. Active Done and Cancelled are omitted. "
+            "include_closed_days adds archive files only."
+        )
+    )
+    def export_tasks(
+        include_closed_days: int = 0,
+        projects_csv: str = "",
+        fields: str = "standard",
+        since: str | None = None,
+    ) -> ExportTasksResult:
+        try:
+            return export_tasks_tool.export_tasks(
+                include_closed_days=include_closed_days,
+                projects_csv=projects_csv,
+                fields=fields,
+                since=since,
+            )
+        except (BrainVaultError, BrainClientError) as exc:
+            raise RuntimeError(_err_text(exc)) from exc
 
     @mcp.tool(description="Find task files by title, body, id, project, type, parent, status, deadline, or focus.")
     def find_tasks(

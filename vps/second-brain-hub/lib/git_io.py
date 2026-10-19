@@ -6,10 +6,12 @@ lifecycle: flock → fetch → dirty-skip → ops → commit_if_dirty → option
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -73,6 +75,46 @@ def _guess_mime(path: Path, *, is_dir: bool) -> str:
     return guessed or "application/octet-stream"
 
 
+_OCTAL_ESCAPE_RE = re.compile(r"\\[0-7]{3}")
+_CHANGED_PREFIXES = ("02-PROJEKTY/", "07-ARCHIV/tasks-done/")
+
+
+def git_blob_oid(data: bytes, object_format: str) -> str:
+    """Git blob id of ``data``. Same bytes as ``git hash-object``."""
+    payload = f"blob {len(data)}\0".encode("ascii") + data
+    if object_format == "sha256":
+        return hashlib.sha256(payload).hexdigest()
+    return hashlib.sha1(payload).hexdigest()
+
+
+def _parse_log_name_only_z(stdout: str) -> set[str]:
+    """Paths from ``git log -z --name-only``.
+
+    ``-z`` separates commits, not paths. A commit chunk is split on LF only
+    (not ``splitlines`` — U+2028 stays inside a name). One trailing CR is a
+    CRLF. Quoted or octal-escaped lines are dropped. The raw chunk is never
+    passed to ``_norm_rel``.
+    """
+    found: set[str] = set()
+    for chunk in stdout.split("\0"):
+        if not chunk:
+            continue
+        for line in chunk.split("\n"):
+            if line.endswith("\r"):
+                line = line[:-1]
+            if not line:
+                continue
+            if '"' in line or _OCTAL_ESCAPE_RE.search(line):
+                continue
+            try:
+                rel = _norm_rel(line)
+            except ValueError:
+                continue
+            if rel.startswith(_CHANGED_PREFIXES):
+                found.add(rel)
+    return found
+
+
 class GitVault:
     """Path-based facade over a local git working copy of the Obsidian vault."""
 
@@ -129,6 +171,7 @@ class GitVault:
         self.skip_reason: str | None = None
         self._lock_fh = None
         self._git_cmds: list[list[str]] = []  # test spy
+        self._object_format_name: str | None = None
 
         if require_git and not (self.root / ".git").is_dir():
             raise RuntimeError(
@@ -298,22 +341,56 @@ class GitVault:
         proc = self._git(["status", "--porcelain"], check=True)
         return bool((proc.stdout or "").strip())
 
+    def _object_format(self) -> str:
+        """``sha1`` or ``sha256``, once per instance. Default sha1."""
+        if self._object_format_name:
+            return self._object_format_name
+        fmt = "sha1"
+        proc = self._git(["rev-parse", "--show-object-format"], check=False)
+        if proc.returncode == 0:
+            raw = (proc.stdout or "").strip().lower()
+            if raw in {"sha1", "sha256"}:
+                fmt = raw
+        self._object_format_name = fmt
+        return fmt
+
     def _blob_oid_for_path(self, path: Path) -> str | None:
         if not path.is_file():
             return None
-        proc = self._git(
-            ["hash-object", str(path)],
-            check=True,
-        )
-        return (proc.stdout or "").strip() or None
+        return git_blob_oid(path.read_bytes(), self._object_format())
 
     def _blob_oid_for_bytes(self, data: bytes) -> str:
+        return git_blob_oid(data, self._object_format())
+
+    def head_sha(self) -> str | None:
+        proc = self._git(["rev-parse", "HEAD"], check=False)
+        if proc.returncode != 0:
+            return None
+        sha = (proc.stdout or "").strip()
+        return sha or None
+
+    def changed_paths_since(self, since_iso: str) -> set[str]:
+        """Vault paths committed after ``since_iso`` under projects and archive.
+
+        Goes through ``_git`` so the argv lands in ``_git_cmds``. ``-z`` splits
+        commits; path lines are parsed by ``_parse_log_name_only_z``.
+        """
         proc = self._git(
-            ["hash-object", "--stdin"],
+            [
+                "-c",
+                "core.quotepath=false",
+                "log",
+                "-z",
+                f"--since={since_iso}",
+                "--name-only",
+                "--pretty=format:",
+                "--",
+                "02-PROJEKTY",
+                "07-ARCHIV/tasks-done",
+            ],
             check=True,
-            input_bytes=data,
         )
-        return (proc.stdout or "").strip()
+        return _parse_log_name_only_z(proc.stdout or "")
 
     def _meta_for_path(self, rel_path: str, *, compute_oid: bool = True) -> FileMeta:
         rel = _norm_rel(rel_path)

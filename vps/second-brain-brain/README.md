@@ -7,6 +7,7 @@ HTTPS služba (Coolify): remote MCP + OAuth + tenké REST. Sdílí `/data/vault`
 - `SLACK_USER_TOKEN` = `xoxp-` — povinné pro L1 live Slack (`slack_live` / triage). Bez něj Brain vrací `error_reason: slack_token_missing` a `live_slack: []`.
 - Volitelně `SLACK_LUKAS_USER_ID` — přesnější search query (`to:<@U…>`); bez něj fallback `is:im` / `from:me`.
 - Vault: jen přes `app.vault_deps.brain_vault(mode=…)` — nikdy přímý `open_vault` z tools/rest.
+- `GET /v1/tasks/export` a MCP tool `export_tasks`: read-only snapshot tasků (frontmatter), bez rebuildu agent-context.
 - `GIT_VAULT_PUSH=1` povinné; mutate bez úspěšného push → 503.
 
 Build context Coolify: **`vps/`** (Dockerfile `COPY second-brain-hub/lib/` + `second-brain-brain/app/`).

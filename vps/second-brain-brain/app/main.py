@@ -36,6 +36,7 @@ from app.tools import update_task as update_task_tool
 from app.tools import append_task_note as append_task_note_tool
 from app.tools import close_task as close_task_tool
 from app.tools import edit_task_body as edit_task_body_tool
+from app.tools import export_tasks as export_tasks_tool
 from app.tools import find_tasks as find_tasks_tool
 from app.tools import focus_proposal as focus_proposal_tool
 from app.tools import get_task as get_task_tool
@@ -253,6 +254,22 @@ def rest_find_tasks(body: FindTasksBody, _auth: AuthPrincipal) -> dict:
         parent=body.parent,
         status=body.status,
         limit=body.limit,
+    )
+
+
+@app.get("/v1/tasks/export")
+def rest_export_tasks(
+    _auth: AuthPrincipal,
+    include_closed_days: int = 0,
+    projects_csv: str = "",
+    fields: str = "standard",
+    since: str | None = None,
+) -> dict[str, Any]:
+    return export_tasks_tool.export_tasks(
+        include_closed_days=include_closed_days,
+        projects_csv=projects_csv,
+        fields=fields,
+        since=since,
     )
 
 

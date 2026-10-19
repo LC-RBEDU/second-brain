@@ -242,6 +242,81 @@ def test_ensure_clone_refused_in_dry_run(tmp_path: Path):
         vault.ensure_clone()
 
 
+def test_blob_oid_matches_hash_object_without_subprocess(git_repo: Path):
+    """T8 — in-process blob id equals git hash-object; hash-object is not spawned."""
+    from git_io import git_blob_oid
+
+    data = b"abc\n\0\xff"
+    proc = subprocess.run(
+        ["git", "hash-object", "--stdin"],
+        input=data,
+        capture_output=True,
+        check=True,
+    )
+    expected = proc.stdout.decode().strip()
+    assert git_blob_oid(data, "sha1") == expected
+    vault = GitVault(git_repo, dry_run=True, push=False)
+    assert vault._blob_oid_for_bytes(data) == expected
+    sample = git_repo / "oid-sample.txt"
+    sample.write_bytes(data)
+    assert vault._blob_oid_for_path(sample) == expected
+    assert not any("hash-object" in arg for cmd in vault._git_cmds for arg in cmd)
+
+
+def test_sha256_blob_oid_matches_hash_object(tmp_path: Path):
+    root = tmp_path / "sha"
+    _git(tmp_path, "init", "--object-format=sha256", "-b", "main", str(root))
+    _git(root, "config", "user.email", "test@example.com")
+    _git(root, "config", "user.name", "Test")
+    data = b"sha-256 sample\n"
+    (root / "README.md").write_bytes(data)
+    _git(root, "add", "README.md")
+    _git(root, "commit", "-m", "init")
+    proc = subprocess.run(
+        ["git", "hash-object", "--stdin"],
+        input=data,
+        cwd=str(root),
+        capture_output=True,
+        check=True,
+    )
+    expected = proc.stdout.decode().strip()
+    assert len(expected) == 64
+    from git_io import git_blob_oid
+
+    assert git_blob_oid(data, "sha256") == expected
+    vault = GitVault(root, dry_run=True, push=False)
+    assert vault._object_format() == "sha256"
+    assert vault._blob_oid_for_bytes(data) == expected
+    assert vault._blob_oid_for_path(root / "README.md") == expected
+    assert not any("hash-object" in arg for cmd in vault._git_cmds for arg in cmd)
+
+
+def test_parse_log_name_only_splits_lf_inside_nul_chunks():
+    """C2 — NUL splits commits; LF splits paths; quoted/octal lines drop."""
+    from git_io import _parse_log_name_only_z
+
+    em = "02-PROJEKTY/alpha/tasks/X1 — Nadpis.md"
+    assert _parse_log_name_only_z(em + "\n") == {em}
+    assert _parse_log_name_only_z(em + "\0") == {em}
+    assert _parse_log_name_only_z(em + "\r\n") == {em}
+    multi = "02-PROJEKTY/alpha/tasks/A.md\n02-PROJEKTY/alpha/tasks/B.md\n"
+    assert _parse_log_name_only_z(multi) == {
+        "02-PROJEKTY/alpha/tasks/A.md",
+        "02-PROJEKTY/alpha/tasks/B.md",
+    }
+    nul_multi = "02-PROJEKTY/alpha/tasks/A.md\x0002-PROJEKTY/alpha/tasks/B.md\x00"
+    assert _parse_log_name_only_z(nul_multi) == {
+        "02-PROJEKTY/alpha/tasks/A.md",
+        "02-PROJEKTY/alpha/tasks/B.md",
+    }
+    quoted = '"02-PROJEKTY/alpha/tasks/X1 \\342\\200\\224 Nadpis.md"\n'
+    assert _parse_log_name_only_z(quoted) == set()
+    weird = "02-PROJEKTY/alpha/tasks/X\u2028Y.md\n"
+    assert _parse_log_name_only_z(weird) == {"02-PROJEKTY/alpha/tasks/X\u2028Y.md"}
+    assert _parse_log_name_only_z("README.md\n") == set()
+    assert _parse_log_name_only_z("") == set()
+
+
 def test_filemeta_oid_and_folder_mime(git_repo: Path):
     vault = GitVault(git_repo, dry_run=False, push=False)
     with vault:
