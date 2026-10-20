@@ -147,6 +147,7 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 30 | 2026-10-20 02:10 | IMPLEMENT | hlavní agent | F1 | — | needs_decision je jen prošlá review bez deadlinu. pytest test_today_priority.py: 13 passed |
 | 31 | 2026-10-20 02:20 | IMPLEMENT | hlavní agent | F2 | — | Kontrola dětí přes export na otevřeném vaultu. Bulk oid je 409 se seznamem failures. pytest hierarchy+bulk oid+create+cas: 57 passed |
 | 32 | 2026-10-20 02:26 | IMPLEMENT | hlavní agent | F3 | — | Klasifikace, náhled zavření a rozprostření v prohlížeči. vitest web: 22 passed |
+| 33 | 2026-10-20 02:35 | IMPLEMENT | hlavní agent | F4 | — | BFF export N=0, archiv 400, dávky se zastaví. pytest bff: 17 passed |
 
 ## Otevřené nálezy
 
