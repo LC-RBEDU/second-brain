@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { classify, visibleTasks } from "../classify.js";
 import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
@@ -43,14 +43,14 @@ function conflictText(detail) {
 }
 const TILES = [
   ["overdue", "Overdue"],
+  ["due_soon", "Due soon · 7 d"],
   ["to_decide", "K rozhodnutí"],
-  ["due_soon", "Blízký termín"],
-  ["waiting_overdue", "Waiting po termínu"],
-  ["doing", "Doing"],
   ["focus", "Focus"],
-  ["no_date", "Bez termínu"],
+  ["waiting_overdue", "Waiting po termínu"],
   ["errors", "Chybně zadané"],
-  ["stale", "Bez změny"],
+  ["doing", "Doing"],
+  ["stale", "Stale"],
+  ["no_date", "Bez termínu"],
 ];
 
 function idsForTile(classified, key) {
@@ -86,10 +86,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const [board, setBoard] = useState(false);
   const [detailId, setDetailId] = useState("");
   const [returnView, setReturnView] = useState("radar");
-  const [draft, setDraft] = useState({ title: "", deadline: "", parent: "" });
+  const [draft, setDraft] = useState({
+    title: "",
+    status: "Next",
+    deadline: "",
+    review: "",
+    waitUntil: "",
+    parent: "",
+  });
   const [newDraft, setNewDraft] = useState({ title: "", level: "task", status: "Next", deadline: "", review: "", parent: "", waitUntil: "" });
   const [checked, setChecked] = useState({});
   const [actions, setActions] = useState({});
+  const [mapOpen, setMapOpen] = useState(() => new Set());
   const [preview, setPreview] = useState(null);
   const [selectionDate, setSelectionDate] = useState("");
   const [from, setFrom] = useState("");
@@ -157,7 +165,14 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   function openDetail(task) {
     setReturnView(view);
     setDetailId(task.id);
-    setDraft({ title: task.title || "", deadline: task.deadline || "", parent: parentId(task.parent) });
+    setDraft({
+      title: task.title || "",
+      status: task.status || "Next",
+      deadline: task.deadline || "",
+      review: task.review_deadline || "",
+      waitUntil: task.waitUntil || "",
+      parent: parentId(task.parent),
+    });
     setView("detail");
   }
 
@@ -198,7 +213,13 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   async function saveDetail() {
     if (!detail || !api?.patch) return;
     const patch = { title: draft.title };
-    if (draft.deadline) patch.deadline = draft.deadline;
+    if (draft.status && draft.status !== detail.status) patch.status = draft.status;
+    if (draft.deadline !== (detail.deadline || "")) {
+      patch.deadline = draft.deadline;
+    } else if (draft.review !== (detail.review_deadline || "")) {
+      patch.review_deadline = draft.review;
+    }
+    if (draft.waitUntil !== (detail.waitUntil || "")) patch.waitUntil = draft.waitUntil;
     if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
     const result = await api.patch({ path: detail.path, patch, expect_oid: oidOf(detail) });
     if (await openConflict(result, patch, detail.path, detail.id)) return;
@@ -470,10 +491,23 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     );
   }
 
-  function TaskTable({ rows, groupLabel }) {
+  function TaskTable({ rows, groupLabel, groupByProject = false }) {
+    const groups = groupByProject
+      ? [...rows.reduce((map, task) => {
+          const key = task.project || "(bez projektu)";
+          if (!map.has(key)) map.set(key, []);
+          map.get(key).push(task);
+          return map;
+        }, new Map())]
+      : [[null, rows]];
     return (
-      <div data-layout-panel className={`${panelClass} overflow-x-auto`}>
-        {groupLabel && <h2 className="border-b border-[#e2e2e2] p-3 text-sm font-extrabold uppercase">{groupLabel}</h2>}
+      <div data-layout-panel className={`${panelClass} overflow-x-auto`} aria-label="Seznam">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#e2e2e2] px-4 py-3">
+          {groupLabel && <span className="text-sm font-extrabold uppercase">{groupLabel}</span>}
+          {groupByProject && <span className="text-sm text-[#5c5c5c]">· seskupeno podle projektu</span>}
+          <span className="flex-1" />
+          <span className="text-sm text-[#5c5c5c]">{rows.length} řádků</span>
+        </div>
         <table className="w-full min-w-[820px] text-left text-sm">
           <thead>
             <tr className="text-xs uppercase text-[#5c5c5c]">
@@ -482,25 +516,36 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <th className="p-2 font-bold">Status</th>
               <th className="p-2 font-bold">Deadline</th>
               <th className="p-2 font-bold">Review</th>
-              <th className="p-3 font-bold">Akce</th>
+              <th className="p-3 font-bold">Agent</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((task) => (
-              <tr key={task.id} className="border-t border-[#eeeeee]">
-                <td className="p-3">
-                  <TaskActions task={task} />
-                </td>
-                <td className="p-2 text-[#5c5c5c]">{parentId(task.parent) || "—"}</td>
-                <td className="p-2">
-                  <StatusPill status={task.status} />
-                </td>
-                <td className={`p-2 ${task.deadline && task.deadline < today ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"}`}>
-                  {task.deadline || "—"}
-                </td>
-                <td className="p-2 text-[#5c5c5c]">{task.review_deadline || "—"}</td>
-                <td className="p-3 text-xs text-[#5c5c5c]">{task.project || ""}</td>
-              </tr>
+            {groups.map(([projectKey, items]) => (
+              <Fragment key={projectKey || "all"}>
+                {projectKey && (
+                  <tr className="bg-[#f3f3f3]">
+                    <td colSpan={6} className="px-4 py-2 text-sm font-bold">
+                      {projectKey} · {items.length}
+                    </td>
+                  </tr>
+                )}
+                {items.map((task) => (
+                  <tr key={task.id} className="border-t border-[#eeeeee]">
+                    <td className="p-3">
+                      <TaskActions task={task} />
+                    </td>
+                    <td className="p-2 text-[#5c5c5c]">{parentId(task.parent) || "—"}</td>
+                    <td className="p-2">
+                      <StatusPill status={task.status} />
+                    </td>
+                    <td className={`p-2 ${task.deadline && task.deadline < today ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"}`}>
+                      {task.deadline || "—"}
+                    </td>
+                    <td className="p-2 text-[#5c5c5c]">{task.review_deadline || "—"}</td>
+                    <td className="p-3 text-xs text-[#5c5c5c]">{task.agent || "—"}</td>
+                  </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -565,38 +610,44 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               </button>
             </PageHeader>
             <p className="w-full text-xs text-[#5c5c5c]">
-              Snapshot z Brain · focus týden · {listed.length} otevřených · prošlý focus: {classified.radar.focus_stale.length}
+              Snapshot z Brain · focus týden {isoWeek(today)} · {listed.length} otevřených · prošlý focus:{" "}
+              {classified.radar.focus_stale.length}
             </p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Kategorie">
-              {TILES.map(([key, name]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={
-                    radarTile === key
-                      ? "rounded-md border-2 border-[#e4003a] bg-white p-3.5 text-left"
-                      : key === "errors"
-                        ? "rounded-md border border-[#a11834] bg-white p-3.5 text-left"
-                        : "rounded-md border border-[#b0b2b6] bg-white p-3.5 text-left"
-                  }
-                  onClick={() => setRadarTile(key)}
-                >
-                  <span
-                    className={`block text-xs font-bold uppercase ${
-                      key === "errors" || key === "overdue" ? "text-[#b8002e]" : "text-[#5c5c5c]"
-                    }`}
+              {TILES.map(([key, name]) => {
+                const count = key === "focus" ? `${classified.tiles.focus} / 10` : classified.tiles[key];
+                const srCount = classified.tiles[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={
+                      radarTile === key
+                        ? "rounded-md border-2 border-[#e4003a] bg-white p-3.5 text-left"
+                        : key === "errors"
+                          ? "rounded-md border border-[#a11834] bg-white p-3.5 text-left"
+                          : "rounded-md border border-[#b0b2b6] bg-white p-3.5 text-left"
+                    }
+                    onClick={() => setRadarTile(key)}
                   >
-                    {name}
-                  </span>
-                  <span className="block text-4xl font-black">{classified.tiles[key]}</span>
-                  <span className="sr-only">
-                    {name} {classified.tiles[key]}
-                  </span>
-                </button>
-              ))}
+                    <span
+                      className={`block text-xs font-bold uppercase ${
+                        key === "errors" || key === "overdue" ? "text-[#b8002e]" : "text-[#5c5c5c]"
+                      }`}
+                    >
+                      {key === "focus" ? `Focus ${isoWeek(today)}` : name}
+                    </span>
+                    <span className="block text-4xl font-black">{count}</span>
+                    <span className="sr-only">
+                      {key === "overdue" ? "Overdue" : name} {srCount}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             <TaskTable
               groupLabel={TILES.find(([key]) => key === radarTile)?.[1]}
+              groupByProject
               rows={idsForTile(classified, radarTile)
                 .map((id) => byId.get(id))
                 .filter(Boolean)}
@@ -649,66 +700,115 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
         {view === "map" && (
           <section aria-label="Mapa" className="flex flex-col gap-5">
-            <PageHeader title="Mapa" />
+            <PageHeader title="Mapa">
+              <div role="group" aria-label="Zobrazení" className="inline-flex overflow-hidden rounded-md border border-[#444]">
+                <span className="bg-[#444] px-4 py-3 font-bold text-[#fafafa]">Strom</span>
+                <span className="bg-white px-4 py-3 text-[#5c5c5c]">Mindmapa (fáze 2)</span>
+              </div>
+            </PageHeader>
             <div className="flex flex-wrap gap-4 text-xs text-[#5c5c5c]">
-              <span>Doing · Next · Waiting / Backlog</span>
+              <span>
+                <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-[#a11834]" /> Doing
+              </span>
+              <span>
+                <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-[#444]" /> Next
+              </span>
+              <span>
+                <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-[#b0b2b6]" /> Waiting / Backlog
+              </span>
               <span className="font-bold text-[#b8002e]">❗ overdue</span>
               <span className="font-bold text-[#b8002e]">⚠️ chybně zadané</span>
             </div>
-            <div data-layout-panel className={`${panelClass} py-2`}>
-              {mapGroups.map((group) => (
-                <div key={group.slug} className="border-b border-[#eeeeee] last:border-b-0">
-                  <div className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="font-extrabold uppercase">{group.slug}</span>
-                    <span className="text-sm text-[#5c5c5c]">
-                      {group.epics.length} epiců · {group.open} otevřených
-                    </span>
-                  </div>
-                  {group.epics.map(({ epic, stories, loose }) => (
-                    <div key={epic.id}>
-                      <button type="button" className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left" onClick={() => openDetail(epic)}>
-                        <span className="font-bold">{labelOf(epic)}</span>
-                        <span className="text-sm text-[#5c5c5c]">{stories.length + loose.length} dětí</span>
-                      </button>
-                      {stories.map((story) => (
-                        <button
-                          key={story.id}
-                          type="button"
-                          className="flex w-full items-center gap-3 px-4 py-1.5 pl-20 text-left text-sm"
-                          onClick={() => openDetail(story)}
-                        >
-                          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#444]" />
-                          <span className="font-bold">{labelOf(story)}</span>
-                          {story.deadline && story.deadline < today && (
-                            <span className="font-bold text-[#b8002e]">❗ {story.deadline}</span>
-                          )}
-                        </button>
+            <div data-layout-panel className={`${panelClass} py-2`} aria-label="Strom">
+              {mapGroups.map((group, index) => {
+                const open = mapOpen.size === 0 ? index === 0 : mapOpen.has(group.slug);
+                return (
+                  <div key={group.slug} className="border-b border-[#eeeeee] last:border-b-0">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left"
+                      onClick={() => {
+                        setMapOpen((prev) => {
+                          const next = new Set(prev);
+                          if (next.size === 0) {
+                            mapGroups.forEach((item, i) => {
+                              if (i === 0) next.add(item.slug);
+                            });
+                          }
+                          if (next.has(group.slug)) next.delete(group.slug);
+                          else next.add(group.slug);
+                          return next;
+                        });
+                      }}
+                    >
+                      <span aria-hidden="true" className="w-4">
+                        {open ? "▾" : "▸"}
+                      </span>
+                      <span className="flex-1 font-extrabold uppercase">{group.slug}</span>
+                      <span className="text-sm text-[#5c5c5c]">
+                        {group.epics.length} epiců · {group.open} otevřených
+                      </span>
+                    </button>
+                    {open &&
+                      group.epics.map(({ epic, stories, loose }) => (
+                        <div key={epic.id}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left"
+                            onClick={() => openDetail(epic)}
+                          >
+                            <span className="flex-1 font-bold">{labelOf(epic)}</span>
+                            <span className="text-sm text-[#5c5c5c]">{stories.length + loose.length} otevřených</span>
+                          </button>
+                          {stories.map((story) => (
+                            <button
+                              key={story.id}
+                              type="button"
+                              className="flex w-full items-center gap-3 px-4 py-1.5 pl-[76px] text-left text-sm"
+                              onClick={() => openDetail(story)}
+                            >
+                              <span
+                                className={`inline-block h-2.5 w-2.5 rounded-sm ${
+                                  story.status === "Doing"
+                                    ? "bg-[#a11834]"
+                                    : story.status === "Next"
+                                      ? "bg-[#444]"
+                                      : "bg-[#b0b2b6]"
+                                }`}
+                              />
+                              <span className="flex-1 font-bold">{labelOf(story)}</span>
+                              {story.deadline && story.deadline < today && (
+                                <span className="font-bold text-[#b8002e]">❗ {story.deadline}</span>
+                              )}
+                            </button>
+                          ))}
+                          {loose.map((task) => (
+                            <button
+                              key={task.id}
+                              type="button"
+                              className="flex w-full items-center gap-3 px-4 py-1.5 pl-[76px] text-left text-sm"
+                              onClick={() => openDetail(task)}
+                            >
+                              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#b0b2b6]" />
+                              <span>{labelOf(task)}</span>
+                            </button>
+                          ))}
+                        </div>
                       ))}
-                      {loose.map((task) => (
+                    {open &&
+                      [...group.orphanStories, ...group.orphanTasks].map((task) => (
                         <button
                           key={task.id}
                           type="button"
-                          className="flex w-full items-center gap-3 px-4 py-1.5 pl-20 text-left text-sm"
+                          className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left text-sm"
                           onClick={() => openDetail(task)}
                         >
-                          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#b0b2b6]" />
-                          <span>{labelOf(task)}</span>
+                          <span className="font-bold text-[#b8002e]">⚠️ {labelOf(task)}</span>
                         </button>
                       ))}
-                    </div>
-                  ))}
-                  {[...group.orphanStories, ...group.orphanTasks].map((task) => (
-                    <button
-                      key={task.id}
-                      type="button"
-                      className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left text-sm"
-                      onClick={() => openDetail(task)}
-                    >
-                      <span className="font-bold text-[#b8002e]">⚠️ {labelOf(task)}</span>
-                    </button>
-                  ))}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
@@ -899,7 +999,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           <section aria-label="Detail" data-layout-panel className={`${panelClass} mx-auto flex w-full max-w-xl flex-col gap-4 p-6`}>
             <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#5c5c5c]">
               <span>
-                {detail.type || "task"} · {detail.project || ""} · detail
+                {detail.type || "task"} · {detail.project || ""} · detail panel
               </span>
               <button type="button" className="min-h-11 min-w-11 text-xl" onClick={() => setView(returnView)} aria-label="Zavřít">
                 ×
@@ -910,15 +1010,50 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               Název
               <input className={fieldClass} aria-label="Název" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
             </label>
-            <label className={labelClass}>
-              Deadline
-              <input
-                className={fieldClass}
-                aria-label="Deadline úkolu"
-                value={draft.deadline}
-                onChange={(event) => setDraft({ ...draft, deadline: event.target.value })}
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={labelClass}>
+                Status
+                <select
+                  className={fieldClass}
+                  aria-label="Status úkolu"
+                  value={draft.status}
+                  onChange={(event) => setDraft({ ...draft, status: event.target.value })}
+                >
+                  {[...COLUMNS, "Done", "Cancelled"].map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={labelClass}>
+                Wait until
+                <input
+                  className={fieldClass}
+                  aria-label="WaitUntil úkolu"
+                  value={draft.waitUntil}
+                  disabled={draft.status !== "Waiting"}
+                  onChange={(event) => setDraft({ ...draft, waitUntil: event.target.value })}
+                />
+              </label>
+              <label className={labelClass}>
+                Deadline
+                <input
+                  className={`${fieldClass} ${draft.deadline ? "border-2 border-[#a11834]" : ""}`}
+                  aria-label="Deadline úkolu"
+                  value={draft.deadline}
+                  onChange={(event) => setDraft({ ...draft, deadline: event.target.value, review: event.target.value ? "" : draft.review })}
+                />
+              </label>
+              <label className={labelClass}>
+                Review date
+                <input
+                  className={fieldClass}
+                  aria-label="Review úkolu"
+                  value={draft.review}
+                  disabled={Boolean(draft.deadline)}
+                  onChange={(event) => setDraft({ ...draft, review: event.target.value })}
+                />
+              </label>
+            </div>
             {detail.type !== "epic" && (
               <label className={labelClass}>
                 Parent
@@ -944,6 +1079,39 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 </datalist>
               </label>
             )}
+            <div className="rounded-md bg-[#f3f3f3] p-3.5 text-sm">
+              <div className="mb-1 text-xs font-extrabold uppercase">Náhled změn</div>
+              {draft.title !== (detail.title || "") && (
+                <div>
+                  <b>title:</b> {detail.title || "—"} → {draft.title || "—"}
+                </div>
+              )}
+              {draft.status !== detail.status && (
+                <div>
+                  <b>status:</b> {detail.status} → {draft.status}
+                </div>
+              )}
+              {draft.deadline !== (detail.deadline || "") && (
+                <div>
+                  <b>deadline:</b> {detail.deadline || "—"} → {draft.deadline || "—"}
+                </div>
+              )}
+              {draft.review !== (detail.review_deadline || "") && (
+                <div>
+                  <b>review_deadline:</b> {detail.review_deadline || "—"} → {draft.review || "—"}
+                </div>
+              )}
+              {draft.parent !== parentId(detail.parent) && (
+                <div>
+                  <b>parent:</b> {parentId(detail.parent) || "—"} → {draft.parent || "—"}
+                </div>
+              )}
+              {draft.title === (detail.title || "") &&
+                draft.status === detail.status &&
+                draft.deadline === (detail.deadline || "") &&
+                draft.review === (detail.review_deadline || "") &&
+                draft.parent === parentId(detail.parent) && <div className="text-[#5c5c5c]">Beze změny</div>}
+            </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" className={btnPrimary} onClick={saveDetail}>
                 Uložit
@@ -958,6 +1126,40 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         {view === "new" && (
           <section aria-label="Nový task" data-layout-panel className={`${panelClass} mx-auto flex w-full max-w-lg flex-col gap-4 p-6`}>
             <h2 className="text-2xl font-black uppercase">+ Nový</h2>
+            <div role="radiogroup" aria-label="Úroveň nového tasku" className="inline-flex overflow-hidden rounded-md border border-[#444] self-start">
+              {[
+                ["epic", "Epic"],
+                ["story", "Story"],
+                ["task", "Task"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={newDraft.level === value}
+                  className={
+                    newDraft.level === value
+                      ? "min-h-11 bg-[#444] px-4 font-bold text-[#fafafa]"
+                      : "min-h-11 bg-white px-4 text-[#444]"
+                  }
+                  onClick={() => setNewDraft({ ...newDraft, level: value, parent: "" })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <label className="sr-only">
+              Úroveň
+              <select
+                aria-label="Úroveň nového tasku select"
+                value={newDraft.level}
+                onChange={(event) => setNewDraft({ ...newDraft, level: event.target.value, parent: "" })}
+              >
+                <option value="epic">Epic</option>
+                <option value="story">Story</option>
+                <option value="task">Task</option>
+              </select>
+            </label>
             <label className={labelClass}>
               Projekt
               <select
@@ -981,19 +1183,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 value={newDraft.title}
                 onChange={(event) => setNewDraft({ ...newDraft, title: event.target.value })}
               />
-            </label>
-            <label className={labelClass}>
-              Úroveň
-              <select
-                className={fieldClass}
-                aria-label="Úroveň nového tasku"
-                value={newDraft.level}
-                onChange={(event) => setNewDraft({ ...newDraft, level: event.target.value, parent: "" })}
-              >
-                <option value="epic">Epic</option>
-                <option value="story">Story</option>
-                <option value="task">Task</option>
-              </select>
             </label>
             <label className={labelClass}>
               Stav
@@ -1123,18 +1312,39 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                           <StatusPill status={task.status} />
                         </td>
                         <td className="p-2.5">
-                          {checked[task.id] && (
-                            <select
-                              className={fieldClass}
-                              aria-label={`Akce ${task.id}`}
-                              value={actions[task.id] || (offerKeep(task) ? "keep" : "done")}
-                              onChange={(event) => setActions({ ...actions, [task.id]: event.target.value })}
-                            >
-                              {offerKeep(task) && <option value="keep">Ponechat</option>}
-                              <option value="done">Hotovo</option>
-                              <option value="cancelled">Zrušit</option>
-                            </select>
-                          )}
+                          <div className="flex flex-wrap gap-1" role="group" aria-label={`Akce ${task.id}`}>
+                            {(offerKeep(task)
+                              ? [
+                                  ["cancelled", "Zrušit"],
+                                  ["done", "Hotovo"],
+                                  ["keep", "Ponechat"],
+                                ]
+                              : [
+                                  ["cancelled", "Zrušit"],
+                                  ["done", "Hotovo"],
+                                ]
+                            ).map(([value, label]) => {
+                              const current = actions[task.id] || (offerKeep(task) ? "keep" : "done");
+                              const on = checked[task.id] && current === value;
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  className={
+                                    on
+                                      ? "min-h-8 rounded border border-[#a11834] bg-[#a11834] px-2 text-xs font-bold text-white"
+                                      : "min-h-8 rounded border border-[#e2e2e2] bg-white px-2 text-xs text-[#444]"
+                                  }
+                                  onClick={() => {
+                                    setChecked({ ...checked, [task.id]: true });
+                                    setActions({ ...actions, [task.id]: value });
+                                  }}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </td>
                       </tr>
                     ))}

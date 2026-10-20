@@ -86,7 +86,7 @@ describe("screens", () => {
     const browse = screen.getByRole("region", { name: "Seznam úklidu" });
     expect(within(browse).queryByText(/Pauza/)).toBeNull();
     fireEvent.click(within(browse).getByRole("checkbox", { name: "Vybrat F-S1 — Story" }));
-    fireEvent.change(screen.getByLabelText("Akce F-S1"), { target: { value: "cancelled" } });
+    fireEvent.click(within(screen.getByLabelText("Akce F-S1")).getByRole("button", { name: "Zrušit" }));
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
     const preview = screen.getByRole("region", { name: "Náhled úklidu" });
     expect(within(preview).getByText(/Pauza/)).toBeInTheDocument();
@@ -239,7 +239,7 @@ describe("screens", () => {
     fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
     for (const id of ["A1", "A2", "B1", "B2", "C1", "C2"]) {
       fireEvent.click(screen.getByRole("checkbox", { name: `Vybrat ${id} — ${id}` }));
-      fireEvent.change(screen.getByLabelText(`Akce ${id}`), { target: { value: "done" } });
+      fireEvent.click(within(screen.getByLabelText(`Akce ${id}`)).getByRole("button", { name: "Hotovo" }));
     }
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
     await act(async () => {
@@ -278,9 +278,9 @@ describe("screens", () => {
     ], api);
     fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-E1 — Epic" }));
-    fireEvent.change(screen.getByLabelText("Akce F-E1"), { target: { value: "cancelled" } });
+    fireEvent.click(within(screen.getByLabelText("Akce F-E1")).getByRole("button", { name: "Zrušit" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-S2 — Jiná" }));
-    fireEvent.change(screen.getByLabelText("Akce F-S2"), { target: { value: "cancelled" } });
+    fireEvent.click(within(screen.getByLabelText("Akce F-S2")).getByRole("button", { name: "Zrušit" }));
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
@@ -392,7 +392,7 @@ describe("screens", () => {
     renderApp([task({ id: "F-S1", type: "story", title: "Rodič" }), ...children], api);
     fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" }));
-    fireEvent.change(screen.getByLabelText("Akce F-S1"), { target: { value: "done" } });
+    fireEvent.click(within(screen.getByLabelText("Akce F-S1")).getByRole("button", { name: "Hotovo" }));
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
     expect(screen.getByText("Rodina je nad 80. Odeber předka.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Uložit" })).toBeDisabled();
@@ -409,7 +409,7 @@ describe("screens", () => {
     renderApp([task({ id: "F-S1", type: "story", title: "Rodič" })], small);
     fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" }));
-    fireEvent.change(screen.getByLabelText("Akce F-S1"), { target: { value: "done" } });
+    fireEvent.click(within(screen.getByLabelText("Akce F-S1")).getByRole("button", { name: "Hotovo" }));
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
