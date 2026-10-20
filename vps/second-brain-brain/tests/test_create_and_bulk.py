@@ -229,3 +229,107 @@ def test_b29_waiting_without_waituntil_does_not_open_the_vault():
     assert ei.value.error_reason == "waiting_no_waituntil"
     opened.assert_not_called()
     vault.mkdir_p.assert_not_called()
+
+
+def test_b13_deadline_clears_review_and_waiting_keeps_its_date():
+    from tests.test_hierarchy_contract import _update, _vault as mem_vault
+
+    vault = mem_vault(("finance", "Finance"))
+    dated = "02-PROJEKTY/finance/tasks/F-T1.md"
+    waiting = "02-PROJEKTY/finance/tasks/F-T2.md"
+    vault.add(
+        dated,
+        "---\nid: F-T1\ntype: task\ntitle: F-T1\nslug: finance\nstatus: Next\n"
+        "parent:\ndeadline:\nreview_deadline: 2026-11-01\n---\n",
+    )
+    vault.add(
+        waiting,
+        "---\nid: F-T2\ntype: task\ntitle: F-T2\nslug: finance\nstatus: Waiting\n"
+        "parent:\nwaitUntil: 2026-11-02\n---\n",
+    )
+    _update(vault, dated, {"deadline": "2026-12-01"})
+    written = vault.files[dated]
+    assert "2026-12-01" in written
+    assert "2026-11-01" not in written
+    with pytest.raises(BrainClientError) as ei:
+        _update(vault, waiting, {"waitUntil": ""})
+    assert ei.value.error_reason == "waiting_no_waituntil"
+    assert "title: F-T2" in vault.files[waiting]
+    _update(vault, waiting, {"title": "Novy nazev"})
+    assert "Novy nazev" in vault.files[waiting]
+
+
+def test_b14_and_b33_create_keeps_detail_and_drops_review_when_deadline_is_set():
+    from tests.test_hierarchy_contract import _create, _vault as mem_vault
+
+    vault = mem_vault(("finance", "Finance"))
+    preview = _create(
+        vault,
+        slug="finance",
+        title="Cekam",
+        level="epic",
+        status="Waiting",
+        waitUntil="2026-11-02",
+        detail="poznamka",
+        dry_run=True,
+    )
+    assert preview["id"]
+    assert preview["dry_run"] is True
+    assert not any("Cekam" in text for text in vault.files.values())
+    before = set(vault.files)
+    _create(
+        vault,
+        slug="finance",
+        title="S terminem",
+        level="epic",
+        detail="poznamka",
+        deadline="2026-12-01",
+        review_deadline="2026-11-01",
+        peeks=[("RBU41", "t")],
+    )
+    created = [text for path, text in vault.files.items() if path not in before]
+    assert len(created) == 1
+    assert "poznamka" in created[0]
+    assert "2026-12-01" in created[0]
+    assert "2026-11-01" not in created[0]
+
+
+def test_b50_archived_done_parent_is_not_a_deadline_bridge():
+    from tests.test_hierarchy_contract import _update, _vault as mem_vault
+
+    vault = mem_vault(("finance", "Finance"))
+    vault.add(
+        "07-ARCHIV/tasks-done/finance/F-S1.md",
+        "---\nid: F-S1\ntype: story\ntitle: F-S1\nslug: finance\nstatus: Done\n"
+        "deadline: 2026-10-01\n---\n",
+    )
+    child = "02-PROJEKTY/finance/tasks/F-T1.md"
+    vault.add(
+        child,
+        "---\nid: F-T1\ntype: task\ntitle: F-T1\nslug: finance\nstatus: Next\n"
+        'parent: "[[F-S1]]"\ndeadline:\n---\n',
+    )
+    _update(vault, child, {"deadline": "2026-12-01"})
+    assert "2026-12-01" in vault.files[child]
+
+
+def test_b52_done_parent_still_in_tasks_blocks_a_later_child_deadline():
+    from tests.test_hierarchy_contract import _update, _vault as mem_vault
+
+    vault = mem_vault(("finance", "Finance"))
+    vault.add(
+        "02-PROJEKTY/finance/tasks/F-S1.md",
+        "---\nid: F-S1\ntype: story\ntitle: F-S1\nslug: finance\nstatus: Done\n"
+        "deadline: 2026-10-01\n---\n",
+    )
+    child = "02-PROJEKTY/finance/tasks/F-T1.md"
+    original = (
+        "---\nid: F-T1\ntype: task\ntitle: F-T1\nslug: finance\nstatus: Next\n"
+        'parent: "[[F-S1]]"\ndeadline:\n---\n'
+    )
+    vault.add(child, original)
+    with pytest.raises(BrainClientError) as ei:
+        _update(vault, child, {"deadline": "2026-12-01"})
+    assert ei.value.error_reason == "deadline_order"
+    assert ei.value.detail["conflicts"]
+    assert vault.files[child] == original

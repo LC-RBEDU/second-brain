@@ -34,6 +34,9 @@ const api = {
       body: JSON.stringify(body),
     }).then(readJson);
   },
+  item(taskId) {
+    return fetch(`/api/tasks/item?task_id=${encodeURIComponent(taskId)}`).then(readJson);
+  },
   propose(body) {
     return fetch("/api/focus/propose", {
       method: "POST",

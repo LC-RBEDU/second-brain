@@ -288,4 +288,61 @@ describe("screens", () => {
     expect(screen.queryByRole("button", { name: "Přesto uložit" })).toBeNull();
     expect(api.cleanup).toHaveBeenCalledTimes(1);
   });
+
+  it("B19 proposes the current Prague week and shows the task limit without force-save", async () => {
+    const api = {
+      propose: vi.fn()
+        .mockResolvedValueOnce({ ok: false, error_reason: "focus_limit_exceeded" })
+        .mockResolvedValueOnce({ ok: true, proposal_id: "p1" }),
+      apply: vi.fn().mockResolvedValue({ ok: true }),
+    };
+    renderApp([task({ id: "F-T1", title: "Focus karta" })], api);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Focus F-T1" }));
+    });
+    expect(api.propose).toHaveBeenCalledWith({
+      task_path: "02-PROJEKTY/finance/tasks/F-T1.md",
+      expect_oid: "",
+      focus_week: "2026-W43",
+    });
+    expect(screen.getByText("Focus už má 10 tasků")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Přesto uložit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Použít focus" })).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Focus F-T1" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Použít focus" }));
+    });
+    expect(api.apply).toHaveBeenCalledWith({ proposal_id: "p1" });
+  });
+
+  it("A16 shows the six fields from the vault item", async () => {
+    const api = {
+      patch: vi.fn().mockResolvedValue({ ok: false, error_reason: "oid_mismatch", oid: "oid-new" }),
+      item: vi.fn().mockResolvedValue({
+        frontmatter: {
+          title: "Původní",
+          status: "Next",
+          deadline: "2026-10-01",
+          review_deadline: "2026-11-01",
+          waitUntil: "",
+          parent: "[[F-S1]]",
+        },
+      }),
+    };
+    renderApp([task({ id: "F-T1", title: "Původní" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
+    fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Nový název" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(api.item).toHaveBeenCalledWith("F-T1");
+    expect(screen.getByText("U tebe: Nový název")).toBeInTheDocument();
+    expect(screen.getByText("Ve vaultu: Původní")).toBeInTheDocument();
+    expect(screen.getByText("status: Next / Next")).toBeInTheDocument();
+    expect(screen.getByText("deadline: 2026-10-01 / 2026-10-01")).toBeInTheDocument();
+    expect(screen.getByText("review: 2026-11-01 / 2026-11-01")).toBeInTheDocument();
+    expect(screen.getByText("parent: [[F-S1]] / [[F-S1]]")).toBeInTheDocument();
+  });
 });

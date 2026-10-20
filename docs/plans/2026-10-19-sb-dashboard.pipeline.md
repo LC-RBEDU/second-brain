@@ -152,6 +152,8 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 35 | 2026-10-20 02:55 | IMPLEMENT | hlavní agent | F6 | — | Image bez vaultu, setup sslip, redirect URI na stávajícího Google klienta. pytest bff: 20 passed. vitest web: 32 passed. Docker daemon neběžel, image se nesestavila |
 | 36 | 2026-10-20 03:07 | REVIEW | 908c8b4b-f7d0-46b7-8bb4-c84e9a29e1c5 | K PŘEPRACOVÁNÍ (7 BLOCKER, 5 MAJOR, 1 MINOR) | NEW-1–NEW-12 | Úklid bez rozprostření a bližšího uzavření, jednopoložkový oid, prázdný panel termínů, Waiting a nový task. Serverová kontrola dětí a export bez Done sedí |
 | 37 | 2026-10-20 03:17 | IMPLEMENT | hlavní agent | IMPL NEW-1–NEW-9, NEW-11, NEW-12 | NEW-10 otevřený | Úklid rozprostírá dny a přepíná zamčený řádek. Jedna položka si vezme oid z vrcholu. Panel čte conflicts. Nový task, Waiting a focus mají formulář. vitest 32 passed. pytest bff 21 passed |
+| 38 | 2026-10-20 03:32 | REVIEW | 75fdd69c-1c62-4cfb-8c47-dcee112581c1 | K PŘEPRACOVÁNÍ (1 BLOCKER, 1 MAJOR, 1 MINOR) | NEW-10, NEW-11, NEW-12 | Focus šel s prázdným týdnem. Testy brainu pořád chyběly. Dialog neshody ukazoval jen názvy. NEW-1 až NEW-9 v diffu seděly |
+| 39 | 2026-10-20 03:42 | IMPLEMENT | hlavní agent | IMPL NEW-10, NEW-11, NEW-12 | — | Focus posílá aktuální týden a důvod `focus_limit_exceeded`. Dialog čte šest polí z `/api/tasks/item`. Testy B9, B13–B15, B33, B50, B52. vitest 34 passed. pytest brain+bff 40 passed |
 
 ## Otevřené nálezy
 
@@ -204,6 +206,6 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | NEW-7 | BLOCKER | IMPL | opraveno v #37 | 1 |
 | NEW-8 | MAJOR | IMPL | opraveno v #37 | 1 |
 | NEW-9 | MAJOR | IMPL | opraveno v #37 | 1 |
-| NEW-10 | MAJOR | IMPL | otevřený — chybí testy B9, B13, B14, B15, B33, B50, B52 | 1 |
-| NEW-11 | MAJOR | IMPL | opraveno v #37 | 1 |
-| NEW-12 | MINOR | IMPL | opraveno v #37 | 1 |
+| NEW-10 | MAJOR | IMPL | opraveno v #39 | 2 |
+| NEW-11 | BLOCKER | IMPL | opraveno v #39 — prázdný týden focus mazal | 2 |
+| NEW-12 | MINOR | IMPL | opraveno v #39 | 2 |

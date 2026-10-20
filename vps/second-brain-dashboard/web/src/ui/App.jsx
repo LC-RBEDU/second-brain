@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { classify, visibleTasks } from "../classify.js";
-import { pausedSlugs, projectSlug } from "../focusSlots.js";
+import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
 import { closingPreview, kanbanPatch, offerKeep, resolveCloser, rowPatch } from "../writes.js";
 
 const COLUMNS = ["Doing", "Next", "Waiting", "Backlog"];
 const FOCUS_TEXT = {
   focus_story_has_open_child: "Story s otevřeným taskem do focusu nepatří",
+  focus_limit_exceeded: "Focus už má 10 tasků",
   focus_task_limit_exceeded: "Focus už má 10 tasků",
   focus_epic_limit_exceeded: "Focus už má 5 epiců",
   cas_conflict: "Neshoda verze",
 };
+const COMPARE_FIELDS = ["title", "status", "deadline", "review_deadline", "waitUntil", "parent"];
 
 function conflictText(detail) {
   const rows = detail?.conflicts || [];
@@ -98,18 +100,29 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     setView("detail");
   }
 
-  function openConflict(result, patch, path) {
+  async function openConflict(result, patch, path, taskId) {
     if (result?.ok) {
       onRefresh?.();
       return true;
     }
     if (result?.error_reason === "oid_mismatch") {
+      let current = result.current || {};
+      if (api?.item && taskId) {
+        const item = await api.item(taskId);
+        if (item?.frontmatter) current = item.frontmatter;
+      }
+      const yours = {};
+      const vault = {};
+      for (const key of COMPARE_FIELDS) {
+        vault[key] = current[key] == null ? "" : String(current[key]);
+        yours[key] = Object.prototype.hasOwnProperty.call(patch, key) ? String(patch[key] ?? "") : vault[key];
+      }
       setDialog({
         kind: "q9",
         path,
         patch,
-        draftTitle: patch.title || "",
-        currentTitle: result.current?.title || "",
+        yours,
+        vault,
         oid: result.oid,
       });
       return false;
@@ -126,7 +139,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     const patch = { title: draft.title };
     if (draft.deadline) patch.deadline = draft.deadline;
     const result = await api.patch({ path: detail.path, patch, expect_oid: oidOf(detail) });
-    if (openConflict(result, patch, detail.path)) return;
+    if (await openConflict(result, patch, detail.path, detail.id)) return;
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") return;
   }
 
@@ -144,7 +157,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     const patch = kanbanPatch(task, status, openTasks);
     if (!patch || !api?.patch) return;
     const result = await api.patch({ path: task.path, patch, expect_oid: oidOf(task) });
-    openConflict(result, patch, task.path);
+    await openConflict(result, patch, task.path, task.id);
   }
 
   async function confirmDoing() {
@@ -161,7 +174,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       return;
     }
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
-      openConflict(result, patch, dialog.task.path);
+      await openConflict(result, patch, dialog.task.path, dialog.task.id);
       return;
     }
     setDialog(null);
@@ -181,7 +194,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       return;
     }
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
-      openConflict(result, patch, dialog.task.path);
+      await openConflict(result, patch, dialog.task.path, dialog.task.id);
       return;
     }
     setDialog(null);
@@ -323,7 +336,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   async function proposeFocus(task) {
     if (!api?.propose) return;
-    const result = await api.propose({ task_path: task.path, expect_oid: oidOf(task), focus_week: "" });
+    const result = await api.propose({ task_path: task.path, expect_oid: oidOf(task), focus_week: isoWeek(today) });
     if (result?.ok && result.proposal_id) {
       setDialog({ kind: "focus", proposalId: result.proposal_id, text: "" });
       return;
@@ -641,8 +654,13 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
       {dialog?.kind === "q9" && (
         <div role="dialog" aria-label="Neshoda verze">
-          <p>U tebe: {dialog.draftTitle}</p>
-          <p>Ve vaultu: {dialog.currentTitle}</p>
+          <p>U tebe: {dialog.yours.title}</p>
+          <p>Ve vaultu: {dialog.vault.title}</p>
+          <p>status: {dialog.yours.status} / {dialog.vault.status}</p>
+          <p>deadline: {dialog.yours.deadline} / {dialog.vault.deadline}</p>
+          <p>review: {dialog.yours.review_deadline} / {dialog.vault.review_deadline}</p>
+          <p>waitUntil: {dialog.yours.waitUntil} / {dialog.vault.waitUntil}</p>
+          <p>parent: {dialog.yours.parent} / {dialog.vault.parent}</p>
           <button
             type="button"
             onClick={() => {
