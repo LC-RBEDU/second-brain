@@ -1,0 +1,895 @@
+{
+  "v": 3,
+  "assetGroups": {
+    "Images": {
+      "files": {
+        "cutout-example.webp": {
+          "blob": "60cb48c6d96b3b88761edda7b6a682a4",
+          "name": "cutout-example.webp",
+          "size": 365558,
+          "type": "image/webp"
+        },
+        "ilustrace-27.svg": {
+          "blob": "fa804c3dbd3ee8f43a19493f6bbe1fc1",
+          "name": "ilustrace-27.svg",
+          "size": 40079,
+          "type": "image/svg+xml"
+        },
+        "ilustrace-31.svg": {
+          "blob": "c52aace33055fb2b0f349cd8ccbff709",
+          "name": "ilustrace-31.svg",
+          "size": 48811,
+          "type": "image/svg+xml"
+        },
+        "ilustrace-46.svg": {
+          "blob": "7ced070294abe9553d0c5e1bc3ee1fd9",
+          "name": "ilustrace-46.svg",
+          "size": 39717,
+          "type": "image/svg+xml"
+        },
+        "ilustrace-47.svg": {
+          "blob": "51c730b033eaa58b77b029489832a2f1",
+          "name": "ilustrace-47.svg",
+          "size": 31295,
+          "type": "image/svg+xml"
+        },
+        "ilustrace-48.svg": {
+          "blob": "2562e120ef86b41dff48d31c52d15b19",
+          "name": "ilustrace-48.svg",
+          "size": 58480,
+          "type": "image/svg+xml"
+        },
+        "ilustrace-49.svg": {
+          "blob": "054266067874ae330f716e2c0c416bd8",
+          "name": "ilustrace-49.svg",
+          "size": 71110,
+          "type": "image/svg+xml"
+        },
+        "ilustrace-50.svg": {
+          "blob": "a392e1e1decd8b1a577b2e8e8298cbba",
+          "name": "ilustrace-50.svg",
+          "size": 19218,
+          "type": "image/svg+xml"
+        },
+        "photo-conversation-net.webp": {
+          "blob": "c1ca2f897d33dfd42a87d043dd37fc99",
+          "name": "photo-conversation-net.webp",
+          "size": 497080,
+          "type": "image/webp"
+        }
+      },
+      "name": "Images",
+      "order": []
+    },
+    "Komponenty": {
+      "files": {
+        "box-antracit.svg": {
+          "blob": "44f80e964df70e778c81d2a35d6693c0",
+          "name": "box-antracit.svg",
+          "size": 367,
+          "type": "image/svg+xml"
+        },
+        "box-bily.svg": {
+          "blob": "53e3a2456ce2d7c8426360c8158686cb",
+          "name": "box-bily.svg",
+          "size": 365,
+          "type": "image/svg+xml"
+        },
+        "box-cerveny.svg": {
+          "blob": "036f6ff988434671bc4dc77af8124a39",
+          "name": "box-cerveny.svg",
+          "size": 372,
+          "type": "image/svg+xml"
+        },
+        "box-vinovy.svg": {
+          "blob": "5101c1e757fd9a856516184319fd2dac",
+          "name": "box-vinovy.svg",
+          "size": 367,
+          "type": "image/svg+xml"
+        },
+        "kruh-antracit.svg": {
+          "blob": "b4678ed4376c0e6af050de5d0c7c6aa1",
+          "name": "kruh-antracit.svg",
+          "size": 460,
+          "type": "image/svg+xml"
+        },
+        "kruh-bily.svg": {
+          "blob": "33279672dc2742c02d6c347f8be875e3",
+          "name": "kruh-bily.svg",
+          "size": 458,
+          "type": "image/svg+xml"
+        },
+        "kruh-cerveny.svg": {
+          "blob": "55e37a8661b0e84af7ecb3f690c85805",
+          "name": "kruh-cerveny.svg",
+          "size": 465,
+          "type": "image/svg+xml"
+        },
+        "kruh-vinovy.svg": {
+          "blob": "9ef8d5defc9b9c474ba8381afec92208",
+          "name": "kruh-vinovy.svg",
+          "size": 460,
+          "type": "image/svg+xml"
+        },
+        "linka-rovna-antracit.svg": {
+          "blob": "bf24f655748f071a59cd3956c964102b",
+          "name": "linka-rovna-antracit.svg",
+          "size": 367,
+          "type": "image/svg+xml"
+        },
+        "linka-rovna-bila.svg": {
+          "blob": "3b9d7795ad7a8dcc06ff60be85b21791",
+          "name": "linka-rovna-bila.svg",
+          "size": 365,
+          "type": "image/svg+xml"
+        },
+        "linka-rovna-cervena.svg": {
+          "blob": "b04cece05b08a34501d704bcc2dc1c6f",
+          "name": "linka-rovna-cervena.svg",
+          "size": 372,
+          "type": "image/svg+xml"
+        },
+        "linka-rovna-vinova.svg": {
+          "blob": "87b0fb3384817aa616f67932a644b466",
+          "name": "linka-rovna-vinova.svg",
+          "size": 367,
+          "type": "image/svg+xml"
+        },
+        "linka-vlnita-antracit.svg": {
+          "blob": "89bf7b21be911c3ef95a0a3c1ac3dac9",
+          "name": "linka-vlnita-antracit.svg",
+          "size": 367,
+          "type": "image/svg+xml"
+        },
+        "linka-vlnita-bila.svg": {
+          "blob": "b78ede27ff14d2e0c7adc44744fca90b",
+          "name": "linka-vlnita-bila.svg",
+          "size": 365,
+          "type": "image/svg+xml"
+        },
+        "linka-vlnita-cervena.svg": {
+          "blob": "52e851e15b6275464e43aabfee0430b5",
+          "name": "linka-vlnita-cervena.svg",
+          "size": 372,
+          "type": "image/svg+xml"
+        },
+        "linka-vlnita-vinova.svg": {
+          "blob": "2da0f327f47d8e3fc94e40c0798e73ef",
+          "name": "linka-vlnita-vinova.svg",
+          "size": 367,
+          "type": "image/svg+xml"
+        },
+        "pas-natrzeny-antracit.svg": {
+          "blob": "24a42c9441e02f9181a7fd974e5a6bdf",
+          "name": "pas-natrzeny-antracit.svg",
+          "size": 2481,
+          "type": "image/svg+xml"
+        },
+        "pas-natrzeny-cerveny.svg": {
+          "blob": "a3b5f214b9c484ac275534340ae3d1af",
+          "name": "pas-natrzeny-cerveny.svg",
+          "size": 2486,
+          "type": "image/svg+xml"
+        },
+        "pas-natrzeny-vinovy.svg": {
+          "blob": "1877a1e5a5ebc620c89586223515b54d",
+          "name": "pas-natrzeny-vinovy.svg",
+          "size": 2481,
+          "type": "image/svg+xml"
+        },
+        "box-tenky-vinovy.svg": {
+          "blob": "50b1e3e790928d9702f825ce784053a6",
+          "name": "box-tenky-vinovy.svg",
+          "size": 428,
+          "type": "image/svg+xml"
+        },
+        "box-tenky-cerveny.svg": {
+          "blob": "dec8080100d43f8eb41547aa73140f14",
+          "name": "box-tenky-cerveny.svg",
+          "size": 428,
+          "type": "image/svg+xml"
+        },
+        "box-tenky-antracit.svg": {
+          "blob": "6629e7ee22df992b60219ca88c88771b",
+          "name": "box-tenky-antracit.svg",
+          "size": 428,
+          "type": "image/svg+xml"
+        },
+        "box-tenky-bily.svg": {
+          "blob": "e18514e956f0427259c7852a89b6e55a",
+          "name": "box-tenky-bily.svg",
+          "size": 428,
+          "type": "image/svg+xml"
+        }
+      },
+      "name": "Komponenty",
+      "order": [
+        "linka-rovna-vinova.svg",
+        "linka-rovna-cervena.svg",
+        "linka-rovna-antracit.svg",
+        "linka-rovna-bila.svg",
+        "linka-vlnita-vinova.svg",
+        "linka-vlnita-cervena.svg",
+        "linka-vlnita-antracit.svg",
+        "linka-vlnita-bila.svg",
+        "box-vinovy.svg",
+        "box-cerveny.svg",
+        "box-antracit.svg",
+        "box-bily.svg",
+        "kruh-vinovy.svg",
+        "kruh-cerveny.svg",
+        "kruh-antracit.svg",
+        "kruh-bily.svg",
+        "pas-natrzeny-vinovy.svg",
+        "pas-natrzeny-cerveny.svg",
+        "pas-natrzeny-antracit.svg"
+      ]
+    },
+    "Logos": {
+      "files": {
+        "logo-dark-alternativni.svg": {
+          "blob": "b656fe8de6030a73b88649b66ff68edc",
+          "name": "logo-dark-alternativni.svg",
+          "size": 7886,
+          "type": "image/svg+xml"
+        },
+        "logo-dark-logo.svg": {
+          "blob": "041da01038e564e4f18cc03794e49bc1",
+          "name": "logo-dark-logo.svg",
+          "size": 7914,
+          "type": "image/svg+xml"
+        },
+        "logo-light-logo.svg": {
+          "blob": "99267bf181473e16d3ee847a1816ff03",
+          "name": "logo-light-logo.svg",
+          "size": 7950,
+          "type": "image/svg+xml"
+        },
+        "logo-universal-symbol.svg": {
+          "blob": "bc9abeed4618424758aa0d8c28573e29",
+          "name": "logo-universal-symbol.svg",
+          "size": 1301,
+          "type": "image/svg+xml"
+        },
+        "logo-exponential-circles.png": {
+          "blob": "45c2ab54b03dc8d12ec3151a68f64067",
+          "name": "logo-exponential-circles.png",
+          "size": 60146,
+          "type": "image/png"
+        },
+        "logo-exponential-circles-negativ.png": {
+          "blob": "ee1d33d50cb0d440dc3437679da2ae28",
+          "name": "logo-exponential-circles-negativ.png",
+          "size": 36561,
+          "type": "image/png"
+        },
+        "logo-brain-breakfast.png": {
+          "blob": "0d8a19f6ea58da607a97573e3492faf5",
+          "name": "logo-brain-breakfast.png",
+          "size": 52979,
+          "type": "image/png"
+        },
+        "logo-brain-breakfast-negativ.png": {
+          "blob": "4f4d5f48b4da26e6225052bb1d5727f7",
+          "name": "logo-brain-breakfast-negativ.png",
+          "size": 39622,
+          "type": "image/png"
+        }
+      },
+      "name": "Logos",
+      "order": []
+    },
+    "Reference": {
+      "files": {
+        "background-red.png": {
+          "blob": "0bbdd57d09db1f4191d478b6b65f04d3",
+          "name": "background-red.png",
+          "size": 43176,
+          "type": "image/png"
+        },
+        "natrzene-linky-dark-standard.png": {
+          "blob": "6b726e92f584005d69653a122274305a",
+          "name": "natrzene-linky-dark-standard.png",
+          "size": 30135,
+          "type": "image/png"
+        },
+        "sipky-karusel.png": {
+          "blob": "3974bdb4242da7bfd50d2289c9515844",
+          "name": "sipky-karusel.png",
+          "size": 23220,
+          "type": "image/png"
+        },
+        "sit-barvy-dark-standard.png": {
+          "blob": "ff35be778d7e162f62ab372562cc7eef",
+          "name": "sit-barvy-dark-standard.png",
+          "size": 205575,
+          "type": "image/png"
+        },
+        "web-styleguide-svetly.png": {
+          "blob": "739c42a7ce27cd1cd3fd9aaaf9a6635f",
+          "name": "web-styleguide-svetly.png",
+          "size": 1032312,
+          "type": "image/png"
+        },
+        "web-styleguide-tmavy-summit.png": {
+          "blob": "5257ef1b8d418dbf4df7556c561da60b",
+          "name": "web-styleguide-tmavy-summit.png",
+          "size": 877535,
+          "type": "image/png"
+        }
+      },
+      "name": "Reference",
+      "order": []
+    },
+    "Slides": {
+      "files": {
+        "kruh-tmavy.png": {
+          "blob": "0834ecfbf775c5d139be86b605021289",
+          "name": "kruh-tmavy.png",
+          "size": 42829,
+          "type": "image/png"
+        },
+        "linka-hlavicky.png": {
+          "blob": "6c32e9a541edd1d7a5a6d95d75093dc9",
+          "name": "linka-hlavicky.png",
+          "size": 908,
+          "type": "image/png"
+        },
+        "linka-teckovana.png": {
+          "blob": "80f1061d923be7e51c358e7a1df98d82",
+          "name": "linka-teckovana.png",
+          "size": 3760,
+          "type": "image/png"
+        },
+        "oblouk-roh.png": {
+          "blob": "a8ab2f805530d5b5d83dd534dce30486",
+          "name": "oblouk-roh.png",
+          "size": 32506,
+          "type": "image/png"
+        },
+        "plocha-cervena.png": {
+          "blob": "c573cd9faaa967f7a8ce56f873986100",
+          "name": "plocha-cervena.png",
+          "size": 16648,
+          "type": "image/png"
+        },
+        "pozadi-papir.png": {
+          "blob": "91c3ef18490519484a3ac65134a04873",
+          "name": "pozadi-papir.png",
+          "size": 1957204,
+          "type": "image/png"
+        },
+        "skvrna.png": {
+          "blob": "cb8bdc5db29f78c25987837c385bc835",
+          "name": "skvrna.png",
+          "size": 11552,
+          "type": "image/png"
+        },
+        "tahy-zdurazneni.png": {
+          "blob": "923d69216a6604402ab7fb8e875b66c4",
+          "name": "tahy-zdurazneni.png",
+          "size": 1967,
+          "type": "image/png"
+        }
+      },
+      "name": "Slides",
+      "order": []
+    },
+    "backgrounds": {
+      "files": {
+        "background.png": {
+          "blob": "ffbe9e3cfa95b06a7c25842989268394",
+          "name": "background.png",
+          "size": 38448,
+          "type": "image/png"
+        },
+        "pozadi-papir-bile.png": {
+          "blob": "bf1cc67bc993f994e58e2964633c7738",
+          "name": "pozadi-papir-bile.png",
+          "size": 1335984,
+          "type": "image/png"
+        },
+        "pozadi-papir-cervene.png": {
+          "blob": "9bd0dc3298060c16c8e8be2a4114b4d1",
+          "name": "pozadi-papir-cervene.png",
+          "size": 1619410,
+          "type": "image/png"
+        }
+      },
+      "name": "backgrounds",
+      "order": []
+    },
+    "frames": {
+      "files": {
+        "frame-long-grey.svg": {
+          "blob": "78d16502dedefb8bbcdb33f64de04cc3",
+          "name": "frame-long-grey.svg",
+          "size": 112006,
+          "type": "image/svg+xml"
+        },
+        "frame-long-red-2.svg": {
+          "blob": "32136d76d98b21aeb8a32b39c7852039",
+          "name": "frame-long-red-2.svg",
+          "size": 113194,
+          "type": "image/svg+xml"
+        },
+        "frame-long-red.svg": {
+          "blob": "1b94a2ce15ae0ad08b52e051fde3da92",
+          "name": "frame-long-red.svg",
+          "size": 112229,
+          "type": "image/svg+xml"
+        },
+        "frame-long-wine.svg": {
+          "blob": "e516d0b150b45c6a139f1de3e862712f",
+          "name": "frame-long-wine.svg",
+          "size": 111918,
+          "type": "image/svg+xml"
+        },
+        "frame-short-grey.svg": {
+          "blob": "83e23e17a30eb3f01c1663eface584bc",
+          "name": "frame-short-grey.svg",
+          "size": 110156,
+          "type": "image/svg+xml"
+        },
+        "frame-short-red-2.svg": {
+          "blob": "73965f2cdd2ac738ca6203bd0a80fdd6",
+          "name": "frame-short-red-2.svg",
+          "size": 110131,
+          "type": "image/svg+xml"
+        },
+        "frame-short-red.svg": {
+          "blob": "ab9931cc52293f68917fc12a8e272ce6",
+          "name": "frame-short-red.svg",
+          "size": 110488,
+          "type": "image/svg+xml"
+        },
+        "frame-short-wine.svg": {
+          "blob": "833e641cd6d8a773833bb3b35aa0c4bf",
+          "name": "frame-short-wine.svg",
+          "size": 110098,
+          "type": "image/svg+xml"
+        }
+      },
+      "name": "frames",
+      "order": []
+    },
+    "icons": {
+      "files": {
+        "icon-01.svg": {
+          "blob": "f2278a6ab41f3457e2a728e56a90917f",
+          "name": "icon-01.svg",
+          "size": 5091,
+          "type": "image/svg+xml"
+        },
+        "icon-02.svg": {
+          "blob": "e45ff67af96503f363cb5da4153af880",
+          "name": "icon-02.svg",
+          "size": 3037,
+          "type": "image/svg+xml"
+        },
+        "icon-03.svg": {
+          "blob": "50739b709a0360fe83e7dae444901057",
+          "name": "icon-03.svg",
+          "size": 3514,
+          "type": "image/svg+xml"
+        },
+        "icon-04.svg": {
+          "blob": "ffcf3d4e89388018f846341d80fd25e0",
+          "name": "icon-04.svg",
+          "size": 4731,
+          "type": "image/svg+xml"
+        },
+        "icon-05.svg": {
+          "blob": "5014fcb3f20bda0f840769c6895fd800",
+          "name": "icon-05.svg",
+          "size": 3240,
+          "type": "image/svg+xml"
+        },
+        "icon-06.svg": {
+          "blob": "b37ee1093ea708dff63093e2c941849a",
+          "name": "icon-06.svg",
+          "size": 5335,
+          "type": "image/svg+xml"
+        },
+        "icon-07.svg": {
+          "blob": "ffcef64aa1128cb7e12ce74d2218ee4d",
+          "name": "icon-07.svg",
+          "size": 8194,
+          "type": "image/svg+xml"
+        },
+        "icon-08.svg": {
+          "blob": "8d4a399baef18e270b7e1f17ce05ced7",
+          "name": "icon-08.svg",
+          "size": 953,
+          "type": "image/svg+xml"
+        },
+        "icon-09.svg": {
+          "blob": "97d9fe50a41c7c2de8e040c0d14b1775",
+          "name": "icon-09.svg",
+          "size": 1472,
+          "type": "image/svg+xml"
+        },
+        "icon-10.svg": {
+          "blob": "edda8752b543ad0b2dab779fee9a8af2",
+          "name": "icon-10.svg",
+          "size": 3354,
+          "type": "image/svg+xml"
+        },
+        "icon-11.svg": {
+          "blob": "b347b43d186e495d7129027c8b66f160",
+          "name": "icon-11.svg",
+          "size": 6063,
+          "type": "image/svg+xml"
+        },
+        "icon-12.svg": {
+          "blob": "ccb384e349d9f17fa060d8e952833c43",
+          "name": "icon-12.svg",
+          "size": 6000,
+          "type": "image/svg+xml"
+        },
+        "icon-13.svg": {
+          "blob": "a57f2452456c088c89df35eae1084c68",
+          "name": "icon-13.svg",
+          "size": 8130,
+          "type": "image/svg+xml"
+        },
+        "icon-14.svg": {
+          "blob": "80a5718928be0bc7af6f050001c33cc6",
+          "name": "icon-14.svg",
+          "size": 9275,
+          "type": "image/svg+xml"
+        },
+        "icon-15.svg": {
+          "blob": "c565e6d50132a5e0a7c5f5386fb19763",
+          "name": "icon-15.svg",
+          "size": 8873,
+          "type": "image/svg+xml"
+        },
+        "icon-16.svg": {
+          "blob": "2f2755868093e6d6fe4acaeae0831be1",
+          "name": "icon-16.svg",
+          "size": 6873,
+          "type": "image/svg+xml"
+        },
+        "icon-17.svg": {
+          "blob": "d039851367f7d5ab2218d1352655d3a8",
+          "name": "icon-17.svg",
+          "size": 6493,
+          "type": "image/svg+xml"
+        },
+        "icon-18.svg": {
+          "blob": "947085c770940fdfdd36b726deb39efb",
+          "name": "icon-18.svg",
+          "size": 7065,
+          "type": "image/svg+xml"
+        },
+        "icon-19.svg": {
+          "blob": "bdbc42b205df3445cbc1099902876e5d",
+          "name": "icon-19.svg",
+          "size": 15158,
+          "type": "image/svg+xml"
+        },
+        "icon-20.svg": {
+          "blob": "dd9242f11fb2ecda388a277b428954b7",
+          "name": "icon-20.svg",
+          "size": 9045,
+          "type": "image/svg+xml"
+        },
+        "icon-21.svg": {
+          "blob": "ec92f9ad54b62f6fa7d6439c3639246a",
+          "name": "icon-21.svg",
+          "size": 13919,
+          "type": "image/svg+xml"
+        },
+        "icon-22.svg": {
+          "blob": "105b9bb2fb3a9aeca2f9fea18c4560e9",
+          "name": "icon-22.svg",
+          "size": 10381,
+          "type": "image/svg+xml"
+        },
+        "icon-23.svg": {
+          "blob": "7b2f0b8baa135bd93415c7a5b2527401",
+          "name": "icon-23.svg",
+          "size": 17986,
+          "type": "image/svg+xml"
+        },
+        "icon-24.svg": {
+          "blob": "e0c5d108032259852831d27c514a0b56",
+          "name": "icon-24.svg",
+          "size": 9872,
+          "type": "image/svg+xml"
+        },
+        "icon-25.svg": {
+          "blob": "575bd2dd73f4a41ef564a429edc4966e",
+          "name": "icon-25.svg",
+          "size": 17850,
+          "type": "image/svg+xml"
+        },
+        "icon-26.svg": {
+          "blob": "250511e58360c631fbc2238f9aa2c238",
+          "name": "icon-26.svg",
+          "size": 14599,
+          "type": "image/svg+xml"
+        },
+        "icon-27.svg": {
+          "blob": "1043a90fe193ccc931b8dbeaba30d7b4",
+          "name": "icon-27.svg",
+          "size": 6209,
+          "type": "image/svg+xml"
+        },
+        "icon-28.svg": {
+          "blob": "2d82e022cb31730394d90aadcfe6c87a",
+          "name": "icon-28.svg",
+          "size": 11857,
+          "type": "image/svg+xml"
+        },
+        "icon-29.svg": {
+          "blob": "366f0f4bbb32b02f21f6b84cbc1d8129",
+          "name": "icon-29.svg",
+          "size": 26726,
+          "type": "image/svg+xml"
+        },
+        "icon-30.svg": {
+          "blob": "d753b2f9d87f88af1d6d8d40686544da",
+          "name": "icon-30.svg",
+          "size": 7379,
+          "type": "image/svg+xml"
+        },
+        "icon-31.svg": {
+          "blob": "be51f051fe57c19763fefaa3c494abf4",
+          "name": "icon-31.svg",
+          "size": 11570,
+          "type": "image/svg+xml"
+        },
+        "icon-32.svg": {
+          "blob": "6434444fa22b41e06a15d2304af93eb9",
+          "name": "icon-32.svg",
+          "size": 7929,
+          "type": "image/svg+xml"
+        },
+        "icon-33.svg": {
+          "blob": "4b2ef28b72cf40e2bcf60f405a325e9d",
+          "name": "icon-33.svg",
+          "size": 7605,
+          "type": "image/svg+xml"
+        },
+        "icon-34.svg": {
+          "blob": "216fcd301f5c372903e48473557658ad",
+          "name": "icon-34.svg",
+          "size": 9786,
+          "type": "image/svg+xml"
+        },
+        "icon-35.svg": {
+          "blob": "a8ea00c8bad60d0cd0529af931a9d0e9",
+          "name": "icon-35.svg",
+          "size": 8429,
+          "type": "image/svg+xml"
+        },
+        "icon-36.svg": {
+          "blob": "2fc1b11fdb322ee0b94279d972c3b76d",
+          "name": "icon-36.svg",
+          "size": 6187,
+          "type": "image/svg+xml"
+        },
+        "icon-37.svg": {
+          "blob": "5ef4db9aba7e0169ff760650b2241058",
+          "name": "icon-37.svg",
+          "size": 6844,
+          "type": "image/svg+xml"
+        },
+        "icon-38.svg": {
+          "blob": "db9be6c19983ebb95933e809f0f56983",
+          "name": "icon-38.svg",
+          "size": 11796,
+          "type": "image/svg+xml"
+        },
+        "icon-39.svg": {
+          "blob": "7611ba8575a904f0d1a569ad2ddf4788",
+          "name": "icon-39.svg",
+          "size": 8478,
+          "type": "image/svg+xml"
+        },
+        "icon-40.svg": {
+          "blob": "7b6c15a7ed1d0559600aa1be115e4a5e",
+          "name": "icon-40.svg",
+          "size": 5127,
+          "type": "image/svg+xml"
+        },
+        "icon-41.svg": {
+          "blob": "d510a9e6911671f487c65ef1d24cce4c",
+          "name": "icon-41.svg",
+          "size": 7884,
+          "type": "image/svg+xml"
+        },
+        "icon-42.svg": {
+          "blob": "0619d5c797be474d070dfcd23c201e05",
+          "name": "icon-42.svg",
+          "size": 5885,
+          "type": "image/svg+xml"
+        }
+      },
+      "name": "icons",
+      "order": []
+    },
+    "logos": {
+      "files": {
+        "logo-light-alternativni.svg": {
+          "blob": "dd2ce4ba066744ac98167438af39741f",
+          "name": "logo-light-alternativni.svg",
+          "size": 7913,
+          "type": "image/svg+xml"
+        },
+        "rb_horizontalni_full_color_cmyk.pdf": {
+          "blob": "e52dc3edb54bf8eac5039215375e0ee3",
+          "name": "rb_horizontalni_full_color_cmyk.pdf",
+          "size": 24647,
+          "type": "application/pdf"
+        },
+        "rb_horizontalni_negativ_cmyk.pdf": {
+          "blob": "94fafe14fed4df0d909ad1434f1a9f56",
+          "name": "rb_horizontalni_negativ_cmyk.pdf",
+          "size": 20005,
+          "type": "application/pdf"
+        },
+        "rb_piktogram_full_color_cmyk.pdf": {
+          "blob": "8a1b2064eb9f2e311449a3188552149b",
+          "name": "rb_piktogram_full_color_cmyk.pdf",
+          "size": 23097,
+          "type": "application/pdf"
+        },
+        "rb_vertikalni_full_color_cmyk.pdf": {
+          "blob": "939d6f92d8c37b90a489d5d34724a055",
+          "name": "rb_vertikalni_full_color_cmyk.pdf",
+          "size": 29001,
+          "type": "application/pdf"
+        },
+        "rb_vertikalni_negativ_cmyk.pdf": {
+          "blob": "671f5cedfc455e22467dc48a6ba93b05",
+          "name": "rb_vertikalni_negativ_cmyk.pdf",
+          "size": 20275,
+          "type": "application/pdf"
+        }
+      },
+      "name": "logos",
+      "order": []
+    },
+    "photos": {
+      "files": {
+        "photo-filtered-bw.webp": {
+          "blob": "5f055be3d1c8b1957215bc4d1f77ceae",
+          "name": "photo-filtered-bw.webp",
+          "size": 489552,
+          "type": "image/webp"
+        },
+        "photo-net-corner-1.webp": {
+          "blob": "147213932e36529375f150771b67ecab",
+          "name": "photo-net-corner-1.webp",
+          "size": 497160,
+          "type": "image/webp"
+        },
+        "photo-net-corner-2.webp": {
+          "blob": "d776bde3982486dd39f751f75679272f",
+          "name": "photo-net-corner-2.webp",
+          "size": 491542,
+          "type": "image/webp"
+        },
+        "portrait-cutout.webp": {
+          "blob": "aa08a19a369ea009bcc5fe5e88fecff4",
+          "name": "portrait-cutout.webp",
+          "size": 184812,
+          "type": "image/webp"
+        }
+      },
+      "name": "photos",
+      "order": []
+    },
+    "Síť": {
+      "files": {
+        "zakladni-sit.svg": {
+          "blob": "78d342273c74c896cd32cf56d1cfde36",
+          "name": "zakladni-sit.svg",
+          "size": 110926,
+          "type": "image/svg+xml"
+        },
+        "sit-1.svg": {
+          "blob": "406f7c6a5b3b31ad66b0bd05ba389bfd",
+          "name": "sit-1.svg",
+          "size": 237685,
+          "type": "image/svg+xml"
+        },
+        "sit-seda.svg": {
+          "blob": "ccaa7d248b089a3274bbbc6575e62559",
+          "name": "sit-seda.svg",
+          "size": 110925,
+          "type": "image/svg+xml"
+        },
+        "sit-antracit.svg": {
+          "blob": "9bbe8fae86af9f99d722b93415375bbf",
+          "name": "sit-antracit.svg",
+          "size": 110925,
+          "type": "image/svg+xml"
+        },
+        "sit-svetle-seda.svg": {
+          "blob": "6a651380ab9b626d8ad4f80171b424d7",
+          "name": "sit-svetle-seda.svg",
+          "size": 110925,
+          "type": "image/svg+xml"
+        },
+        "sit-bila.svg": {
+          "blob": "091640f3010f7f34aea78bdfe6cefcd2",
+          "name": "sit-bila.svg",
+          "size": 110925,
+          "type": "image/svg+xml"
+        },
+        "sit-cervena.svg": {
+          "blob": "9009c5e13a95db1c316102d9cb8bcc4a",
+          "name": "sit-cervena.svg",
+          "size": 110925,
+          "type": "image/svg+xml"
+        }
+      },
+      "name": "Síť",
+      "order": [
+        "sit-seda.svg",
+        "sit-antracit.svg",
+        "sit-svetle-seda.svg",
+        "sit-bila.svg",
+        "sit-cervena.svg",
+        "zakladni-sit.svg",
+        "sit-1.svg"
+      ]
+    }
+  },
+  "blobs": {},
+  "createdOnFiles": {
+    "at": "2026-10-09T22:24:27Z",
+    "v": 1
+  },
+  "docs": {
+    "readme": "project/README.md",
+    "sections": [
+      "project/guidelines/accessibility.md",
+      "project/guidelines/brand-manual.cs.md",
+      "project/guidelines/slides.md",
+      "project/guidelines/web-ui.md",
+      "project/ui_kits/social/README.md"
+    ]
+  },
+  "groups": [
+    "Images",
+    "Logos",
+    "Reference",
+    "backgrounds",
+    "frames",
+    "icons",
+    "logos",
+    "photos",
+    "Slides",
+    "Komponenty",
+    "Síť"
+  ],
+  "lastChange": {
+    "by": "Lucie Přibylová",
+    "at": "2026-10-19T09:50:00Z",
+    "via": "Claude",
+    "note": "Pravidla z revize 19. 10.: jen schválené komponenty, tlačítka (stejná kresba, bílé na tmavém), Badge, podtržení, boxy, síť, patička"
+  },
+  "layout": "files",
+  "libraries": [
+    {
+      "file": "components/lib/react.production.min.js",
+      "global": "React",
+      "name": "react",
+      "version": "18.3.1"
+    },
+    {
+      "file": "components/lib/react-dom.production.min.js",
+      "global": "ReactDOM",
+      "name": "react-dom",
+      "version": "18.3.1"
+    }
+  ],
+  "namespace": "RedButtonDesignSystem_3b681f",
+  "sections": {},
+  "title": "Red Button EDU - newest"
+}

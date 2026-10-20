@@ -1,0 +1,43 @@
+---
+description: >-
+  Before using Red Button brand/marketing design system, read the Claude export
+  in docs/design-system/. Not for EDUteka/internal tool UI (rb-edu-ui-patterns).
+globs:
+  - "**/docs/design-system/**"
+  - "**/ŠABLONY/design-system/**"
+  - "**/frontend/**/*.{tsx,ts,css,scss}"
+  - "**/*design*system*"
+  - "**/*brand*manual*"
+  - "**/pitch-deck/**"
+  - "**/slides/**"
+  - "**/dashboard*/**"
+alwaysApply: false
+---
+
+# Brand design system — Cursor / Grok
+
+When the task needs the **Red Button brand / marketing** design system (web marketing, dashboards, slides, pitch deck, brand colors Rubik/Wine/`#e4003a`, Permanent Marker — **not** EDUteka internal tool UI):
+
+## Primary pack (Claude export, max fidelity)
+
+1. Start at [`docs/design-system/START-HERE.md`](docs/design-system/START-HERE.md).
+2. Then follow that file’s reading order (`guidelines/web-ui.md` → tokens → README → `api/components` …).
+3. Use only approved components/assets described there. **Do not invent** missing UI (no React bundle / full icon set in this export — say what is missing).
+4. Snapshot date is in START-HERE / `manifest.json`. If the user says Claude shipped a newer ZIP, replace `docs/design-system/` with that export and keep structure.
+
+## Optional artifact refresh (Firecrawl)
+
+Older Firecrawl mirror of the Claude *artifact* UI lives under [`ŠABLONY/design-system/`](ŠABLONY/design-system/) (markdown dump + some public tokens/bundle). For web/dashboard work prefer **`docs/design-system/`**. If you need to diff against the live Claude artifact URL:
+
+```bash
+python3 scripts/refresh_rb_design_system.py --check
+```
+
+## Claude vs Cursor/Grok
+
+- Claude Team already has this as a **company skill** — do **not** create a duplicate Claude skill.
+- `docs/design-system/` is the **repo copy for Cursor and Grok Bot**.
+
+## Wrong skill
+
+Internal apps / RB Universe product UI / EDUteka patterns → skill **`rb-edu-ui-patterns`** (Plus Jakarta, `#e9244a`), not this brand pack.

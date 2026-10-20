@@ -1,0 +1,1399 @@
+{
+  "manifestVersion": 3,
+  "name": "Red Button EDU - newest",
+  "namespace": "RedButtonDesignSystem_3b681f",
+  "files": [
+    "assets/Komponenty/README.md",
+    "assets/Slides/README.md",
+    "components/Badge/Badge.d.ts",
+    "components/Badge/README.md",
+    "components/Brand/README.md",
+    "components/BrandRules/README.md",
+    "components/Button/Button.d.ts",
+    "components/Button/README.md",
+    "components/Card/Card.d.ts",
+    "components/Card/README.md",
+    "components/Checkbox/Checkbox.d.ts",
+    "components/Checkbox/README.md",
+    "components/Dialog/Dialog.d.ts",
+    "components/Dialog/README.md",
+    "components/Display/README.md",
+    "components/Feedback/README.md",
+    "components/Forms/README.md",
+    "components/Icon/Icon.d.ts",
+    "components/Icon/README.md",
+    "components/IconButton/IconButton.d.ts",
+    "components/IconButton/README.md",
+    "components/Index/README.md",
+    "components/Input/Input.d.ts",
+    "components/Input/README.md",
+    "components/Logo/Logo.d.ts",
+    "components/Logo/README.md",
+    "components/MarkerNote/MarkerNote.d.ts",
+    "components/MarkerNote/README.md",
+    "components/NetPattern/NetPattern.d.ts",
+    "components/NetPattern/README.md",
+    "components/Personas/README.md",
+    "components/PhotoPost/PhotoPost.d.ts",
+    "components/PhotoPost/README.md",
+    "components/Radio/README.md",
+    "components/Radio/Radio.d.ts",
+    "components/Select/README.md",
+    "components/Select/Select.d.ts",
+    "components/SocialPost/README.md",
+    "components/SocialPost/SocialPost.d.ts",
+    "components/Switch/README.md",
+    "components/Switch/Switch.d.ts",
+    "components/Tabs/README.md",
+    "components/Tabs/Tabs.d.ts",
+    "components/Tag/README.md",
+    "components/Tag/Tag.d.ts",
+    "components/Toast/README.md",
+    "components/Toast/Toast.d.ts",
+    "components/Tooltip/README.md",
+    "components/Tooltip/Tooltip.d.ts",
+    "components/bundle.css",
+    "components/bundle.js",
+    "components/lib/react-dom.production.min.js",
+    "components/lib/react.production.min.js",
+    "fonts/permanentmarker-regular-czech-fix.otf",
+    "guidelines/accessibility.md",
+    "guidelines/backgrounds.card.html",
+    "guidelines/brand-manual.cs.md",
+    "guidelines/colors-core.card.html",
+    "guidelines/colors-darkmode.card.html",
+    "guidelines/colors-ratio.card.html",
+    "guidelines/colors-semantic.card.html",
+    "guidelines/colors-support.card.html",
+    "guidelines/icons.card.html",
+    "guidelines/illustrations.card.html",
+    "guidelines/logos.card.html",
+    "guidelines/pattern-net.card.html",
+    "guidelines/photography.card.html",
+    "guidelines/radius-shadow.card.html",
+    "guidelines/slides.md",
+    "guidelines/spacing.card.html",
+    "guidelines/tone-of-voice.card.html",
+    "guidelines/type-body.card.html",
+    "guidelines/type-display.card.html",
+    "guidelines/type-headings.card.html",
+    "guidelines/type-kicker.card.html",
+    "guidelines/type-marker.card.html",
+    "guidelines/web-ui.md",
+    "templates/pitch-deck/PitchDeck.dc.html",
+    "templates/pitch-deck/ds-base.js",
+    "templates/pitch-deck/image-slot.js",
+    "templates/pitch-deck/support.js",
+    "tokens.css",
+    "ui_kits/social/README.md"
+  ],
+  "libraries": [
+    {
+      "name": "react",
+      "version": "18.3.1",
+      "global": "React",
+      "file": "components/lib/react.production.min.js"
+    },
+    {
+      "name": "react-dom",
+      "version": "18.3.1",
+      "global": "ReactDOM",
+      "file": "components/lib/react-dom.production.min.js"
+    }
+  ],
+  "components": [
+    {
+      "name": "ICON_NAMES"
+    },
+    {
+      "name": "Icon",
+      "summary": "Hand-drawn brand icon; the only icon system allowed."
+    },
+    {
+      "name": "Logo",
+      "summary": "Official logo lockups."
+    },
+    {
+      "name": "MarkerNote",
+      "summary": "Handwritten accent text in Permanent Marker."
+    },
+    {
+      "name": "NetPattern",
+      "summary": "Brand network pattern anchored to a container corner."
+    },
+    {
+      "name": "Badge",
+      "summary": "Torn-edge banner badge for program names and labels.\\n\\njsx\\n Program #Rebeleader \\n Novinka \\n"
+    },
+    {
+      "name": "Card",
+      "summary": "Flat content card, 6px radius, no shadow."
+    },
+    {
+      "name": "Tabs",
+      "summary": "Underline tab bar.\\n\\njsx\\n \\n"
+    },
+    {
+      "name": "Tag",
+      "summary": "Topic tag."
+    },
+    {
+      "name": "Dialog",
+      "summary": "Modal dialog with uppercase Rubik Black title and primary/secondary actions.\\n\\njsx\\n setOpen(false)}>Přihláška do programu R(e)BeLeader. \\n"
+    },
+    {
+      "name": "Toast",
+      "summary": "Toast notification, wine (success) or anthracite, with a hand-drawn icon.\\n\\njsx\\n \\n"
+    },
+    {
+      "name": "Tooltip",
+      "summary": "Anthracite hover tooltip.\\n\\njsx\\n Manuál \\n"
+    },
+    {
+      "name": "Button",
+      "summary": "Brand CTA button; the default is the brand's hand-drawn brush frame (real SVG artwork from the manual) around a transparent button."
+    },
+    {
+      "name": "Checkbox",
+      "summary": "Checkbox; wine square with white check."
+    },
+    {
+      "name": "IconButton",
+      "summary": "Icon-only square button (44px min hit target) with a hand-drawn brand icon."
+    },
+    {
+      "name": "Input",
+      "summary": "Labeled text input."
+    },
+    {
+      "name": "Radio",
+      "summary": "Radio; wine dot when selected."
+    },
+    {
+      "name": "Select",
+      "summary": "Branded native select."
+    },
+    {
+      "name": "Switch",
+      "summary": "Toggle switch, wine track when on."
+    },
+    {
+      "name": "PhotoPost",
+      "summary": "IG photo post: hashtag header with wine rule + logo, B&W photo, torn wine banner headline overlapping the photo, marker quote, body, wine URL footer.\\n\\njsx\\n…"
+    },
+    {
+      "name": "SocialPost",
+      "summary": "IG post template (4:5) recreating the brand social layout: logo top-right, two-line caps headline + bulb icon, hand underline, marker subtitle, arrow bullets,…"
+    },
+    {
+      "name": "Brand",
+      "group": "Components",
+      "summary": "Logo, Icon, NetPattern, MarkerNote",
+      "page": true
+    },
+    {
+      "name": "BrandRules",
+      "group": "Voice & Content",
+      "summary": "7 pravidel práce se značkou + jak chceme a nechceme působit",
+      "page": true
+    },
+    {
+      "name": "Display",
+      "group": "Components",
+      "summary": "Card, Badge, Tag, Tabs",
+      "page": true
+    },
+    {
+      "name": "Feedback",
+      "group": "Components",
+      "summary": "Dialog, Toast, Tooltip",
+      "page": true
+    },
+    {
+      "name": "Forms",
+      "group": "Components",
+      "summary": "Button, IconButton, Input, Select, Checkbox, Radio, Switch",
+      "page": true
+    },
+    {
+      "name": "Index",
+      "group": "Social",
+      "summary": "Interactive recreation of the brand's IG post templates",
+      "page": true
+    },
+    {
+      "name": "Personas",
+      "group": "Voice & Content",
+      "summary": "Leaders · L&D Owners · L&D Operations — komu píšeme a co reálně kupují",
+      "page": true
+    }
+  ],
+  "assetGroups": [
+    {
+      "name": "Images",
+      "files": [
+        {
+          "path": "assets/Images/cutout-example.webp",
+          "id": "60cb48c6d96b3b88761edda7b6a682a4"
+        },
+        {
+          "path": "assets/Images/ilustrace-27.svg",
+          "id": "fa804c3dbd3ee8f43a19493f6bbe1fc1"
+        },
+        {
+          "path": "assets/Images/ilustrace-31.svg",
+          "id": "c52aace33055fb2b0f349cd8ccbff709"
+        },
+        {
+          "path": "assets/Images/ilustrace-46.svg",
+          "id": "7ced070294abe9553d0c5e1bc3ee1fd9"
+        },
+        {
+          "path": "assets/Images/ilustrace-47.svg",
+          "id": "51c730b033eaa58b77b029489832a2f1"
+        },
+        {
+          "path": "assets/Images/ilustrace-48.svg",
+          "id": "2562e120ef86b41dff48d31c52d15b19"
+        },
+        {
+          "path": "assets/Images/ilustrace-49.svg",
+          "id": "054266067874ae330f716e2c0c416bd8"
+        },
+        {
+          "path": "assets/Images/ilustrace-50.svg",
+          "id": "a392e1e1decd8b1a577b2e8e8298cbba"
+        },
+        {
+          "path": "assets/Images/photo-conversation-net.webp",
+          "id": "c1ca2f897d33dfd42a87d043dd37fc99"
+        }
+      ]
+    },
+    {
+      "name": "Logos",
+      "files": [
+        {
+          "path": "assets/Logos/logo-dark-alternativni.svg",
+          "id": "b656fe8de6030a73b88649b66ff68edc"
+        },
+        {
+          "path": "assets/Logos/logo-dark-logo.svg",
+          "id": "041da01038e564e4f18cc03794e49bc1"
+        },
+        {
+          "path": "assets/Logos/logo-light-logo.svg",
+          "id": "99267bf181473e16d3ee847a1816ff03"
+        },
+        {
+          "path": "assets/Logos/logo-universal-symbol.svg",
+          "id": "bc9abeed4618424758aa0d8c28573e29"
+        }
+      ]
+    },
+    {
+      "name": "Reference",
+      "files": [
+        {
+          "path": "assets/Reference/background-red.png",
+          "id": "0bbdd57d09db1f4191d478b6b65f04d3"
+        },
+        {
+          "path": "assets/Reference/natrzene-linky-dark-standard.png",
+          "id": "6b726e92f584005d69653a122274305a"
+        },
+        {
+          "path": "assets/Reference/sipky-karusel.png",
+          "id": "3974bdb4242da7bfd50d2289c9515844"
+        },
+        {
+          "path": "assets/Reference/sit-1.svg",
+          "id": "406f7c6a5b3b31ad66b0bd05ba389bfd"
+        },
+        {
+          "path": "assets/Reference/sit-barvy-dark-standard.png",
+          "id": "ff35be778d7e162f62ab372562cc7eef"
+        },
+        {
+          "path": "assets/Reference/web-styleguide-svetly.png",
+          "id": "739c42a7ce27cd1cd3fd9aaaf9a6635f"
+        },
+        {
+          "path": "assets/Reference/web-styleguide-tmavy-summit.png",
+          "id": "5257ef1b8d418dbf4df7556c561da60b"
+        },
+        {
+          "path": "assets/Reference/zakladni-sit.svg",
+          "id": "78d342273c74c896cd32cf56d1cfde36"
+        }
+      ]
+    },
+    {
+      "name": "backgrounds",
+      "files": [
+        {
+          "path": "assets/backgrounds/background.png",
+          "id": "ffbe9e3cfa95b06a7c25842989268394"
+        }
+      ]
+    },
+    {
+      "name": "frames",
+      "files": [
+        {
+          "path": "assets/frames/frame-long-grey.svg",
+          "id": "78d16502dedefb8bbcdb33f64de04cc3"
+        },
+        {
+          "path": "assets/frames/frame-long-red-2.svg",
+          "id": "32136d76d98b21aeb8a32b39c7852039"
+        },
+        {
+          "path": "assets/frames/frame-long-red.svg",
+          "id": "1b94a2ce15ae0ad08b52e051fde3da92"
+        },
+        {
+          "path": "assets/frames/frame-long-wine.svg",
+          "id": "e516d0b150b45c6a139f1de3e862712f"
+        },
+        {
+          "path": "assets/frames/frame-short-grey.svg",
+          "id": "83e23e17a30eb3f01c1663eface584bc"
+        },
+        {
+          "path": "assets/frames/frame-short-red-2.svg",
+          "id": "73965f2cdd2ac738ca6203bd0a80fdd6"
+        },
+        {
+          "path": "assets/frames/frame-short-red.svg",
+          "id": "ab9931cc52293f68917fc12a8e272ce6"
+        },
+        {
+          "path": "assets/frames/frame-short-wine.svg",
+          "id": "833e641cd6d8a773833bb3b35aa0c4bf"
+        }
+      ]
+    },
+    {
+      "name": "icons",
+      "files": [
+        {
+          "path": "assets/icons/icon-01.svg",
+          "id": "f2278a6ab41f3457e2a728e56a90917f"
+        },
+        {
+          "path": "assets/icons/icon-02.svg",
+          "id": "e45ff67af96503f363cb5da4153af880"
+        },
+        {
+          "path": "assets/icons/icon-03.svg",
+          "id": "50739b709a0360fe83e7dae444901057"
+        },
+        {
+          "path": "assets/icons/icon-04.svg",
+          "id": "ffcf3d4e89388018f846341d80fd25e0"
+        },
+        {
+          "path": "assets/icons/icon-05.svg",
+          "id": "5014fcb3f20bda0f840769c6895fd800"
+        },
+        {
+          "path": "assets/icons/icon-06.svg",
+          "id": "b37ee1093ea708dff63093e2c941849a"
+        },
+        {
+          "path": "assets/icons/icon-07.svg",
+          "id": "ffcef64aa1128cb7e12ce74d2218ee4d"
+        },
+        {
+          "path": "assets/icons/icon-08.svg",
+          "id": "8d4a399baef18e270b7e1f17ce05ced7"
+        },
+        {
+          "path": "assets/icons/icon-09.svg",
+          "id": "97d9fe50a41c7c2de8e040c0d14b1775"
+        },
+        {
+          "path": "assets/icons/icon-10.svg",
+          "id": "edda8752b543ad0b2dab779fee9a8af2"
+        },
+        {
+          "path": "assets/icons/icon-11.svg",
+          "id": "b347b43d186e495d7129027c8b66f160"
+        },
+        {
+          "path": "assets/icons/icon-12.svg",
+          "id": "ccb384e349d9f17fa060d8e952833c43"
+        },
+        {
+          "path": "assets/icons/icon-13.svg",
+          "id": "a57f2452456c088c89df35eae1084c68"
+        },
+        {
+          "path": "assets/icons/icon-14.svg",
+          "id": "80a5718928be0bc7af6f050001c33cc6"
+        },
+        {
+          "path": "assets/icons/icon-15.svg",
+          "id": "c565e6d50132a5e0a7c5f5386fb19763"
+        },
+        {
+          "path": "assets/icons/icon-16.svg",
+          "id": "2f2755868093e6d6fe4acaeae0831be1"
+        },
+        {
+          "path": "assets/icons/icon-17.svg",
+          "id": "d039851367f7d5ab2218d1352655d3a8"
+        },
+        {
+          "path": "assets/icons/icon-18.svg",
+          "id": "947085c770940fdfdd36b726deb39efb"
+        },
+        {
+          "path": "assets/icons/icon-19.svg",
+          "id": "bdbc42b205df3445cbc1099902876e5d"
+        },
+        {
+          "path": "assets/icons/icon-20.svg",
+          "id": "dd9242f11fb2ecda388a277b428954b7"
+        },
+        {
+          "path": "assets/icons/icon-21.svg",
+          "id": "ec92f9ad54b62f6fa7d6439c3639246a"
+        },
+        {
+          "path": "assets/icons/icon-22.svg",
+          "id": "105b9bb2fb3a9aeca2f9fea18c4560e9"
+        },
+        {
+          "path": "assets/icons/icon-23.svg",
+          "id": "7b2f0b8baa135bd93415c7a5b2527401"
+        },
+        {
+          "path": "assets/icons/icon-24.svg",
+          "id": "e0c5d108032259852831d27c514a0b56"
+        },
+        {
+          "path": "assets/icons/icon-25.svg",
+          "id": "575bd2dd73f4a41ef564a429edc4966e"
+        },
+        {
+          "path": "assets/icons/icon-26.svg",
+          "id": "250511e58360c631fbc2238f9aa2c238"
+        },
+        {
+          "path": "assets/icons/icon-27.svg",
+          "id": "1043a90fe193ccc931b8dbeaba30d7b4"
+        },
+        {
+          "path": "assets/icons/icon-28.svg",
+          "id": "2d82e022cb31730394d90aadcfe6c87a"
+        },
+        {
+          "path": "assets/icons/icon-29.svg",
+          "id": "366f0f4bbb32b02f21f6b84cbc1d8129"
+        },
+        {
+          "path": "assets/icons/icon-30.svg",
+          "id": "d753b2f9d87f88af1d6d8d40686544da"
+        },
+        {
+          "path": "assets/icons/icon-31.svg",
+          "id": "be51f051fe57c19763fefaa3c494abf4"
+        },
+        {
+          "path": "assets/icons/icon-32.svg",
+          "id": "6434444fa22b41e06a15d2304af93eb9"
+        },
+        {
+          "path": "assets/icons/icon-33.svg",
+          "id": "4b2ef28b72cf40e2bcf60f405a325e9d"
+        },
+        {
+          "path": "assets/icons/icon-34.svg",
+          "id": "216fcd301f5c372903e48473557658ad"
+        },
+        {
+          "path": "assets/icons/icon-35.svg",
+          "id": "a8ea00c8bad60d0cd0529af931a9d0e9"
+        },
+        {
+          "path": "assets/icons/icon-36.svg",
+          "id": "2fc1b11fdb322ee0b94279d972c3b76d"
+        },
+        {
+          "path": "assets/icons/icon-37.svg",
+          "id": "5ef4db9aba7e0169ff760650b2241058"
+        },
+        {
+          "path": "assets/icons/icon-38.svg",
+          "id": "db9be6c19983ebb95933e809f0f56983"
+        },
+        {
+          "path": "assets/icons/icon-39.svg",
+          "id": "7611ba8575a904f0d1a569ad2ddf4788"
+        },
+        {
+          "path": "assets/icons/icon-40.svg",
+          "id": "7b6c15a7ed1d0559600aa1be115e4a5e"
+        },
+        {
+          "path": "assets/icons/icon-41.svg",
+          "id": "d510a9e6911671f487c65ef1d24cce4c"
+        },
+        {
+          "path": "assets/icons/icon-42.svg",
+          "id": "0619d5c797be474d070dfcd23c201e05"
+        }
+      ]
+    },
+    {
+      "name": "logos",
+      "files": [
+        {
+          "path": "assets/logos/logo-light-alternativni.svg",
+          "id": "dd2ce4ba066744ac98167438af39741f"
+        },
+        {
+          "path": "assets/logos/rb_horizontalni_full_color_cmyk.pdf",
+          "id": "e52dc3edb54bf8eac5039215375e0ee3"
+        },
+        {
+          "path": "assets/logos/rb_horizontalni_negativ_cmyk.pdf",
+          "id": "94fafe14fed4df0d909ad1434f1a9f56"
+        },
+        {
+          "path": "assets/logos/rb_piktogram_full_color_cmyk.pdf",
+          "id": "8a1b2064eb9f2e311449a3188552149b"
+        },
+        {
+          "path": "assets/logos/rb_vertikalni_full_color_cmyk.pdf",
+          "id": "939d6f92d8c37b90a489d5d34724a055"
+        },
+        {
+          "path": "assets/logos/rb_vertikalni_negativ_cmyk.pdf",
+          "id": "671f5cedfc455e22467dc48a6ba93b05"
+        }
+      ]
+    },
+    {
+      "name": "photos",
+      "files": [
+        {
+          "path": "assets/photos/photo-filtered-bw.webp",
+          "id": "5f055be3d1c8b1957215bc4d1f77ceae"
+        },
+        {
+          "path": "assets/photos/photo-net-corner-1.webp",
+          "id": "147213932e36529375f150771b67ecab"
+        },
+        {
+          "path": "assets/photos/photo-net-corner-2.webp",
+          "id": "d776bde3982486dd39f751f75679272f"
+        },
+        {
+          "path": "assets/photos/portrait-cutout.webp",
+          "id": "aa08a19a369ea009bcc5fe5e88fecff4"
+        }
+      ]
+    },
+    {
+      "name": "Slides",
+      "files": [
+        {
+          "path": "assets/Slides/kruh-tmavy.png",
+          "id": "0834ecfbf775c5d139be86b605021289"
+        },
+        {
+          "path": "assets/Slides/linka-hlavicky.png",
+          "id": "6c32e9a541edd1d7a5a6d95d75093dc9"
+        },
+        {
+          "path": "assets/Slides/linka-teckovana.png",
+          "id": "80f1061d923be7e51c358e7a1df98d82"
+        },
+        {
+          "path": "assets/Slides/oblouk-roh.png",
+          "id": "a8ab2f805530d5b5d83dd534dce30486"
+        },
+        {
+          "path": "assets/Slides/plocha-cervena.png",
+          "id": "c573cd9faaa967f7a8ce56f873986100"
+        },
+        {
+          "path": "assets/Slides/pozadi-papir.png",
+          "id": "91c3ef18490519484a3ac65134a04873"
+        },
+        {
+          "path": "assets/Slides/skvrna.png",
+          "id": "cb8bdc5db29f78c25987837c385bc835"
+        },
+        {
+          "path": "assets/Slides/tahy-zdurazneni.png",
+          "id": "923d69216a6604402ab7fb8e875b66c4"
+        }
+      ]
+    },
+    {
+      "name": "Komponenty",
+      "order": [
+        "linka-rovna-vinova.svg",
+        "linka-rovna-cervena.svg",
+        "linka-rovna-antracit.svg",
+        "linka-rovna-bila.svg",
+        "linka-vlnita-vinova.svg",
+        "linka-vlnita-cervena.svg",
+        "linka-vlnita-antracit.svg",
+        "linka-vlnita-bila.svg",
+        "box-vinovy.svg",
+        "box-cerveny.svg",
+        "box-antracit.svg",
+        "box-bily.svg",
+        "kruh-vinovy.svg",
+        "kruh-cerveny.svg",
+        "kruh-antracit.svg",
+        "kruh-bily.svg",
+        "pas-natrzeny-vinovy.svg",
+        "pas-natrzeny-cerveny.svg",
+        "pas-natrzeny-antracit.svg"
+      ],
+      "files": [
+        {
+          "path": "assets/Komponenty/linka-rovna-vinova.svg",
+          "id": "87b0fb3384817aa616f67932a644b466"
+        },
+        {
+          "path": "assets/Komponenty/linka-rovna-cervena.svg",
+          "id": "b04cece05b08a34501d704bcc2dc1c6f"
+        },
+        {
+          "path": "assets/Komponenty/linka-rovna-antracit.svg",
+          "id": "bf24f655748f071a59cd3956c964102b"
+        },
+        {
+          "path": "assets/Komponenty/linka-rovna-bila.svg",
+          "id": "3b9d7795ad7a8dcc06ff60be85b21791"
+        },
+        {
+          "path": "assets/Komponenty/linka-vlnita-vinova.svg",
+          "id": "2da0f327f47d8e3fc94e40c0798e73ef"
+        },
+        {
+          "path": "assets/Komponenty/linka-vlnita-cervena.svg",
+          "id": "52e851e15b6275464e43aabfee0430b5"
+        },
+        {
+          "path": "assets/Komponenty/linka-vlnita-antracit.svg",
+          "id": "89bf7b21be911c3ef95a0a3c1ac3dac9"
+        },
+        {
+          "path": "assets/Komponenty/linka-vlnita-bila.svg",
+          "id": "b78ede27ff14d2e0c7adc44744fca90b"
+        },
+        {
+          "path": "assets/Komponenty/box-vinovy.svg",
+          "id": "5101c1e757fd9a856516184319fd2dac"
+        },
+        {
+          "path": "assets/Komponenty/box-cerveny.svg",
+          "id": "036f6ff988434671bc4dc77af8124a39"
+        },
+        {
+          "path": "assets/Komponenty/box-antracit.svg",
+          "id": "44f80e964df70e778c81d2a35d6693c0"
+        },
+        {
+          "path": "assets/Komponenty/box-bily.svg",
+          "id": "53e3a2456ce2d7c8426360c8158686cb"
+        },
+        {
+          "path": "assets/Komponenty/kruh-vinovy.svg",
+          "id": "9ef8d5defc9b9c474ba8381afec92208"
+        },
+        {
+          "path": "assets/Komponenty/kruh-cerveny.svg",
+          "id": "55e37a8661b0e84af7ecb3f690c85805"
+        },
+        {
+          "path": "assets/Komponenty/kruh-antracit.svg",
+          "id": "b4678ed4376c0e6af050de5d0c7c6aa1"
+        },
+        {
+          "path": "assets/Komponenty/kruh-bily.svg",
+          "id": "33279672dc2742c02d6c347f8be875e3"
+        },
+        {
+          "path": "assets/Komponenty/pas-natrzeny-vinovy.svg",
+          "id": "1877a1e5a5ebc620c89586223515b54d"
+        },
+        {
+          "path": "assets/Komponenty/pas-natrzeny-cerveny.svg",
+          "id": "a3b5f214b9c484ac275534340ae3d1af"
+        },
+        {
+          "path": "assets/Komponenty/pas-natrzeny-antracit.svg",
+          "id": "24a42c9441e02f9181a7fd974e5a6bdf"
+        }
+      ]
+    }
+  ],
+  "storage": {
+    "files": {
+      "assets/Images/cutout-example.webp": {
+        "store": "blob",
+        "id": "60cb48c6d96b3b88761edda7b6a682a4",
+        "bytes": 365558,
+        "type": "image/webp"
+      },
+      "assets/Images/ilustrace-27.svg": {
+        "store": "blob",
+        "id": "fa804c3dbd3ee8f43a19493f6bbe1fc1",
+        "bytes": 40079,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/ilustrace-31.svg": {
+        "store": "blob",
+        "id": "c52aace33055fb2b0f349cd8ccbff709",
+        "bytes": 48811,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/ilustrace-46.svg": {
+        "store": "blob",
+        "id": "7ced070294abe9553d0c5e1bc3ee1fd9",
+        "bytes": 39717,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/ilustrace-47.svg": {
+        "store": "blob",
+        "id": "51c730b033eaa58b77b029489832a2f1",
+        "bytes": 31295,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/ilustrace-48.svg": {
+        "store": "blob",
+        "id": "2562e120ef86b41dff48d31c52d15b19",
+        "bytes": 58480,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/ilustrace-49.svg": {
+        "store": "blob",
+        "id": "054266067874ae330f716e2c0c416bd8",
+        "bytes": 71110,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/ilustrace-50.svg": {
+        "store": "blob",
+        "id": "a392e1e1decd8b1a577b2e8e8298cbba",
+        "bytes": 19218,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/photo-conversation-net.webp": {
+        "store": "blob",
+        "id": "c1ca2f897d33dfd42a87d043dd37fc99",
+        "bytes": 497080,
+        "type": "image/webp"
+      },
+      "assets/Komponenty/box-antracit.svg": {
+        "store": "blob",
+        "id": "44f80e964df70e778c81d2a35d6693c0",
+        "bytes": 367,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/box-bily.svg": {
+        "store": "blob",
+        "id": "53e3a2456ce2d7c8426360c8158686cb",
+        "bytes": 365,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/box-cerveny.svg": {
+        "store": "blob",
+        "id": "036f6ff988434671bc4dc77af8124a39",
+        "bytes": 372,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/box-vinovy.svg": {
+        "store": "blob",
+        "id": "5101c1e757fd9a856516184319fd2dac",
+        "bytes": 367,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/kruh-antracit.svg": {
+        "store": "blob",
+        "id": "b4678ed4376c0e6af050de5d0c7c6aa1",
+        "bytes": 460,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/kruh-bily.svg": {
+        "store": "blob",
+        "id": "33279672dc2742c02d6c347f8be875e3",
+        "bytes": 458,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/kruh-cerveny.svg": {
+        "store": "blob",
+        "id": "55e37a8661b0e84af7ecb3f690c85805",
+        "bytes": 465,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/kruh-vinovy.svg": {
+        "store": "blob",
+        "id": "9ef8d5defc9b9c474ba8381afec92208",
+        "bytes": 460,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-rovna-antracit.svg": {
+        "store": "blob",
+        "id": "bf24f655748f071a59cd3956c964102b",
+        "bytes": 367,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-rovna-bila.svg": {
+        "store": "blob",
+        "id": "3b9d7795ad7a8dcc06ff60be85b21791",
+        "bytes": 365,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-rovna-cervena.svg": {
+        "store": "blob",
+        "id": "b04cece05b08a34501d704bcc2dc1c6f",
+        "bytes": 372,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-rovna-vinova.svg": {
+        "store": "blob",
+        "id": "87b0fb3384817aa616f67932a644b466",
+        "bytes": 367,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-vlnita-antracit.svg": {
+        "store": "blob",
+        "id": "89bf7b21be911c3ef95a0a3c1ac3dac9",
+        "bytes": 367,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-vlnita-bila.svg": {
+        "store": "blob",
+        "id": "b78ede27ff14d2e0c7adc44744fca90b",
+        "bytes": 365,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-vlnita-cervena.svg": {
+        "store": "blob",
+        "id": "52e851e15b6275464e43aabfee0430b5",
+        "bytes": 372,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/linka-vlnita-vinova.svg": {
+        "store": "blob",
+        "id": "2da0f327f47d8e3fc94e40c0798e73ef",
+        "bytes": 367,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/pas-natrzeny-antracit.svg": {
+        "store": "blob",
+        "id": "24a42c9441e02f9181a7fd974e5a6bdf",
+        "bytes": 2481,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/pas-natrzeny-cerveny.svg": {
+        "store": "blob",
+        "id": "a3b5f214b9c484ac275534340ae3d1af",
+        "bytes": 2486,
+        "type": "image/svg+xml"
+      },
+      "assets/Komponenty/pas-natrzeny-vinovy.svg": {
+        "store": "blob",
+        "id": "1877a1e5a5ebc620c89586223515b54d",
+        "bytes": 2481,
+        "type": "image/svg+xml"
+      },
+      "assets/Logos/logo-dark-alternativni.svg": {
+        "store": "blob",
+        "id": "b656fe8de6030a73b88649b66ff68edc",
+        "bytes": 7886,
+        "type": "image/svg+xml"
+      },
+      "assets/Logos/logo-dark-logo.svg": {
+        "store": "blob",
+        "id": "041da01038e564e4f18cc03794e49bc1",
+        "bytes": 7914,
+        "type": "image/svg+xml"
+      },
+      "assets/Logos/logo-light-logo.svg": {
+        "store": "blob",
+        "id": "99267bf181473e16d3ee847a1816ff03",
+        "bytes": 7950,
+        "type": "image/svg+xml"
+      },
+      "assets/Logos/logo-universal-symbol.svg": {
+        "store": "blob",
+        "id": "bc9abeed4618424758aa0d8c28573e29",
+        "bytes": 1301,
+        "type": "image/svg+xml"
+      },
+      "assets/Reference/background-red.png": {
+        "store": "blob",
+        "id": "0bbdd57d09db1f4191d478b6b65f04d3",
+        "bytes": 43176,
+        "type": "image/png"
+      },
+      "assets/Reference/natrzene-linky-dark-standard.png": {
+        "store": "blob",
+        "id": "6b726e92f584005d69653a122274305a",
+        "bytes": 30135,
+        "type": "image/png"
+      },
+      "assets/Reference/sipky-karusel.png": {
+        "store": "blob",
+        "id": "3974bdb4242da7bfd50d2289c9515844",
+        "bytes": 23220,
+        "type": "image/png"
+      },
+      "assets/Reference/sit-1.svg": {
+        "store": "blob",
+        "id": "406f7c6a5b3b31ad66b0bd05ba389bfd",
+        "bytes": 237685,
+        "type": "image/svg+xml"
+      },
+      "assets/Reference/sit-barvy-dark-standard.png": {
+        "store": "blob",
+        "id": "ff35be778d7e162f62ab372562cc7eef",
+        "bytes": 205575,
+        "type": "image/png"
+      },
+      "assets/Reference/web-styleguide-svetly.png": {
+        "store": "blob",
+        "id": "739c42a7ce27cd1cd3fd9aaaf9a6635f",
+        "bytes": 1032312,
+        "type": "image/png"
+      },
+      "assets/Reference/web-styleguide-tmavy-summit.png": {
+        "store": "blob",
+        "id": "5257ef1b8d418dbf4df7556c561da60b",
+        "bytes": 877535,
+        "type": "image/png"
+      },
+      "assets/Reference/zakladni-sit.svg": {
+        "store": "blob",
+        "id": "78d342273c74c896cd32cf56d1cfde36",
+        "bytes": 110926,
+        "type": "image/svg+xml"
+      },
+      "assets/Slides/kruh-tmavy.png": {
+        "store": "blob",
+        "id": "0834ecfbf775c5d139be86b605021289",
+        "bytes": 42829,
+        "type": "image/png"
+      },
+      "assets/Slides/linka-hlavicky.png": {
+        "store": "blob",
+        "id": "6c32e9a541edd1d7a5a6d95d75093dc9",
+        "bytes": 908,
+        "type": "image/png"
+      },
+      "assets/Slides/linka-teckovana.png": {
+        "store": "blob",
+        "id": "80f1061d923be7e51c358e7a1df98d82",
+        "bytes": 3760,
+        "type": "image/png"
+      },
+      "assets/Slides/oblouk-roh.png": {
+        "store": "blob",
+        "id": "a8ab2f805530d5b5d83dd534dce30486",
+        "bytes": 32506,
+        "type": "image/png"
+      },
+      "assets/Slides/plocha-cervena.png": {
+        "store": "blob",
+        "id": "c573cd9faaa967f7a8ce56f873986100",
+        "bytes": 16648,
+        "type": "image/png"
+      },
+      "assets/Slides/pozadi-papir.png": {
+        "store": "blob",
+        "id": "91c3ef18490519484a3ac65134a04873",
+        "bytes": 1957204,
+        "type": "image/png"
+      },
+      "assets/Slides/skvrna.png": {
+        "store": "blob",
+        "id": "cb8bdc5db29f78c25987837c385bc835",
+        "bytes": 11552,
+        "type": "image/png"
+      },
+      "assets/Slides/tahy-zdurazneni.png": {
+        "store": "blob",
+        "id": "923d69216a6604402ab7fb8e875b66c4",
+        "bytes": 1967,
+        "type": "image/png"
+      },
+      "assets/backgrounds/background.png": {
+        "store": "blob",
+        "id": "ffbe9e3cfa95b06a7c25842989268394",
+        "bytes": 38448,
+        "type": "image/png"
+      },
+      "assets/frames/frame-long-grey.svg": {
+        "store": "blob",
+        "id": "78d16502dedefb8bbcdb33f64de04cc3",
+        "bytes": 112006,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-long-red-2.svg": {
+        "store": "blob",
+        "id": "32136d76d98b21aeb8a32b39c7852039",
+        "bytes": 113194,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-long-red.svg": {
+        "store": "blob",
+        "id": "1b94a2ce15ae0ad08b52e051fde3da92",
+        "bytes": 112229,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-long-wine.svg": {
+        "store": "blob",
+        "id": "e516d0b150b45c6a139f1de3e862712f",
+        "bytes": 111918,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-short-grey.svg": {
+        "store": "blob",
+        "id": "83e23e17a30eb3f01c1663eface584bc",
+        "bytes": 110156,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-short-red-2.svg": {
+        "store": "blob",
+        "id": "73965f2cdd2ac738ca6203bd0a80fdd6",
+        "bytes": 110131,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-short-red.svg": {
+        "store": "blob",
+        "id": "ab9931cc52293f68917fc12a8e272ce6",
+        "bytes": 110488,
+        "type": "image/svg+xml"
+      },
+      "assets/frames/frame-short-wine.svg": {
+        "store": "blob",
+        "id": "833e641cd6d8a773833bb3b35aa0c4bf",
+        "bytes": 110098,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-01.svg": {
+        "store": "blob",
+        "id": "f2278a6ab41f3457e2a728e56a90917f",
+        "bytes": 5091,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-02.svg": {
+        "store": "blob",
+        "id": "e45ff67af96503f363cb5da4153af880",
+        "bytes": 3037,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-03.svg": {
+        "store": "blob",
+        "id": "50739b709a0360fe83e7dae444901057",
+        "bytes": 3514,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-04.svg": {
+        "store": "blob",
+        "id": "ffcf3d4e89388018f846341d80fd25e0",
+        "bytes": 4731,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-05.svg": {
+        "store": "blob",
+        "id": "5014fcb3f20bda0f840769c6895fd800",
+        "bytes": 3240,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-06.svg": {
+        "store": "blob",
+        "id": "b37ee1093ea708dff63093e2c941849a",
+        "bytes": 5335,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-07.svg": {
+        "store": "blob",
+        "id": "ffcef64aa1128cb7e12ce74d2218ee4d",
+        "bytes": 8194,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-08.svg": {
+        "store": "blob",
+        "id": "8d4a399baef18e270b7e1f17ce05ced7",
+        "bytes": 953,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-09.svg": {
+        "store": "blob",
+        "id": "97d9fe50a41c7c2de8e040c0d14b1775",
+        "bytes": 1472,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-10.svg": {
+        "store": "blob",
+        "id": "edda8752b543ad0b2dab779fee9a8af2",
+        "bytes": 3354,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-11.svg": {
+        "store": "blob",
+        "id": "b347b43d186e495d7129027c8b66f160",
+        "bytes": 6063,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-12.svg": {
+        "store": "blob",
+        "id": "ccb384e349d9f17fa060d8e952833c43",
+        "bytes": 6000,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-13.svg": {
+        "store": "blob",
+        "id": "a57f2452456c088c89df35eae1084c68",
+        "bytes": 8130,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-14.svg": {
+        "store": "blob",
+        "id": "80a5718928be0bc7af6f050001c33cc6",
+        "bytes": 9275,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-15.svg": {
+        "store": "blob",
+        "id": "c565e6d50132a5e0a7c5f5386fb19763",
+        "bytes": 8873,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-16.svg": {
+        "store": "blob",
+        "id": "2f2755868093e6d6fe4acaeae0831be1",
+        "bytes": 6873,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-17.svg": {
+        "store": "blob",
+        "id": "d039851367f7d5ab2218d1352655d3a8",
+        "bytes": 6493,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-18.svg": {
+        "store": "blob",
+        "id": "947085c770940fdfdd36b726deb39efb",
+        "bytes": 7065,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-19.svg": {
+        "store": "blob",
+        "id": "bdbc42b205df3445cbc1099902876e5d",
+        "bytes": 15158,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-20.svg": {
+        "store": "blob",
+        "id": "dd9242f11fb2ecda388a277b428954b7",
+        "bytes": 9045,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-21.svg": {
+        "store": "blob",
+        "id": "ec92f9ad54b62f6fa7d6439c3639246a",
+        "bytes": 13919,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-22.svg": {
+        "store": "blob",
+        "id": "105b9bb2fb3a9aeca2f9fea18c4560e9",
+        "bytes": 10381,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-23.svg": {
+        "store": "blob",
+        "id": "7b2f0b8baa135bd93415c7a5b2527401",
+        "bytes": 17986,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-24.svg": {
+        "store": "blob",
+        "id": "e0c5d108032259852831d27c514a0b56",
+        "bytes": 9872,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-25.svg": {
+        "store": "blob",
+        "id": "575bd2dd73f4a41ef564a429edc4966e",
+        "bytes": 17850,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-26.svg": {
+        "store": "blob",
+        "id": "250511e58360c631fbc2238f9aa2c238",
+        "bytes": 14599,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-27.svg": {
+        "store": "blob",
+        "id": "1043a90fe193ccc931b8dbeaba30d7b4",
+        "bytes": 6209,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-28.svg": {
+        "store": "blob",
+        "id": "2d82e022cb31730394d90aadcfe6c87a",
+        "bytes": 11857,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-29.svg": {
+        "store": "blob",
+        "id": "366f0f4bbb32b02f21f6b84cbc1d8129",
+        "bytes": 26726,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-30.svg": {
+        "store": "blob",
+        "id": "d753b2f9d87f88af1d6d8d40686544da",
+        "bytes": 7379,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-31.svg": {
+        "store": "blob",
+        "id": "be51f051fe57c19763fefaa3c494abf4",
+        "bytes": 11570,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-32.svg": {
+        "store": "blob",
+        "id": "6434444fa22b41e06a15d2304af93eb9",
+        "bytes": 7929,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-33.svg": {
+        "store": "blob",
+        "id": "4b2ef28b72cf40e2bcf60f405a325e9d",
+        "bytes": 7605,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-34.svg": {
+        "store": "blob",
+        "id": "216fcd301f5c372903e48473557658ad",
+        "bytes": 9786,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-35.svg": {
+        "store": "blob",
+        "id": "a8ea00c8bad60d0cd0529af931a9d0e9",
+        "bytes": 8429,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-36.svg": {
+        "store": "blob",
+        "id": "2fc1b11fdb322ee0b94279d972c3b76d",
+        "bytes": 6187,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-37.svg": {
+        "store": "blob",
+        "id": "5ef4db9aba7e0169ff760650b2241058",
+        "bytes": 6844,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-38.svg": {
+        "store": "blob",
+        "id": "db9be6c19983ebb95933e809f0f56983",
+        "bytes": 11796,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-39.svg": {
+        "store": "blob",
+        "id": "7611ba8575a904f0d1a569ad2ddf4788",
+        "bytes": 8478,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-40.svg": {
+        "store": "blob",
+        "id": "7b6c15a7ed1d0559600aa1be115e4a5e",
+        "bytes": 5127,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-41.svg": {
+        "store": "blob",
+        "id": "d510a9e6911671f487c65ef1d24cce4c",
+        "bytes": 7884,
+        "type": "image/svg+xml"
+      },
+      "assets/icons/icon-42.svg": {
+        "store": "blob",
+        "id": "0619d5c797be474d070dfcd23c201e05",
+        "bytes": 5885,
+        "type": "image/svg+xml"
+      },
+      "assets/logos/logo-light-alternativni.svg": {
+        "store": "blob",
+        "id": "dd2ce4ba066744ac98167438af39741f",
+        "bytes": 7913,
+        "type": "image/svg+xml"
+      },
+      "assets/logos/rb_horizontalni_full_color_cmyk.pdf": {
+        "store": "blob",
+        "id": "e52dc3edb54bf8eac5039215375e0ee3",
+        "bytes": 24647,
+        "type": "application/pdf"
+      },
+      "assets/logos/rb_horizontalni_negativ_cmyk.pdf": {
+        "store": "blob",
+        "id": "94fafe14fed4df0d909ad1434f1a9f56",
+        "bytes": 20005,
+        "type": "application/pdf"
+      },
+      "assets/logos/rb_piktogram_full_color_cmyk.pdf": {
+        "store": "blob",
+        "id": "8a1b2064eb9f2e311449a3188552149b",
+        "bytes": 23097,
+        "type": "application/pdf"
+      },
+      "assets/logos/rb_vertikalni_full_color_cmyk.pdf": {
+        "store": "blob",
+        "id": "939d6f92d8c37b90a489d5d34724a055",
+        "bytes": 29001,
+        "type": "application/pdf"
+      },
+      "assets/logos/rb_vertikalni_negativ_cmyk.pdf": {
+        "store": "blob",
+        "id": "671f5cedfc455e22467dc48a6ba93b05",
+        "bytes": 20275,
+        "type": "application/pdf"
+      },
+      "assets/photos/photo-filtered-bw.webp": {
+        "store": "blob",
+        "id": "5f055be3d1c8b1957215bc4d1f77ceae",
+        "bytes": 489552,
+        "type": "image/webp"
+      },
+      "assets/photos/photo-net-corner-1.webp": {
+        "store": "blob",
+        "id": "147213932e36529375f150771b67ecab",
+        "bytes": 497160,
+        "type": "image/webp"
+      },
+      "assets/photos/photo-net-corner-2.webp": {
+        "store": "blob",
+        "id": "d776bde3982486dd39f751f75679272f",
+        "bytes": 491542,
+        "type": "image/webp"
+      },
+      "assets/photos/portrait-cutout.webp": {
+        "store": "blob",
+        "id": "aa08a19a369ea009bcc5fe5e88fecff4",
+        "bytes": 184812,
+        "type": "image/webp"
+      }
+    },
+    "blobBytesUsed": 8910907
+  }
+}

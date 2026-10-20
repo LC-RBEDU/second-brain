@@ -59,11 +59,11 @@ Nepřidržuj starou preferenci jen proto, že je tady napsaná, když uživatel 
 
 Když výstup potřebuje **brand vizuál / oficiální ToV z manuálu** (ne jen taste tohoto skillu):
 
-1. Nejdřív `python3 scripts/refresh_rb_design_system.py --check` (exit 2 → refresh bez `--check` / MCP scrape + `--from-firecrawl-json`).
-2. Pak čti SSOT: `ŠABLONY/design-system/snapshot/design-system.md` (+ `tokens.json` dle potřeby).
-3. Manifest: `ŠABLONY/design-system/manifest.json`. Rule: `.cursor/rules/design-system-refresh.mdc`.
+1. Začni v [`docs/design-system/START-HERE.md`](../../../docs/design-system/START-HERE.md) (Claude ZIP export).
+2. Rule: `.cursor/rules/design-system-refresh.mdc`.
+3. Volitelně artifact diff: `python3 scripts/refresh_rb_design_system.py --check` (mirror v `ŠABLONY/design-system/`).
 
-Claude už má design system jako firemní skill — **neduplikovat**. Tahle cesta je jen Cursor/Grok.
+Claude už má design system jako firemní skill — **neduplikovat**. Repo kopie je jen Cursor/Grok.
 
 ## Load references selectively
 
@@ -74,7 +74,7 @@ Claude už má design system jako firemní skill — **neduplikovat**. Tahle ces
 - [slide-and-offer-design.md](references/slide-and-offer-design.md) — logika slidů, nabídka, investment
 - [learning-design.md](references/learning-design.md) — RBE learning architektura
 - [calibration-examples.md](references/calibration-examples.md) — když záleží na wording/naming/stylovém úsudku
-- Brand DS (po refresh check): `ŠABLONY/design-system/` — manuál, tokeny, oficiální ToV
+- Brand DS: `docs/design-system/` — manuál, tokeny, guidelines, api komponent (Claude export)
 
 ## Client context
 
