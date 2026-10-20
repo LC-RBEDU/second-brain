@@ -92,7 +92,16 @@ describe("debug view structure probe", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    const datePickers = [...container.querySelectorAll("[data-date-picker]")].map((el) => ({
+      field: el.getAttribute("data-date-picker"),
+      type: el.getAttribute("type"),
+      disabled: el.disabled,
+    }));
     log("D", "detail metrics", metrics(container));
+    log("H3", "detail date pickers", {
+      datePickers,
+      allDateType: datePickers.length === 3 && datePickers.every((row) => row.type === "date"),
+    });
 
     log("C", "shared chrome check", {
       navClass: container.querySelector("nav")?.className || "",

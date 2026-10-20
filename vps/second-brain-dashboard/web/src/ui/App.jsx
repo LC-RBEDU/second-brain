@@ -1112,8 +1112,10 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <label className={labelClass}>
                 Wait until
                 <input
+                  type="date"
                   className={fieldClass}
                   aria-label="WaitUntil úkolu"
+                  data-date-picker="waitUntil"
                   value={draft.waitUntil}
                   disabled={draft.status !== "Waiting"}
                   onChange={(event) => setDraft({ ...draft, waitUntil: event.target.value })}
@@ -1122,8 +1124,10 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <label className={labelClass}>
                 Deadline
                 <input
+                  type="date"
                   className={`${fieldClass} ${draft.deadline ? "border-2 border-[#a11834]" : ""}`}
                   aria-label="Deadline úkolu"
+                  data-date-picker="deadline"
                   value={draft.deadline}
                   onChange={(event) => setDraft({ ...draft, deadline: event.target.value, review: event.target.value ? "" : draft.review })}
                 />
@@ -1131,8 +1135,10 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <label className={labelClass}>
                 Review date
                 <input
+                  type="date"
                   className={fieldClass}
                   aria-label="Review úkolu"
+                  data-date-picker="review"
                   value={draft.review}
                   disabled={Boolean(draft.deadline)}
                   onChange={(event) => setDraft({ ...draft, review: event.target.value })}
@@ -1294,18 +1300,27 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <label className={labelClass}>
                 Deadline nového
                 <input
+                  type="date"
                   className={fieldClass}
                   aria-label="Deadline nového tasku"
                   value={newDraft.deadline}
-                  onChange={(event) => setNewDraft({ ...newDraft, deadline: event.target.value })}
+                  onChange={(event) =>
+                    setNewDraft({
+                      ...newDraft,
+                      deadline: event.target.value,
+                      review: event.target.value ? "" : newDraft.review,
+                    })
+                  }
                 />
               </label>
               <label className={labelClass}>
                 Review nového
                 <input
+                  type="date"
                   className={fieldClass}
                   aria-label="Review nového tasku"
                   value={newDraft.review}
+                  disabled={Boolean(newDraft.deadline)}
                   onChange={(event) => setNewDraft({ ...newDraft, review: event.target.value })}
                 />
               </label>
@@ -1313,9 +1328,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
             <label className={labelClass}>
               WaitUntil
               <input
+                type="date"
                 className={fieldClass}
                 aria-label="WaitUntil nového tasku"
                 value={newDraft.waitUntil}
+                disabled={newDraft.status !== "Waiting"}
                 onChange={(event) => setNewDraft({ ...newDraft, waitUntil: event.target.value })}
               />
             </label>
@@ -1459,15 +1476,15 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <label className={labelClass}>
                     Termín pro výběr
-                    <input className={fieldClass} aria-label="Termín pro výběr" value={selectionDate} onChange={(event) => applySharedDate(event.target.value)} />
+                    <input type="date" className={fieldClass} aria-label="Termín pro výběr" value={selectionDate} onChange={(event) => applySharedDate(event.target.value)} />
                   </label>
                   <label className={labelClass}>
                     Od
-                    <input className={fieldClass} aria-label="Od" value={from} onChange={(event) => setFrom(event.target.value)} />
+                    <input type="date" className={fieldClass} aria-label="Od" value={from} onChange={(event) => setFrom(event.target.value)} />
                   </label>
                   <label className={labelClass}>
                     Do
-                    <input className={fieldClass} aria-label="Do" value={to} onChange={(event) => setTo(event.target.value)} />
+                    <input type="date" className={fieldClass} aria-label="Do" value={to} onChange={(event) => setTo(event.target.value)} />
                   </label>
                   <label className={labelClass}>
                     Max
@@ -1588,7 +1605,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       {dialog?.kind === "doing" && (
         <div role="dialog" aria-label="Doplň deadline" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
-            <input className={fieldClass} aria-label="Datum deadline" value={doingDate} onChange={(event) => setDoingDate(event.target.value)} />
+            <input type="date" className={fieldClass} aria-label="Datum deadline" value={doingDate} onChange={(event) => setDoingDate(event.target.value)} />
             <button type="button" className={btnPrimary} onClick={confirmDoing}>
               Potvrdit
             </button>
@@ -1599,7 +1616,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       {dialog?.kind === "waiting" && (
         <div role="dialog" aria-label="Doplň waitUntil" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
-            <input className={fieldClass} aria-label="Datum waitUntil" value={waitDate} onChange={(event) => setWaitDate(event.target.value)} />
+            <input type="date" className={fieldClass} aria-label="Datum waitUntil" value={waitDate} onChange={(event) => setWaitDate(event.target.value)} />
             <button type="button" className={btnPrimary} onClick={confirmWaiting}>
               Potvrdit
             </button>
