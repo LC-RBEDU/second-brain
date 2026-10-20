@@ -1,8 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { classify, visibleTasks } from "../classify.js";
 import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
 import { closingPreview, kanbanPatch, offerKeep, resolveCloser, rowPatch } from "../writes.js";
+import {
+  btnGhost,
+  btnNav,
+  btnPrimary,
+  buildMapGroups,
+  fieldClass,
+  labelClass,
+  PageHeader,
+  panelClass,
+  StatusPill,
+} from "./chrome.jsx";
 
 const COLUMNS = ["Doing", "Next", "Waiting", "Backlog"];
 const FOCUS_TEXT = {
@@ -107,6 +118,37 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const projectSlugValue = project || activeProjects[0]?.slug || "";
   const projectTasks = listed.filter((task) => task.project === projectSlugValue);
   const detail = byId.get(detailId);
+  const mapGroups = useMemo(() => buildMapGroups(listed), [listed]);
+  const projectEpics = projectTasks.filter((task) => task.type === "epic");
+  const [epicFilter, setEpicFilter] = useState("");
+  const filteredProjectTasks = projectTasks.filter((task) => {
+    if (!epicFilter) return true;
+    if (task.id === epicFilter) return true;
+    const parent = parentId(task.parent);
+    if (parent === epicFilter) return true;
+    const story = byId.get(parent);
+    return story && parentId(story.parent) === epicFilter;
+  });
+
+  // #region agent log
+  useEffect(() => {
+    const tables = document.querySelectorAll("table").length;
+    const panels = document.querySelectorAll("[data-layout-panel]").length;
+    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+      body: JSON.stringify({
+        sessionId: "7e3b98",
+        runId: "post-fix",
+        hypothesisId: "D",
+        location: "App.jsx:view",
+        message: "view layout metrics",
+        data: { view, tables, panels, radarTile },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [view, radarTile, board, preview]);
+  // #endregion
 
   function oidOf(task) {
     return oids[task.id] || task.expect_oid || "";
@@ -401,358 +443,880 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     if (result?.ok) onRefresh?.();
   }
 
-  function TaskButton({ task }) {
+  function TaskActions({ task }) {
     return (
-      <article className="flex flex-wrap items-center gap-2 border-b border-[#eeeeee] bg-white px-3 py-2">
-        <button type="button" className="font-bold" onClick={() => openDetail(task)}>
+      <article className="flex flex-wrap items-center gap-1">
+        <button type="button" className="text-left font-bold" onClick={() => openDetail(task)}>
           {labelOf(task)}
         </button>
-        <span className="text-sm">{task.deadline || task.review_deadline || "—"}</span>
         {COLUMNS.map((status) => (
-          <button key={status} type="button" className="border border-[#b0b2b6] px-2 text-sm" aria-label={`Přesunout na ${status}`} onClick={() => move(task, status)}>
+          <button
+            key={status}
+            type="button"
+            className="rounded border border-[#b0b2b6] px-2 text-xs"
+            aria-label={`Přesunout na ${status}`}
+            onClick={() => move(task, status)}
+          >
             {status}
           </button>
         ))}
-        <button type="button" aria-label="Označit hotovo" onClick={() => move(task, "Done")}>
+        <button type="button" className="rounded border border-[#b0b2b6] px-2 text-xs" aria-label="Označit hotovo" onClick={() => move(task, "Done")}>
           Hotovo
         </button>
-        <button type="button" aria-label={`Focus ${task.id}`} onClick={() => proposeFocus(task)}>
+        <button type="button" className="rounded border border-[#b0b2b6] px-2 text-xs" aria-label={`Focus ${task.id}`} onClick={() => proposeFocus(task)}>
           Focus
         </button>
       </article>
     );
   }
 
+  function TaskTable({ rows, groupLabel }) {
+    return (
+      <div data-layout-panel className={`${panelClass} overflow-x-auto`}>
+        {groupLabel && <h2 className="border-b border-[#e2e2e2] p-3 text-sm font-extrabold uppercase">{groupLabel}</h2>}
+        <table className="w-full min-w-[820px] text-left text-sm">
+          <thead>
+            <tr className="text-xs uppercase text-[#5c5c5c]">
+              <th className="p-3 font-bold">Task</th>
+              <th className="p-2 font-bold">Parent</th>
+              <th className="p-2 font-bold">Status</th>
+              <th className="p-2 font-bold">Deadline</th>
+              <th className="p-2 font-bold">Review</th>
+              <th className="p-3 font-bold">Akce</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((task) => (
+              <tr key={task.id} className="border-t border-[#eeeeee]">
+                <td className="p-3">
+                  <TaskActions task={task} />
+                </td>
+                <td className="p-2 text-[#5c5c5c]">{parentId(task.parent) || "—"}</td>
+                <td className="p-2">
+                  <StatusPill status={task.status} />
+                </td>
+                <td className={`p-2 ${task.deadline && task.deadline < today ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"}`}>
+                  {task.deadline || "—"}
+                </td>
+                <td className="p-2 text-[#5c5c5c]">{task.review_deadline || "—"}</td>
+                <td className="p-3 text-xs text-[#5c5c5c]">{task.project || ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  const issueRows = [
+    ...new Map(
+      classified.issues
+        .filter((item) => item.rule !== "no_date")
+        .map((item) => [item.id, item]),
+    ).values(),
+  ];
+
+  const projectStories = filteredProjectTasks.filter((task) => task.type === "story");
+  const projectStoryIds = new Set(projectStories.map((task) => task.id));
+  const childrenOf = (id) => filteredProjectTasks.filter((task) => parentId(task.parent) === id);
+  const projectOrphans = filteredProjectTasks.filter(
+    (task) => task.type !== "story" && task.type !== "epic" && !projectStoryIds.has(parentId(task.parent)),
+  );
+
   return (
-    <div className="min-h-screen bg-[#fafafa] font-[Rubik,system-ui,sans-serif] text-[#444]">
-      <nav className="flex flex-wrap items-center gap-2 bg-[#444444] p-3 text-[#fafafa]">
-        <span className="mr-2 font-black uppercase">Second Brain</span>
+    <div className="flex min-h-screen flex-col bg-[#fafafa] font-[Rubik,system-ui,sans-serif] text-[#444]">
+      <nav className="flex flex-wrap items-center gap-2 bg-[#444444] px-8 py-2 text-[#fafafa]">
+        <span className="mr-4 text-base font-black uppercase tracking-wide">Second Brain</span>
         {[
-          ["radar", "Radar"],
-          ["issues", "Chybně zadané"],
           ["map", "Mapa"],
+          ["radar", "Radar"],
           ["project", "Projekt"],
-          ["new", "Nový task"],
           ["cleanup", "Úklid"],
         ].map(([id, name]) => (
-          <button key={id} type="button" className={view === id ? "bg-[#a11834] px-3 py-2 font-bold" : "px-3 py-2"} onClick={() => setView(id)}>
+          <button key={id} type="button" className={btnNav(view === id)} onClick={() => setView(id)}>
             {name}
           </button>
         ))}
-        <label>
+        <span aria-hidden="true" className="mx-2 h-6 w-px bg-[#6b6b6b]" />
+        <button type="button" className={btnNav(view === "issues")} onClick={() => setView("issues")}>
+          Chybně zadané
+        </button>
+        <button type="button" className={btnNav(view === "new")} onClick={() => setView("new")}>
+          Nový task
+        </button>
+        <label className="ml-auto flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showPaused} onChange={(event) => setShowPaused(event.target.checked)} /> Zobrazit pauznuté
         </label>
-        <input className="border bg-white px-2 py-1 text-[#444]" aria-label="Hledat" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <input
+          className={`${fieldClass} max-w-xs text-[#444]`}
+          aria-label="Hledat"
+          placeholder="ID, název, projekt…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
       </nav>
 
-      {view === "radar" && (
-        <section aria-label="Radar" className="flex flex-col gap-4 p-4">
-          <h1 className="text-3xl font-black uppercase">Radar</h1>
-          <div className="grid grid-cols-3 gap-3">
-            {TILES.map(([key, name]) => (
-              <button
-                key={key}
-                type="button"
-                className={radarTile === key ? "border-2 border-[#e4003a] bg-white p-3 text-left" : "border border-[#b0b2b6] bg-white p-3 text-left"}
-                onClick={() => setRadarTile(key)}
-              >
-                <span className="block text-xs font-bold uppercase">{name}</span>
-                <span className="block text-3xl font-black">{classified.tiles[key]}</span>
-                <span className="sr-only">{name} {classified.tiles[key]}</span>
+      <main className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col gap-5 px-8 py-6">
+        {view === "radar" && (
+          <section aria-label="Radar" className="flex flex-col gap-6">
+            <PageHeader title="Radar">
+              <button type="button" className={btnPrimary} onClick={() => setView("new")}>
+                + Nový
               </button>
-            ))}
-          </div>
-          <p className="text-sm">Prošlý focus: {classified.radar.focus_stale.length}</p>
-          <div className="border border-[#e2e2e2] bg-white">
-            <h2 className="border-b border-[#e2e2e2] p-3 font-black uppercase">{TILES.find(([key]) => key === radarTile)?.[1]}</h2>
-            {idsForTile(classified, radarTile).map((id) => byId.get(id)).filter(Boolean).map((task) => (
-              <TaskButton key={task.id} task={task} />
-            ))}
-          </div>
-        </section>
-      )}
+            </PageHeader>
+            <p className="w-full text-xs text-[#5c5c5c]">
+              Snapshot z Brain · focus týden · {listed.length} otevřených · prošlý focus: {classified.radar.focus_stale.length}
+            </p>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Kategorie">
+              {TILES.map(([key, name]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    radarTile === key
+                      ? "rounded-md border-2 border-[#e4003a] bg-white p-3.5 text-left"
+                      : key === "errors"
+                        ? "rounded-md border border-[#a11834] bg-white p-3.5 text-left"
+                        : "rounded-md border border-[#b0b2b6] bg-white p-3.5 text-left"
+                  }
+                  onClick={() => setRadarTile(key)}
+                >
+                  <span
+                    className={`block text-xs font-bold uppercase ${
+                      key === "errors" || key === "overdue" ? "text-[#b8002e]" : "text-[#5c5c5c]"
+                    }`}
+                  >
+                    {name}
+                  </span>
+                  <span className="block text-4xl font-black">{classified.tiles[key]}</span>
+                  <span className="sr-only">
+                    {name} {classified.tiles[key]}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <TaskTable
+              groupLabel={TILES.find(([key]) => key === radarTile)?.[1]}
+              rows={idsForTile(classified, radarTile)
+                .map((id) => byId.get(id))
+                .filter(Boolean)}
+            />
+          </section>
+        )}
 
-      {view === "issues" && (
-        <section aria-label="Chybně zadané">
-          <h1>Chybně zadané {classified.tiles.errors}</h1>
-          {[...new Map(classified.issues.filter((item) => item.rule !== "no_date").map((item) => [item.id, item])).values()].map(
-            (item) => (
-              <article key={item.id}>
-                <p>{item.id} — {item.title}</p>
-                <p>{classified.issues.filter((issue) => issue.id === item.id && issue.rule !== "no_date").map((issue) => issue.rule).join(", ")}</p>
-              </article>
-            ),
-          )}
-        </section>
-      )}
+        {view === "issues" && (
+          <section aria-label="Chybně zadané" className="flex flex-col gap-5">
+            <PageHeader title={`Chybně zadané ${classified.tiles.errors}`} />
+            <div data-layout-panel className={`${panelClass} overflow-x-auto`}>
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase text-[#5c5c5c]">
+                    <th className="p-3 font-bold">Task</th>
+                    <th className="p-2 font-bold">Pravidla</th>
+                    <th className="p-2 font-bold">Projekt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {issueRows.map((item) => {
+                    const task = byId.get(item.id);
+                    const rules = classified.issues
+                      .filter((issue) => issue.id === item.id && issue.rule !== "no_date")
+                      .map((issue) => issue.rule)
+                      .join(", ");
+                    return (
+                      <tr key={item.id} className="border-t border-[#eeeeee]">
+                        <td className="p-3">
+                          <article>
+                            {task ? (
+                              <TaskActions task={task} />
+                            ) : (
+                              <p>
+                                {item.id} — {item.title}
+                              </p>
+                            )}
+                          </article>
+                        </td>
+                        <td className="p-2 font-bold text-[#b8002e]">{rules}</td>
+                        <td className="p-2 text-[#5c5c5c]">{item.project || task?.project || ""}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
-      {view === "map" && (
-        <section aria-label="Mapa">
-          {listed.filter((task) => !listed.some((other) => other.id === task.parent)).map((task) => (
-            <p key={task.id}>{labelOf(task)}</p>
-          ))}
-          {listed.filter((task) => task.parent).map((task) => (
-            <p key={task.id}>{labelOf(task)}</p>
-          ))}
-        </section>
-      )}
-
-      {view === "project" && (
-        <section aria-label="Projekt">
-          <select aria-label="Projekt v přehledu" value={projectSlugValue} onChange={(event) => setProject(event.target.value)}>
-            {activeProjects.map((item) => (
-              <option key={item.slug} value={item.slug}>{item.slug}</option>
-            ))}
-          </select>
-          <button type="button" onClick={() => setBoard(false)}>Seznam</button>
-          <button type="button" onClick={() => setBoard(true)}>Kanban</button>
-          {board ? (
-            <div className="grid grid-cols-4 gap-2">
-              {COLUMNS.map((status) => (
-                <div key={status}>
-                  <div role="columnheader">{status}</div>
-                  {projectTasks.filter((task) => task.status === status).map((task) => (
-                    <TaskButton key={task.id} task={task} />
+        {view === "map" && (
+          <section aria-label="Mapa" className="flex flex-col gap-5">
+            <PageHeader title="Mapa" />
+            <div className="flex flex-wrap gap-4 text-xs text-[#5c5c5c]">
+              <span>Doing · Next · Waiting / Backlog</span>
+              <span className="font-bold text-[#b8002e]">❗ overdue</span>
+              <span className="font-bold text-[#b8002e]">⚠️ chybně zadané</span>
+            </div>
+            <div data-layout-panel className={`${panelClass} py-2`}>
+              {mapGroups.map((group) => (
+                <div key={group.slug} className="border-b border-[#eeeeee] last:border-b-0">
+                  <div className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="font-extrabold uppercase">{group.slug}</span>
+                    <span className="text-sm text-[#5c5c5c]">
+                      {group.epics.length} epiců · {group.open} otevřených
+                    </span>
+                  </div>
+                  {group.epics.map(({ epic, stories, loose }) => (
+                    <div key={epic.id}>
+                      <button type="button" className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left" onClick={() => openDetail(epic)}>
+                        <span className="font-bold">{labelOf(epic)}</span>
+                        <span className="text-sm text-[#5c5c5c]">{stories.length + loose.length} dětí</span>
+                      </button>
+                      {stories.map((story) => (
+                        <button
+                          key={story.id}
+                          type="button"
+                          className="flex w-full items-center gap-3 px-4 py-1.5 pl-20 text-left text-sm"
+                          onClick={() => openDetail(story)}
+                        >
+                          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#444]" />
+                          <span className="font-bold">{labelOf(story)}</span>
+                          {story.deadline && story.deadline < today && (
+                            <span className="font-bold text-[#b8002e]">❗ {story.deadline}</span>
+                          )}
+                        </button>
+                      ))}
+                      {loose.map((task) => (
+                        <button
+                          key={task.id}
+                          type="button"
+                          className="flex w-full items-center gap-3 px-4 py-1.5 pl-20 text-left text-sm"
+                          onClick={() => openDetail(task)}
+                        >
+                          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#b0b2b6]" />
+                          <span>{labelOf(task)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  {[...group.orphanStories, ...group.orphanTasks].map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left text-sm"
+                      onClick={() => openDetail(task)}
+                    >
+                      <span className="font-bold text-[#b8002e]">⚠️ {labelOf(task)}</span>
+                    </button>
                   ))}
                 </div>
               ))}
             </div>
-          ) : (
-            projectTasks.map((task) => <TaskButton key={task.id} task={task} />)
-          )}
-        </section>
-      )}
+          </section>
+        )}
 
-      {view === "detail" && detail && (
-        <section aria-label="Detail">
-          <h1>{labelOf(detail)}</h1>
-          <label>
-            Název <input aria-label="Název" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
-          </label>
-          <label>
-            Deadline <input aria-label="Deadline úkolu" value={draft.deadline} onChange={(event) => setDraft({ ...draft, deadline: event.target.value })} />
-          </label>
-          {detail.type !== "epic" && (
-            <label>
-              Parent
-              <input
-                aria-label="Parent úkolu"
-                list="detail-parents"
-                value={draft.parent}
-                onChange={(event) => setDraft({ ...draft, parent: event.target.value })}
-              />
-              <datalist id="detail-parents">
-                {openTasks
-                  .filter((task) => (showPaused || !paused.has(projectSlug(task))) && task.type === (detail.type === "story" ? "epic" : "story"))
-                  .map((task) => (
-                    <option key={task.id} value={task.id}>{labelOf(task)}</option>
+        {view === "project" && (
+          <section aria-label="Projekt" className="flex flex-col gap-5">
+            <div role="tablist" aria-label="Výběr projektu" className="flex flex-wrap items-end gap-2 border-b border-[#e2e2e2] pb-2">
+              <label className={labelClass}>
+                Projekt
+                <select
+                  className={fieldClass}
+                  aria-label="Projekt v přehledu"
+                  value={projectSlugValue}
+                  onChange={(event) => {
+                    setProject(event.target.value);
+                    setEpicFilter("");
+                  }}
+                >
+                  {activeProjects.map((item) => (
+                    <option key={item.slug} value={item.slug}>
+                      {item.slug}
+                    </option>
                   ))}
-              </datalist>
-            </label>
-          )}
-          <button type="button" onClick={saveDetail}>Uložit</button>
-        </section>
-      )}
-
-      {view === "new" && (
-        <section aria-label="Nový task">
-          <label>
-            Projekt
-            <select aria-label="Projekt nového tasku" value={projectSlugValue} onChange={(event) => setProject(event.target.value)}>
-              {activeProjects.map((item) => (
-                <option key={item.slug} value={item.slug}>{item.slug}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Název nového <input aria-label="Název nového tasku" value={newDraft.title} onChange={(event) => setNewDraft({ ...newDraft, title: event.target.value })} />
-          </label>
-          <label>
-            Úroveň
-            <select aria-label="Úroveň nového tasku" value={newDraft.level} onChange={(event) => setNewDraft({ ...newDraft, level: event.target.value, parent: "" })}>
-              <option value="epic">Epic</option>
-              <option value="story">Story</option>
-              <option value="task">Task</option>
-            </select>
-          </label>
-          <label>
-            Stav
-            <select aria-label="Stav nového tasku" value={newDraft.status} onChange={(event) => setNewDraft({ ...newDraft, status: event.target.value })}>
-              {COLUMNS.map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Deadline nového <input aria-label="Deadline nového tasku" value={newDraft.deadline} onChange={(event) => setNewDraft({ ...newDraft, deadline: event.target.value })} />
-          </label>
-          <label>
-            Review nového <input aria-label="Review nového tasku" value={newDraft.review} onChange={(event) => setNewDraft({ ...newDraft, review: event.target.value })} />
-          </label>
-          <label>
-            WaitUntil <input aria-label="WaitUntil nového tasku" value={newDraft.waitUntil} onChange={(event) => setNewDraft({ ...newDraft, waitUntil: event.target.value })} />
-          </label>
-          {newDraft.level !== "epic" && (
-            <label>
-              Parent
-              <input
-                aria-label="Parent nového tasku"
-                list="parent-choices"
-                value={newDraft.parent}
-                onChange={(event) => setNewDraft({ ...newDraft, parent: event.target.value })}
-              />
-              <datalist id="parent-choices">
-                {openTasks.filter((task) => (showPaused || !paused.has(projectSlug(task))) && task.type === (newDraft.level === "story" ? "epic" : "story")).map((task) => (
-                  <option key={task.id} value={task.id}>{labelOf(task)}</option>
-                ))}
-              </datalist>
-            </label>
-          )}
-          <button type="button" onClick={createTask}>Založit</button>
-        </section>
-      )}
-
-      {view === "cleanup" && (
-        <section aria-label="Úklid">
-          <div role="region" aria-label="Seznam úklidu">
-            {listed.map((task) => (
-              <div key={task.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    aria-label={`Vybrat ${labelOf(task)}`}
-                    checked={Boolean(checked[task.id])}
-                    onChange={(event) => setChecked({ ...checked, [task.id]: event.target.checked })}
-                  />
-                  {labelOf(task)}
-                </label>
-                {checked[task.id] && (
-                  <select
-                    aria-label={`Akce ${task.id}`}
-                    value={actions[task.id] || (offerKeep(task) ? "keep" : "done")}
-                    onChange={(event) => setActions({ ...actions, [task.id]: event.target.value })}
-                  >
-                    {offerKeep(task) && <option value="keep">Ponechat</option>}
-                    <option value="done">Hotovo</option>
-                    <option value="cancelled">Zrušit</option>
-                  </select>
-                )}
-              </div>
-            ))}
-          </div>
-          <button type="button" onClick={openPreview}>Náhled</button>
-          {preview && (
-            <div role="region" aria-label="Náhled úklidu">
-              <label>
-                Termín pro výběr
-                <input aria-label="Termín pro výběr" value={selectionDate} onChange={(event) => applySharedDate(event.target.value)} />
-              </label>
-              <label>
-                Od <input aria-label="Od" value={from} onChange={(event) => setFrom(event.target.value)} />
-              </label>
-              <label>
-                Do <input aria-label="Do" value={to} onChange={(event) => setTo(event.target.value)} />
-              </label>
-              <label>
-                Max <input aria-label="Max za den" value={maxPerDay} onChange={(event) => setMaxPerDay(event.target.value)} />
-              </label>
-              <label>
-                <input type="checkbox" aria-label="Přeskočit nepracovní dny" checked={skipNonWork} onChange={(event) => setSkipNonWork(event.target.checked)} />
-                Přeskočit nepracovní dny
-              </label>
-              <label>
-                Pořadí
-                <select aria-label="Pořadí rozprostření" value={sortMode} onChange={(event) => setSortMode(event.target.value)}>
-                  <option value="project_epic">projekt a epic</option>
-                  <option value="priority">priorita</option>
-                  <option value="age">stáří</option>
                 </select>
               </label>
-              {preview.filter((row) => !dropped.has(row.id)).map((row) => (
-                <div key={row.id}>
-                  <label>
-                    <input type="checkbox" aria-label={`Náhled ${row.id} — ${row.title}`} checked disabled={row.locked} readOnly />
-                    {row.id} — {row.title}
-                  </label>
-                  <span>{row.resulting === "cancelled" ? "Zrušeno" : row.resulting === "done" ? "Hotovo" : "Ponechat"}</span>
-                  {row.locked && (
-                    <select aria-label={`Náhled akce ${row.id}`} value={row.resulting === "cancelled" ? "cancelled" : "done"} onChange={(event) => setPreviewAction(row.id, event.target.value)}>
-                      <option value="done">Hotovo</option>
-                      <option value="cancelled">Zrušit</option>
-                    </select>
-                  )}
-                  {row.resulting === "keep" && (
-                    <input
-                      aria-label={`Termín ${row.id}`}
-                      value={rowDate(row) || ""}
-                      onChange={(event) => setRowDate(row.id, event.target.value)}
-                    />
-                  )}
-                </div>
-              ))}
-              {counts && [...counts.entries()].sort().map(([day, count]) => (
-                <p key={day}>Obsazenost {day}: {count}</p>
-              ))}
-              {preview.length > 80 && <p>Rodina je nad 80. Odeber předka.</p>}
-              <button type="button" disabled={!sendAllowed || preview.length > 80} onClick={submitCleanup}>Uložit</button>
-              <button type="button" onClick={() => setPreview(null)}>Zavřít náhled</button>
-              {cleanupResult?.written && (
-                <p>Uloženo {cleanupResult.written.count}: {cleanupResult.written.ids.join(", ")}</p>
-              )}
-              {cleanupResult?.lines?.map((line) => (
-                <p key={line}>{line}</p>
+              {activeProjects.map((item) => (
+                <button
+                  key={item.slug}
+                  type="button"
+                  role="tab"
+                  aria-selected={item.slug === projectSlugValue}
+                  className={
+                    item.slug === projectSlugValue
+                      ? "rounded-md bg-[#a11834] px-3.5 py-2.5 text-sm font-bold text-white"
+                      : "rounded-md px-3.5 py-2.5 text-sm"
+                  }
+                  onClick={() => {
+                    setProject(item.slug);
+                    setEpicFilter("");
+                  }}
+                >
+                  {item.slug} {listed.filter((task) => task.project === item.slug).length}
+                </button>
               ))}
             </div>
-          )}
-        </section>
-      )}
+            <PageHeader title={projectSlugValue || "Projekt"}>
+              <button type="button" className={btnPrimary} onClick={() => setView("new")}>
+                + Nový v projektu
+              </button>
+            </PageHeader>
+            <p className="text-sm text-[#5c5c5c]">
+              {projectTasks.length} otevřených · {projectEpics.length} epiců
+            </p>
+            {projectEpics.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                <button
+                  type="button"
+                  className={!epicFilter ? "rounded-md border-2 border-[#a11834] bg-white p-3.5 text-left" : `${panelClass} p-3.5 text-left`}
+                  onClick={() => setEpicFilter("")}
+                >
+                  <div className="text-xs text-[#5c5c5c]">Vše</div>
+                  <div className="font-extrabold">Celý projekt</div>
+                </button>
+                {projectEpics.map((epic) => (
+                  <button
+                    key={epic.id}
+                    type="button"
+                    className={
+                      epicFilter === epic.id
+                        ? "rounded-md border-2 border-[#a11834] bg-white p-3.5 text-left"
+                        : `${panelClass} p-3.5 text-left`
+                    }
+                    onClick={() => setEpicFilter(epic.id)}
+                  >
+                    <div className="text-xs text-[#5c5c5c]">{epic.id}</div>
+                    <div className="font-extrabold">{epic.title || epic.id}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <div role="group" aria-label="Zobrazení" className="inline-flex overflow-hidden rounded-md border border-[#444]">
+                <button
+                  type="button"
+                  className={!board ? "bg-[#444] px-3.5 py-3 font-bold text-[#fafafa]" : "bg-white px-3.5 py-3"}
+                  onClick={() => setBoard(false)}
+                >
+                  Seznam
+                </button>
+                <button
+                  type="button"
+                  className={board ? "bg-[#444] px-3.5 py-3 font-bold text-[#fafafa]" : "bg-white px-3.5 py-3"}
+                  onClick={() => setBoard(true)}
+                >
+                  Kanban
+                </button>
+              </div>
+            </div>
+            {board ? (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {COLUMNS.map((status) => (
+                  <div key={status} className="min-h-80 rounded-md bg-[#f1f1f1] p-2.5">
+                    <div className="mb-2 flex items-center justify-between border-b-4 border-[#444] px-1 pb-2 text-xs font-extrabold uppercase">
+                      <span role="columnheader">{status}</span>
+                      <span className="text-[#5c5c5c]">
+                        {filteredProjectTasks.filter((task) => task.status === status).length}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {filteredProjectTasks
+                        .filter((task) => task.status === status)
+                        .map((task) => (
+                          <div key={task.id} className="rounded-md border border-[#e2e2e2] bg-white p-2.5">
+                            <TaskActions task={task} />
+                            <div className="mt-1 text-xs text-[#5c5c5c]">{task.deadline || task.review_deadline || "—"}</div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div data-layout-panel className={panelClass} aria-label="Stories projektu">
+                {filteredProjectTasks
+                  .filter((task) => task.type === "epic")
+                  .map((epic) => (
+                    <div key={epic.id} className="flex flex-wrap items-center gap-3 border-b border-[#eeeeee] bg-[#faf3f4] px-4 py-3">
+                      <span className="flex-1">
+                        <TaskActions task={epic} />
+                      </span>
+                      <StatusPill status={epic.status} />
+                      <span className="text-sm text-[#5c5c5c]">{childrenOf(epic.id).length} otevřených pod epicem</span>
+                    </div>
+                  ))}
+                {projectStories.map((story) => {
+                  const kids = childrenOf(story.id);
+                  return (
+                    <div key={story.id} className="border-b border-[#eeeeee]">
+                      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+                        <span className="flex-1">
+                          <TaskActions task={story} />
+                        </span>
+                        <StatusPill status={story.status} />
+                        <span
+                          className={
+                            story.deadline && story.deadline < today
+                              ? "text-sm font-bold text-[#b8002e]"
+                              : "text-sm text-[#5c5c5c]"
+                          }
+                        >
+                          {story.deadline || story.review_deadline || "—"}
+                        </span>
+                        <span className="text-sm text-[#5c5c5c]">{kids.length} tasků</span>
+                      </div>
+                      {kids.map((child) => (
+                        <div
+                          key={child.id}
+                          className="flex flex-wrap items-center gap-3 border-t border-[#f3f3f3] py-2 pl-11 pr-4 text-sm"
+                        >
+                          <span className="flex-1">
+                            <TaskActions task={child} />
+                          </span>
+                          <StatusPill status={child.status} />
+                          <span className="text-[#5c5c5c]">{child.deadline || child.review_deadline || "—"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+                {projectOrphans.map((task) => (
+                  <div key={task.id} className="flex flex-wrap items-center gap-3 border-b border-[#eeeeee] px-4 py-3">
+                    <span className="flex-1">
+                      <TaskActions task={task} />
+                    </span>
+                    <StatusPill status={task.status} />
+                    <span className="text-sm text-[#5c5c5c]">{task.deadline || "—"}</span>
+                  </div>
+                ))}
+                {projectStories.length === 0 && projectOrphans.length === 0 && (
+                  <TaskTable rows={filteredProjectTasks} />
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {view === "detail" && detail && (
+          <section aria-label="Detail" data-layout-panel className={`${panelClass} mx-auto flex w-full max-w-xl flex-col gap-4 p-6`}>
+            <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#5c5c5c]">
+              <span>
+                {detail.type || "task"} · {detail.project || ""} · detail
+              </span>
+              <button type="button" className="min-h-11 min-w-11 text-xl" onClick={() => setView(returnView)} aria-label="Zavřít">
+                ×
+              </button>
+            </div>
+            <div className="text-sm font-bold">{detail.id}</div>
+            <label className={labelClass}>
+              Název
+              <input className={fieldClass} aria-label="Název" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
+            </label>
+            <label className={labelClass}>
+              Deadline
+              <input
+                className={fieldClass}
+                aria-label="Deadline úkolu"
+                value={draft.deadline}
+                onChange={(event) => setDraft({ ...draft, deadline: event.target.value })}
+              />
+            </label>
+            {detail.type !== "epic" && (
+              <label className={labelClass}>
+                Parent
+                <input
+                  className={fieldClass}
+                  aria-label="Parent úkolu"
+                  list="detail-parents"
+                  value={draft.parent}
+                  onChange={(event) => setDraft({ ...draft, parent: event.target.value })}
+                />
+                <datalist id="detail-parents">
+                  {openTasks
+                    .filter(
+                      (task) =>
+                        (showPaused || !paused.has(projectSlug(task))) &&
+                        task.type === (detail.type === "story" ? "epic" : "story"),
+                    )
+                    .map((task) => (
+                      <option key={task.id} value={task.id}>
+                        {labelOf(task)}
+                      </option>
+                    ))}
+                </datalist>
+              </label>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className={btnPrimary} onClick={saveDetail}>
+                Uložit
+              </button>
+              <button type="button" className={btnGhost} onClick={() => setView(returnView)}>
+                Zahodit
+              </button>
+            </div>
+          </section>
+        )}
+
+        {view === "new" && (
+          <section aria-label="Nový task" data-layout-panel className={`${panelClass} mx-auto flex w-full max-w-lg flex-col gap-4 p-6`}>
+            <h2 className="text-2xl font-black uppercase">+ Nový</h2>
+            <label className={labelClass}>
+              Projekt
+              <select
+                className={fieldClass}
+                aria-label="Projekt nového tasku"
+                value={projectSlugValue}
+                onChange={(event) => setProject(event.target.value)}
+              >
+                {activeProjects.map((item) => (
+                  <option key={item.slug} value={item.slug}>
+                    {item.slug}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={labelClass}>
+              Název nového
+              <input
+                className={fieldClass}
+                aria-label="Název nového tasku"
+                value={newDraft.title}
+                onChange={(event) => setNewDraft({ ...newDraft, title: event.target.value })}
+              />
+            </label>
+            <label className={labelClass}>
+              Úroveň
+              <select
+                className={fieldClass}
+                aria-label="Úroveň nového tasku"
+                value={newDraft.level}
+                onChange={(event) => setNewDraft({ ...newDraft, level: event.target.value, parent: "" })}
+              >
+                <option value="epic">Epic</option>
+                <option value="story">Story</option>
+                <option value="task">Task</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              Stav
+              <select
+                className={fieldClass}
+                aria-label="Stav nového tasku"
+                value={newDraft.status}
+                onChange={(event) => setNewDraft({ ...newDraft, status: event.target.value })}
+              >
+                {COLUMNS.map((status) => (
+                  <option key={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={labelClass}>
+                Deadline nového
+                <input
+                  className={fieldClass}
+                  aria-label="Deadline nového tasku"
+                  value={newDraft.deadline}
+                  onChange={(event) => setNewDraft({ ...newDraft, deadline: event.target.value })}
+                />
+              </label>
+              <label className={labelClass}>
+                Review nového
+                <input
+                  className={fieldClass}
+                  aria-label="Review nového tasku"
+                  value={newDraft.review}
+                  onChange={(event) => setNewDraft({ ...newDraft, review: event.target.value })}
+                />
+              </label>
+            </div>
+            <label className={labelClass}>
+              WaitUntil
+              <input
+                className={fieldClass}
+                aria-label="WaitUntil nového tasku"
+                value={newDraft.waitUntil}
+                onChange={(event) => setNewDraft({ ...newDraft, waitUntil: event.target.value })}
+              />
+            </label>
+            {newDraft.level !== "epic" && (
+              <label className={labelClass}>
+                Parent
+                <input
+                  className={fieldClass}
+                  aria-label="Parent nového tasku"
+                  list="parent-choices"
+                  value={newDraft.parent}
+                  onChange={(event) => setNewDraft({ ...newDraft, parent: event.target.value })}
+                />
+                <datalist id="parent-choices">
+                  {openTasks
+                    .filter(
+                      (task) =>
+                        (showPaused || !paused.has(projectSlug(task))) &&
+                        task.type === (newDraft.level === "story" ? "epic" : "story"),
+                    )
+                    .map((task) => (
+                      <option key={task.id} value={task.id}>
+                        {labelOf(task)}
+                      </option>
+                    ))}
+                </datalist>
+              </label>
+            )}
+            <button type="button" className={btnPrimary} onClick={createTask}>
+              Založit
+            </button>
+          </section>
+        )}
+
+        {view === "cleanup" && (
+          <section aria-label="Úklid" className="flex flex-col gap-5 pb-24">
+            <PageHeader title="Úklid vaultu" />
+            <p className="max-w-3xl text-[#5c5c5c]">
+              Projdi tasky bez termínu po projektech. U každého rozhodni: zrušit, hotovo, nebo ponechat. Nic se nezapíše bez
+              náhledu.
+            </p>
+            <div className="flex flex-wrap gap-2" aria-label="Postup">
+              <div className="rounded-md border-2 border-[#a11834] bg-white px-3 py-2 text-sm font-bold">
+                Rozhodnout · {listed.length} bez filtru
+              </div>
+              <div className="rounded-md border border-[#e2e2e2] bg-white px-3 py-2 text-sm">Náhled změn</div>
+              <div className="rounded-md border border-[#e2e2e2] bg-white px-3 py-2 text-sm">Zápis po dávkách</div>
+            </div>
+            <div className="flex flex-wrap items-start gap-5">
+              <aside data-layout-panel className={`${panelClass} flex w-full max-w-[300px] flex-col gap-3 p-4`}>
+                <h2 className="text-xs font-bold uppercase tracking-wide">Filtr</h2>
+                <p className="text-xs font-normal text-[#5c5c5c]">
+                  Hledání nahoře v liště filtruje i tento seznam. Signály k rozhodnutí jsou jen nápověda.
+                </p>
+              </aside>
+              <div role="region" aria-label="Seznam úklidu" data-layout-panel className={`${panelClass} min-w-0 flex-1 overflow-x-auto`}>
+                <div className="flex flex-wrap items-center gap-3 border-b border-[#e2e2e2] px-4 py-3">
+                  <strong className="flex-1 text-sm">Tasky k rozhodnutí · {listed.length}</strong>
+                  <span className="text-sm text-[#5c5c5c]">
+                    {Object.values(checked).filter(Boolean).length} vybráno
+                  </span>
+                </div>
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead>
+                    <tr className="text-[11px] uppercase tracking-wide text-[#5c5c5c]">
+                      <th className="p-2.5 font-bold">✓</th>
+                      <th className="p-2.5 font-bold">ID</th>
+                      <th className="p-2.5 font-bold">Název</th>
+                      <th className="p-2.5 font-bold">Status</th>
+                      <th className="p-2.5 font-bold">Rozhodnutí</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listed.map((task) => (
+                      <tr key={task.id} className={`border-t border-[#e2e2e2] ${checked[task.id] ? "bg-[#faf3f4]" : ""}`}>
+                        <td className="p-2.5">
+                          <input
+                            type="checkbox"
+                            aria-label={`Vybrat ${labelOf(task)}`}
+                            checked={Boolean(checked[task.id])}
+                            onChange={(event) => setChecked({ ...checked, [task.id]: event.target.checked })}
+                          />
+                        </td>
+                        <td className="p-2.5 font-bold whitespace-nowrap tabular-nums">{task.id}</td>
+                        <td className="p-2.5">{task.title || task.id}</td>
+                        <td className="p-2.5">
+                          <StatusPill status={task.status} />
+                        </td>
+                        <td className="p-2.5">
+                          {checked[task.id] && (
+                            <select
+                              className={fieldClass}
+                              aria-label={`Akce ${task.id}`}
+                              value={actions[task.id] || (offerKeep(task) ? "keep" : "done")}
+                              onChange={(event) => setActions({ ...actions, [task.id]: event.target.value })}
+                            >
+                              {offerKeep(task) && <option value="keep">Ponechat</option>}
+                              <option value="done">Hotovo</option>
+                              <option value="cancelled">Zrušit</option>
+                            </select>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="sticky bottom-0 z-20 flex flex-wrap items-center gap-3 rounded-md bg-[#444444] px-4 py-3 text-[#fafafa]">
+              <span className="min-w-[220px] flex-1 text-sm">
+                {Object.values(checked).filter(Boolean).length} vybráno · nic se nezapíše bez náhledu
+              </span>
+              <button type="button" className={btnPrimary} onClick={openPreview}>
+                Náhled
+              </button>
+            </div>
+            {preview && (
+              <div role="region" aria-label="Náhled úklidu" data-layout-panel className={`${panelClass} flex flex-col gap-3 p-4`}>
+                <h2 className="font-extrabold">Náhled změn</h2>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <label className={labelClass}>
+                    Termín pro výběr
+                    <input className={fieldClass} aria-label="Termín pro výběr" value={selectionDate} onChange={(event) => applySharedDate(event.target.value)} />
+                  </label>
+                  <label className={labelClass}>
+                    Od
+                    <input className={fieldClass} aria-label="Od" value={from} onChange={(event) => setFrom(event.target.value)} />
+                  </label>
+                  <label className={labelClass}>
+                    Do
+                    <input className={fieldClass} aria-label="Do" value={to} onChange={(event) => setTo(event.target.value)} />
+                  </label>
+                  <label className={labelClass}>
+                    Max
+                    <input className={fieldClass} aria-label="Max za den" value={maxPerDay} onChange={(event) => setMaxPerDay(event.target.value)} />
+                  </label>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" aria-label="Přeskočit nepracovní dny" checked={skipNonWork} onChange={(event) => setSkipNonWork(event.target.checked)} />
+                  Přeskočit nepracovní dny
+                </label>
+                <label className={labelClass}>
+                  Pořadí
+                  <select className={fieldClass} aria-label="Pořadí rozprostření" value={sortMode} onChange={(event) => setSortMode(event.target.value)}>
+                    <option value="project_epic">projekt a epic</option>
+                    <option value="priority">priorita</option>
+                    <option value="age">stáří</option>
+                  </select>
+                </label>
+                {preview
+                  .filter((row) => !dropped.has(row.id))
+                  .map((row) => (
+                    <div key={row.id} className="flex flex-wrap items-center gap-2 border-t border-[#eeeeee] py-2">
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" aria-label={`Náhled ${row.id} — ${row.title}`} checked disabled={row.locked} readOnly />
+                        {row.id} — {row.title}
+                      </label>
+                      <span>{row.resulting === "cancelled" ? "Zrušeno" : row.resulting === "done" ? "Hotovo" : "Ponechat"}</span>
+                      {row.locked && (
+                        <select
+                          className={fieldClass}
+                          aria-label={`Náhled akce ${row.id}`}
+                          value={row.resulting === "cancelled" ? "cancelled" : "done"}
+                          onChange={(event) => setPreviewAction(row.id, event.target.value)}
+                        >
+                          <option value="done">Hotovo</option>
+                          <option value="cancelled">Zrušit</option>
+                        </select>
+                      )}
+                      {row.resulting === "keep" && (
+                        <input
+                          className={fieldClass}
+                          aria-label={`Termín ${row.id}`}
+                          value={rowDate(row) || ""}
+                          onChange={(event) => setRowDate(row.id, event.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                {counts &&
+                  [...counts.entries()].sort().map(([day, count]) => (
+                    <p key={day}>
+                      Obsazenost {day}: {count}
+                    </p>
+                  ))}
+                {preview.length > 80 && <p>Rodina je nad 80. Odeber předka.</p>}
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" className={btnPrimary} disabled={!sendAllowed || preview.length > 80} onClick={submitCleanup}>
+                    Uložit
+                  </button>
+                  <button type="button" className={btnGhost} onClick={() => setPreview(null)}>
+                    Zavřít náhled
+                  </button>
+                </div>
+                {cleanupResult?.written && (
+                  <p>
+                    Uloženo {cleanupResult.written.count}: {cleanupResult.written.ids.join(", ")}
+                  </p>
+                )}
+                {cleanupResult?.lines?.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </main>
 
       {dialog?.kind === "q9" && (
-        <div role="dialog" aria-label="Neshoda verze">
-          <p>U tebe: {dialog.yours.title}</p>
-          <p>Ve vaultu: {dialog.vault.title}</p>
-          <p>status: {dialog.yours.status} / {dialog.vault.status}</p>
-          <p>deadline: {dialog.yours.deadline} / {dialog.vault.deadline}</p>
-          <p>review: {dialog.yours.review_deadline} / {dialog.vault.review_deadline}</p>
-          <p>waitUntil: {dialog.yours.waitUntil} / {dialog.vault.waitUntil}</p>
-          <p>parent: {dialog.yours.parent} / {dialog.vault.parent}</p>
-          <button
-            type="button"
-            onClick={() => {
-              api.patch({ path: dialog.path, patch: dialog.patch, expect_oid: dialog.oid });
-              setDialog(null);
-            }}
-          >
-            Přesto uložit
-          </button>
-          <button type="button" onClick={() => setDialog(null)}>Upravit</button>
+        <div role="dialog" aria-label="Neshoda verze" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} flex max-w-lg flex-col gap-2 p-5`}>
+            <p>U tebe: {dialog.yours.title}</p>
+            <p>Ve vaultu: {dialog.vault.title}</p>
+            <p>status: {dialog.yours.status} / {dialog.vault.status}</p>
+            <p>deadline: {dialog.yours.deadline} / {dialog.vault.deadline}</p>
+            <p>review: {dialog.yours.review_deadline} / {dialog.vault.review_deadline}</p>
+            <p>waitUntil: {dialog.yours.waitUntil} / {dialog.vault.waitUntil}</p>
+            <p>parent: {dialog.yours.parent} / {dialog.vault.parent}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className={btnPrimary}
+                onClick={() => {
+                  api.patch({ path: dialog.path, patch: dialog.patch, expect_oid: dialog.oid });
+                  setDialog(null);
+                }}
+              >
+                Přesto uložit
+              </button>
+              <button type="button" className={btnGhost} onClick={() => setDialog(null)}>
+                Upravit
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {dialog?.kind === "deadline_order" && (
-        <div role="dialog" aria-label="Pořadí termínů">
-          <p>{dialog.text}</p>
+        <div role="dialog" aria-label="Pořadí termínů" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} max-w-lg p-5`}>
+            <p>{dialog.text}</p>
+            <button type="button" className={`${btnGhost} mt-3`} onClick={() => setDialog(null)}>
+              Zavřít
+            </button>
+          </div>
         </div>
       )}
 
       {dialog?.kind === "doing" && (
-        <div role="dialog" aria-label="Doplň deadline">
-          <input aria-label="Datum deadline" value={doingDate} onChange={(event) => setDoingDate(event.target.value)} />
-          <button type="button" onClick={confirmDoing}>Potvrdit</button>
+        <div role="dialog" aria-label="Doplň deadline" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
+            <input className={fieldClass} aria-label="Datum deadline" value={doingDate} onChange={(event) => setDoingDate(event.target.value)} />
+            <button type="button" className={btnPrimary} onClick={confirmDoing}>
+              Potvrdit
+            </button>
+          </div>
         </div>
       )}
 
       {dialog?.kind === "waiting" && (
-        <div role="dialog" aria-label="Doplň waitUntil">
-          <input aria-label="Datum waitUntil" value={waitDate} onChange={(event) => setWaitDate(event.target.value)} />
-          <button type="button" onClick={confirmWaiting}>Potvrdit</button>
+        <div role="dialog" aria-label="Doplň waitUntil" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
+            <input className={fieldClass} aria-label="Datum waitUntil" value={waitDate} onChange={(event) => setWaitDate(event.target.value)} />
+            <button type="button" className={btnPrimary} onClick={confirmWaiting}>
+              Potvrdit
+            </button>
+          </div>
         </div>
       )}
 
       {dialog?.kind === "focus" && (
-        <div role="dialog" aria-label="Focus">
-          {dialog.text && <p>{dialog.text}</p>}
-          {dialog.proposalId && <button type="button" onClick={applyFocus}>Použít focus</button>}
+        <div role="dialog" aria-label="Focus" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
+            {dialog.text && <p>{dialog.text}</p>}
+            {dialog.proposalId && (
+              <button type="button" className={btnPrimary} onClick={applyFocus}>
+                Použít focus
+              </button>
+            )}
+            <button type="button" className={btnGhost} onClick={() => setDialog(null)}>
+              Zavřít
+            </button>
+          </div>
         </div>
       )}
     </div>
