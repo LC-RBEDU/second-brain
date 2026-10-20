@@ -1641,11 +1641,37 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       </main>
 
       {dialog?.kind === "q9" && (
-        <div role="dialog" aria-label="Neshoda verze" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div data-layout-panel data-conflict-dialog className={`${panelClass} flex w-full max-w-xl flex-col gap-3 p-5`}>
-            <div className="rounded-md border border-[#b8002e] p-3.5 text-sm" role="status">
-              <b>Konflikt:</b> task se mezitím změnil (cron / agent / jiná úprava). Níže je rozdíl mezi tím, co chceš
-              zapsat, a aktuálním stavem ve vaultu. Můžeš uložit znovu nad novou verzí, nebo se vrátit k úpravě.
+        <div
+          role="dialog"
+          aria-label="Neshoda verze"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDialog(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setDialog(null);
+          }}
+        >
+          <div
+            data-layout-panel
+            data-conflict-dialog
+            className={`${panelClass} flex w-full max-w-xl flex-col gap-3 p-5`}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="rounded-md border border-[#b8002e] p-3.5 text-sm" role="status">
+                <b>Konflikt:</b> task se mezitím změnil (cron / agent / jiná úprava). Níže je rozdíl mezi tím, co chceš
+                zapsat, a aktuálním stavem ve vaultu.
+              </div>
+              <button
+                type="button"
+                className="min-h-11 min-w-11 shrink-0 text-xl"
+                aria-label="Zavřít konflikt"
+                onClick={() => setDialog(null)}
+              >
+                ×
+              </button>
             </div>
             {(() => {
               const rows = COMPARE_FIELDS.filter(
@@ -1658,10 +1684,15 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 body: JSON.stringify({
                   sessionId: "7e3b98",
                   runId: "conflict-dialog",
-                  hypothesisId: "H5",
+                  hypothesisId: "H6",
                   location: "App.jsx:q9",
-                  message: "conflict dialog rows",
-                  data: { changedCount: rows.length, fields: rows },
+                  message: "conflict dialog with dismiss",
+                  data: {
+                    changedCount: rows.length,
+                    fields: rows,
+                    hasConflictDialog: true,
+                    hasCancel: true,
+                  },
                   timestamp: Date.now(),
                 }),
               }).catch(() => {});
@@ -1706,7 +1737,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 Přesto uložit
               </button>
               <button type="button" className={btnGhost} onClick={() => setDialog(null)}>
-                Upravit
+                Zpět k formuláři
+              </button>
+              <button
+                type="button"
+                className={btnGhost}
+                aria-label="Zrušit konflikt"
+                onClick={() => {
+                  setDialog(null);
+                  setView(returnView);
+                }}
+              >
+                Zrušit
               </button>
             </div>
           </div>

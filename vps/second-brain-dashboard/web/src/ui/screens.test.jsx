@@ -150,7 +150,8 @@ describe("screens", () => {
     expect(screen.getByText("Ve vaultu teď")).toBeInTheDocument();
     expect(screen.getByText("Nový název")).toBeInTheDocument();
     expect(screen.getByText("Původní")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Upravit" }));
+    expect(screen.getByRole("button", { name: "Zrušit konflikt" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zpět k formuláři" }));
     expect(api.patch).toHaveBeenCalledTimes(1);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
