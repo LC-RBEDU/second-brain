@@ -149,6 +149,7 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 32 | 2026-10-20 02:26 | IMPLEMENT | hlavní agent | F3 | — | Klasifikace, náhled zavření a rozprostření v prohlížeči. vitest web: 22 passed |
 | 33 | 2026-10-20 02:35 | IMPLEMENT | hlavní agent | F4 | — | BFF export N=0, archiv 400, dávky se zastaví. pytest bff: 17 passed |
 | 34 | 2026-10-20 02:45 | IMPLEMENT | hlavní agent | F5 | — | Obrazovky bez Done a archivu. Q9 jen u jednoho tasku. vitest web: 32 passed. vite build OK. pytest bff: 17 passed |
+| 35 | 2026-10-20 02:55 | IMPLEMENT | hlavní agent | F6 | — | Image bez vaultu, setup sslip, redirect URI na stávajícího Google klienta. pytest bff: 20 passed. vitest web: 32 passed. Docker daemon neběžel, image se nesestavila |
 
 ## Otevřené nálezy
 

@@ -5,12 +5,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from pathlib import Path
 from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from dashboard_bff.batches import BatchRejected, pack_batches
 
@@ -188,6 +191,12 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
         result["force_save"] = False
         return result
 
+    from dashboard_bff.oauth import attach_oauth
+
+    attach_oauth(app)
+    dist = Path(os.environ.get("DASHBOARD_DIST") or "/app/web/dist")
+    if dist.is_dir():
+        app.mount("/", StaticFiles(directory=dist, html=True), name="web")
     return app
 
 

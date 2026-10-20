@@ -27,7 +27,7 @@ function hiddenWrittenIds(result) {
   return new Set(result.written.ids.filter((id) => !saved.has(id)));
 }
 
-export function App({ exportData, api, today = "2026-10-20" }) {
+export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const tasks = exportData?.tasks || [];
   const projects = exportData?.projects || [];
   const paused = useMemo(() => pausedSlugs(projects), [projects]);
@@ -82,7 +82,10 @@ export function App({ exportData, api, today = "2026-10-20" }) {
     const patch = { title: draft.title };
     if (draft.deadline) patch.deadline = draft.deadline;
     const result = await api.patch({ path: detail.path, patch, expect_oid: oidOf(detail) });
-    if (result?.ok) return;
+    if (result?.ok) {
+      onRefresh?.();
+      return;
+    }
     if (result?.error_reason === "oid_mismatch") {
       setDialog({
         kind: "q9",
@@ -98,7 +101,7 @@ export function App({ exportData, api, today = "2026-10-20" }) {
     }
   }
 
-  function move(task, status) {
+  async function move(task, status) {
     if (status === "Doing" && !task.deadline) {
       setDoingDate("");
       setDialog({ kind: "doing", task });
@@ -106,17 +109,19 @@ export function App({ exportData, api, today = "2026-10-20" }) {
     }
     const patch = kanbanPatch(task, status, openTasks);
     if (!patch || !api?.patch) return;
-    api.patch({ path: task.path, patch, expect_oid: oidOf(task) });
+    const result = await api.patch({ path: task.path, patch, expect_oid: oidOf(task) });
+    if (result?.ok) onRefresh?.();
   }
 
-  function confirmDoing() {
+  async function confirmDoing() {
     if (!doingDate || !dialog?.task || !api?.patch) return;
-    api.patch({
+    const result = await api.patch({
       path: dialog.task.path,
       patch: { status: "Doing", deadline: doingDate },
       expect_oid: oidOf(dialog.task),
     });
     setDialog(null);
+    if (result?.ok) onRefresh?.();
   }
 
   function openPreview() {
@@ -205,6 +210,7 @@ export function App({ exportData, api, today = "2026-10-20" }) {
     });
     setCleanupResult(result);
     setOids((current) => ({ ...current, ...(result?.expect_oid || {}) }));
+    onRefresh?.();
     const stay = [...(result?.failed || []), ...(result?.pending || [])];
     setChecked(Object.fromEntries(stay.map((id) => [id, true])));
   }
