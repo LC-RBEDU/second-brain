@@ -56,6 +56,42 @@ describe("screens", () => {
     expect(screen.queryByRole("columnheader", { name: "Hotovo" })).toBeNull();
   });
 
+  it("kanban drop changes status and map toggles mindmap", async () => {
+    const api = { patch: vi.fn().mockResolvedValue({ ok: true }) };
+    renderApp(
+      [
+        task({ id: "F-E1", type: "epic", title: "Epic" }),
+        task({ id: "F-T1", title: "Kartička", parent: "F-E1", status: "Next", deadline: "2026-11-01" }),
+      ],
+      api,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    fireEvent.click(screen.getByRole("button", { name: "Kanban" }));
+    const card = screen.getByText("F-T1 — Kartička").closest("[data-kanban-card]");
+    const doing = screen.getByText("Doing").closest("[data-kanban-column]");
+    const dataTransfer = {
+      setData: vi.fn(),
+      getData: vi.fn(() => "F-T1"),
+      effectAllowed: "move",
+    };
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragOver(doing, { dataTransfer });
+    await act(async () => {
+      fireEvent.drop(doing, { dataTransfer });
+    });
+    expect(api.patch).toHaveBeenCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-T1.md",
+      patch: { status: "Doing" },
+      expect_oid: "",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mapa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mindmapa" }));
+    expect(screen.getByLabelText("Mindmapa")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Strom" }));
+    expect(screen.getByLabelText("Strom")).toBeInTheDocument();
+  });
+
   it("B4 shows one missing-parent error and not the closed parent", () => {
     renderApp([
       task({ id: "F-S9", type: "story", status: "Done", title: "Uzavřený rodič" }),

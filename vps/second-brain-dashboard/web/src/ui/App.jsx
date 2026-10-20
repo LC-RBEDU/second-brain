@@ -16,6 +16,7 @@ import {
   projectLabel,
   StatusPill,
 } from "./chrome.jsx";
+import { MindMap } from "./MindMap.jsx";
 
 const COLUMNS = ["Doing", "Next", "Waiting", "Backlog"];
 const FOCUS_TEXT = {
@@ -109,6 +110,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const [query, setQuery] = useState("");
   const [project, setProject] = useState("");
   const [board, setBoard] = useState(false);
+  const [mapMode, setMapMode] = useState("tree");
+  const [dragTaskId, setDragTaskId] = useState("");
+  const [dropStatus, setDropStatus] = useState("");
   const [detailId, setDetailId] = useState("");
   const [returnView, setReturnView] = useState("radar");
   const [draft, setDraft] = useState({
@@ -853,8 +857,20 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           <section aria-label="Mapa" className="flex flex-col gap-5">
             <PageHeader title="Mapa">
               <div role="group" aria-label="Zobrazení" className="inline-flex overflow-hidden rounded-md border border-[#444]">
-                <span className="bg-[#444] px-4 py-3 font-bold text-[#fafafa]">Strom</span>
-                <span className="bg-white px-4 py-3 text-[#5c5c5c]">Mindmapa (fáze 2)</span>
+                <button
+                  type="button"
+                  className={mapMode === "tree" ? "bg-[#444] px-4 py-3 font-bold text-[#fafafa]" : "bg-white px-4 py-3"}
+                  onClick={() => setMapMode("tree")}
+                >
+                  Strom
+                </button>
+                <button
+                  type="button"
+                  className={mapMode === "mind" ? "bg-[#444] px-4 py-3 font-bold text-[#fafafa]" : "bg-white px-4 py-3"}
+                  onClick={() => setMapMode("mind")}
+                >
+                  Mindmapa
+                </button>
               </div>
             </PageHeader>
             <div className="flex flex-wrap gap-4 text-xs text-[#5c5c5c]">
@@ -870,99 +886,108 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <span className="font-bold text-[#b8002e]">❗ overdue</span>
               <span className="font-bold text-[#b8002e]">⚠️ chybně zadané</span>
             </div>
-            <div data-layout-panel className={`${panelClass} py-2`} aria-label="Strom">
-              {mapGroups.map((group, index) => {
-                const open = mapOpen.size === 0 ? index === 0 : mapOpen.has(group.slug);
-                return (
-                  <div key={group.slug} className="border-b border-[#eeeeee] last:border-b-0">
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left"
-                      onClick={() => {
-                        setMapOpen((prev) => {
-                          const next = new Set(prev);
-                          if (next.size === 0) {
-                            mapGroups.forEach((item, i) => {
-                              if (i === 0) next.add(item.slug);
-                            });
-                          }
-                          if (next.has(group.slug)) next.delete(group.slug);
-                          else next.add(group.slug);
-                          return next;
-                        });
-                      }}
-                    >
-                      <span aria-hidden="true" className="w-4">
-                        {open ? "▾" : "▸"}
-                      </span>
-                      <span className="flex-1 font-extrabold uppercase" data-project-label={projectLabel(group.slug)}>
-                        {projectLabel(group.slug)}
-                      </span>
-                      <span className="text-sm text-[#5c5c5c]">
-                        {group.epics.length} epiců · {group.open} otevřených
-                      </span>
-                    </button>
-                    {open &&
-                      group.epics.map(({ epic, stories, loose }) => (
-                        <div key={epic.id}>
+            {mapMode === "mind" ? (
+              <MindMap
+                groups={mapGroups}
+                today={today}
+                issueIds={new Set(classified.issues.map((item) => item.id))}
+                onOpen={openDetail}
+              />
+            ) : (
+              <div data-layout-panel className={`${panelClass} py-2`} aria-label="Strom">
+                {mapGroups.map((group, index) => {
+                  const open = mapOpen.size === 0 ? index === 0 : mapOpen.has(group.slug);
+                  return (
+                    <div key={group.slug} className="border-b border-[#eeeeee] last:border-b-0">
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left"
+                        onClick={() => {
+                          setMapOpen((prev) => {
+                            const next = new Set(prev);
+                            if (next.size === 0) {
+                              mapGroups.forEach((item, i) => {
+                                if (i === 0) next.add(item.slug);
+                              });
+                            }
+                            if (next.has(group.slug)) next.delete(group.slug);
+                            else next.add(group.slug);
+                            return next;
+                          });
+                        }}
+                      >
+                        <span aria-hidden="true" className="w-4">
+                          {open ? "▾" : "▸"}
+                        </span>
+                        <span className="flex-1 font-extrabold uppercase" data-project-label={projectLabel(group.slug)}>
+                          {projectLabel(group.slug)}
+                        </span>
+                        <span className="text-sm text-[#5c5c5c]">
+                          {group.epics.length} epiců · {group.open} otevřených
+                        </span>
+                      </button>
+                      {open &&
+                        group.epics.map(({ epic, stories, loose }) => (
+                          <div key={epic.id}>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left"
+                              onClick={() => openDetail(epic)}
+                            >
+                              <span className="flex-1 font-bold">{labelOf(epic)}</span>
+                              <span className="text-sm text-[#5c5c5c]">{stories.length + loose.length} otevřených</span>
+                            </button>
+                            {stories.map((story) => (
+                              <button
+                                key={story.id}
+                                type="button"
+                                className="flex w-full items-center gap-3 px-4 py-1.5 pl-[76px] text-left text-sm"
+                                onClick={() => openDetail(story)}
+                              >
+                                <span
+                                  className={`inline-block h-2.5 w-2.5 rounded-sm ${
+                                    story.status === "Doing"
+                                      ? "bg-[#a11834]"
+                                      : story.status === "Next"
+                                        ? "bg-[#444]"
+                                        : "bg-[#b0b2b6]"
+                                  }`}
+                                />
+                                <span className="flex-1 font-bold">{labelOf(story)}</span>
+                                {story.deadline && story.deadline < today && (
+                                  <span className="font-bold text-[#b8002e]">❗ {story.deadline}</span>
+                                )}
+                              </button>
+                            ))}
+                            {loose.map((task) => (
+                              <button
+                                key={task.id}
+                                type="button"
+                                className="flex w-full items-center gap-3 px-4 py-1.5 pl-[76px] text-left text-sm"
+                                onClick={() => openDetail(task)}
+                              >
+                                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#b0b2b6]" />
+                                <span>{labelOf(task)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      {open &&
+                        [...group.orphanStories, ...group.orphanTasks].map((task) => (
                           <button
+                            key={task.id}
                             type="button"
-                            className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left"
-                            onClick={() => openDetail(epic)}
+                            className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left text-sm"
+                            onClick={() => openDetail(task)}
                           >
-                            <span className="flex-1 font-bold">{labelOf(epic)}</span>
-                            <span className="text-sm text-[#5c5c5c]">{stories.length + loose.length} otevřených</span>
+                            <span className="font-bold text-[#b8002e]">⚠️ {labelOf(task)}</span>
                           </button>
-                          {stories.map((story) => (
-                            <button
-                              key={story.id}
-                              type="button"
-                              className="flex w-full items-center gap-3 px-4 py-1.5 pl-[76px] text-left text-sm"
-                              onClick={() => openDetail(story)}
-                            >
-                              <span
-                                className={`inline-block h-2.5 w-2.5 rounded-sm ${
-                                  story.status === "Doing"
-                                    ? "bg-[#a11834]"
-                                    : story.status === "Next"
-                                      ? "bg-[#444]"
-                                      : "bg-[#b0b2b6]"
-                                }`}
-                              />
-                              <span className="flex-1 font-bold">{labelOf(story)}</span>
-                              {story.deadline && story.deadline < today && (
-                                <span className="font-bold text-[#b8002e]">❗ {story.deadline}</span>
-                              )}
-                            </button>
-                          ))}
-                          {loose.map((task) => (
-                            <button
-                              key={task.id}
-                              type="button"
-                              className="flex w-full items-center gap-3 px-4 py-1.5 pl-[76px] text-left text-sm"
-                              onClick={() => openDetail(task)}
-                            >
-                              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#b0b2b6]" />
-                              <span>{labelOf(task)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ))}
-                    {open &&
-                      [...group.orphanStories, ...group.orphanTasks].map((task) => (
-                        <button
-                          key={task.id}
-                          type="button"
-                          className="flex w-full items-center gap-3 px-4 py-2 pl-11 text-left text-sm"
-                          onClick={() => openDetail(task)}
-                        >
-                          <span className="font-bold text-[#b8002e]">⚠️ {labelOf(task)}</span>
-                        </button>
-                      ))}
-                  </div>
-                );
-              })}
-            </div>
+                        ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 
@@ -1061,27 +1086,89 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               </div>
             </div>
             {board ? (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {COLUMNS.map((status) => (
-                  <div key={status} className="min-h-80 rounded-md bg-[#f1f1f1] p-2.5">
-                    <div className="mb-2 flex items-center justify-between border-b-4 border-[#444] px-1 pb-2 text-xs font-extrabold uppercase">
-                      <span role="columnheader">{status}</span>
-                      <span className="text-[#5c5c5c]">
-                        {filteredProjectTasks.filter((task) => task.status === status).length}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {filteredProjectTasks
-                        .filter((task) => task.status === status)
-                        .map((task) => (
-                          <div key={task.id} className="rounded-md border border-[#e2e2e2] bg-white p-2.5">
-                            <TaskLink task={task} />
-                            <div className="mt-1 text-xs text-[#5c5c5c]">{task.deadline || task.review_deadline || "—"}</div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-[#5c5c5c]">
+                  Přetažení karty mezi sloupci = změna statusu. Klik na název otevře detail.
+                </p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Kanban">
+                  {COLUMNS.map((status) => {
+                    const columnTasks = filteredProjectTasks.filter((task) => task.status === status);
+                    const active = dropStatus === status;
+                    return (
+                      <div
+                        key={status}
+                        data-kanban-column={status}
+                        className={`min-h-80 rounded-md bg-[#f1f1f1] p-2.5 ${
+                          active ? "outline outline-2 outline-[#a11834]" : ""
+                        }`}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setDropStatus(status);
+                        }}
+                        onDragLeave={() => {
+                          if (dropStatus === status) setDropStatus("");
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const id = event.dataTransfer.getData("text/task-id") || dragTaskId;
+                          const task = byId.get(id);
+                          setDropStatus("");
+                          setDragTaskId("");
+                          // #region agent log
+                          fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+                            body: JSON.stringify({
+                              sessionId: "7e3b98",
+                              runId: "kanban-dnd",
+                              hypothesisId: "H7",
+                              location: "App.jsx:kanban-drop",
+                              message: "kanban drop",
+                              data: { id, status, found: Boolean(task) },
+                              timestamp: Date.now(),
+                            }),
+                          }).catch(() => {});
+                          // #endregion
+                          if (task && task.status !== status) move(task, status);
+                        }}
+                      >
+                        <div className="mb-2 flex items-center justify-between border-b-4 border-[#444] px-1 pb-2 text-xs font-extrabold uppercase">
+                          <span role="columnheader">{status}</span>
+                          <span className="text-[#5c5c5c]">{columnTasks.length}</span>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {columnTasks.length === 0 && (
+                            <div className="rounded-md border-2 border-dashed border-[#b0b2b6] px-3 py-4 text-center text-xs text-[#5c5c5c]">
+                              Přetáhni sem kartu = status {status}
+                            </div>
+                          )}
+                          {columnTasks.map((task) => (
+                            <div
+                              key={task.id}
+                              draggable
+                              data-kanban-card={task.id}
+                              className="cursor-grab rounded-md border border-[#e2e2e2] bg-white p-2.5 active:cursor-grabbing"
+                              onDragStart={(event) => {
+                                event.dataTransfer.setData("text/task-id", task.id);
+                                event.dataTransfer.effectAllowed = "move";
+                                setDragTaskId(task.id);
+                              }}
+                              onDragEnd={() => {
+                                setDragTaskId("");
+                                setDropStatus("");
+                              }}
+                            >
+                              <TaskLink task={task} />
+                              <div className="mt-1 text-xs text-[#5c5c5c]">
+                                {task.deadline || task.review_deadline || "—"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div data-layout-panel className={panelClass} aria-label="Stories projektu">

@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/{App,MindMap,screens}.jsx` | kanban HTML5 DnD + mindmapa view na Mapě; bez změny Brain kontraktů | agent (uživatel: přesuny kanban + mindmapa) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/{App,screens}.jsx` | Q9 konflikt: Zrušit / × / Escape / backdrop; bez změny Brain kontraktů | agent (uživatel: nejde odejít) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/{App,screens}.jsx`, `main.jsx`, `bff/…/app.py` | Detail textarea + Q9 konflikt UI (tabulka / vysvětlení); BFF `detail` create + `edit-body`; bez změny Brain kontraktů | agent (uživatel: popis + ošklivý konflikt) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/{App,chrome}.jsx`, `debug-views.probe.test.jsx` | Parent našeptávač: vlastní absolute list místo nativního datalist (Chromium offset); bez změny Brain kontraktů | agent (uživatel: našeptávač jinde) |
