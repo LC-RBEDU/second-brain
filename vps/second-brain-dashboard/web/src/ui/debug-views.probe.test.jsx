@@ -68,8 +68,9 @@ describe("debug view structure probe", () => {
     const { container } = render(<App exportData={{ tasks, projects: PROJECTS }} today="2026-10-20" />);
 
     log("A", "radar metrics", metrics(container));
-    log("B", "radar has TaskButton status spam", {
+    log("B", "radar status buttons near title (expect 0)", {
       statusButtonsInArticles: metrics(container).statusButtonsInArticles,
+      inlineStatusSelects: container.querySelectorAll('select[aria-label^="Status "]').length,
       expectWireframeTable: metrics(container).tables === 0,
     });
 

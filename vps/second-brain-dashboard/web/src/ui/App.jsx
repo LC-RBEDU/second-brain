@@ -465,30 +465,88 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     if (result?.ok) onRefresh?.();
   }
 
-  function TaskActions({ task }) {
+  function TaskLink({ task }) {
     return (
-      <article className="flex flex-wrap items-center gap-1">
-        <button type="button" className="text-left font-bold" onClick={() => openDetail(task)}>
-          {labelOf(task)}
-        </button>
-        {COLUMNS.map((status) => (
-          <button
-            key={status}
-            type="button"
-            className="rounded border border-[#b0b2b6] px-2 text-xs"
-            aria-label={`Přesunout na ${status}`}
-            onClick={() => move(task, status)}
-          >
+      <button type="button" className="text-left font-bold" onClick={() => openDetail(task)}>
+        {labelOf(task)}
+      </button>
+    );
+  }
+
+  async function patchDate(task, field, value) {
+    if (!api?.patch) return;
+    const patch =
+      field === "deadline"
+        ? { deadline: value, ...(value ? { review_deadline: "" } : {}) }
+        : { review_deadline: value };
+    // #region agent log
+    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+      body: JSON.stringify({
+        sessionId: "7e3b98",
+        runId: "inline-edit",
+        hypothesisId: "H2",
+        location: "App.jsx:patchDate",
+        message: "inline date patch",
+        data: { id: task.id, field, value },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    const result = await api.patch({ path: task.path, patch, expect_oid: oidOf(task) });
+    await openConflict(result, patch, task.path, task.id);
+  }
+
+  function InlineStatus({ task }) {
+    return (
+      <select
+        className="rounded border border-[#444] bg-white px-2 py-0.5 text-xs"
+        aria-label={`Status ${task.id}`}
+        value={task.status || "Next"}
+        onChange={(event) => {
+          const status = event.target.value;
+          // #region agent log
+          fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+            body: JSON.stringify({
+              sessionId: "7e3b98",
+              runId: "inline-edit",
+              hypothesisId: "H2",
+              location: "App.jsx:InlineStatus",
+              message: "inline status change",
+              data: { id: task.id, from: task.status, to: status },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+          // #endregion
+          move(task, status);
+        }}
+      >
+        {[...COLUMNS, "Done", "Cancelled"].map((status) => (
+          <option key={status} value={status}>
             {status}
-          </button>
+          </option>
         ))}
-        <button type="button" className="rounded border border-[#b0b2b6] px-2 text-xs" aria-label="Označit hotovo" onClick={() => move(task, "Done")}>
-          Hotovo
-        </button>
-        <button type="button" className="rounded border border-[#b0b2b6] px-2 text-xs" aria-label={`Focus ${task.id}`} onClick={() => proposeFocus(task)}>
-          Focus
-        </button>
-      </article>
+      </select>
+    );
+  }
+
+  function InlineDate({ task, field }) {
+    const value = field === "deadline" ? task.deadline || "" : task.review_deadline || "";
+    const overdue = field === "deadline" && value && value < today;
+    return (
+      <input
+        type="date"
+        className={`w-[9.5rem] rounded border border-[#b0b2b6] bg-transparent px-1 py-0.5 text-sm ${
+          overdue ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"
+        }`}
+        aria-label={`${field === "deadline" ? "Deadline" : "Review"} ${task.id}`}
+        value={value}
+        disabled={field === "review_deadline" && Boolean(task.deadline)}
+        onChange={(event) => patchDate(task, field, event.target.value)}
+      />
     );
   }
 
@@ -557,16 +615,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 {items.map((task) => (
                   <tr key={task.id} className="border-t border-[#eeeeee]">
                     <td className="p-3">
-                      <TaskActions task={task} />
+                      <TaskLink task={task} />
                     </td>
                     <td className="p-2 text-[#5c5c5c]">{parentId(task.parent) || "—"}</td>
                     <td className="p-2">
-                      <StatusPill status={task.status} />
+                      <InlineStatus task={task} />
                     </td>
-                    <td className={`p-2 ${task.deadline && task.deadline < today ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"}`}>
-                      {task.deadline || "—"}
+                    <td className="p-2">
+                      <InlineDate task={task} field="deadline" />
                     </td>
-                    <td className="p-2 text-[#5c5c5c]">{task.review_deadline || "—"}</td>
+                    <td className="p-2">
+                      <InlineDate task={task} field="review_deadline" />
+                    </td>
                     <td className="p-3 text-xs text-[#5c5c5c]">{task.agent || "—"}</td>
                   </tr>
                 ))}
@@ -574,6 +634,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
             ))}
           </tbody>
         </table>
+        <div className="border-t border-[#eeeeee] px-4 py-2.5 text-xs text-[#5c5c5c]">
+          Klik na datum nebo status = inline úprava · klik na název = detail panel
+        </div>
       </div>
     );
   }
@@ -702,15 +765,13 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                     return (
                       <tr key={item.id} className="border-t border-[#eeeeee]">
                         <td className="p-3">
-                          <article>
-                            {task ? (
-                              <TaskActions task={task} />
-                            ) : (
-                              <p>
-                                {item.id} — {item.title}
-                              </p>
-                            )}
-                          </article>
+                          {task ? (
+                            <TaskLink task={task} />
+                          ) : (
+                            <p>
+                              {item.id} — {item.title}
+                            </p>
+                          )}
                         </td>
                         <td className="p-2 font-bold text-[#b8002e]">{rules}</td>
                         <td className="p-2 uppercase text-[#5c5c5c]">
@@ -951,7 +1012,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                         .filter((task) => task.status === status)
                         .map((task) => (
                           <div key={task.id} className="rounded-md border border-[#e2e2e2] bg-white p-2.5">
-                            <TaskActions task={task} />
+                            <TaskLink task={task} />
                             <div className="mt-1 text-xs text-[#5c5c5c]">{task.deadline || task.review_deadline || "—"}</div>
                           </div>
                         ))}
@@ -966,9 +1027,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                   .map((epic) => (
                     <div key={epic.id} className="flex flex-wrap items-center gap-3 border-b border-[#eeeeee] bg-[#faf3f4] px-4 py-3">
                       <span className="flex-1">
-                        <TaskActions task={epic} />
+                        <TaskLink task={epic} />
                       </span>
-                      <StatusPill status={epic.status} />
+                      <InlineStatus task={epic} />
                       <span className="text-sm text-[#5c5c5c]">{childrenOf(epic.id).length} otevřených pod epicem</span>
                     </div>
                   ))}
@@ -978,18 +1039,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                     <div key={story.id} className="border-b border-[#eeeeee]">
                       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
                         <span className="flex-1">
-                          <TaskActions task={story} />
+                          <TaskLink task={story} />
                         </span>
-                        <StatusPill status={story.status} />
-                        <span
-                          className={
-                            story.deadline && story.deadline < today
-                              ? "text-sm font-bold text-[#b8002e]"
-                              : "text-sm text-[#5c5c5c]"
-                          }
-                        >
-                          {story.deadline || story.review_deadline || "—"}
-                        </span>
+                        <InlineStatus task={story} />
+                        <InlineDate task={story} field="deadline" />
+                        <InlineDate task={story} field="review_deadline" />
                         <span className="text-sm text-[#5c5c5c]">{kids.length} tasků</span>
                       </div>
                       {kids.map((child) => (
@@ -998,10 +1052,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                           className="flex flex-wrap items-center gap-3 border-t border-[#f3f3f3] py-2 pl-11 pr-4 text-sm"
                         >
                           <span className="flex-1">
-                            <TaskActions task={child} />
+                            <TaskLink task={child} />
                           </span>
-                          <StatusPill status={child.status} />
-                          <span className="text-[#5c5c5c]">{child.deadline || child.review_deadline || "—"}</span>
+                          <InlineStatus task={child} />
+                          <InlineDate task={child} field="deadline" />
+                          <InlineDate task={child} field="review_deadline" />
                         </div>
                       ))}
                     </div>
@@ -1010,10 +1065,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 {projectOrphans.map((task) => (
                   <div key={task.id} className="flex flex-wrap items-center gap-3 border-b border-[#eeeeee] px-4 py-3">
                     <span className="flex-1">
-                      <TaskActions task={task} />
+                      <TaskLink task={task} />
                     </span>
-                    <StatusPill status={task.status} />
-                    <span className="text-sm text-[#5c5c5c]">{task.deadline || "—"}</span>
+                      <InlineStatus task={task} />
+                    <InlineDate task={task} field="deadline" />
+                    <InlineDate task={task} field="review_deadline" />
                   </div>
                 ))}
                 {projectStories.length === 0 && projectOrphans.length === 0 && (
@@ -1147,6 +1203,14 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               </button>
               <button type="button" className={btnGhost} onClick={() => setView(returnView)}>
                 Zahodit
+              </button>
+              <button
+                type="button"
+                className={btnGhost}
+                aria-label={`Focus ${detail.id}`}
+                onClick={() => proposeFocus(detail)}
+              >
+                Focus
               </button>
             </div>
           </section>

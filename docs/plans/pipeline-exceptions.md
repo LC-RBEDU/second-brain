@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | odstranění status spam tlačítek u názvu; inline status/datum ve sloupci + Focus v detailu (wireframe); bez změny Brain kontraktů | agent (uživatel: nechci měnit status tlačítky u názvu) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/{App,chrome}.jsx` | display-only uppercase názvů projektů (`projectLabel`); bez změny zápisu / slugů | agent (uživatel: finance · 4 → kapitálky) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx`, `index.css` | vzhled nasazeného Radaru: dlaždice a seznam vybrané skupiny, bez změny zápisu | agent (uživatel ukázal živou obrazovku) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx`, `index.css`, `debug-views.probe.test.jsx` | UI chrome všech obrazovek podle wireframů (tabulky, strom, panely); bez změny zápisové logiky | agent (uživatel: všechny stránky kromě Radaru jsou seznam) |

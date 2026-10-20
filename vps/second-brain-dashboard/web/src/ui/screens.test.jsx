@@ -102,15 +102,13 @@ describe("screens", () => {
       task({ id: "F-D", title: "Bez data" }),
     ], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    const ready = screen.getByRole("button", { name: "F-Y — Hotovo karta" }).closest("article");
-    fireEvent.click(within(ready).getByRole("button", { name: "Označit hotovo" }));
+    fireEvent.change(screen.getByLabelText("Status F-Y"), { target: { value: "Done" } });
     expect(api.patch).toHaveBeenCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-Y.md",
       patch: { status: "Done" },
       expect_oid: "y",
     });
-    const empty = screen.getByRole("button", { name: "F-D — Bez data" }).closest("article");
-    fireEvent.click(within(empty).getByRole("button", { name: "Přesunout na Doing" }));
+    fireEvent.change(screen.getByLabelText("Status F-D"), { target: { value: "Doing" } });
     fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
     expect(api.patch).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByLabelText("Datum deadline"), { target: { value: "2026-11-02" } });
@@ -122,7 +120,7 @@ describe("screens", () => {
       patch: { status: "Doing", deadline: "2026-11-02" },
       expect_oid: "",
     });
-    fireEvent.click(within(screen.getByRole("button", { name: "F-D — Bez data" }).closest("article")).getByRole("button", { name: "Přesunout na Waiting" }));
+    fireEvent.change(screen.getByLabelText("Status F-D"), { target: { value: "Waiting" } });
     expect(screen.getByRole("dialog", { name: "Doplň waitUntil" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
     expect(api.patch).toHaveBeenCalledTimes(2);
@@ -300,6 +298,7 @@ describe("screens", () => {
     };
     renderApp([task({ id: "F-T1", title: "Focus karta" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Focus karta" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Focus F-T1" }));
     });
@@ -374,7 +373,7 @@ describe("screens", () => {
     fireEvent.click(screen.getByRole("button", { name: "F-E1 — Epic" }));
     expect(screen.queryByLabelText("Parent úkolu")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(within(screen.getByRole("button", { name: "F-T1 — Dítě" }).closest("article")).getByRole("button", { name: "Přesunout na Backlog" }));
+    fireEvent.change(screen.getByLabelText("Status F-T1"), { target: { value: "Backlog" } });
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
       patch: { status: "Backlog" },
