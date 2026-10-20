@@ -145,6 +145,7 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 28 | 2026-10-20 01:51 | GRILL | 1f9e157f-872a-41b2-ad22-29dea2594c54 | POTŘEBUJE ODPOVĚDI (2, z toho 0 BLOKUJÍCÍ) | — | g=10. Q41 a Q42 zapsány jako A31 a A32 a doplněny do plánu. Přechod CRITIC kolo 3 |
 | 29 | 2026-10-20 02:03 | CRITIC | 69a3f66c-b60f-4626-9d19-db0252ccee03 | SCHVÁLENO (0 BLOCKER, 0 MAJOR) | — | C1–C10 ověřeny. export-followups je DONE. Schvalování plánu není. Přechod IMPLEMENT, start F1 |
 | 30 | 2026-10-20 02:10 | IMPLEMENT | hlavní agent | F1 | — | needs_decision je jen prošlá review bez deadlinu. pytest test_today_priority.py: 13 passed |
+| 31 | 2026-10-20 02:20 | IMPLEMENT | hlavní agent | F2 | — | Kontrola dětí přes export na otevřeném vaultu. Bulk oid je 409 se seznamem failures. pytest hierarchy+bulk oid+create+cas: 57 passed |
 
 ## Otevřené nálezy
 

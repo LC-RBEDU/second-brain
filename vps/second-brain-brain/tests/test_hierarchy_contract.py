@@ -678,3 +678,119 @@ def test_bulk_pure_done_on_a_parentless_story_writes():
 def test_create_body_declares_parent():
     text = Path(_BRAIN / "app" / "main.py").read_text()
     assert "parent: str = \"\"" in text
+
+
+def test_b11_open_child_blocks_done_even_on_dry_run():
+    vault = _vault(("finance", "Finance"))
+    _seed(vault, "finance", "F-S1", "story")
+    _seed(vault, "finance", "F-T1", "task", parent="[[F-S1]]")
+    before = dict(vault.files)
+    with pytest.raises(BrainClientError) as ei:
+        _bulk(vault, [{"id": "F-S1", "patch": {"status": "Done"}}], dry_run=True)
+    assert ei.value.error_reason == "open_child_under_closed_parent"
+    assert ei.value.detail["parent_id"] == "F-S1"
+    assert ei.value.detail["child_ids"] == ["F-T1"]
+    assert vault.files == before
+    preview = _bulk(
+        vault,
+        [
+            {"id": "F-S1", "patch": {"status": "Done"}},
+            {"id": "F-T1", "patch": {"status": "Done"}},
+        ],
+        dry_run=True,
+    )
+    assert preview["count"] == 2
+    _bulk(
+        vault,
+        [
+            {"id": "F-S1", "patch": {"status": "Done"}},
+            {"id": "F-T1", "patch": {"status": "Done"}},
+        ],
+    )
+    assert "status: Done" in vault.files[_path("finance", "F-S1")]
+
+
+def test_b12_pure_done_checks_children_without_the_active_list():
+    vault = _vault(("finance", "Finance"))
+    story = _seed(vault, "finance", "F-S1", "story")
+    _seed(vault, "finance", "F-T1", "task", parent="[[F-S1]]")
+    calls = {"n": 0}
+    real = update_mod.iter_active_tasks
+
+    def _once(inner):
+        calls["n"] += 1
+        return real(inner)
+
+    with patch.object(update_mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(update_mod, "iter_active_tasks", side_effect=_once):
+            with pytest.raises(BrainClientError) as ei:
+                update_mod.update_task(path=story, patch={"status": "Done"})
+    assert ei.value.error_reason == "open_child_under_closed_parent"
+    assert calls["n"] == 0
+    lone = _seed(vault, "finance", "F-S2", "story")
+    with patch.object(update_mod, "brain_vault", return_value=_CM(vault)):
+        with patch.object(update_mod, "iter_active_tasks", side_effect=_once):
+            with patch.object(update_mod, "evaluate_deadline_order") as order:
+                update_mod.update_task(path=lone, patch={"status": "Done"})
+    order.assert_not_called()
+    assert "status: Done" in vault.files[lone]
+
+
+def test_b44_archive_hop_is_seen_and_a_done_file_in_tasks_is_not():
+    from datetime import date
+
+    vault = _vault(("finance", "Finance"))
+    _seed(vault, "finance", "F-E1", "epic")
+    _seed(vault, "finance", "F-S1", "story", status="Done", parent="[[F-E1]]")
+    _seed(vault, "finance", "F-T1", "task", parent="[[F-S1]]")
+    _bulk(vault, [{"id": "F-E1", "patch": {"status": "Done"}}])
+    assert "status: Done" in vault.files[_path("finance", "F-E1")]
+
+    vault2 = _vault(("finance", "Finance"))
+    _seed(vault2, "finance", "F-E1", "epic")
+    today = date.today().isoformat()
+    vault2.add(
+        "07-ARCHIV/tasks-done/finance/F-S1.md",
+        f"---\nid: F-S1\ntype: story\ntitle: F-S1\nslug: finance\nstatus: Done\n"
+        f'parent: "[[F-E1]]"\nupdated: {today}\n---\n',
+    )
+    _seed(vault2, "finance", "F-T1", "task", parent="[[F-S1]]")
+    before = dict(vault2.files)
+    with pytest.raises(BrainClientError) as ei:
+        _bulk(vault2, [{"id": "F-E1", "patch": {"status": "Done"}}])
+    assert ei.value.detail["parent_id"] == "F-E1"
+    assert "F-T1" in ei.value.detail["child_ids"]
+    assert "failures" not in ei.value.detail
+    assert vault2.files == before
+
+
+def test_b54_two_closing_parents_list_the_same_child_once_each():
+    vault = _vault(("finance", "Finance"))
+    _seed(vault, "finance", "F-E1", "epic")
+    _seed(vault, "finance", "F-S1", "story", parent="[[F-E1]]")
+    _seed(vault, "finance", "F-T1", "task", parent="[[F-S1]]")
+    before = dict(vault.files)
+    with pytest.raises(BrainClientError) as ei:
+        _bulk(
+            vault,
+            [
+                {"id": "F-E1", "patch": {"status": "Cancelled"}},
+                {"id": "F-S1", "patch": {"status": "Cancelled"}},
+            ],
+        )
+    failures = ei.value.detail["failures"]
+    assert [item["parent_id"] for item in failures] == ["F-E1", "F-S1"]
+    assert failures[0]["child_ids"].count("F-T1") == 1
+    assert failures[1]["child_ids"].count("F-T1") == 1
+    assert "parent_id" not in ei.value.detail
+    assert vault.files == before
+    _bulk(
+        vault,
+        [
+            {"id": "F-E1", "patch": {"status": "Cancelled"}},
+            {"id": "F-S1", "patch": {"status": "Cancelled"}},
+            {"id": "F-T1", "patch": {"status": "Done"}},
+        ],
+    )
+    assert "status: Cancelled" in vault.files[_path("finance", "F-E1")]
+    assert "status: Done" in vault.files[_path("finance", "F-T1")]

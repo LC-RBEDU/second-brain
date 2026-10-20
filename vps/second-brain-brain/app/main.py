@@ -34,6 +34,7 @@ from app.tools import set_focus as set_focus_tool
 from app.tools import slack_live as slack_live_tool
 from app.tools import update_task as update_task_tool
 from app.tools import append_task_note as append_task_note_tool
+from app.tools import bulk_update as bulk_update_tool
 from app.tools import close_task as close_task_tool
 from app.tools import edit_task_body as edit_task_body_tool
 from app.tools import export_tasks as export_tasks_tool
@@ -370,6 +371,10 @@ class CreateTaskBody(BaseModel):
     level: str = "story"
     status: str = "Next"
     parent: str = ""
+    deadline: str = ""
+    review_deadline: str = ""
+    waitUntil: str = ""
+    dry_run: bool = False
 
 
 @app.post("/v1/tasks")
@@ -381,6 +386,25 @@ def rest_create_task(body: CreateTaskBody, _auth: AuthPrincipal) -> dict:
         level=body.level,
         status=body.status,
         parent=body.parent,
+        deadline=body.deadline,
+        review_deadline=body.review_deadline,
+        waitUntil=body.waitUntil,
+        dry_run=body.dry_run,
+    )
+
+
+class BulkUpdateBody(BaseModel):
+    updates: list[dict]
+    allow_parent_shift: bool = False
+    dry_run: bool = False
+
+
+@app.post("/v1/tasks/bulk")
+def rest_bulk_update(body: BulkUpdateBody, _auth: AuthPrincipal) -> dict:
+    return bulk_update_tool.bulk_update(
+        updates=body.updates,
+        allow_parent_shift=body.allow_parent_shift,
+        dry_run=body.dry_run,
     )
 
 

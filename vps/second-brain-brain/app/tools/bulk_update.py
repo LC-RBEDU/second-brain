@@ -15,15 +15,67 @@ for _lib in (
 
 from context_tombstone import delete_context_tombstone  # noqa: E402
 from deadline_order import DeadlineNode, evaluate_deadline_order, node_from_frontmatter  # noqa: E402
+from drive_io import DriveConflictError  # noqa: E402
 from hierarchy import parse_parent_id  # noqa: E402
 from task_query import card  # noqa: E402
 
 from app.errors import BrainClientError
 from app.policy import FOCUS_PROPOSAL_MESSAGE
+from app.tools.open_child import assert_no_open_child
 from app.tools.task_catalog import load_tasks
 from app.tools.parent_link import check_overlay, needs_forest
 from app.tools.update_task import render_frontmatter_patch
 from app.vault_deps import brain_vault
+
+_BATCH_CAP = 80
+_TERMINAL = frozenset({"Done", "Cancelled"})
+
+
+def _prepare_patch(task: Any, patch: dict[str, Any]) -> dict[str, Any]:
+    prepared = {key: value for key, value in patch.items() if key != "updated"}
+    deadline = prepared.get("deadline")
+    if "deadline" in prepared and deadline not in (None, ""):
+        prepared["review_deadline"] = ""
+    status = str(prepared.get("status") or task.frontmatter.get("status") or "")
+    if status == "Waiting":
+        wait = prepared.get("waitUntil", task.frontmatter.get("waitUntil"))
+        if wait in (None, ""):
+            raise BrainClientError(
+                message="waiting_no_waituntil",
+                status_code=400,
+                error_reason="waiting_no_waituntil",
+            )
+    return prepared
+
+
+def _reject_oid(vault: Any, resolved: list[tuple[Any, dict[str, Any]]], updates: list[dict[str, Any]]) -> None:
+    supplied = [item for item in updates if item.get("expect_oid") is not None]
+    if not supplied:
+        return
+    if len(supplied) != len(updates):
+        raise BrainClientError(
+            message="missing_expect_oid",
+            status_code=400,
+            error_reason="missing_expect_oid",
+        )
+    by_id = {str(item.get("id") or ""): item for item in updates}
+    failures: list[dict[str, str]] = []
+    for task, _patch in resolved:
+        task_id = card(task)["id"]
+        expect = by_id.get(task_id, {}).get("expect_oid")
+        _text, meta = vault.read_text(task.rel_path)
+        oid = getattr(meta, "oid", None)
+        if expect is not None and oid is not None and str(oid) != str(expect):
+            failures.append({"id": task_id, "path": task.rel_path, "oid": str(oid)})
+    if not failures:
+        return
+    failures.sort(key=lambda item: item["id"])
+    raise BrainClientError(
+        message="oid_mismatch",
+        status_code=409,
+        error_reason="oid_mismatch",
+        detail={"failures": failures},
+    )
 
 
 def bulk_update(
@@ -35,6 +87,14 @@ def bulk_update(
 ) -> dict[str, Any]:
     if not updates:
         raise BrainClientError(message="empty updates", status_code=400, error_reason="empty_updates")
+    if len(updates) > _BATCH_CAP:
+        raise BrainClientError(message="batch_too_large", status_code=400, error_reason="batch_too_large")
+    seen_ids: set[str] = set()
+    for item in updates:
+        task_id = str(item.get("id") or "")
+        if task_id in seen_ids:
+            raise BrainClientError(message="duplicate_id", status_code=400, error_reason="duplicate_id")
+        seen_ids.add(task_id)
     for item in updates:
         if "focus" in (item.get("patch") or {}):
             raise BrainClientError(
@@ -56,7 +116,7 @@ def bulk_update(
             task = by_id.get(task_id)
             if task is None:
                 raise BrainClientError(message=f"not_found {task_id}", status_code=404, error_reason="not_found")
-            patch = dict(item.get("patch") or {})
+            patch = _prepare_patch(task, dict(item.get("patch") or {}))
             resolved.append((task, patch))
             if needs_forest(patch):
                 forest_items.append({"id": task_id, "patch": patch})
@@ -109,12 +169,45 @@ def bulk_update(
                     error_reason="deadline_order",
                     detail=order,
                 )
+        closing = [
+            (card(task)["id"], str(patch.get("status") or task.frontmatter.get("status") or ""))
+            for task, patch in resolved
+            if str(patch.get("status") or "") in _TERMINAL
+        ]
+        assert_no_open_child(vault, closing)
+        _reject_oid(vault, resolved, updates)
         written: list[dict[str, str]] = []
         if dry_run:
             return {"dry_run": True, "written": [], "count": len(resolved)}
         delete_context_tombstone(vault)
-        for task, patch in resolved:
-            text, _meta = vault.read_text(task.rel_path)
-            vault.write_text(task.rel_path, render_frontmatter_patch(text, patch))
-            written.append({"id": card(task)["id"], "path": task.rel_path})
+        expect_by_id = {
+            str(item.get("id") or ""): item.get("expect_oid")
+            for item in updates
+            if item.get("expect_oid") is not None
+        }
+        try:
+            for task, patch in resolved:
+                task_id = card(task)["id"]
+                text, _meta = vault.read_text(task.rel_path)
+                kwargs: dict[str, Any] = {}
+                if task_id in expect_by_id:
+                    kwargs["expect_oid"] = expect_by_id[task_id]
+                vault.write_text(task.rel_path, render_frontmatter_patch(text, patch), **kwargs)
+                written.append({"id": task_id, "path": task.rel_path})
+        except DriveConflictError as exc:
+            conflict_oid = getattr(exc, "oid", None)
+            raise BrainClientError(
+                message=str(exc),
+                status_code=409,
+                error_reason="oid_mismatch",
+                detail={
+                    "failures": [
+                        {
+                            "id": card(task)["id"],
+                            "path": task.rel_path,
+                            "oid": str(conflict_oid or ""),
+                        }
+                    ]
+                },
+            ) from exc
         return {"dry_run": False, "written": written, "count": len(written)}

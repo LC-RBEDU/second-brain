@@ -372,12 +372,31 @@ def build_mcp() -> MCPServer:
     )
     def bulk_update(updates_json: str, allow_parent_shift: bool = False, dry_run: bool = False) -> str:
         updates = json.loads(updates_json) if isinstance(updates_json, str) else updates_json
-        return _call(
-            bulk_update_tool.bulk_update,
-            updates=updates,
-            allow_parent_shift=allow_parent_shift,
-            dry_run=dry_run,
-        )
+        try:
+            result = bulk_update_tool.bulk_update(
+                updates=updates,
+                allow_parent_shift=allow_parent_shift,
+                dry_run=dry_run,
+            )
+        except BrainClientError as exc:
+            if exc.error_reason == "oid_mismatch":
+                payload = exc.as_dict()
+                return CallToolResult(
+                    is_error=True,
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=json.dumps(payload, ensure_ascii=False),
+                        )
+                    ],
+                    structured_content=payload,
+                )
+
+            def _reraise() -> None:
+                raise exc
+
+            return _call(_reraise)
+        return json.dumps(result, ensure_ascii=False, default=str)
 
     @mcp.tool(description="Schedule reminder (attempt_count=0) into Reminders-Pending.")
     def schedule_reminder(

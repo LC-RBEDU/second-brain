@@ -24,6 +24,7 @@ from hierarchy import parse_parent_id  # noqa: E402
 from task_io import iter_active_tasks, parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError
+from app.tools.open_child import assert_no_open_child
 from app.tools.parent_link import check_overlay, needs_forest
 from app.policy import FOCUS_PROPOSAL_MESSAGE, deny_focus_write, deny_stav_auto_write
 from app.vault_deps import brain_vault
@@ -124,7 +125,22 @@ def update_task(
                 raise BrainClientError(message="no frontmatter", status_code=400)
             parsed = parse_task_text(text, rel_path=path, meta=meta)
             current_id = str(parsed.frontmatter.get("id") or "")
-            write_patch = dict(patch)
+            write_patch = {key: value for key, value in patch.items() if key != "updated"}
+            if "deadline" in write_patch and write_patch.get("deadline") not in (None, ""):
+                write_patch["review_deadline"] = ""
+            result_status = str(
+                write_patch.get("status") or parsed.frontmatter.get("status") or ""
+            )
+            if result_status == "Waiting":
+                wait = write_patch.get("waitUntil", parsed.frontmatter.get("waitUntil"))
+                if wait in (None, ""):
+                    raise BrainClientError(
+                        message="waiting_no_waituntil",
+                        status_code=400,
+                        error_reason="waiting_no_waituntil",
+                    )
+            if result_status in ("Done", "Cancelled") and "status" in write_patch and current_id:
+                assert_no_open_child(vault, [(current_id, result_status)])
             if needs_forest(patch) and current_id:
                 active = list(iter_active_tasks(vault))
                 if not any(str(task.frontmatter.get("id") or "") == current_id for task in active):
@@ -164,6 +180,9 @@ def update_task(
                             error_reason="deadline_order",
                             detail=order,
                         )
+            write_patch.pop("updated", None)
+            if "deadline" in write_patch and write_patch.get("deadline") not in (None, ""):
+                write_patch["review_deadline"] = ""
             new_text = render_frontmatter_patch(text, write_patch)
             if dry_run:
                 return {

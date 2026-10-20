@@ -48,6 +48,7 @@ def _render_task(
     parent: str = "",
     deadline: str = "",
     review_deadline: str = "",
+    wait_until: str = "",
     promoted_from: str = "",
     hierarchy: bool = True,
 ) -> str:
@@ -66,8 +67,8 @@ def _render_task(
         "focus": "",
         "agent": "none",
         "deadline": deadline,
-        "review_deadline": review_deadline,
-        "waitUntil": "",
+        "review_deadline": "" if str(deadline or "").strip() else review_deadline,
+        "waitUntil": wait_until,
         "created": today,
         "updated": today,
         "materials": [],
@@ -182,6 +183,7 @@ def create_task(
     parent: str = "",
     deadline: str = "",
     review_deadline: str = "",
+    waitUntil: str = "",
     promoted_from: str = "",
     dry_run: bool = False,
     items: list[dict[str, Any]] | None = None,
@@ -199,6 +201,7 @@ def create_task(
             "parent": parent,
             "deadline": deadline,
             "review_deadline": review_deadline,
+            "waitUntil": waitUntil,
             "promoted_from": promoted_from,
         }
     ]
@@ -207,6 +210,12 @@ def create_task(
             raise BrainClientError(message="title required", status_code=400, error_reason="missing_title")
         if spec.get("level", "story") not in ("epic", "story", "task"):
             raise BrainClientError(message="level must be epic|story|task", status_code=400, error_reason="bad_level")
+        if str(spec.get("status") or "Next") == "Waiting" and not str(spec.get("waitUntil") or "").strip():
+            raise BrainClientError(
+                message="waiting_no_waituntil",
+                status_code=400,
+                error_reason="waiting_no_waituntil",
+            )
 
     mode = "read" if dry_run else "mutate"
     with brain_vault(mode=mode, env=env) as vault:
@@ -251,6 +260,7 @@ def create_task(
                 parent=spec["parent_link"],
                 deadline=str(spec.get("deadline") or ""),
                 review_deadline=str(spec.get("review_deadline") or ""),
+                wait_until=str(spec.get("waitUntil") or ""),
                 promoted_from=spec["promoted_from"],
                 hierarchy=True,
             )

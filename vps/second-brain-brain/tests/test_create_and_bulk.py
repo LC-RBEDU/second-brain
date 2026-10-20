@@ -215,3 +215,17 @@ def test_bulk_deadline_conflict_writes_nothing():
                 bulk_mod.bulk_update(updates=[{"id": "RBU-E1", "patch": {"deadline": "2026-10-10"}}])
     assert ei.value.error_reason == "deadline_order"
     vault.write_text.assert_not_called()
+
+
+def test_b29_waiting_without_waituntil_does_not_open_the_vault():
+    vault = _vault()
+    with patch.object(create_mod, "brain_vault", return_value=_CM(vault)) as opened:
+        with pytest.raises(BrainClientError) as ei:
+            create_mod.create_task(
+                slug="rb-universe-development",
+                title="Cekam",
+                status="Waiting",
+            )
+    assert ei.value.error_reason == "waiting_no_waituntil"
+    opened.assert_not_called()
+    vault.mkdir_p.assert_not_called()
