@@ -154,6 +154,8 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 37 | 2026-10-20 03:17 | IMPLEMENT | hlavní agent | IMPL NEW-1–NEW-9, NEW-11, NEW-12 | NEW-10 otevřený | Úklid rozprostírá dny a přepíná zamčený řádek. Jedna položka si vezme oid z vrcholu. Panel čte conflicts. Nový task, Waiting a focus mají formulář. vitest 32 passed. pytest bff 21 passed |
 | 38 | 2026-10-20 03:32 | REVIEW | 75fdd69c-1c62-4cfb-8c47-dcee112581c1 | K PŘEPRACOVÁNÍ (1 BLOCKER, 1 MAJOR, 1 MINOR) | NEW-10, NEW-11, NEW-12 | Focus šel s prázdným týdnem. Testy brainu pořád chyběly. Dialog neshody ukazoval jen názvy. NEW-1 až NEW-9 v diffu seděly |
 | 39 | 2026-10-20 03:42 | IMPLEMENT | hlavní agent | IMPL NEW-10, NEW-11, NEW-12 | — | Focus posílá aktuální týden a důvod `focus_limit_exceeded`. Dialog čte šest polí z `/api/tasks/item`. Testy B9, B13–B15, B33, B50, B52. vitest 34 passed. pytest brain+bff 40 passed |
+| 40 | 2026-10-20 04:00 | REVIEW | b9cdc787-8e05-498b-9a70-102100bd488f | K PŘEPRACOVÁNÍ (2 BLOCKER, 0 MAJOR, 0 MINOR) | NOVÉ-1, NOVÉ-2 | NEW-10, NEW-11 a NEW-12 sedí. Detail neuměl parent. Rodina nad 80 zavřela náhled a smazala výběr |
+| 41 | 2026-10-20 04:04 | IMPLEMENT | hlavní agent | IMPL NOVÉ-1, NOVÉ-2 | — | Detail mění parent. Úklid nad 80 neodejde a 400 nechá náhled i výběr. vitest 36 passed |
 
 ## Otevřené nálezy
 
@@ -209,3 +211,5 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | NEW-10 | MAJOR | IMPL | opraveno v #39 | 2 |
 | NEW-11 | BLOCKER | IMPL | opraveno v #39 — prázdný týden focus mazal | 2 |
 | NEW-12 | MINOR | IMPL | opraveno v #39 | 2 |
+| NOVÉ-1 | BLOCKER | IMPL | opraveno v #41 | 3 |
+| NOVÉ-2 | BLOCKER | IMPL | opraveno v #41 | 3 |

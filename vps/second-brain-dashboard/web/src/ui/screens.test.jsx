@@ -345,4 +345,68 @@ describe("screens", () => {
     expect(screen.getByText("review: 2026-11-01 / 2026-11-01")).toBeInTheDocument();
     expect(screen.getByText("parent: [[F-S1]] / [[F-S1]]")).toBeInTheDocument();
   });
+
+  it("Q2 changes the parent from the detail and the kanban does not", async () => {
+    const api = { patch: vi.fn().mockResolvedValue({ ok: true }) };
+    renderApp([
+      task({ id: "F-E1", type: "epic", title: "Epic" }),
+      task({ id: "F-S1", type: "story", title: "Story", parent: "F-E1" }),
+      task({ id: "F-S2", type: "story", title: "Jiná", parent: "F-E1" }),
+      task({ id: "F-T1", type: "task", title: "Dítě", parent: "F-S1" }),
+    ], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    expect(screen.getByLabelText("Parent úkolu")).toHaveValue("F-S1");
+    fireEvent.change(screen.getByLabelText("Parent úkolu"), { target: { value: "F-S2" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(api.patch).toHaveBeenLastCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-T1.md",
+      patch: { title: "Dítě", parent: "F-S2" },
+      expect_oid: "",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    fireEvent.click(screen.getByRole("button", { name: "F-E1 — Epic" }));
+    expect(screen.queryByLabelText("Parent úkolu")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    fireEvent.click(within(screen.getByRole("button", { name: "F-T1 — Dítě" }).closest("article")).getByRole("button", { name: "Přesunout na Backlog" }));
+    expect(api.patch).toHaveBeenLastCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-T1.md",
+      patch: { status: "Backlog" },
+      expect_oid: "",
+    });
+  });
+
+  it("B45 keeps the preview when the family is over 80 and when the server rejects it", async () => {
+    const api = { cleanup: vi.fn().mockResolvedValue({ ok: false, error_reason: "batch_too_large" }) };
+    const children = Array.from({ length: 80 }, (_, index) => task({
+      id: `F-T${index}`,
+      title: `Dítě ${index}`,
+      parent: "F-S1",
+    }));
+    renderApp([task({ id: "F-S1", type: "story", title: "Rodič" }), ...children], api);
+    fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" }));
+    fireEvent.change(screen.getByLabelText("Akce F-S1"), { target: { value: "done" } });
+    fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
+    expect(screen.getByText("Rodina je nad 80. Odeber předka.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Uložit" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    expect(api.cleanup).not.toHaveBeenCalled();
+    expect(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" })).toBeChecked();
+    cleanup();
+    const small = { cleanup: vi.fn().mockResolvedValue({ ok: false, error_reason: "batch_too_large" }) };
+    renderApp([task({ id: "F-S1", type: "story", title: "Rodič" })], small);
+    fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" }));
+    fireEvent.change(screen.getByLabelText("Akce F-S1"), { target: { value: "done" } });
+    fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(small.cleanup).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("region", { name: "Náhled úklidu" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" })).toBeChecked();
+  });
 });

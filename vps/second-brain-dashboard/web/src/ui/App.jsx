@@ -14,6 +14,13 @@ const FOCUS_TEXT = {
 };
 const COMPARE_FIELDS = ["title", "status", "deadline", "review_deadline", "waitUntil", "parent"];
 
+function parentId(value) {
+  if (!value) return "";
+  const text = String(value).trim();
+  const linked = /\[\[([^\]|]+)/.exec(text);
+  return (linked ? linked[1] : text).split(/\s+[—–-]/)[0].trim();
+}
+
 function conflictText(detail) {
   const rows = detail?.conflicts || [];
   if (rows.length) {
@@ -56,7 +63,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const [board, setBoard] = useState(false);
   const [detailId, setDetailId] = useState("");
   const [returnView, setReturnView] = useState("radar");
-  const [draft, setDraft] = useState({ title: "", deadline: "" });
+  const [draft, setDraft] = useState({ title: "", deadline: "", parent: "" });
   const [newDraft, setNewDraft] = useState({ title: "", level: "task", status: "Next", deadline: "", review: "", parent: "", waitUntil: "" });
   const [checked, setChecked] = useState({});
   const [actions, setActions] = useState({});
@@ -96,7 +103,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   function openDetail(task) {
     setReturnView(view);
     setDetailId(task.id);
-    setDraft({ title: task.title || "", deadline: task.deadline || "" });
+    setDraft({ title: task.title || "", deadline: task.deadline || "", parent: parentId(task.parent) });
     setView("detail");
   }
 
@@ -138,6 +145,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     if (!detail || !api?.patch) return;
     const patch = { title: draft.title };
     if (draft.deadline) patch.deadline = draft.deadline;
+    if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
     const result = await api.patch({ path: detail.path, patch, expect_oid: oidOf(detail) });
     if (await openConflict(result, patch, detail.path, detail.id)) return;
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") return;
@@ -296,7 +304,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   }
 
   async function submitCleanup() {
-    if (!preview || !sendAllowed || !api?.cleanup) return;
+    if (!preview || !sendAllowed || !api?.cleanup || preview.length > 80) return;
     const source = cleanupResult
       ? preview.filter((row) => cleanupResult.failed?.includes(row.id) || cleanupResult.pending?.includes(row.id))
       : preview;
@@ -311,6 +319,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       })),
     });
     setCleanupResult(result);
+    if (result?.ok === false) return;
     setOids((current) => ({ ...current, ...(result?.expect_oid || {}) }));
     onRefresh?.();
     const stay = [...(result?.failed || []), ...(result?.pending || [])];
@@ -496,6 +505,24 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           <label>
             Deadline <input aria-label="Deadline úkolu" value={draft.deadline} onChange={(event) => setDraft({ ...draft, deadline: event.target.value })} />
           </label>
+          {detail.type !== "epic" && (
+            <label>
+              Parent
+              <input
+                aria-label="Parent úkolu"
+                list="detail-parents"
+                value={draft.parent}
+                onChange={(event) => setDraft({ ...draft, parent: event.target.value })}
+              />
+              <datalist id="detail-parents">
+                {openTasks
+                  .filter((task) => (showPaused || !paused.has(projectSlug(task))) && task.type === (detail.type === "story" ? "epic" : "story"))
+                  .map((task) => (
+                    <option key={task.id} value={task.id}>{labelOf(task)}</option>
+                  ))}
+              </datalist>
+            </label>
+          )}
           <button type="button" onClick={saveDetail}>Uložit</button>
         </section>
       )}
@@ -639,7 +666,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               {counts && [...counts.entries()].sort().map(([day, count]) => (
                 <p key={day}>Obsazenost {day}: {count}</p>
               ))}
-              <button type="button" disabled={!sendAllowed} onClick={submitCleanup}>Uložit</button>
+              {preview.length > 80 && <p>Rodina je nad 80. Odeber předka.</p>}
+              <button type="button" disabled={!sendAllowed || preview.length > 80} onClick={submitCleanup}>Uložit</button>
               <button type="button" onClick={() => setPreview(null)}>Zavřít náhled</button>
               {cleanupResult?.written && (
                 <p>Uloženo {cleanupResult.written.count}: {cleanupResult.written.ids.join(", ")}</p>
