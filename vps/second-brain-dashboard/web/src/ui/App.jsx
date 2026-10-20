@@ -529,7 +529,38 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       return;
     }
     const patch = kanbanPatch(task, status, openTasks);
-    if (!patch || !api?.patch) return;
+    // #region agent log
+    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+      body: JSON.stringify({
+        sessionId: "7e3b98",
+        runId: "inline-edit",
+        hypothesisId: "H17",
+        location: "App.jsx:move",
+        message: "move after kanbanPatch",
+        data: {
+          id: task.id,
+          type: task.type || "",
+          from: task.status || "",
+          to: status,
+          patchNull: !patch,
+          hasApi: Boolean(api?.patch),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    if (!patch) {
+      if (status === "Done" || status === "Cancelled") {
+        setDialog({
+          kind: "error",
+          text: `${ERROR_TEXT.open_child_under_closed_parent} (${task.id})`,
+        });
+      }
+      return;
+    }
+    if (!api?.patch) return;
     const result = await api.patch(patchPayload(task, patch));
     await openConflict(result, patch, task.path, task.id, baselineOf(task));
   }

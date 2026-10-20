@@ -39,7 +39,14 @@ export function hasOpenDescendant(id, tasks) {
 }
 
 export function kanbanPatch(task, nextStatus, tasks) {
-  if (hasOpenDescendant(task.id, tasks)) return null;
+  // Only terminal closes are blocked by open children (Brain open_child_*).
+  // Non-terminal moves (Next → Doing, …) must still work on epics/stories.
+  if (
+    (nextStatus === "Done" || nextStatus === "Cancelled") &&
+    hasOpenDescendant(task.id, tasks)
+  ) {
+    return null;
+  }
   return { status: nextStatus };
 }
 

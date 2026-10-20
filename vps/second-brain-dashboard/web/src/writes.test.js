@@ -33,6 +33,13 @@ describe("writes", () => {
     expect(kanbanPatch(paused, "Done", tasks)).toEqual({ status: "Done" });
   });
 
+  it("allows non-terminal status moves on a parent with open children", () => {
+    const tasks = [story, same];
+    expect(kanbanPatch(story, "Doing", tasks)).toEqual({ status: "Doing" });
+    expect(kanbanPatch(story, "Backlog", tasks)).toEqual({ status: "Backlog" });
+    expect(kanbanPatch(story, "Cancelled", tasks)).toBeNull();
+  });
+
   it("B43 lets the closer cancel replace Ponechat", () => {
     const [resolved] = resolveCloser([
       { id: "F-S1", parent: "", action: "cancelled", direct: true },
