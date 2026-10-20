@@ -150,6 +150,8 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 33 | 2026-10-20 02:35 | IMPLEMENT | hlavní agent | F4 | — | BFF export N=0, archiv 400, dávky se zastaví. pytest bff: 17 passed |
 | 34 | 2026-10-20 02:45 | IMPLEMENT | hlavní agent | F5 | — | Obrazovky bez Done a archivu. Q9 jen u jednoho tasku. vitest web: 32 passed. vite build OK. pytest bff: 17 passed |
 | 35 | 2026-10-20 02:55 | IMPLEMENT | hlavní agent | F6 | — | Image bez vaultu, setup sslip, redirect URI na stávajícího Google klienta. pytest bff: 20 passed. vitest web: 32 passed. Docker daemon neběžel, image se nesestavila |
+| 36 | 2026-10-20 03:07 | REVIEW | 908c8b4b-f7d0-46b7-8bb4-c84e9a29e1c5 | K PŘEPRACOVÁNÍ (7 BLOCKER, 5 MAJOR, 1 MINOR) | NEW-1–NEW-12 | Úklid bez rozprostření a bližšího uzavření, jednopoložkový oid, prázdný panel termínů, Waiting a nový task. Serverová kontrola dětí a export bez Done sedí |
+| 37 | 2026-10-20 03:17 | IMPLEMENT | hlavní agent | IMPL NEW-1–NEW-9, NEW-11, NEW-12 | NEW-10 otevřený | Úklid rozprostírá dny a přepíná zamčený řádek. Jedna položka si vezme oid z vrcholu. Panel čte conflicts. Nový task, Waiting a focus mají formulář. vitest 32 passed. pytest bff 21 passed |
 
 ## Otevřené nálezy
 
@@ -193,3 +195,15 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | Q37 | NEBLOKUJÍCÍ | grill | předpoklad A27 v #24 (archiv nejde ani otevřít) | 1 |
 | Q38 | NEBLOKUJÍCÍ | grill | předpoklad A28 v #24 (druhé redirect URI) | 1 |
 | Q39 | NEBLOKUJÍCÍ | grill | předpoklad A29 v #24 (oid po 409 v úklidu) | 1 |
+| NEW-1 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-2 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-3 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-4 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-5 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-6 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-7 | BLOCKER | IMPL | opraveno v #37 | 1 |
+| NEW-8 | MAJOR | IMPL | opraveno v #37 | 1 |
+| NEW-9 | MAJOR | IMPL | opraveno v #37 | 1 |
+| NEW-10 | MAJOR | IMPL | otevřený — chybí testy B9, B13, B14, B15, B33, B50, B52 | 1 |
+| NEW-11 | MAJOR | IMPL | opraveno v #37 | 1 |
+| NEW-12 | MINOR | IMPL | opraveno v #37 | 1 |

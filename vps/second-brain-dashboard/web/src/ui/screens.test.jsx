@@ -95,7 +95,7 @@ describe("screens", () => {
     expect(within(preview).queryByText(/Hotový/)).toBeNull();
   });
 
-  it("B27 sends Done as status only and ignores an empty Doing confirm", () => {
+  it("B27 sends Done as status only and ignores an empty Doing confirm", async () => {
     const api = { patch: vi.fn() };
     renderApp([
       task({ id: "F-Y", title: "Hotovo karta", deadline: "2026-12-01", expect_oid: "y" }),
@@ -114,12 +114,18 @@ describe("screens", () => {
     fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
     expect(api.patch).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByLabelText("Datum deadline"), { target: { value: "2026-11-02" } });
-    fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
+    });
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-D.md",
       patch: { status: "Doing", deadline: "2026-11-02" },
       expect_oid: "",
     });
+    fireEvent.click(within(screen.getByRole("button", { name: "F-D — Bez data" }).closest("article")).getByRole("button", { name: "Přesunout na Waiting" }));
+    expect(screen.getByRole("dialog", { name: "Doplň waitUntil" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
+    expect(api.patch).toHaveBeenCalledTimes(2);
   });
 
   it("B34 offers force-save with the new oid, and Upravit sends nothing", async () => {

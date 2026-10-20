@@ -27,6 +27,27 @@ const api = {
       body: JSON.stringify(body),
     }).then(readJson);
   },
+  create(body) {
+    return fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(readJson);
+  },
+  propose(body) {
+    return fetch("/api/focus/propose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(readJson);
+  },
+  apply(body) {
+    return fetch("/api/focus/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(readJson);
+  },
 };
 
 function Boot() {

@@ -144,6 +144,22 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
         }
         return brain_json(app.state.brain.call("PATCH", "/v1/tasks", json_body=sent))
 
+    @app.post("/api/tasks")
+    def create_task(request: Request, body: dict[str, Any]) -> dict[str, Any]:
+        email_of(request)
+        deadline = body.get("deadline") or ""
+        sent = {
+            "slug": body.get("slug") or "",
+            "title": body.get("title") or "",
+            "level": body.get("level") or "task",
+            "status": body.get("status") or "Next",
+            "parent": "" if body.get("level") == "epic" else (body.get("parent") or ""),
+            "deadline": deadline,
+            "review_deadline": "" if deadline else (body.get("review_deadline") or ""),
+            "waitUntil": body.get("waitUntil") or "",
+        }
+        return brain_json(app.state.brain.call("POST", "/v1/tasks", json_body=sent))
+
     @app.post("/api/cleanup")
     def cleanup(request: Request, body: dict[str, Any]) -> dict[str, Any]:
         email_of(request)
@@ -272,6 +288,8 @@ def _run_chunks(brain: Any, chunks: list[list[dict[str, Any]]], items: list[dict
                 for failure in (detail.get("failures") or [])
                 if isinstance(failure, dict) and failure.get("id") and failure.get("oid")
             }
+            if not expect_oid and len(chunk) == 1 and body.get("oid"):
+                expect_oid = {str(chunk[0]["id"]): body.get("oid")}
             reason = str(body.get("error_reason") or "brain_error")
             return {
                 "written": {"count": len(written), "ids": written},

@@ -308,6 +308,24 @@ def test_healthz_is_open():
     assert api.get("/healthz").json() == {"status": "ok"}
 
 
+def test_single_item_conflict_keeps_the_top_level_oid():
+    brain = FakeBrain()
+    brain.queue = [FakeResponse(409, {"error_reason": "oid_mismatch", "oid": "oid-new"})]
+    brain.export_tasks = [{"id": "F-T1"}]
+    api, brain = client(brain)
+    response = api.post(
+        "/api/cleanup",
+        cookies=auth(),
+        json={"items": [{"id": "F-T1", "path": Y_PATH, "title": "Jedna", "patch": {"status": "Done"}, "expect_oid": "old"}]},
+    )
+    body = response.json()
+    assert response.status_code == 200
+    assert brain.calls[0]["method"] == "PATCH"
+    assert body["expect_oid"] == {"F-T1": "oid-new"}
+    assert body["dialog"] is None
+    assert body["failed"] == ["F-T1"]
+
+
 def test_over_cap_does_not_call_brain():
     api, brain = client()
     items = [
