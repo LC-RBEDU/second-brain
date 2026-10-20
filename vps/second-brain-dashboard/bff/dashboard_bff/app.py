@@ -140,8 +140,10 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
         sent = {
             "path": body.get("path") or "",
             "patch": _clean_patch(body.get("patch")),
-            "expect_oid": body.get("expect_oid"),
         }
+        expect_oid = body.get("expect_oid")
+        if expect_oid:
+            sent["expect_oid"] = expect_oid
         return brain_json(app.state.brain.call("PATCH", "/v1/tasks", json_body=sent))
 
     @app.post("/api/tasks")

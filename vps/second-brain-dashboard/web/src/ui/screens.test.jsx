@@ -82,7 +82,6 @@ describe("screens", () => {
     expect(api.patch).toHaveBeenCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
       patch: { status: "Doing" },
-      expect_oid: "",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Mapa" }));
@@ -154,7 +153,6 @@ describe("screens", () => {
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-D.md",
       patch: { status: "Doing", deadline: "2026-11-02" },
-      expect_oid: "",
     });
     fireEvent.change(screen.getByLabelText("Status F-D"), { target: { value: "Waiting" } });
     expect(screen.getByRole("dialog", { name: "Doplň waitUntil" })).toBeInTheDocument();
@@ -168,7 +166,7 @@ describe("screens", () => {
         ok: false,
         error_reason: "oid_mismatch",
         oid: "oid-new",
-        current: { title: "Původní" },
+        current: { title: "Někdo jiný změnil" },
       }),
     };
     renderApp([task({ id: "F-T1", title: "Původní", expect_oid: "old" })], api);
@@ -185,7 +183,7 @@ describe("screens", () => {
     expect(screen.getByText("Tvůj návrh")).toBeInTheDocument();
     expect(screen.getByText("Ve vaultu teď")).toBeInTheDocument();
     expect(screen.getByText("Nový název")).toBeInTheDocument();
-    expect(screen.getByText("Původní")).toBeInTheDocument();
+    expect(screen.getByText("Někdo jiný změnil")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zrušit konflikt" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Zpět k formuláři" }));
     expect(api.patch).toHaveBeenCalledTimes(1);
@@ -196,6 +194,40 @@ describe("screens", () => {
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
       patch: { title: "Nový název" },
+      expect_oid: "oid-new",
+    });
+  });
+
+  it("stale oid with unchanged vault content auto-retries without conflict dialog", async () => {
+    const api = {
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          error_reason: "oid_mismatch",
+          oid: "oid-new",
+          current: { title: "Hotovo karta", status: "Next" },
+        })
+        .mockResolvedValueOnce({ ok: true, oid: "oid-written" }),
+      item: vi.fn().mockResolvedValue({
+        body: "",
+        frontmatter: { title: "Hotovo karta", status: "Next" },
+      }),
+    };
+    renderApp([task({ id: "F-Y", title: "Hotovo karta", status: "Next", expect_oid: "stale" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-Y — Hotovo karta" }));
+    });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "Done" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(screen.queryByRole("dialog", { name: "Neshoda verze" })).toBeNull();
+    expect(api.patch).toHaveBeenCalledTimes(2);
+    expect(api.patch).toHaveBeenLastCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-Y.md",
+      patch: { title: "Hotovo karta", status: "Done" },
       expect_oid: "oid-new",
     });
   });
@@ -419,7 +451,6 @@ describe("screens", () => {
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
       patch: { title: "Dítě", parent: "F-S2" },
-      expect_oid: "",
     });
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     await act(async () => {
@@ -431,7 +462,6 @@ describe("screens", () => {
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
       patch: { status: "Backlog" },
-      expect_oid: "",
     });
   });
 

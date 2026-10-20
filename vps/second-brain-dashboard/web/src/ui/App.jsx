@@ -200,7 +200,26 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   // #endregion
 
   function oidOf(task) {
-    return oids[task.id] || task.expect_oid || "";
+    const value = oids[task?.id] || task?.expect_oid || task?.oid || "";
+    return String(value || "").trim();
+  }
+
+  function patchPayload(task, patch) {
+    const body = { path: task.path, patch };
+    const expect = oidOf(task);
+    if (expect) body.expect_oid = expect;
+    return body;
+  }
+
+  function baselineOf(task) {
+    return {
+      title: task?.title || "",
+      status: task?.status || "",
+      deadline: task?.deadline || "",
+      review_deadline: task?.review_deadline || "",
+      waitUntil: task?.waitUntil || "",
+      parent: parentId(task?.parent),
+    };
   }
 
   async function openDetail(task) {
@@ -213,6 +232,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       const parsed = extractDetail(item?.body || "");
       detailText = parsed.text;
       detailLine = parsed.line;
+      const freshOid = item?.oid || item?.expect_oid || item?.frontmatter?.oid;
+      if (freshOid) setOids((prev) => ({ ...prev, [task.id]: String(freshOid) }));
     }
     setDraft({
       title: task.title || "",
@@ -228,8 +249,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     setView("detail");
   }
 
-  async function openConflict(result, patch, path, taskId) {
+  async function openConflict(result, patch, path, taskId, baseline, retried = false) {
     if (result?.ok) {
+      if (result?.oid && taskId) setOids((prev) => ({ ...prev, [taskId]: result.oid }));
       onRefresh?.();
       return true;
     }
@@ -238,12 +260,49 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       if (api?.item && taskId) {
         const item = await api.item(taskId);
         if (item?.frontmatter) current = item.frontmatter;
+        const freshOid = item?.oid || result.oid;
+        if (freshOid) setOids((prev) => ({ ...prev, [taskId]: String(freshOid) }));
       }
       const yours = {};
       const vault = {};
+      const base = baseline || {};
       for (const key of COMPARE_FIELDS) {
         vault[key] = current[key] == null ? "" : String(current[key]);
         yours[key] = Object.prototype.hasOwnProperty.call(patch, key) ? String(patch[key] ?? "") : vault[key];
+      }
+      // Concurrent = vault drifted from what the form loaded — not "your patch vs vault".
+      const concurrent = COMPARE_FIELDS.some((key) => {
+        if (!Object.prototype.hasOwnProperty.call(current, key)) return false;
+        return showValue(vault[key]) !== showValue(base[key] ?? "");
+      });
+      // #region agent log
+      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+        body: JSON.stringify({
+          sessionId: "7e3b98",
+          runId: "cas-fix",
+          hypothesisId: "H8",
+          location: "App.jsx:openConflict",
+          message: "oid_mismatch handling",
+          data: {
+            taskId,
+            concurrent,
+            retried,
+            hasBaseline: Boolean(baseline),
+            resultOid: result.oid || "",
+            vaultStatus: vault.status,
+            yoursStatus: yours.status,
+            baseStatus: base.status || "",
+            currentKeys: Object.keys(current),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      if (!concurrent && result.oid && !retried && api?.patch) {
+        const retry = await api.patch({ path, patch, expect_oid: result.oid });
+        return openConflict(retry, patch, path, taskId, baseline, true);
       }
       setDialog({
         kind: "q9",
@@ -273,22 +332,48 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     }
     if (draft.waitUntil !== (detail.waitUntil || "")) patch.waitUntil = draft.waitUntil;
     if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
-    const result = await api.patch({ path: detail.path, patch, expect_oid: oidOf(detail) });
-    if (await openConflict(result, patch, detail.path, detail.id)) return;
+    const baseline = baselineOf(detail);
+    const payload = patchPayload(detail, patch);
+    // #region agent log
+    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+      body: JSON.stringify({
+        sessionId: "7e3b98",
+        runId: "cas-fix",
+        hypothesisId: "H9",
+        location: "App.jsx:saveDetail",
+        message: "saveDetail patch payload",
+        data: {
+          taskId: detail.id,
+          expectOid: payload.expect_oid || "",
+          omitExpect: !payload.expect_oid,
+          patchStatus: patch.status || "",
+          baseStatus: baseline.status,
+          taskOid: detail.oid || "",
+          cachedOid: oids[detail.id] || "",
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    const result = await api.patch(payload);
+    if (await openConflict(result, patch, detail.path, detail.id, baseline)) return;
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") return;
     const nextOid = result?.oid || oidOf(detail);
     if (result?.oid) setOids((prev) => ({ ...prev, [detail.id]: result.oid }));
     if (draft.detailLine && draft.detail !== draft.detailOriginal && api?.editBody) {
       const newLine = `**Detail:** ${draft.detail.trim() || "—"}`;
-      await api.editBody({
+      const bodyPayload = {
         path: detail.path,
         operation: "replace",
         match: draft.detailLine,
         new_text: newLine,
-        expect_oid: nextOid,
         source: "dashboard",
         reason: "úprava detailu v panelu",
-      });
+      };
+      if (nextOid) bodyPayload.expect_oid = nextOid;
+      await api.editBody(bodyPayload);
     }
     onRefresh?.();
   }
@@ -306,25 +391,21 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     }
     const patch = kanbanPatch(task, status, openTasks);
     if (!patch || !api?.patch) return;
-    const result = await api.patch({ path: task.path, patch, expect_oid: oidOf(task) });
-    await openConflict(result, patch, task.path, task.id);
+    const result = await api.patch(patchPayload(task, patch));
+    await openConflict(result, patch, task.path, task.id, baselineOf(task));
   }
 
   async function confirmDoing() {
     if (!doingDate || !dialog?.task || !api?.patch) return;
     const patch = { status: "Doing", deadline: doingDate };
-    const result = await api.patch({
-      path: dialog.task.path,
-      patch,
-      expect_oid: oidOf(dialog.task),
-    });
+    const result = await api.patch(patchPayload(dialog.task, patch));
     if (result?.ok) {
       setDialog(null);
       onRefresh?.();
       return;
     }
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
-      await openConflict(result, patch, dialog.task.path, dialog.task.id);
+      await openConflict(result, patch, dialog.task.path, dialog.task.id, baselineOf(dialog.task));
       return;
     }
     setDialog(null);
@@ -333,18 +414,14 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   async function confirmWaiting() {
     if (!waitDate || !dialog?.task || !api?.patch) return;
     const patch = { status: "Waiting", waitUntil: waitDate };
-    const result = await api.patch({
-      path: dialog.task.path,
-      patch,
-      expect_oid: oidOf(dialog.task),
-    });
+    const result = await api.patch(patchPayload(dialog.task, patch));
     if (result?.ok) {
       setDialog(null);
       onRefresh?.();
       return;
     }
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
-      await openConflict(result, patch, dialog.task.path, dialog.task.id);
+      await openConflict(result, patch, dialog.task.path, dialog.task.id, baselineOf(dialog.task));
       return;
     }
     setDialog(null);
@@ -561,8 +638,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       }),
     }).catch(() => {});
     // #endregion
-    const result = await api.patch({ path: task.path, patch, expect_oid: oidOf(task) });
-    await openConflict(result, patch, task.path, task.id);
+    const result = await api.patch(patchPayload(task, patch));
+    await openConflict(result, patch, task.path, task.id, baselineOf(task));
   }
 
   function InlineStatus({ task }) {
