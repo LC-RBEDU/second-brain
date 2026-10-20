@@ -26,6 +26,26 @@ const FOCUS_TEXT = {
   focus_epic_limit_exceeded: "Focus už má 5 epiců",
   cas_conflict: "Neshoda verze",
 };
+const ERROR_TEXT = {
+  ...FOCUS_TEXT,
+  open_child_under_closed_parent: "Nejdřív uzavři otevřené podúkoly (story/epic nejde dát na Done).",
+  parent_has_open_children: "Nejdřív uzavři otevřené podúkoly.",
+  waiting_no_waituntil: "Waiting vyžaduje datum waitUntil.",
+  archive_readonly: "Archivovaný task nejde upravit.",
+  brain_error: "Brain API vrátilo chybu.",
+};
+
+function errorMessage(result) {
+  const reason = result?.error_reason || "";
+  if (reason === "deadline_order") return conflictText(result.detail);
+  const childIds = result?.detail?.child_ids || result?.detail?.failures?.[0]?.child_ids;
+  if (childIds?.length) {
+    const base = ERROR_TEXT[reason] || ERROR_TEXT.open_child_under_closed_parent;
+    return `${base} Otevřené: ${childIds.join(", ")}`;
+  }
+  if (ERROR_TEXT[reason]) return ERROR_TEXT[reason];
+  return reason ? `Uložení selhalo: ${reason}` : "Uložení selhalo.";
+}
 const COMPARE_FIELDS = ["title", "status", "deadline", "review_deadline", "waitUntil", "parent"];
 const Q9_LABELS = {
   title: "Název",
@@ -249,6 +269,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     setView("detail");
   }
 
+  function fieldValue(key, value) {
+    if (key === "parent") return parentId(value);
+    return value == null ? "" : String(value);
+  }
+
   async function openConflict(result, patch, path, taskId, baseline, retried = false) {
     if (result?.ok) {
       if (result?.oid && taskId) setOids((prev) => ({ ...prev, [taskId]: result.oid }));
@@ -258,22 +283,28 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     if (result?.error_reason === "oid_mismatch") {
       let current = result.current || {};
       if (api?.item && taskId) {
-        const item = await api.item(taskId);
-        if (item?.frontmatter) current = item.frontmatter;
-        const freshOid = item?.oid || result.oid;
-        if (freshOid) setOids((prev) => ({ ...prev, [taskId]: String(freshOid) }));
+        try {
+          const item = await api.item(taskId);
+          if (item?.frontmatter) current = item.frontmatter;
+          const freshOid = item?.oid || result.oid;
+          if (freshOid) setOids((prev) => ({ ...prev, [taskId]: String(freshOid) }));
+        } catch {
+          /* keep result.current */
+        }
       }
       const yours = {};
       const vault = {};
       const base = baseline || {};
       for (const key of COMPARE_FIELDS) {
-        vault[key] = current[key] == null ? "" : String(current[key]);
-        yours[key] = Object.prototype.hasOwnProperty.call(patch, key) ? String(patch[key] ?? "") : vault[key];
+        vault[key] = fieldValue(key, current[key]);
+        yours[key] = Object.prototype.hasOwnProperty.call(patch, key)
+          ? fieldValue(key, patch[key])
+          : vault[key];
       }
       // Concurrent = vault drifted from what the form loaded — not "your patch vs vault".
       const concurrent = COMPARE_FIELDS.some((key) => {
         if (!Object.prototype.hasOwnProperty.call(current, key)) return false;
-        return showValue(vault[key]) !== showValue(base[key] ?? "");
+        return showValue(vault[key]) !== showValue(fieldValue(key, base[key]));
       });
       // #region agent log
       fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
@@ -318,6 +349,30 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       setDialog({ kind: "deadline_order", text: conflictText(result.detail) });
       return false;
     }
+    if (result?.error_reason) {
+      // #region agent log
+      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+        body: JSON.stringify({
+          sessionId: "7e3b98",
+          runId: "cas-fix",
+          hypothesisId: "H14",
+          location: "App.jsx:openConflict",
+          message: "unhandled patch error shown",
+          data: {
+            taskId,
+            retried,
+            error_reason: result.error_reason,
+            detail: result.detail || null,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      setDialog({ kind: "error", text: errorMessage(result) });
+      return false;
+    }
     return false;
   }
 
@@ -357,25 +412,69 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       }),
     }).catch(() => {});
     // #endregion
-    const result = await api.patch(payload);
-    if (await openConflict(result, patch, detail.path, detail.id, baseline)) return;
-    if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") return;
-    const nextOid = result?.oid || oidOf(detail);
-    if (result?.oid) setOids((prev) => ({ ...prev, [detail.id]: result.oid }));
-    if (draft.detailLine && draft.detail !== draft.detailOriginal && api?.editBody) {
-      const newLine = `**Detail:** ${draft.detail.trim() || "—"}`;
-      const bodyPayload = {
-        path: detail.path,
-        operation: "replace",
-        match: draft.detailLine,
-        new_text: newLine,
-        source: "dashboard",
-        reason: "úprava detailu v panelu",
-      };
-      if (nextOid) bodyPayload.expect_oid = nextOid;
-      await api.editBody(bodyPayload);
+    let result;
+    try {
+      result = await api.patch(payload);
+    } catch (err) {
+      // #region agent log
+      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+        body: JSON.stringify({
+          sessionId: "7e3b98",
+          runId: "cas-fix",
+          hypothesisId: "H15",
+          location: "App.jsx:saveDetail",
+          message: "saveDetail patch threw",
+          data: { taskId: detail.id, err: String(err?.message || err) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+      return;
     }
-    onRefresh?.();
+    // #region agent log
+    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+      body: JSON.stringify({
+        sessionId: "7e3b98",
+        runId: "cas-fix",
+        hypothesisId: "H14",
+        location: "App.jsx:saveDetail",
+        message: "saveDetail patch result",
+        data: {
+          taskId: detail.id,
+          ok: Boolean(result?.ok),
+          error_reason: result?.error_reason || "",
+          oid: result?.oid || "",
+          patched: result?.patched || [],
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    const saved = await openConflict(result, patch, detail.path, detail.id, baseline);
+    if (saved) {
+      const nextOid = result?.oid || oidOf(detail);
+      if (draft.detailLine && draft.detail !== draft.detailOriginal && api?.editBody) {
+        const newLine = `**Detail:** ${draft.detail.trim() || "—"}`;
+        const bodyPayload = {
+          path: detail.path,
+          operation: "replace",
+          match: draft.detailLine,
+          new_text: newLine,
+          source: "dashboard",
+          reason: "úprava detailu v panelu",
+        };
+        if (nextOid) bodyPayload.expect_oid = nextOid;
+        await api.editBody(bodyPayload);
+      }
+      setView(returnView);
+      return;
+    }
+    if (!result?.ok) return;
   }
 
   async function move(task, status) {
@@ -1915,6 +2014,17 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 Zrušit
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {dialog?.kind === "error" && (
+        <div role="dialog" aria-label="Chyba uložení" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} max-w-lg p-5`}>
+            <p>{dialog.text}</p>
+            <button type="button" className={`${btnGhost} mt-3`} onClick={() => setDialog(null)}>
+              Zavřít
+            </button>
           </div>
         </div>
       )}

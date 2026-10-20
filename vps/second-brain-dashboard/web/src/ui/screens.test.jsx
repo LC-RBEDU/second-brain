@@ -232,6 +232,27 @@ describe("screens", () => {
     });
   });
 
+  it("shows an error dialog when Done is blocked by open children", async () => {
+    const api = {
+      patch: vi.fn().mockResolvedValue({
+        ok: false,
+        error_reason: "open_child_under_closed_parent",
+        detail: { parent_id: "F-S1", child_ids: ["F-T2"] },
+      }),
+    };
+    renderApp([task({ id: "F-S1", type: "story", title: "Story s dětmi", expect_oid: "s1" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-S1 — Story s dětmi" }));
+    });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "Done" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(screen.getByRole("dialog", { name: "Chyba uložení" })).toHaveTextContent("F-T2");
+    expect(screen.queryByRole("dialog", { name: "Neshoda verze" })).toBeNull();
+  });
+
   it("B40 and B52 show the deadline panel once per save and never force it", async () => {
     const api = {
       patch: vi.fn().mockResolvedValue({
