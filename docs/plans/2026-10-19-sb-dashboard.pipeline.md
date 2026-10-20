@@ -1,11 +1,11 @@
 # Pipeline: Second Brain dashboard
-Stav: REVIEW
+Stav: QA
 Plán: docs/plans/2026-10-19-sb-dashboard.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 0888cb93-6494-4253-9cd4-3e994cfcca21, otevření plánu #2, generace v otevření k=1/3, kolo r=1/3 (otevření #1 skončilo na k=3/3 r=3/3)
 Šťoural: agent ID 1f9e157f-872a-41b2-ad22-29dea2594c54 · kolo grill g=10 (POTŘEBUJE ODPOVĚDI, 2, z toho 0 BLOKUJÍCÍ) · g=9 byl 77162b85-a925-414e-9407-c22d9b7fc9fc
 Kritik: agent ID 69a3f66c-b60f-4626-9d19-db0252ccee03 · kolo 3 (SCHVÁLENO, 0 BLOCKER, 0 MAJOR) · kolo 2 byl 7ca065b5-ad2f-4de0-9445-b401fc5851a6
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 4/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 4/5 · kola QA 1/5 · kola TESTER 0/5 · ENV opravy 1/2
 Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: 84ae3a0d8feb1be73080b5765996dac613a233a2 · Review SCHVÁLENO na: 84ae3a0d8feb1be73080b5765996dac613a233a2 · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
@@ -159,6 +159,7 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 42 | 2026-10-20 04:16 | REVIEW | 696e92c6-724a-4f7c-9f28-9f024c0cecd6 | K PŘEPRACOVÁNÍ (1 BLOCKER, 0 MAJOR, 0 MINOR) | NOVÉ-2 | NOVÉ-1 sedí. Druhé Uložit po 400 poslalo prázdnou dávku a při 200 náhled zavřelo |
 | 43 | 2026-10-20 04:18 | IMPLEMENT | hlavní agent | IMPL NOVÉ-2 | — | 400 bez failed a pending se do výsledku nezapíše. Další Uložit posílá stejný náhled. vitest 36 passed |
 | 44 | 2026-10-20 04:25 | REVIEW | 7ad2e46b-f1a8-4f8a-8fa4-50bd6bcff3df | SCHVÁLENO (0 BLOCKER, 0 MAJOR) | — | NOVÉ-2 sedí. Holé 400 se neukládá, druhé Uložit posílá stejný náhled |
+| 45 | 2026-10-20 04:45 | QA | hlavní agent | deploy + T11 + T12 | — | První deploy 6064 spadl: image nemá curl/wget, Coolify healthcheck. ENV: `health_check_enabled=false` na aplikaci 19, bez změny kódu. Redeploy 6065 běží. T11: `/healthz` 200, `/api/export` bez cookie 401, kontejner nemá `/data/vault`. T12: suchý bulk se špatným oid → 409 `oid_mismatch`, hlava vaultu stejná. Přechod QA kolo 1 |
 
 ## Otevřené nálezy
 
