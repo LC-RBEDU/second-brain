@@ -5,8 +5,8 @@ Schvalování plánu uživatelem: ne
 Architekt: agent ID 0888cb93-6494-4253-9cd4-3e994cfcca21, otevření plánu #2, generace v otevření k=1/3, kolo r=1/3 (otevření #1 skončilo na k=3/3 r=3/3)
 Šťoural: agent ID 1f9e157f-872a-41b2-ad22-29dea2594c54 · kolo grill g=10 (POTŘEBUJE ODPOVĚDI, 2, z toho 0 BLOKUJÍCÍ) · g=9 byl 77162b85-a925-414e-9407-c22d9b7fc9fc
 Kritik: agent ID 69a3f66c-b60f-4626-9d19-db0252ccee03 · kolo 3 (SCHVÁLENO, 0 BLOCKER, 0 MAJOR) · kolo 2 byl 7ca065b5-ad2f-4de0-9445-b401fc5851a6
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: f4dcf15167f6e05b68e0095a9024c07653f197b5 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 3/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: d8fbbf47686ccc8acc4a62857c9dc40c0e344354 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
