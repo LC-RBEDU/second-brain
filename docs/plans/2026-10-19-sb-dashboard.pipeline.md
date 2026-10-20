@@ -6,7 +6,7 @@ Architekt: agent ID 0888cb93-6494-4253-9cd4-3e994cfcca21, otevření plánu #2, 
 Šťoural: agent ID 1f9e157f-872a-41b2-ad22-29dea2594c54 · kolo grill g=10 (POTŘEBUJE ODPOVĚDI, 2, z toho 0 BLOKUJÍCÍ) · g=9 byl 77162b85-a925-414e-9407-c22d9b7fc9fc
 Kritik: agent ID 69a3f66c-b60f-4626-9d19-db0252ccee03 · kolo 3 (SCHVÁLENO, 0 BLOCKER, 0 MAJOR) · kolo 2 byl 7ca065b5-ad2f-4de0-9445-b401fc5851a6
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 4/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: 84ae3a0d8feb1be73080b5765996dac613a233a2 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: 84ae3a0d8feb1be73080b5765996dac613a233a2 · Review SCHVÁLENO na: 84ae3a0d8feb1be73080b5765996dac613a233a2 · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -158,6 +158,7 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 41 | 2026-10-20 04:04 | IMPLEMENT | hlavní agent | IMPL NOVÉ-1, NOVÉ-2 | — | Detail mění parent. Úklid nad 80 neodejde a 400 nechá náhled i výběr. vitest 36 passed |
 | 42 | 2026-10-20 04:16 | REVIEW | 696e92c6-724a-4f7c-9f28-9f024c0cecd6 | K PŘEPRACOVÁNÍ (1 BLOCKER, 0 MAJOR, 0 MINOR) | NOVÉ-2 | NOVÉ-1 sedí. Druhé Uložit po 400 poslalo prázdnou dávku a při 200 náhled zavřelo |
 | 43 | 2026-10-20 04:18 | IMPLEMENT | hlavní agent | IMPL NOVÉ-2 | — | 400 bez failed a pending se do výsledku nezapíše. Další Uložit posílá stejný náhled. vitest 36 passed |
+| 44 | 2026-10-20 04:25 | REVIEW | 7ad2e46b-f1a8-4f8a-8fa4-50bd6bcff3df | SCHVÁLENO (0 BLOCKER, 0 MAJOR) | — | NOVÉ-2 sedí. Holé 400 se neukládá, druhé Uložit posílá stejný náhled |
 
 ## Otevřené nálezy
 
