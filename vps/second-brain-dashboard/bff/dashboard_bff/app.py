@@ -103,11 +103,12 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
         except json.JSONDecodeError:
             body = {"error_reason": "brain_error"}
         if response.status_code >= 400:
-            raise ApiError(
-                response.status_code,
-                str(body.get("error_reason") or "brain_error"),
-                detail=body.get("detail"),
-            )
+            extra = {}
+            if body.get("detail") is not None:
+                extra["detail"] = body.get("detail")
+            if body.get("oid"):
+                extra["oid"] = body.get("oid")
+            raise ApiError(response.status_code, str(body.get("error_reason") or "brain_error"), **extra)
         return body
 
     @app.get("/healthz")
