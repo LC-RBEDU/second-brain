@@ -171,9 +171,12 @@ Z toho plyne (v README není):
 - **NE** používej **dev RB Universe** (`dev-universe`, `api.dev-universe`) pro pracovní data — jen produkce + MCP `user-rb-universe`; viz `rb-universe-production-data.mdc`.
 - **NE** spouštěj `/init` ani negeneruj `AGENTS.md` / `CLAUDE.md` v git repu — viz `no-agents-md-init.mdc`. Krátká šablona na týmovém sdíleném disku `[EDU] <Tým>` skillem `tymovy-disk` po potvrzení člověkem je povolená.
 - **NE** zakládej nový project hub bez výslovného souhlasu — default mapuj na existující projekt; viz `no-auto-new-project.mdc`.
+- **NE** u prohlížečového UI (`vps/second-brain-dashboard/` …) ukonči `/rbu-pipeline` s `TESTER: přeskočeno (profil SECOND_BRAIN)` bez „bez UI“ — viz `subagent-ui-gate.mdc` a skill `subagent-orchestration` § UI produkt.
 - **ANO** po editaci `02-PROJEKTY/<slug>/tasks/*.md` zvaž rebuild context: `python3 scripts/build_agent_context.py`.
 
 ## Související
 - `~/GitHub/second-brain-vault/00-System/agent-bootstrap.md` — uživatelská kopie tohoto kontextu
 - `~/GitHub/second-brain-vault/00-System/Templates/agenda-system.md` — kompletní průvodce v2 architekturou
 - `~/GitHub/second-brain-vault/00-System/Templates/konvence-a-slovnik.md`
+- `.cursor/rules/subagent-ui-gate.mdc` — pipeline UI gate (Tester + vizuální B#)
+- globální `subagent-pipeline` + skill `subagent-orchestration` (profil SECOND_BRAIN)

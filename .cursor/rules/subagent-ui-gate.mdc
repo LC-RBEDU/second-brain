@@ -1,0 +1,22 @@
+---
+description: SECOND_BRAIN — UI produkt nesmí skončit DONE se skipnutým Testerem; wireframy vyžadují vizuální B# (pointer na subagent-orchestration)
+alwaysApply: true
+---
+
+# SECOND_BRAIN — UI gate (pipeline)
+
+Globální pravidlo `subagent-pipeline` + skill `subagent-orchestration` § **UI produkt a vizuální gate**.
+
+## Platí zde
+
+- Prohlížečové appky (`vps/second-brain-dashboard/` a podobné), handoff s wireframy / HTML mockupy.
+- **Neplatí** pro cron hub, vault skripty, skills, docs, n8n bez UI — tam zůstává `TESTER: přeskočeno (profil SECOND_BRAIN, bez UI)`.
+
+## Povinnosti hlavního agenta
+
+1. U UI produktu **nevolat** `TESTER: přeskočeno (profil SECOND_BRAIN)` bez „bez UI“.
+2. Plán musí mít **vizuální B#** + T# layout probe; kritik bez nich = MAJOR.
+3. Net-new UI shell → `AWAITING_USER (z: vizuální gate)` se screenshoty / URL před DONE; ledger `Vizuální gate člověka: ano`.
+4. DONE audit FAIL při skip Testera + UI produkt, nebo chybějícím vizuálním DoD / probe / lidském gate.
+
+Detail a dvě rychlosti (těžká = vault zápisy, lehká = chrome po schváleném shellu): skill `subagent-orchestration`.
