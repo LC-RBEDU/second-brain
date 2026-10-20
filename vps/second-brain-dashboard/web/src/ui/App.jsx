@@ -42,6 +42,17 @@ const TILES = [
   ["stale", "Bez změny"],
 ];
 
+function idsForTile(classified, key) {
+  if (key === "errors") {
+    return [...new Set(classified.issues.filter((item) => item.severity === "error" && item.rule !== "no_date").map((item) => item.id))];
+  }
+  if (key === "stale") {
+    return [...new Set(classified.issues.filter((item) => item.rule === "stale").map((item) => item.id))];
+  }
+  if (key === "focus") return classified.radar.focus_week;
+  return classified.radar[key] || [];
+}
+
 export function labelOf(task) {
   return `${task.id} — ${task.title || task.id}`;
 }
@@ -57,6 +68,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const projects = exportData?.projects || [];
   const paused = useMemo(() => pausedSlugs(projects), [projects]);
   const [view, setView] = useState("radar");
+  const [radarTile, setRadarTile] = useState("overdue");
   const [showPaused, setShowPaused] = useState(false);
   const [query, setQuery] = useState("");
   const [project, setProject] = useState("");
@@ -391,12 +403,13 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   function TaskButton({ task }) {
     return (
-      <article className="flex items-center gap-2 py-1">
-        <button type="button" onClick={() => openDetail(task)}>
+      <article className="flex flex-wrap items-center gap-2 border-b border-[#eeeeee] bg-white px-3 py-2">
+        <button type="button" className="font-bold" onClick={() => openDetail(task)}>
           {labelOf(task)}
         </button>
+        <span className="text-sm">{task.deadline || task.review_deadline || "—"}</span>
         {COLUMNS.map((status) => (
-          <button key={status} type="button" aria-label={`Přesunout na ${status}`} onClick={() => move(task, status)}>
+          <button key={status} type="button" className="border border-[#b0b2b6] px-2 text-sm" aria-label={`Přesunout na ${status}`} onClick={() => move(task, status)}>
             {status}
           </button>
         ))}
@@ -412,7 +425,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-[Rubik,system-ui,sans-serif] text-[#444]">
-      <nav className="flex flex-wrap gap-2 p-3">
+      <nav className="flex flex-wrap items-center gap-2 bg-[#444444] p-3 text-[#fafafa]">
+        <span className="mr-2 font-black uppercase">Second Brain</span>
         {[
           ["radar", "Radar"],
           ["issues", "Chybně zadané"],
@@ -421,29 +435,40 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           ["new", "Nový task"],
           ["cleanup", "Úklid"],
         ].map(([id, name]) => (
-          <button key={id} type="button" onClick={() => setView(id)}>
+          <button key={id} type="button" className={view === id ? "bg-[#a11834] px-3 py-2 font-bold" : "px-3 py-2"} onClick={() => setView(id)}>
             {name}
           </button>
         ))}
         <label>
           <input type="checkbox" checked={showPaused} onChange={(event) => setShowPaused(event.target.checked)} /> Zobrazit pauznuté
         </label>
-        <input aria-label="Hledat" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <input className="border bg-white px-2 py-1 text-[#444]" aria-label="Hledat" value={query} onChange={(event) => setQuery(event.target.value)} />
       </nav>
 
       {view === "radar" && (
-        <section aria-label="Radar">
-          <div className="grid grid-cols-3 gap-2 p-3">
+        <section aria-label="Radar" className="flex flex-col gap-4 p-4">
+          <h1 className="text-3xl font-black uppercase">Radar</h1>
+          <div className="grid grid-cols-3 gap-3">
             {TILES.map(([key, name]) => (
-              <p key={key}>
-                {name} {classified.tiles[key]}
-              </p>
+              <button
+                key={key}
+                type="button"
+                className={radarTile === key ? "border-2 border-[#e4003a] bg-white p-3 text-left" : "border border-[#b0b2b6] bg-white p-3 text-left"}
+                onClick={() => setRadarTile(key)}
+              >
+                <span className="block text-xs font-bold uppercase">{name}</span>
+                <span className="block text-3xl font-black">{classified.tiles[key]}</span>
+                <span className="sr-only">{name} {classified.tiles[key]}</span>
+              </button>
             ))}
           </div>
-          <p>Prošlý focus: {classified.radar.focus_stale.length}</p>
-          {listed.map((task) => (
-            <TaskButton key={task.id} task={task} />
-          ))}
+          <p className="text-sm">Prošlý focus: {classified.radar.focus_stale.length}</p>
+          <div className="border border-[#e2e2e2] bg-white">
+            <h2 className="border-b border-[#e2e2e2] p-3 font-black uppercase">{TILES.find(([key]) => key === radarTile)?.[1]}</h2>
+            {idsForTile(classified, radarTile).map((id) => byId.get(id)).filter(Boolean).map((task) => (
+              <TaskButton key={task.id} task={task} />
+            ))}
+          </div>
         </section>
       )}
 

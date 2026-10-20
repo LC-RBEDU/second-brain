@@ -138,6 +138,7 @@ describe("screens", () => {
       }),
     };
     renderApp([task({ id: "F-T1", title: "Původní", expect_oid: "old" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
     fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Nový název" } });
     await act(async () => {
@@ -168,6 +169,7 @@ describe("screens", () => {
       }),
     };
     renderApp([task({ id: "F-T1", title: "Dítě", deadline: "2026-11-20" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
@@ -297,6 +299,7 @@ describe("screens", () => {
       apply: vi.fn().mockResolvedValue({ ok: true }),
     };
     renderApp([task({ id: "F-T1", title: "Focus karta" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Focus F-T1" }));
     });
@@ -332,6 +335,7 @@ describe("screens", () => {
       }),
     };
     renderApp([task({ id: "F-T1", title: "Původní" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
     fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Nový název" } });
     await act(async () => {
