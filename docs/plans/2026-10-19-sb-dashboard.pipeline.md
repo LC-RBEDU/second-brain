@@ -6,7 +6,7 @@ Architekt: agent ID 0888cb93-6494-4253-9cd4-3e994cfcca21, otevření plánu #2, 
 Šťoural: agent ID 1f9e157f-872a-41b2-ad22-29dea2594c54 · kolo grill g=10 (POTŘEBUJE ODPOVĚDI, 2, z toho 0 BLOKUJÍCÍ) · g=9 byl 77162b85-a925-414e-9407-c22d9b7fc9fc
 Kritik: agent ID 69a3f66c-b60f-4626-9d19-db0252ccee03 · kolo 3 (SCHVÁLENO, 0 BLOCKER, 0 MAJOR) · kolo 2 byl 7ca065b5-ad2f-4de0-9445-b401fc5851a6
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
+Base (origin/main při vzniku): 9e0189e45994a6826708afd7606252936b880940 · Kódový SHA: 5193eef6c5ddee507c14640646a8f4b5b3412180 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno (profil SECOND_BRAIN)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
