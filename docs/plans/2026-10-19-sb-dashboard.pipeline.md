@@ -146,6 +146,7 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 29 | 2026-10-20 02:03 | CRITIC | 69a3f66c-b60f-4626-9d19-db0252ccee03 | SCHVÁLENO (0 BLOCKER, 0 MAJOR) | — | C1–C10 ověřeny. export-followups je DONE. Schvalování plánu není. Přechod IMPLEMENT, start F1 |
 | 30 | 2026-10-20 02:10 | IMPLEMENT | hlavní agent | F1 | — | needs_decision je jen prošlá review bez deadlinu. pytest test_today_priority.py: 13 passed |
 | 31 | 2026-10-20 02:20 | IMPLEMENT | hlavní agent | F2 | — | Kontrola dětí přes export na otevřeném vaultu. Bulk oid je 409 se seznamem failures. pytest hierarchy+bulk oid+create+cas: 57 passed |
+| 32 | 2026-10-20 02:26 | IMPLEMENT | hlavní agent | F3 | — | Klasifikace, náhled zavření a rozprostření v prohlížeči. vitest web: 22 passed |
 
 ## Otevřené nálezy
 
