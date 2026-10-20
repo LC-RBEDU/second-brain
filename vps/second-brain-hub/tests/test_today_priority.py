@@ -103,6 +103,18 @@ def test_b6_effective_due_exclusive():
     ) is True
 
 
+def test_b16_needs_decision_review_only():
+    yesterday = (TODAY - timedelta(days=1)).isoformat()
+    assert needs_decision(_task(deadline=yesterday, review_deadline=None), TODAY) is False
+    assert needs_decision(_task(deadline=None, review_deadline=yesterday), TODAY) is True
+    assert needs_decision(
+        _task(status="Waiting", deadline=None, review_deadline=yesterday), TODAY
+    ) is False
+    assert needs_decision(
+        _task(status="Done", deadline=None, review_deadline=yesterday), TODAY
+    ) is False
+
+
 def test_b7_horizon_day_7_vs_8():
     d7 = (TODAY + timedelta(days=7)).isoformat()
     d8 = (TODAY + timedelta(days=8)).isoformat()

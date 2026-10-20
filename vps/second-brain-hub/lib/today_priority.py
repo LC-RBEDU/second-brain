@@ -202,15 +202,18 @@ def urgency_bonus(
 
 
 def needs_decision(task: Any, today: date) -> bool:
-    """True when due < today and the item is actionable (not Waiting/terminal)."""
+    """True when a past review date is the only due and the item is actionable.
+
+    A hard deadline is Overdue, not this lane. Waiting and terminal statuses
+    stay out even when review_deadline is in the past.
+    """
     status = str(_task_get(task, "status") or "")
     if is_terminal(status) or status == STATUS_WAITING:
         return False
-    due = effective_due(
-        _task_get(task, "deadline"),
-        _task_get(task, "review_deadline"),
-    )
-    return due is not None and due < today
+    if parse_deadline(_task_get(task, "deadline")) is not None:
+        return False
+    review = parse_deadline(_task_get(task, "review_deadline"))
+    return review is not None and review < today
 
 
 def is_focus_eligible(task: Any, today: date) -> bool:
