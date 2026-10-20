@@ -12,6 +12,7 @@ import {
   labelClass,
   PageHeader,
   panelClass,
+  projectLabel,
   StatusPill,
 } from "./chrome.jsx";
 
@@ -500,6 +501,26 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           return map;
         }, new Map())]
       : [[null, rows]];
+    // #region agent log
+    if (groupByProject && groups.length) {
+      const labels = groups
+        .filter(([key]) => key)
+        .map(([key, items]) => ({ raw: key, shown: `${projectLabel(key)} · ${items.length}` }));
+      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+        body: JSON.stringify({
+          sessionId: "7e3b98",
+          runId: "project-label-uppercase",
+          hypothesisId: "H1",
+          location: "App.jsx:TaskTable",
+          message: "project group labels rendered",
+          data: { labels, allUpper: labels.every((row) => row.shown === row.shown.toUpperCase()) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
     return (
       <div data-layout-panel className={`${panelClass} overflow-x-auto`} aria-label="Seznam">
         <div className="flex flex-wrap items-center gap-2 border-b border-[#e2e2e2] px-4 py-3">
@@ -524,8 +545,12 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <Fragment key={projectKey || "all"}>
                 {projectKey && (
                   <tr className="bg-[#f3f3f3]">
-                    <td colSpan={6} className="px-4 py-2 text-sm font-bold">
-                      {projectKey} · {items.length}
+                    <td
+                      colSpan={6}
+                      className="px-4 py-2 text-sm font-bold uppercase"
+                      data-project-label={projectLabel(projectKey)}
+                    >
+                      {projectLabel(projectKey)} · {items.length}
                     </td>
                   </tr>
                 )}
@@ -688,7 +713,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                           </article>
                         </td>
                         <td className="p-2 font-bold text-[#b8002e]">{rules}</td>
-                        <td className="p-2 text-[#5c5c5c]">{item.project || task?.project || ""}</td>
+                        <td className="p-2 uppercase text-[#5c5c5c]">
+                          {projectLabel(item.project || task?.project || "")}
+                        </td>
                       </tr>
                     );
                   })}
@@ -744,7 +771,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                       <span aria-hidden="true" className="w-4">
                         {open ? "▾" : "▸"}
                       </span>
-                      <span className="flex-1 font-extrabold uppercase">{group.slug}</span>
+                      <span className="flex-1 font-extrabold uppercase" data-project-label={projectLabel(group.slug)}>
+                        {projectLabel(group.slug)}
+                      </span>
                       <span className="text-sm text-[#5c5c5c]">
                         {group.epics.length} epiců · {group.open} otevřených
                       </span>
@@ -829,7 +858,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 >
                   {activeProjects.map((item) => (
                     <option key={item.slug} value={item.slug}>
-                      {item.slug}
+                      {projectLabel(item.slug)}
                     </option>
                   ))}
                 </select>
@@ -842,19 +871,19 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                   aria-selected={item.slug === projectSlugValue}
                   className={
                     item.slug === projectSlugValue
-                      ? "rounded-md bg-[#a11834] px-3.5 py-2.5 text-sm font-bold text-white"
-                      : "rounded-md px-3.5 py-2.5 text-sm"
+                      ? "rounded-md bg-[#a11834] px-3.5 py-2.5 text-sm font-bold uppercase text-white"
+                      : "rounded-md px-3.5 py-2.5 text-sm uppercase"
                   }
                   onClick={() => {
                     setProject(item.slug);
                     setEpicFilter("");
                   }}
                 >
-                  {item.slug} {listed.filter((task) => task.project === item.slug).length}
+                  {projectLabel(item.slug)} {listed.filter((task) => task.project === item.slug).length}
                 </button>
               ))}
             </div>
-            <PageHeader title={projectSlugValue || "Projekt"}>
+            <PageHeader title={projectLabel(projectSlugValue) || "Projekt"}>
               <button type="button" className={btnPrimary} onClick={() => setView("new")}>
                 + Nový v projektu
               </button>
@@ -999,7 +1028,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           <section aria-label="Detail" data-layout-panel className={`${panelClass} mx-auto flex w-full max-w-xl flex-col gap-4 p-6`}>
             <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#5c5c5c]">
               <span>
-                {detail.type || "task"} · {detail.project || ""} · detail panel
+                {detail.type || "task"} · {projectLabel(detail.project || "")} · detail panel
               </span>
               <button type="button" className="min-h-11 min-w-11 text-xl" onClick={() => setView(returnView)} aria-label="Zavřít">
                 ×
@@ -1170,7 +1199,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               >
                 {activeProjects.map((item) => (
                   <option key={item.slug} value={item.slug}>
-                    {item.slug}
+                    {projectLabel(item.slug)}
                   </option>
                 ))}
               </select>

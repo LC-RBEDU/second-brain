@@ -9,6 +9,12 @@ export const btnGhost =
 export const btnNav = (on) =>
   on ? "rounded-md bg-[#a11834] px-3.5 py-2.5 font-bold" : "rounded-md px-3.5 py-2.5 font-medium";
 
+/** Display-only project name (slug stays kebab-case in data/value). */
+export function projectLabel(slug) {
+  if (!slug) return "";
+  return String(slug).toUpperCase();
+}
+
 export function StatusPill({ status }) {
   return (
     <span className="inline-block rounded border border-[#444] px-2 py-0.5 text-xs">
