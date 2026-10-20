@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 export const fieldClass =
   "w-full rounded-md border border-[#b0b2b6] bg-white px-3 py-2 font-[Rubik,system-ui,sans-serif] text-[#444]";
 export const labelClass = "flex flex-col gap-1 text-xs font-bold";
@@ -13,6 +15,97 @@ export const btnNav = (on) =>
 export function projectLabel(slug) {
   if (!slug) return "";
   return String(slug).toUpperCase();
+}
+
+/** Custom parent picker — native <datalist> mispositions under centered panels in Chromium. */
+export function ParentSuggest({ value, onChange, options, ariaLabel }) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
+  const query = String(value || "").trim().toLowerCase();
+  const filtered = (options || [])
+    .filter((opt) => {
+      if (!query) return true;
+      const id = String(opt.id || "").toLowerCase();
+      const label = String(opt.label || "").toLowerCase();
+      return id.includes(query) || label.includes(query);
+    })
+    .slice(0, 40);
+
+  useEffect(() => {
+    if (!open || !inputRef.current || !listRef.current) return;
+    const input = inputRef.current.getBoundingClientRect();
+    const list = listRef.current.getBoundingClientRect();
+    // #region agent log
+    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+      body: JSON.stringify({
+        sessionId: "7e3b98",
+        runId: "parent-suggest",
+        hypothesisId: "H4",
+        location: "chrome.jsx:ParentSuggest",
+        message: "parent suggest anchor",
+        data: {
+          inputLeft: Math.round(input.left),
+          listLeft: Math.round(list.left),
+          deltaPx: Math.round(Math.abs(input.left - list.left)),
+          anchored: Math.abs(input.left - list.left) < 8,
+          count: filtered.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [open, filtered.length, value]);
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        className={fieldClass}
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-autocomplete="list"
+        autoComplete="off"
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          window.setTimeout(() => setOpen(false), 120);
+        }}
+      />
+      {open && filtered.length > 0 && (
+        <ul
+          ref={listRef}
+          role="listbox"
+          data-parent-suggest="1"
+          className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-auto rounded-md border border-[#444] bg-white text-[#444] shadow-md"
+        >
+          {filtered.map((opt) => (
+            <li key={opt.id} role="presentation">
+              <button
+                type="button"
+                role="option"
+                className="block w-full px-3 py-2 text-left text-sm hover:bg-[#f3f3f3]"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  onChange(opt.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="font-bold">{opt.id}</span>
+                <span className="text-[#5c5c5c]"> — {opt.title || opt.label || ""}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function StatusPill({ status }) {

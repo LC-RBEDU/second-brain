@@ -12,6 +12,7 @@ import {
   labelClass,
   PageHeader,
   panelClass,
+  ParentSuggest,
   projectLabel,
   StatusPill,
 } from "./chrome.jsx";
@@ -1148,26 +1149,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
             {detail.type !== "epic" && (
               <label className={labelClass}>
                 Parent
-                <input
-                  className={fieldClass}
-                  aria-label="Parent úkolu"
-                  list="detail-parents"
+                <ParentSuggest
+                  ariaLabel="Parent úkolu"
                   value={draft.parent}
-                  onChange={(event) => setDraft({ ...draft, parent: event.target.value })}
-                />
-                <datalist id="detail-parents">
-                  {openTasks
+                  onChange={(parent) => setDraft({ ...draft, parent })}
+                  options={openTasks
                     .filter(
                       (task) =>
                         (showPaused || !paused.has(projectSlug(task))) &&
                         task.type === (detail.type === "story" ? "epic" : "story"),
                     )
-                    .map((task) => (
-                      <option key={task.id} value={task.id}>
-                        {labelOf(task)}
-                      </option>
-                    ))}
-                </datalist>
+                    .map((task) => ({ id: task.id, title: task.title || "", label: labelOf(task) }))}
+                />
               </label>
             )}
             <div className="rounded-md bg-[#f3f3f3] p-3.5 text-sm">
@@ -1339,26 +1332,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
             {newDraft.level !== "epic" && (
               <label className={labelClass}>
                 Parent
-                <input
-                  className={fieldClass}
-                  aria-label="Parent nového tasku"
-                  list="parent-choices"
+                <ParentSuggest
+                  ariaLabel="Parent nového tasku"
                   value={newDraft.parent}
-                  onChange={(event) => setNewDraft({ ...newDraft, parent: event.target.value })}
-                />
-                <datalist id="parent-choices">
-                  {openTasks
+                  onChange={(parent) => setNewDraft({ ...newDraft, parent })}
+                  options={openTasks
                     .filter(
                       (task) =>
                         (showPaused || !paused.has(projectSlug(task))) &&
                         task.type === (newDraft.level === "story" ? "epic" : "story"),
                     )
-                    .map((task) => (
-                      <option key={task.id} value={task.id}>
-                        {labelOf(task)}
-                      </option>
-                    ))}
-                </datalist>
+                    .map((task) => ({ id: task.id, title: task.title || "", label: labelOf(task) }))}
+                />
               </label>
             )}
             <button type="button" className={btnPrimary} onClick={createTask}>

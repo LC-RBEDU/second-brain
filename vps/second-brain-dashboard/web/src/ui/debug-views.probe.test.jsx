@@ -102,6 +102,20 @@ describe("debug view structure probe", () => {
       datePickers,
       allDateType: datePickers.length === 3 && datePickers.every((row) => row.type === "date"),
     });
+    const parentInput = screen.getByLabelText("Parent úkolu");
+    fireEvent.focus(parentInput);
+    fireEvent.change(parentInput, { target: { value: "F-" } });
+    const suggest = container.querySelector("[data-parent-suggest]");
+    const inputRect = parentInput.getBoundingClientRect();
+    const listRect = suggest?.getBoundingClientRect();
+    log("H4", "parent suggest position", {
+      hasDatalist: Boolean(container.querySelector("datalist")),
+      hasCustomSuggest: Boolean(suggest),
+      inputLeft: Math.round(inputRect.left),
+      listLeft: listRect ? Math.round(listRect.left) : null,
+      deltaPx: listRect ? Math.round(Math.abs(inputRect.left - listRect.left)) : null,
+      anchored: listRect ? Math.abs(inputRect.left - listRect.left) < 8 : false,
+    });
 
     log("C", "shared chrome check", {
       navClass: container.querySelector("nav")?.className || "",
