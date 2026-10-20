@@ -308,6 +308,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     const source = cleanupResult
       ? preview.filter((row) => cleanupResult.failed?.includes(row.id) || cleanupResult.pending?.includes(row.id))
       : preview;
+    if (!source.length) return;
     const result = await api.cleanup({
       items: source.map((row) => ({
         id: row.id,
@@ -318,7 +319,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         patch: rowPatch({ resulting: row.resulting, date: rowDate(row) }),
       })),
     });
-    setCleanupResult(result);
+    const rejected = result?.ok === false && !(result?.failed?.length || result?.pending?.length);
+    if (!rejected) setCleanupResult(result);
     if (result?.ok === false) return;
     setOids((current) => ({ ...current, ...(result?.expect_oid || {}) }));
     onRefresh?.();

@@ -396,7 +396,12 @@ describe("screens", () => {
     expect(api.cleanup).not.toHaveBeenCalled();
     expect(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" })).toBeChecked();
     cleanup();
-    const small = { cleanup: vi.fn().mockResolvedValue({ ok: false, error_reason: "batch_too_large" }) };
+    const small = {
+      cleanup: vi.fn().mockImplementation(async (body) => {
+        if (!body.items?.length) return { ok: true, written: { count: 0, ids: [] }, failed: [], pending: [] };
+        return { ok: false, error_reason: "batch_too_large" };
+      }),
+    };
     renderApp([task({ id: "F-S1", type: "story", title: "Rodič" })], small);
     fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" }));
@@ -405,7 +410,11 @@ describe("screens", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
     });
-    expect(small.cleanup).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(small.cleanup).toHaveBeenCalledTimes(2);
+    expect(small.cleanup.mock.calls[1][0].items.map((item) => item.id)).toEqual(["F-S1"]);
     expect(screen.getByRole("region", { name: "Náhled úklidu" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Vybrat F-S1 — Rodič" })).toBeChecked();
   });

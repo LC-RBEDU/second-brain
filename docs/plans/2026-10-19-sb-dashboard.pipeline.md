@@ -156,6 +156,8 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | 39 | 2026-10-20 03:42 | IMPLEMENT | hlavní agent | IMPL NEW-10, NEW-11, NEW-12 | — | Focus posílá aktuální týden a důvod `focus_limit_exceeded`. Dialog čte šest polí z `/api/tasks/item`. Testy B9, B13–B15, B33, B50, B52. vitest 34 passed. pytest brain+bff 40 passed |
 | 40 | 2026-10-20 04:00 | REVIEW | b9cdc787-8e05-498b-9a70-102100bd488f | K PŘEPRACOVÁNÍ (2 BLOCKER, 0 MAJOR, 0 MINOR) | NOVÉ-1, NOVÉ-2 | NEW-10, NEW-11 a NEW-12 sedí. Detail neuměl parent. Rodina nad 80 zavřela náhled a smazala výběr |
 | 41 | 2026-10-20 04:04 | IMPLEMENT | hlavní agent | IMPL NOVÉ-1, NOVÉ-2 | — | Detail mění parent. Úklid nad 80 neodejde a 400 nechá náhled i výběr. vitest 36 passed |
+| 42 | 2026-10-20 04:16 | REVIEW | 696e92c6-724a-4f7c-9f28-9f024c0cecd6 | K PŘEPRACOVÁNÍ (1 BLOCKER, 0 MAJOR, 0 MINOR) | NOVÉ-2 | NOVÉ-1 sedí. Druhé Uložit po 400 poslalo prázdnou dávku a při 200 náhled zavřelo |
+| 43 | 2026-10-20 04:18 | IMPLEMENT | hlavní agent | IMPL NOVÉ-2 | — | 400 bez failed a pending se do výsledku nezapíše. Další Uložit posílá stejný náhled. vitest 36 passed |
 
 ## Otevřené nálezy
 
@@ -212,4 +214,4 @@ Specifikace (soubory, architect je přečte celé, nic nevynechá):
 | NEW-11 | BLOCKER | IMPL | opraveno v #39 — prázdný týden focus mazal | 2 |
 | NEW-12 | MINOR | IMPL | opraveno v #39 | 2 |
 | NOVÉ-1 | BLOCKER | IMPL | opraveno v #41 | 3 |
-| NOVÉ-2 | BLOCKER | IMPL | opraveno v #41 | 3 |
+| NOVÉ-2 | BLOCKER | IMPL | opraveno v #43 — druhé Uložit po holém 400 | 4 |
