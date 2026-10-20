@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, it } from "vitest";
 import { appendFileSync } from "node:fs";
 import { App } from "./App.jsx";
@@ -58,7 +58,7 @@ function metrics(root) {
 }
 
 describe("debug view structure probe", () => {
-  it("measures every screen against wireframe expectations", () => {
+  it("measures every screen against wireframe expectations", async () => {
     const tasks = [
       task({ id: "F-E1", type: "epic", title: "Cashflow" }),
       task({ id: "F-S1", type: "story", title: "Story", parent: "F-E1", deadline: "2026-10-01" }),
@@ -91,7 +91,9 @@ describe("debug view structure probe", () => {
     }
 
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    });
     const datePickers = [...container.querySelectorAll("[data-date-picker]")].map((el) => ({
       field: el.getAttribute("data-date-picker"),
       type: el.getAttribute("type"),
@@ -101,6 +103,9 @@ describe("debug view structure probe", () => {
     log("H3", "detail date pickers", {
       datePickers,
       allDateType: datePickers.length === 3 && datePickers.every((row) => row.type === "date"),
+    });
+    log("H5", "detail description field", {
+      hasDetailTextarea: Boolean(screen.queryByLabelText("Detail úkolu")),
     });
     const parentInput = screen.getByLabelText("Parent úkolu");
     fireEvent.focus(parentInput);

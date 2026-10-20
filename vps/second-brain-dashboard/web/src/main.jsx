@@ -37,6 +37,13 @@ const api = {
   item(taskId) {
     return fetch(`/api/tasks/item?task_id=${encodeURIComponent(taskId)}`).then(readJson);
   },
+  editBody(body) {
+    return fetch("/api/tasks/edit-body", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(readJson);
+  },
   propose(body) {
     return fetch("/api/focus/propose", {
       method: "POST",

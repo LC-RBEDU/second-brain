@@ -157,8 +157,53 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
             "deadline": deadline,
             "review_deadline": "" if deadline else (body.get("review_deadline") or ""),
             "waitUntil": body.get("waitUntil") or "",
+            "detail": body.get("detail") or "",
         }
         return brain_json(app.state.brain.call("POST", "/v1/tasks", json_body=sent))
+
+    @app.post("/api/tasks/edit-body")
+    def edit_body(request: Request, body: dict[str, Any]) -> dict[str, Any]:
+        email_of(request)
+        path = str(body.get("path") or "")
+        if _archive(path):
+            raise ApiError(400, "archive_readonly")
+        preview = brain_json(
+            app.state.brain.call(
+                "POST",
+                "/v1/tasks/edit-body",
+                json_body={
+                    "path": path,
+                    "operation": body.get("operation") or "replace",
+                    "match": body.get("match") or "",
+                    "new_text": body.get("new_text") or "",
+                    "confirm": False,
+                    "dry_run": False,
+                    "source": body.get("source") or "dashboard",
+                    "reason": body.get("reason") or "úprava detailu",
+                },
+            )
+        )
+        digest = preview.get("hash")
+        if not digest:
+            return preview
+        return brain_json(
+            app.state.brain.call(
+                "POST",
+                "/v1/tasks/edit-body",
+                json_body={
+                    "path": path,
+                    "operation": body.get("operation") or "replace",
+                    "match": body.get("match") or "",
+                    "new_text": body.get("new_text") or "",
+                    "expected_hash": digest,
+                    "expect_oid": body.get("expect_oid"),
+                    "confirm": True,
+                    "dry_run": False,
+                    "source": body.get("source") or "dashboard",
+                    "reason": body.get("reason") or "úprava detailu",
+                },
+            )
+        )
 
     @app.post("/api/cleanup")
     def cleanup(request: Request, body: dict[str, Any]) -> dict[str, Any]:

@@ -137,14 +137,19 @@ describe("screens", () => {
     };
     renderApp([task({ id: "F-T1", title: "Původní", expect_oid: "old" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
+    });
     fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Nový název" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
     });
     expect(screen.getByRole("dialog", { name: "Neshoda verze" })).toBeInTheDocument();
-    expect(screen.getByText("U tebe: Nový název")).toBeInTheDocument();
-    expect(screen.getByText("Ve vaultu: Původní")).toBeInTheDocument();
+    expect(screen.getByText(/Konflikt:/)).toBeInTheDocument();
+    expect(screen.getByText("Tvůj návrh")).toBeInTheDocument();
+    expect(screen.getByText("Ve vaultu teď")).toBeInTheDocument();
+    expect(screen.getByText("Nový název")).toBeInTheDocument();
+    expect(screen.getByText("Původní")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Upravit" }));
     expect(api.patch).toHaveBeenCalledTimes(1);
     await act(async () => {
@@ -168,7 +173,9 @@ describe("screens", () => {
     };
     renderApp([task({ id: "F-T1", title: "Dítě", deadline: "2026-11-20" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
     });
@@ -298,7 +305,9 @@ describe("screens", () => {
     };
     renderApp([task({ id: "F-T1", title: "Focus karta" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Focus karta" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Focus karta" }));
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Focus F-T1" }));
     });
@@ -323,6 +332,7 @@ describe("screens", () => {
     const api = {
       patch: vi.fn().mockResolvedValue({ ok: false, error_reason: "oid_mismatch", oid: "oid-new" }),
       item: vi.fn().mockResolvedValue({
+        body: "**Detail:** poznámka k úkolu\n",
         frontmatter: {
           title: "Původní",
           status: "Next",
@@ -335,18 +345,21 @@ describe("screens", () => {
     };
     renderApp([task({ id: "F-T1", title: "Původní" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
+    });
+    expect(api.item).toHaveBeenCalledWith("F-T1");
+    expect(screen.getByLabelText("Detail úkolu")).toHaveValue("poznámka k úkolu");
     fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Nový název" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
     });
     expect(api.item).toHaveBeenCalledWith("F-T1");
-    expect(screen.getByText("U tebe: Nový název")).toBeInTheDocument();
-    expect(screen.getByText("Ve vaultu: Původní")).toBeInTheDocument();
-    expect(screen.getByText("status: Next / Next")).toBeInTheDocument();
-    expect(screen.getByText("deadline: 2026-10-01 / 2026-10-01")).toBeInTheDocument();
-    expect(screen.getByText("review: 2026-11-01 / 2026-11-01")).toBeInTheDocument();
-    expect(screen.getByText("parent: [[F-S1]] / [[F-S1]]")).toBeInTheDocument();
+    expect(screen.getByText(/Konflikt:/)).toBeInTheDocument();
+    expect(screen.getByText("Tvůj návrh")).toBeInTheDocument();
+    expect(screen.getByText("Nový název")).toBeInTheDocument();
+    expect(screen.getByText("Původní")).toBeInTheDocument();
+    expect(screen.queryByText("status: Next / Next")).toBeNull();
   });
 
   it("Q2 changes the parent from the detail and the kanban does not", async () => {
@@ -358,7 +371,9 @@ describe("screens", () => {
       task({ id: "F-T1", type: "task", title: "Dítě", parent: "F-S1" }),
     ], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
+    });
     expect(screen.getByLabelText("Parent úkolu")).toHaveValue("F-S1");
     fireEvent.change(screen.getByLabelText("Parent úkolu"), { target: { value: "F-S2" } });
     await act(async () => {
@@ -370,7 +385,9 @@ describe("screens", () => {
       expect_oid: "",
     });
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.click(screen.getByRole("button", { name: "F-E1 — Epic" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-E1 — Epic" }));
+    });
     expect(screen.queryByLabelText("Parent úkolu")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     fireEvent.change(screen.getByLabelText("Status F-T1"), { target: { value: "Backlog" } });

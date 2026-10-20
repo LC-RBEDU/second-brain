@@ -26,6 +26,14 @@ const FOCUS_TEXT = {
   cas_conflict: "Neshoda verze",
 };
 const COMPARE_FIELDS = ["title", "status", "deadline", "review_deadline", "waitUntil", "parent"];
+const Q9_LABELS = {
+  title: "Název",
+  status: "Status",
+  deadline: "Deadline",
+  review_deadline: "Review",
+  waitUntil: "Wait until",
+  parent: "Parent",
+};
 
 function parentId(value) {
   if (!value) return "";
@@ -42,6 +50,21 @@ function conflictText(detail) {
       .join("; ");
   }
   return detail?.message || "";
+}
+
+function extractDetail(body) {
+  const matched = /^\*\*Detail:\*\*\s*(.*)$/m.exec(String(body || ""));
+  if (!matched) return { text: "", line: "" };
+  const raw = matched[1].trim();
+  return {
+    text: raw === "—" ? "" : raw,
+    line: matched[0],
+  };
+}
+
+function showValue(value) {
+  const text = value == null ? "" : String(value);
+  return text.trim() ? text : "—";
 }
 const TILES = [
   ["overdue", "Overdue"],
@@ -95,8 +118,20 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     review: "",
     waitUntil: "",
     parent: "",
+    detail: "",
+    detailOriginal: "",
+    detailLine: "",
   });
-  const [newDraft, setNewDraft] = useState({ title: "", level: "task", status: "Next", deadline: "", review: "", parent: "", waitUntil: "" });
+  const [newDraft, setNewDraft] = useState({
+    title: "",
+    level: "task",
+    status: "Next",
+    deadline: "",
+    review: "",
+    parent: "",
+    waitUntil: "",
+    detail: "",
+  });
   const [checked, setChecked] = useState({});
   const [actions, setActions] = useState({});
   const [mapOpen, setMapOpen] = useState(() => new Set());
@@ -164,9 +199,17 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     return oids[task.id] || task.expect_oid || "";
   }
 
-  function openDetail(task) {
+  async function openDetail(task) {
     setReturnView(view);
     setDetailId(task.id);
+    let detailText = "";
+    let detailLine = "";
+    if (api?.item) {
+      const item = await api.item(task.id);
+      const parsed = extractDetail(item?.body || "");
+      detailText = parsed.text;
+      detailLine = parsed.line;
+    }
     setDraft({
       title: task.title || "",
       status: task.status || "Next",
@@ -174,6 +217,9 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       review: task.review_deadline || "",
       waitUntil: task.waitUntil || "",
       parent: parentId(task.parent),
+      detail: detailText,
+      detailOriginal: detailText,
+      detailLine,
     });
     setView("detail");
   }
@@ -226,6 +272,21 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     const result = await api.patch({ path: detail.path, patch, expect_oid: oidOf(detail) });
     if (await openConflict(result, patch, detail.path, detail.id)) return;
     if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") return;
+    const nextOid = result?.oid || oidOf(detail);
+    if (result?.oid) setOids((prev) => ({ ...prev, [detail.id]: result.oid }));
+    if (draft.detailLine && draft.detail !== draft.detailOriginal && api?.editBody) {
+      const newLine = `**Detail:** ${draft.detail.trim() || "—"}`;
+      await api.editBody({
+        path: detail.path,
+        operation: "replace",
+        match: draft.detailLine,
+        new_text: newLine,
+        expect_oid: nextOid,
+        source: "dashboard",
+        reason: "úprava detailu v panelu",
+      });
+    }
+    onRefresh?.();
   }
 
   async function move(task, status) {
@@ -458,6 +519,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       deadline: newDraft.deadline,
       review_deadline: newDraft.deadline ? "" : newDraft.review,
       waitUntil: newDraft.waitUntil,
+      detail: newDraft.detail,
     });
     if (result?.error_reason === "deadline_order") {
       setDialog({ kind: "deadline_order", text: conflictText(result.detail) });
@@ -1163,6 +1225,21 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 />
               </label>
             )}
+            <label className={labelClass}>
+              Detail / popis
+              <textarea
+                className={`${fieldClass} min-h-24 resize-y`}
+                aria-label="Detail úkolu"
+                rows={4}
+                value={draft.detail}
+                onChange={(event) => setDraft({ ...draft, detail: event.target.value })}
+                placeholder={
+                  draft.detailLine
+                    ? "Volitelný popis úkolu"
+                    : "V souboru není řádek **Detail:** — uložení popisu zatím jen u tasků založených přes Nový / Brain."
+                }
+              />
+            </label>
             <div className="rounded-md bg-[#f3f3f3] p-3.5 text-sm">
               <div className="mb-1 text-xs font-extrabold uppercase">Náhled změn</div>
               {draft.title !== (detail.title || "") && (
@@ -1190,11 +1267,17 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                   <b>parent:</b> {parentId(detail.parent) || "—"} → {draft.parent || "—"}
                 </div>
               )}
+              {draft.detail !== draft.detailOriginal && (
+                <div>
+                  <b>detail:</b> {draft.detailOriginal || "—"} → {draft.detail || "—"}
+                </div>
+              )}
               {draft.title === (detail.title || "") &&
                 draft.status === detail.status &&
                 draft.deadline === (detail.deadline || "") &&
                 draft.review === (detail.review_deadline || "") &&
-                draft.parent === parentId(detail.parent) && <div className="text-[#5c5c5c]">Beze změny</div>}
+                draft.parent === parentId(detail.parent) &&
+                draft.detail === draft.detailOriginal && <div className="text-[#5c5c5c]">Beze změny</div>}
             </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" className={btnPrimary} onClick={saveDetail}>
@@ -1346,6 +1429,16 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 />
               </label>
             )}
+            <label className={labelClass}>
+              Detail (volitelně)
+              <textarea
+                className={`${fieldClass} min-h-20 resize-y`}
+                aria-label="Detail nového tasku"
+                rows={3}
+                value={newDraft.detail}
+                onChange={(event) => setNewDraft({ ...newDraft, detail: event.target.value })}
+              />
+            </label>
             <button type="button" className={btnPrimary} onClick={createTask}>
               Založit
             </button>
@@ -1549,15 +1642,59 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
       {dialog?.kind === "q9" && (
         <div role="dialog" aria-label="Neshoda verze" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div data-layout-panel className={`${panelClass} flex max-w-lg flex-col gap-2 p-5`}>
-            <p>U tebe: {dialog.yours.title}</p>
-            <p>Ve vaultu: {dialog.vault.title}</p>
-            <p>status: {dialog.yours.status} / {dialog.vault.status}</p>
-            <p>deadline: {dialog.yours.deadline} / {dialog.vault.deadline}</p>
-            <p>review: {dialog.yours.review_deadline} / {dialog.vault.review_deadline}</p>
-            <p>waitUntil: {dialog.yours.waitUntil} / {dialog.vault.waitUntil}</p>
-            <p>parent: {dialog.yours.parent} / {dialog.vault.parent}</p>
-            <div className="mt-2 flex gap-2">
+          <div data-layout-panel data-conflict-dialog className={`${panelClass} flex w-full max-w-xl flex-col gap-3 p-5`}>
+            <div className="rounded-md border border-[#b8002e] p-3.5 text-sm" role="status">
+              <b>Konflikt:</b> task se mezitím změnil (cron / agent / jiná úprava). Níže je rozdíl mezi tím, co chceš
+              zapsat, a aktuálním stavem ve vaultu. Můžeš uložit znovu nad novou verzí, nebo se vrátit k úpravě.
+            </div>
+            {(() => {
+              const rows = COMPARE_FIELDS.filter(
+                (key) => showValue(dialog.yours[key]) !== showValue(dialog.vault[key]),
+              );
+              // #region agent log
+              fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+                body: JSON.stringify({
+                  sessionId: "7e3b98",
+                  runId: "conflict-dialog",
+                  hypothesisId: "H5",
+                  location: "App.jsx:q9",
+                  message: "conflict dialog rows",
+                  data: { changedCount: rows.length, fields: rows },
+                  timestamp: Date.now(),
+                }),
+              }).catch(() => {});
+              // #endregion
+              if (!rows.length) {
+                return (
+                  <p className="text-sm text-[#5c5c5c]">
+                    Pole se shodují — konflikt je jen verze souboru (CAS). Přesto uložit přepíše vault tvým návrhem.
+                  </p>
+                );
+              }
+              return (
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase text-[#5c5c5c]">
+                      <th className="py-1 pr-2 font-bold">Pole</th>
+                      <th className="py-1 pr-2 font-bold">Ve vaultu teď</th>
+                      <th className="py-1 font-bold">Tvůj návrh</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((key) => (
+                      <tr key={key} className="border-t border-[#eeeeee] align-top">
+                        <td className="py-2 pr-2 font-bold">{Q9_LABELS[key] || key}</td>
+                        <td className="py-2 pr-2 text-[#5c5c5c]">{showValue(dialog.vault[key])}</td>
+                        <td className="py-2 font-medium">{showValue(dialog.yours[key])}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
+            <div className="mt-1 flex flex-wrap gap-2">
               <button
                 type="button"
                 className={btnPrimary}
