@@ -193,7 +193,7 @@ describe("screens", () => {
     fireEvent.click(screen.getByRole("button", { name: "Přesto uložit" }));
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
-      patch: { title: "Nový název" },
+      patch: { title: "Nový název", status: "Next" },
       expect_oid: "oid-new",
     });
   });
@@ -228,6 +228,50 @@ describe("screens", () => {
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-Y.md",
       patch: { title: "Hotovo karta", status: "Done" },
+      expect_oid: "oid-new",
+    });
+  });
+
+  it("CAS-only oid mismatch with matching fields saves without conflict dialog", async () => {
+    const api = {
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          error_reason: "oid_mismatch",
+          oid: "oid-new",
+        })
+        .mockResolvedValueOnce({ ok: true, oid: "oid-written" }),
+      item: vi.fn().mockResolvedValue({
+        body: "",
+        oid: "oid-new",
+        frontmatter: {
+          title: "Stejný",
+          status: "Next",
+          // datetime vs date10 baseline → concurrent true, but proposal matches vault
+          deadline: "2026-10-01T00:00:00",
+          review_deadline: "",
+          waitUntil: "",
+          parent: "",
+        },
+      }),
+    };
+    renderApp(
+      [task({ id: "F-C", title: "Stejný", status: "Next", deadline: "2026-10-01", expect_oid: "stale" })],
+      api,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-C — Stejný" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(screen.queryByRole("dialog", { name: "Neshoda verze" })).toBeNull();
+    expect(api.patch).toHaveBeenCalledTimes(2);
+    expect(api.patch).toHaveBeenLastCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-C.md",
+      patch: { title: "Stejný", status: "Next" },
       expect_oid: "oid-new",
     });
   });
@@ -471,7 +515,7 @@ describe("screens", () => {
     });
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-T1.md",
-      patch: { title: "Dítě", parent: "F-S2" },
+      patch: { title: "Dítě", status: "Next", parent: "F-S2" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     await act(async () => {

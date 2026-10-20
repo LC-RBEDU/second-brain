@@ -49,6 +49,10 @@ def card(task: Any) -> dict[str, Any]:
     fm = _fm(task)
     focus = _text(fm.get("focus"))
     promoted = _text(fm.get("promoted_from"))
+    meta = getattr(task, "meta", None)
+    oid = getattr(meta, "oid", None) if meta is not None else None
+    if oid is None:
+        oid = getattr(task, "oid", None)
     return {
         "id": _text(fm.get("id")),
         "title": _text(fm.get("title")),
@@ -60,6 +64,7 @@ def card(task: Any) -> dict[str, Any]:
         "review_deadline": _date10(fm.get("review_deadline")),
         "focus": focus or None,
         "path": _path(task),
+        "oid": str(oid) if oid else None,
         "promoted_from": promoted or None,
     }
 

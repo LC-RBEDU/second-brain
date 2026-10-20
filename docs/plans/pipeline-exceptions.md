@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-21 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx`, `vps/second-brain-hub/lib/task_query.py` | CAS-only dialog: tichý retry/force + oid v card/item; bez změny Brain kontraktů zápisu | agent (uživatel: konflikt jen verze souboru) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | Uložit nic nedělá: zobrazit Brain error (open_child…) místo tichého return; bez změny Brain kontraktů | agent (uživatel: Uložit bez reakce) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `bff/dashboard_bff/app.py`, `screens.test.jsx` | CAS false-positive: baseline + omit empty expect_oid; bez změny Brain kontraktů | agent (uživatel: Next→Done = falešný konflikt) |
 | 2026-10-20 | `vps/second-brain-dashboard/web/src/ui/{App,MindMap,screens}.jsx` | kanban HTML5 DnD + mindmapa view na Mapě; bez změny Brain kontraktů | agent (uživatel: přesuny kanban + mindmapa) |

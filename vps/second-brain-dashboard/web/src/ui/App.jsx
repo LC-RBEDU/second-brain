@@ -271,7 +271,12 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   function fieldValue(key, value) {
     if (key === "parent") return parentId(value);
-    return value == null ? "" : String(value);
+    if (value == null) return "";
+    const text = String(value).trim();
+    if (key === "deadline" || key === "review_deadline" || key === "waitUntil") {
+      return text.slice(0, 10);
+    }
+    return text;
   }
 
   async function openConflict(result, patch, path, taskId, baseline, retried = false) {
@@ -282,11 +287,12 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     }
     if (result?.error_reason === "oid_mismatch") {
       let current = result.current || {};
+      let freshOid = result.oid || "";
       if (api?.item && taskId) {
         try {
           const item = await api.item(taskId);
           if (item?.frontmatter) current = item.frontmatter;
-          const freshOid = item?.oid || result.oid;
+          freshOid = item?.oid || result.oid || freshOid;
           if (freshOid) setOids((prev) => ({ ...prev, [taskId]: String(freshOid) }));
         } catch {
           /* keep result.current */
@@ -301,11 +307,16 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           ? fieldValue(key, patch[key])
           : vault[key];
       }
-      // Concurrent = vault drifted from what the form loaded — not "your patch vs vault".
+      // Concurrent = vault drifted from form baseline (not "your patch vs vault").
       const concurrent = COMPARE_FIELDS.some((key) => {
         if (!Object.prototype.hasOwnProperty.call(current, key)) return false;
         return showValue(vault[key]) !== showValue(fieldValue(key, base[key]));
       });
+      // Proposal already matches vault on compared fields → pure CAS / stale oid.
+      const casOnly = COMPARE_FIELDS.every(
+        (key) => showValue(yours[key]) === showValue(vault[key]),
+      );
+      const expectOid = String(freshOid || result.oid || "").trim();
       // #region agent log
       fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
         method: "POST",
@@ -313,15 +324,17 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         body: JSON.stringify({
           sessionId: "7e3b98",
           runId: "cas-fix",
-          hypothesisId: "H8",
+          hypothesisId: "H16",
           location: "App.jsx:openConflict",
           message: "oid_mismatch handling",
           data: {
             taskId,
             concurrent,
+            casOnly,
             retried,
             hasBaseline: Boolean(baseline),
-            resultOid: result.oid || "",
+            expectOid,
+            patchKeys: Object.keys(patch),
             vaultStatus: vault.status,
             yoursStatus: yours.status,
             baseStatus: base.status || "",
@@ -331,9 +344,36 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         }),
       }).catch(() => {});
       // #endregion
-      if (!concurrent && result.oid && !retried && api?.patch) {
-        const retry = await api.patch({ path, patch, expect_oid: result.oid });
+      // Silent retry: no real content race, or CAS-only (fields already match vault).
+      if (!retried && api?.patch && (!concurrent || casOnly)) {
+        const retryBody = { path, patch };
+        if (expectOid) retryBody.expect_oid = expectOid;
+        const retry = await api.patch(retryBody);
         return openConflict(retry, patch, path, taskId, baseline, true);
+      }
+      // Still CAS-only after retry → write without expect_oid (idempotent for compared fields).
+      if (casOnly && api?.patch) {
+        const forced = await api.patch({ path, patch });
+        // #region agent log
+        fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
+          body: JSON.stringify({
+            sessionId: "7e3b98",
+            runId: "cas-fix",
+            hypothesisId: "H16",
+            location: "App.jsx:openConflict",
+            message: "casOnly force write without expect_oid",
+            data: { taskId, ok: Boolean(forced?.ok), error_reason: forced?.error_reason || "" },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        if (forced?.ok) {
+          if (forced.oid && taskId) setOids((prev) => ({ ...prev, [taskId]: forced.oid }));
+          onRefresh?.();
+          return true;
+        }
       }
       setDialog({
         kind: "q9",
@@ -341,7 +381,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         patch,
         yours,
         vault,
-        oid: result.oid,
+        oid: expectOid || result.oid,
       });
       return false;
     }
@@ -378,8 +418,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   async function saveDetail() {
     if (!detail || !api?.patch) return;
-    const patch = { title: draft.title };
-    if (draft.status && draft.status !== detail.status) patch.status = draft.status;
+    // Always send status from the form so Next→Done cannot be dropped from the patch.
+    const patch = { title: draft.title, status: draft.status || detail.status || "Next" };
     if (draft.deadline !== (detail.deadline || "")) {
       patch.deadline = draft.deadline;
     } else if (draft.review !== (detail.review_deadline || "")) {
