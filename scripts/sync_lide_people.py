@@ -150,10 +150,11 @@ KNOWN_META: dict[str, dict[str, str | list[str]]] = {
         "projects": [],
     },
     "Michaela Kosinerová": {
-        "role": "Digital Adoption & Acceleration Programs Lead",
+        # 8. 10. 2026 — Lukáš: Head of T akademií (technologické; přebírá od Luboše)
+        "role": "Head of T akademií (technologické akademie)",
         "org": "Red Button EDU",
         "email": "michaela.kosinerova@redbuttonedu.cz",
-        "projects": [],
+        "projects": ["[[IT AI Data]]"],
     },
     "Pavla Vaňková": {
         # v Universe bez current_position; roli potvrdil Lukáš 8. 9. 2026

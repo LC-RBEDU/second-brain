@@ -17,8 +17,9 @@ H2 = [
     "## Kontext",
     "## Owner",
     "## Klíčové osoby",
-    "## DoD + aktuální stav plnění",
-    "## Přehled milníků se zvýrazněním nejbližšího",
+    "## Definition of Done",
+    "## Stav plnění",
+    "## Přehled milníků",
 ]
 
 CP4_DOD = (
@@ -43,14 +44,14 @@ def pages() -> dict[str, str]:
 
 
 def dod_block(body: str) -> str:
-    start = body.index("## DoD + aktuální stav plnění")
+    start = body.index("## Definition of Done")
     rest = body[start:]
-    end = rest.index("### Stav plnění")
+    end = rest.index("## Stav plnění")
     return rest[:end]
 
 
 def milestone_lines(body: str) -> list[re.Match[str]]:
-    section = body.split("## Přehled milníků se zvýrazněním nejbližšího", 1)[1]
+    section = body.split("## Přehled milníků", 1)[1]
     found = []
     for line in section.splitlines():
         m = MILESTONE.match(line.strip())

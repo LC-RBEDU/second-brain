@@ -20,5 +20,6 @@ Důvod: [arXiv 2602.11988v2](https://arxiv.org/abs/2602.11988) — LLM context f
 - krátká lidská úprava existujícího souboru: pasti, které **nejsou** v README ani v `.cursor/rules/`
 - odkaz na rules / skills místo dumpování jejich obsahu
 - nová always-on rule jen když platí věta: „tohle agent z kódu/README neuhodne“
+- krátká šablona `AGENTS.md` a `CLAUDE.md` na týmovém sdíleném disku `[EDU] <Tým>` skillem `tymovy-disk`, až po potvrzení člověkem. Mapa složek je `index.md`. Do `AGENTS.md` se přehled složek nedumpne. Zákaz `/init` a generování těchto souborů v git repu platí dál.
 
 `n8nac` vendor blok v `AGENTS.md` (Allfred invoices / n8n-as-code) **není** Cursor `/init` — ten nesahej.

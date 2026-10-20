@@ -8,7 +8,7 @@ DEST="$HOME/.cursor/skills"
 
 mkdir -p "$DEST"
 
-for skill_dir in "$SRC"/agenda-*/ "$SRC"/mrluc-loader/ "$SRC"/wiki-firemni-priority/ "$SRC"/tymovy-disk/ "$SRC"/rbe-writing-style/ "$SRC"/grammar-nazi/; do
+for skill_dir in "$SRC"/agenda-*/ "$SRC"/mrluc-loader/ "$SRC"/wiki-firemni-priority/ "$SRC"/tymovy-disk/ "$SRC"/rbe-writing-style/ "$SRC"/rbedu-grammar-nazi/; do
   [ -d "$skill_dir" ] || continue
   skill="$(basename "$skill_dir")"
   target="$DEST/$skill"

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-CLI = REPO / "ŠABLONY/skills/grammar-nazi/scripts/md_fingerprint.py"
+CLI = REPO / "ŠABLONY/skills/rbedu-grammar-nazi/scripts/md_fingerprint.py"
 FIXTURES = CLI.parent / "fixtures"
 VALID = FIXTURES / "valid-full.md"
 BROKEN = FIXTURES / "broken-highlights.md"
