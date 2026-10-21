@@ -36,27 +36,6 @@ export function ParentSuggest({ value, onChange, options, ariaLabel }) {
     if (!open || !inputRef.current || !listRef.current) return;
     const input = inputRef.current.getBoundingClientRect();
     const list = listRef.current.getBoundingClientRect();
-    // #region agent log
-    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-      body: JSON.stringify({
-        sessionId: "7e3b98",
-        runId: "parent-suggest",
-        hypothesisId: "H4",
-        location: "chrome.jsx:ParentSuggest",
-        message: "parent suggest anchor",
-        data: {
-          inputLeft: Math.round(input.left),
-          listLeft: Math.round(list.left),
-          deltaPx: Math.round(Math.abs(input.left - list.left)),
-          anchored: Math.abs(input.left - list.left) < 8,
-          count: filtered.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
   }, [open, filtered.length, value]);
 
   return (

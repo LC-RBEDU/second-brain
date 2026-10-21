@@ -208,25 +208,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     return story && parentId(story.parent) === epicFilter;
   });
 
-  // #region agent log
-  useEffect(() => {
-    const tables = document.querySelectorAll("table").length;
-    const panels = document.querySelectorAll("[data-layout-panel]").length;
-    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-      body: JSON.stringify({
-        sessionId: "7e3b98",
-        runId: "post-fix",
-        hypothesisId: "D",
-        location: "App.jsx:view",
-        message: "view layout metrics",
-        data: { view, tables, panels, radarTile },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, [view, radarTile, board, preview]);
-  // #endregion
 
   function oidOf(task) {
     const value = oids[task?.id] || task?.expect_oid || task?.oid || "";
@@ -337,33 +318,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         (key) => showValue(yours[key]) === showValue(vault[key]),
       );
       const expectOid = String(freshOid || result.oid || "").trim();
-      // #region agent log
-      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-        body: JSON.stringify({
-          sessionId: "7e3b98",
-          runId: "cas-fix",
-          hypothesisId: "H16",
-          location: "App.jsx:openConflict",
-          message: "oid_mismatch handling",
-          data: {
-            taskId,
-            concurrent,
-            casOnly,
-            retried,
-            hasBaseline: Boolean(baseline),
-            expectOid,
-            patchKeys: Object.keys(patch),
-            vaultStatus: vault.status,
-            yoursStatus: yours.status,
-            baseStatus: base.status || "",
-            currentKeys: Object.keys(current),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       // Silent retry: no real content race, or CAS-only (fields already match vault).
       if (!retried && api?.patch && (!concurrent || casOnly)) {
         const retryBody = { path, patch };
@@ -374,21 +328,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       // Still CAS-only after retry → write without expect_oid (idempotent for compared fields).
       if (casOnly && api?.patch) {
         const forced = await api.patch({ path, patch });
-        // #region agent log
-        fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-          body: JSON.stringify({
-            sessionId: "7e3b98",
-            runId: "cas-fix",
-            hypothesisId: "H16",
-            location: "App.jsx:openConflict",
-            message: "casOnly force write without expect_oid",
-            data: { taskId, ok: Boolean(forced?.ok), error_reason: forced?.error_reason || "" },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         if (forced?.ok) {
           if (forced.oid && taskId) setOids((prev) => ({ ...prev, [taskId]: forced.oid }));
           return true;
@@ -409,26 +348,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       return false;
     }
     if (result?.error_reason) {
-      // #region agent log
-      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-        body: JSON.stringify({
-          sessionId: "7e3b98",
-          runId: "cas-fix",
-          hypothesisId: "H14",
-          location: "App.jsx:openConflict",
-          message: "unhandled patch error shown",
-          data: {
-            taskId,
-            retried,
-            error_reason: result.error_reason,
-            detail: result.detail || null,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       setDialog({ kind: "error", text: errorMessage(result) });
       return false;
     }
@@ -449,29 +368,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
       const baseline = baselineOf(detail);
       const payload = patchPayload(detail, patch);
-      // #region agent log
-      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-        body: JSON.stringify({
-          sessionId: "7e3b98",
-          runId: "cas-fix",
-          hypothesisId: "H9",
-          location: "App.jsx:saveDetail",
-          message: "saveDetail patch payload",
-          data: {
-            taskId: detail.id,
-            expectOid: payload.expect_oid || "",
-            omitExpect: !payload.expect_oid,
-            patchStatus: patch.status || "",
-            baseStatus: baseline.status,
-            taskOid: detail.oid || "",
-            cachedOid: oids[detail.id] || "",
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       let result;
       try {
         result = await api.patch(payload);
@@ -858,21 +754,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         disabled={isBusy}
         onChange={(event) => {
           const status = event.target.value;
-          // #region agent log
-          fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-            body: JSON.stringify({
-              sessionId: "7e3b98",
-              runId: "inline-edit",
-              hypothesisId: "H2",
-              location: "App.jsx:InlineStatus",
-              message: "inline status change",
-              data: { id: task.id, from: task.status, to: status },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-          // #endregion
           move(task, status);
         }}
       >
@@ -911,26 +792,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           return map;
         }, new Map())]
       : [[null, rows]];
-    // #region agent log
-    if (groupByProject && groups.length) {
-      const labels = groups
-        .filter(([key]) => key)
-        .map(([key, items]) => ({ raw: key, shown: `${projectLabel(key)} · ${items.length}` }));
-      fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-        body: JSON.stringify({
-          sessionId: "7e3b98",
-          runId: "project-label-uppercase",
-          hypothesisId: "H1",
-          location: "App.jsx:TaskTable",
-          message: "project group labels rendered",
-          data: { labels, allUpper: labels.every((row) => row.shown === row.shown.toUpperCase()) },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
     return (
       <div data-layout-panel className={`${panelClass} overflow-x-auto`} aria-label="Seznam">
         <div className="flex flex-wrap items-center gap-2 border-b border-[#e2e2e2] px-4 py-3">
@@ -1399,21 +1260,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                           const task = byId.get(id);
                           setDropStatus("");
                           setDragTaskId("");
-                          // #region agent log
-                          fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-                            body: JSON.stringify({
-                              sessionId: "7e3b98",
-                              runId: "kanban-dnd",
-                              hypothesisId: "H7",
-                              location: "App.jsx:kanban-drop",
-                              message: "kanban drop",
-                              data: { id, status, found: Boolean(task) },
-                              timestamp: Date.now(),
-                            }),
-                          }).catch(() => {});
-                          // #endregion
                           if (task && task.status !== status) move(task, status);
                         }}
                       >
@@ -2050,26 +1896,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               const rows = COMPARE_FIELDS.filter(
                 (key) => showValue(dialog.yours[key]) !== showValue(dialog.vault[key]),
               );
-              // #region agent log
-              fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-                body: JSON.stringify({
-                  sessionId: "7e3b98",
-                  runId: "conflict-dialog",
-                  hypothesisId: "H6",
-                  location: "App.jsx:q9",
-                  message: "conflict dialog with dismiss",
-                  data: {
-                    changedCount: rows.length,
-                    fields: rows,
-                    hasConflictDialog: true,
-                    hasCancel: true,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-              // #endregion
               if (!rows.length) {
                 return (
                   <p className="text-sm text-[#5c5c5c]">
