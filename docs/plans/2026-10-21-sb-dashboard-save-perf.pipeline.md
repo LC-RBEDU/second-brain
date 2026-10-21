@@ -1,5 +1,5 @@
 # Pipeline: Second Brain dashboard — save / refresh performance
-Stav: IMPLEMENT
+Stav: REVIEW
 Plán: docs/plans/2026-10-21-sb-dashboard-save-perf.md
 Schvalování plánu uživatelem: ne
 Architekt: k=3 r=3 HOTOVÝ
@@ -7,9 +7,9 @@ Architekt: k=3 r=3 HOTOVÝ
 Kritik: f74e9f9f SCHVÁLENO
 Goal: aktivní
 Plán schválen kritikem: ano (f74e9f9f)
-Poznámka: F0–F4 lokálně hotovo (T28/T29 gate). Další: lokální commit → REVIEW → F5 Coolify.
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base: d419b941363a38da8bd879ae58da68a79da9ddc6 · Kódový SHA: (lokální WIP → commit) · Review/QA/TESTER: —
+Poznámka: F0–F4 commit a1c1e2c6. REVIEW v běhu. Push až po SCHVÁLENO → F5 hub-first.
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base: d419b941363a38da8bd879ae58da68a79da9ddc6 · Kódový SHA: a1c1e2c6 · Review/QA/TESTER: —
 Vizuální gate člověka: ne
 testerGate: ano
 

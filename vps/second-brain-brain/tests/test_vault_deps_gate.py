@@ -173,6 +173,45 @@ def test_defer_tip_ahead_exhausted_fails():
     assert ei.value.error_reason == "vault_push_pending_failed"
 
 
+def test_defer_orphan_tip_enqueues_cover(tmp_path: Path):
+    """Orphan tip (no healthy cover) → enqueue orphan_cover; mutate OK."""
+    vault = MagicMock()
+    vault.skipped = False
+    vault.push_enabled = True
+    vault.is_tip_ahead.return_value = True
+    vault.root = tmp_path
+    enq: dict = {}
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            return False
+
+    def _enqueue(root, *, attempts=0, source="brain"):
+        enq["root"] = root
+        enq["attempts"] = attempts
+        enq["source"] = source
+        return "job-orphan"
+
+    with patch("app.vault_deps.open_vault", return_value=_CM()):
+        with patch("push_queue.has_exhausted_failure", return_value=False):
+            with patch("push_queue.has_healthy_cover", return_value=False):
+                with patch("push_queue.enqueue", side_effect=_enqueue):
+                    with brain_vault(
+                        mode="mutate",
+                        env={
+                            "GIT_VAULT_PUSH": "1",
+                            "BRAIN_DEFER_PUSH": "1",
+                            "GIT_VAULT_ROOT": str(tmp_path),
+                        },
+                    ) as v:
+                        assert v is vault
+    assert enq.get("source") == "orphan_cover"
+    assert enq.get("attempts") == 0
+
+
 def test_brain_vault_rejects_tip_ahead_on_mutate():
     vault = MagicMock()
     vault.skipped = False

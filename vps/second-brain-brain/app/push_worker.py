@@ -21,9 +21,10 @@ for _lib in (
 
 
 def _poll_s() -> float:
+    """Poll interval; clamp to [0.5, 5] so env cannot exceed B25 budget."""
     raw = (os.environ.get("BRAIN_PUSH_POLL_S") or "5").strip()
     try:
-        return max(0.5, float(raw))
+        return min(5.0, max(0.5, float(raw)))
     except ValueError:
         return 5.0
 

@@ -162,6 +162,44 @@ describe("busy overlay", () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it("T20 F2: onReconcile runs once and onRefresh stays 0 after save", async () => {
+    vi.useFakeTimers();
+    const onRefresh = vi.fn(async () => {});
+    const onReconcile = vi.fn();
+    const api = {
+      patch: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "oid-r",
+        written: { ids: ["T1"], count: 1 },
+        saved: ["T1"],
+      }),
+    };
+    render(
+      wrap(
+        <App
+          exportData={{ tasks: [task({ id: "T1", title: "Úkol" })], projects: PROJECTS }}
+          api={api}
+          today="2026-10-20"
+          onRefresh={onRefresh}
+          onReconcile={onReconcile}
+        />,
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "T1 — Úkol" }));
+      await vi.advanceTimersByTimeAsync(SHOW_DELAY_MS + MIN_VISIBLE_MS);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(SHOW_DELAY_MS + MIN_VISIBLE_MS);
+    });
+    expect(api.patch).toHaveBeenCalledTimes(1);
+    expect(onReconcile).toHaveBeenCalledTimes(1);
+    expect(onRefresh).toHaveBeenCalledTimes(0);
+  });
+
   it("T10 drops a second concurrent user withBusy", async () => {
     vi.useFakeTimers();
     const calls = [];

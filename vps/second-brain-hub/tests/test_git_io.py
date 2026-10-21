@@ -173,6 +173,78 @@ def test_push_ff_reject_keep_tip_no_reset(git_repo: Path, monkeypatch: pytest.Mo
     assert not any("reset --hard @{upstream}" in c for c in cmds)
 
 
+def test_push_on_end_false_enqueues_no_push(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
+    """A26: push_on_end=False → durable enqueue; 0× remote push."""
+    from push_queue import load_queue
+
+    pushes: list[bool] = []
+    monkeypatch.setattr(
+        GitVault,
+        "_push_ff_only",
+        lambda self: pushes.append(True),
+    )
+    before = _git(git_repo, "rev-parse", "HEAD").stdout.strip()
+    vault = GitVault(
+        git_repo, dry_run=False, push=True, push_on_end=False, on_push_fail="keep_tip"
+    )
+    with vault:
+        vault.write_text("00-System/enq.md", "enqueue-me\n")
+    after = _git(git_repo, "rev-parse", "HEAD").stdout.strip()
+    assert after != before
+    assert pushes == []
+    jobs = load_queue(git_repo)["jobs"]
+    assert any(j.get("status") == "pending" and j.get("source") == "end_session" for j in jobs)
+    assert vault.last_push_job_id
+
+
+def test_enqueue_oserror_raises_git_enqueue_no_reset(
+    git_repo: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """T28c: enqueue OSError → GitEnqueueError; tip kept (0× reset @{upstream})."""
+    from git_io import GitEnqueueError
+
+    monkeypatch.setattr(
+        "push_queue.enqueue",
+        lambda *_a, **_k: (_ for _ in ()).throw(OSError("disk full")),
+    )
+    vault = GitVault(
+        git_repo,
+        dry_run=False,
+        push=True,
+        push_on_end=False,
+        strict_push=True,
+        on_push_fail="keep_tip",
+    )
+    with pytest.raises(GitEnqueueError) as ei:
+        with vault:
+            vault.write_text("00-System/fail-enq.md", "x\n")
+    assert ei.value.error_reason == "vault_push_enqueue_failed"
+    cmds = [" ".join(c) for c in vault._git_cmds]
+    assert not any("reset --hard @{upstream}" in c for c in cmds)
+    # Local commit survived Keep tip
+    assert (git_repo / "00-System" / "fail-enq.md").is_file()
+
+
+def test_push_tip_ff_only_calls_push_without_commit_gate(
+    git_repo: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """R23: worker push_tip_ff_only → _push_ff_only; no commit_if_dirty gate."""
+    calls: list[str] = []
+    monkeypatch.setattr(
+        GitVault,
+        "_push_ff_only",
+        lambda self: calls.append("push"),
+    )
+    monkeypatch.setattr(
+        GitVault,
+        "commit_if_dirty",
+        lambda self, message=None: calls.append("commit") or False,
+    )
+    vault = GitVault(git_repo, dry_run=False, push=True)
+    vault.push_tip_ff_only()
+    assert calls == ["push"]
+
+
 def test_push_ff_reject_resets_upstream(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
     vault = GitVault(git_repo, dry_run=False, push=True, on_push_fail="reset")
     real_git = GitVault._git
