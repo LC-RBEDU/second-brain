@@ -94,6 +94,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 20 | 2026-10-21 | REVIEW | c6d226f5 | K OPRAVĚ | 1 BLOCKER NEW-1 + 4 MAJOR | → IMPLEMENT oprava |
 | 21 | 2026-10-21 | IMPLEMENT | hlavní | NEW-1…NEW-5 + MINOR | — | openDetail/busy race/bridge/T3/T15b; commit bc199965 |
 | 22 | 2026-10-21 | REVIEW | 89e04d45 | SCHVÁLENO | 0 BLOCKER 0 MAJOR | → push + deploy + F8 busy gate |
+| 23 | 2026-10-21 | QA | — | pending F8 | — | deploy a892094b healthz 200; čeká busy visual gate |
+| 24 | 2026-10-21 | AWAITING_USER | uživatel | F8 busy overlay | — | Q2b + T18 preview output/playwright/busy-overlay-f8.png |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
@@ -119,5 +121,17 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | C6 | MINOR | PLAN | vyřešen v r=3 | 1 |
 | C7 | MINOR | PLAN | vyřešen v r=3 | 1 |
 | C8 | MINOR | PLAN | vyřešen v r=3 | 1 |
-| 23 | 2026-10-21 | QA | — | pending F8 | — | deploy a892094b healthz 200; čeká busy visual gate |
-| 24 | 2026-10-21 | AWAITING_USER | uživatel | F8 busy overlay | — | Q2b: potvrď Wiki-parity busy na dashboard.cyprovi.cz |
+| NEW-1…5 | BLOCKER/MAJOR | IMPL | vyřešen v REVIEW kolo 2 (89e04d45) | 1 |
+
+## Připraveno po F8 `ano` (nespouštět dřív)
+
+### F9 QA brief
+- URL: https://dashboard.cyprovi.cz · image SHA `a892094b`
+- Gate: `cd vps/second-brain-dashboard/web && npm test` + BFF pytest
+- Smoke: Boot busy, Uložit → busy přes export (B20), Escape nechá overlay, primary disabled
+
+### F10 T6 pack (rbu-tester)
+Chrome · Radar (≥8 dlaždic) · Mapa Strom/Mindmapa · Projekt/Kanban · Detail+busy+B20 · Nový C14 guard · Úklid · Chybně zadané · Focus (Radar dlaždice + B14) · Busy cross-cut · Boot/refresh · double-click mutex
+
+### F11 strip mapa (po 1. Tester PASS)
+`rg 7873` v `web/src`: App.jsx (~9×) + chrome.jsx (1×) → smazat `#region agent log` bloky; `rg` = 0 = T16
