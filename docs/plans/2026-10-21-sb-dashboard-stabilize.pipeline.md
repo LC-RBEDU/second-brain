@@ -1,11 +1,11 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: AWAITING_USER (z: scénáře Testera)
+Stav: TESTER
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Šťoural: g=5 2243c9d4 · A18–A33
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
-Goal: paused-awaiting-user
+Goal: aktivní
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
 Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVIEW.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
@@ -98,7 +98,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 25 | 2026-10-21 | IMPLEMENT | hlavní | F8 oprava | — | Dockerfile public/; Brain timeout 60s; deploy 2823ba39 logo 200 |
 | 26 | 2026-10-21 | AWAITING_USER | uživatel | F8 znovu | — | ano (busy OK; save ~3–4 s) |
 | 27 | 2026-10-21 | QA | 12566887 | PASS s výhradami | P11 save ~3–4 s | → testerGate T6 pack |
-| 28 | 2026-10-21 | AWAITING_USER | uživatel | T6 pack | — | výchozí plný; potvrď / uprav |
+| 28 | 2026-10-21 | AWAITING_USER | uživatel | T6 pack | — | ano — plný pack |
+| 29 | 2026-10-21 | TESTER | rbu-tester | běží | — | T20–T22 plný T6 na 2823ba39 |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
