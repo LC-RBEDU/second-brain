@@ -1,5 +1,5 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: IMPLEMENT
+Stav: REVIEW
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
@@ -7,9 +7,9 @@ Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
 Goal: paused-awaiting-user
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
-Poznámka: IMPLEMENT připraven; Plan mode blokuje zápis mimo markdown (SwitchMode agent zamítnut). Po Agent mode → F1–F6.
+Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVIEW.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
+Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: 2e6b320b · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 Vizuální gate člověka: pending (busy-overlay — Q2b; shell 2026-10-19 zůstává ano)
@@ -91,6 +91,7 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 17 | 2026-10-21 | CRITIC | 409f7481 | SCHVÁLENO | 0 BLOCKER 0 MAJOR 1 MINOR | → IMPLEMENT |
 | 18 | 2026-10-21 | IMPLEMENT | hlavní | blokováno Plan mode | — | → AWAITING_USER (Agent mode) |
 | 19 | 2026-10-21 | IMPLEMENT | hlavní | F1–F5 hotovo | — | BusyProvider/Overlay + mutace + vitest 48/48; → F6 commit → REVIEW |
+| 20 | 2026-10-21 | REVIEW | rbu-diff-reviewer | běží | — | diff vs plán k=2 r=2 na 2e6b320b |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
