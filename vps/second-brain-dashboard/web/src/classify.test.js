@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classify } from "./classify.js";
+import { classify, RULE_HELP, ruleHelp } from "./classify.js";
 import { isoWeek } from "./focusSlots.js";
 
 const TODAY = "2026-10-20";
@@ -9,6 +9,12 @@ function run(tasks, extra = {}) {
 }
 
 describe("classify", () => {
+  it("ruleHelp explains stale and title_markup", () => {
+    expect(RULE_HELP.stale).toMatch(/30/);
+    expect(ruleHelp("title_markup")).toMatch(/markup|\[\[/);
+    expect(ruleHelp("parse_yaml")).toMatch(/parsování/);
+  });
+
   it("B1 counts a task once, keeps no_date off the error tile, and ignores stale_unknown", () => {
     const result = run([
       {

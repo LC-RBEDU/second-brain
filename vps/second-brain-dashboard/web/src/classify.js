@@ -26,6 +26,34 @@ export function visibleTasks(tasks) {
   });
 }
 
+/** Lidské vysvětlivky kódu pravidel (Chybně zadané / Stale dlaždice). */
+export const RULE_HELP = {
+  stale: "Next nebo Doing — pole updated starší než 30 dní (nebo chybí pohyb).",
+  stale_unknown: "Next nebo Doing bez data updated — stáří nejde spočítat.",
+  title_markup: "Název obsahuje markup ([[, *, →) — do title to nepatří.",
+  title_long: "Název delší než 100 znaků.",
+  epic_empty: "Epic bez otevřeného potomka (prázdný kontejner).",
+  doing_no_deadline: "Status Doing bez hard deadlinu.",
+  no_date: "Next/Backlog bez deadline i review_deadline.",
+  waiting_no_waituntil: "Waiting bez waitUntil.",
+  parent_missing_or_closed: "Parent chybí, je zavřený, nebo není ve snapshotu.",
+  parent_bad_type: "Špatný typ parentu (story→epic, task→story).",
+  epic_with_parent: "Epic má parent — epic musí být kořen.",
+  story_no_epic: "Story v hierarchickém projektu bez epic parentu.",
+  id_type_mismatch: "Písmeno v ID (E/S/T) nesedí s type ve frontmatter.",
+  focus_stale: "focus je na starší ISO týden než aktuální.",
+  bad_status: "Status mimo Doing/Next/Backlog/Waiting/Done/Cancelled.",
+};
+
+export function ruleHelp(rule) {
+  if (!rule) return "";
+  if (RULE_HELP[rule]) return RULE_HELP[rule];
+  if (String(rule).startsWith("parse_")) {
+    return `Chyba parsování vault souboru (${String(rule).slice(6)}).`;
+  }
+  return "Kontrolní pravidlo klasifikace dashboardu.";
+}
+
 function hierarchySlugs(projects) {
   const slugs = new Set();
   for (const project of projects || []) {

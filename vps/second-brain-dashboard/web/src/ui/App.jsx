@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useBusy } from "./BusyContext.jsx";
-import { classify, visibleTasks } from "../classify.js";
+import { classify, RULE_HELP, ruleHelp, visibleTasks } from "../classify.js";
 import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
 import { closingPreview, kanbanPatch, offerKeep, resolveCloser, rowPatch } from "../writes.js";
@@ -1021,6 +1021,21 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         {view === "issues" && (
           <section aria-label="Chybně zadané" className="flex flex-col gap-5">
             <PageHeader title={`Chybně zadané ${classified.tiles.errors}`} />
+            <details className="max-w-3xl rounded-md border border-[#e2e2e2] bg-white px-4 py-3 text-sm text-[#5c5c5c]">
+              <summary className="cursor-pointer font-bold text-[#444]">Co znamenají pravidla</summary>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                {Object.entries(RULE_HELP).map(([code, text]) => (
+                  <div key={code}>
+                    <dt className="font-bold text-[#b8002e]">{code}</dt>
+                    <dd>{text}</dd>
+                  </div>
+                ))}
+                <div>
+                  <dt className="font-bold text-[#b8002e]">parse_*</dt>
+                  <dd>Chyba parsování vault souboru (suffix = důvod).</dd>
+                </div>
+              </dl>
+            </details>
             <div data-layout-panel className={`${panelClass} overflow-x-auto`}>
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead>
@@ -1033,10 +1048,13 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 <tbody>
                   {issueRows.map((item) => {
                     const task = byId.get(item.id);
-                    const rules = classified.issues
-                      .filter((issue) => issue.id === item.id && issue.rule !== "no_date")
-                      .map((issue) => issue.rule)
-                      .join(", ");
+                    const ruleCodes = [
+                      ...new Set(
+                        classified.issues
+                          .filter((issue) => issue.id === item.id && issue.rule !== "no_date")
+                          .map((issue) => issue.rule),
+                      ),
+                    ];
                     return (
                       <tr key={item.id} className="border-t border-[#eeeeee]">
                         <td className="p-3">
@@ -1048,7 +1066,15 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                             </p>
                           )}
                         </td>
-                        <td className="p-2 font-bold text-[#b8002e]">{rules}</td>
+                        <td className="p-2 font-bold text-[#b8002e]">
+                          <span className="flex flex-wrap gap-1">
+                            {ruleCodes.map((code) => (
+                              <span key={code} title={ruleHelp(code)} className="cursor-help underline decoration-dotted">
+                                {code}
+                              </span>
+                            ))}
+                          </span>
+                        </td>
                         <td className="p-2 uppercase text-[#5c5c5c]">
                           {projectLabel(item.project || task?.project || "")}
                         </td>
@@ -1730,9 +1756,23 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
           <section aria-label="Úklid" className="flex flex-col gap-5 pb-24">
             <PageHeader title="Úklid vaultu" />
             <p className="max-w-3xl text-[#5c5c5c]">
-              Projdi tasky bez termínu po projektech. U každého rozhodni: zrušit, hotovo, nebo ponechat. Nic se nezapíše bez
-              náhledu.
+              Projdi tasky bez termínu. U každého zvol akci a pak Náhled — nic se nezapíše dřív. Dvojklik na název otevře
+              detail (jako na Radaru / Mapě).
             </p>
+            <ul className="max-w-3xl list-disc space-y-1 pl-5 text-sm text-[#5c5c5c]">
+              <li>
+                <strong className="text-[#444]">Zrušit</strong> — status Cancelled (zrušeno / pohlceno; nepočítá se do
+                recently done).
+              </li>
+              <li>
+                <strong className="text-[#444]">Hotovo</strong> — status Done (skutečně dokončeno).
+              </li>
+              <li>
+                <strong className="text-[#444]">Ponechat</strong> — nechá otevřené a v náhledu nastaví{" "}
+                <code className="text-xs">review_deadline</code> (měkký termín, kdy se k tomu vrátit). Jen u Next/Backlog/
+                Waiting bez deadlinu.
+              </li>
+            </ul>
             <div className="flex flex-wrap gap-2" aria-label="Postup">
               <div className="rounded-md border-2 border-[#a11834] bg-white px-3 py-2 text-sm font-bold">
                 Rozhodnout · {listed.length} bez filtru
@@ -1751,7 +1791,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 <div className="flex flex-wrap items-center gap-3 border-b border-[#e2e2e2] px-4 py-3">
                   <strong className="flex-1 text-sm">Tasky k rozhodnutí · {listed.length}</strong>
                   <span className="text-sm text-[#5c5c5c]">
-                    {Object.values(checked).filter(Boolean).length} vybráno
+                    {Object.values(checked).filter(Boolean).length} vybráno · dvojklik na název = detail
                   </span>
                 </div>
                 <table className="w-full min-w-[760px] text-left text-sm">
@@ -1776,7 +1816,16 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                           />
                         </td>
                         <td className="p-2.5 font-bold whitespace-nowrap tabular-nums">{task.id}</td>
-                        <td className="p-2.5">{task.title || task.id}</td>
+                        <td className="p-2.5">
+                          <button
+                            type="button"
+                            className="text-left font-bold underline-offset-2 hover:underline"
+                            title="Dvojklik otevře detail"
+                            onDoubleClick={() => openDetail(task)}
+                          >
+                            {task.title || task.id}
+                          </button>
+                        </td>
                         <td className="p-2.5">
                           <StatusPill status={task.status} />
                         </td>
@@ -1784,21 +1833,26 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                           <div className="flex flex-wrap gap-1" role="group" aria-label={`Akce ${task.id}`}>
                             {(offerKeep(task)
                               ? [
-                                  ["cancelled", "Zrušit"],
-                                  ["done", "Hotovo"],
-                                  ["keep", "Ponechat"],
+                                  ["cancelled", "Zrušit", "Status Cancelled — zrušeno / pohlceno"],
+                                  ["done", "Hotovo", "Status Done — skutečně dokončeno"],
+                                  [
+                                    "keep",
+                                    "Ponechat",
+                                    "Nechá otevřené; v náhledu nastavíš review_deadline",
+                                  ],
                                 ]
                               : [
-                                  ["cancelled", "Zrušit"],
-                                  ["done", "Hotovo"],
+                                  ["cancelled", "Zrušit", "Status Cancelled — zrušeno / pohlceno"],
+                                  ["done", "Hotovo", "Status Done — skutečně dokončeno"],
                                 ]
-                            ).map(([value, label]) => {
+                            ).map(([value, label, hint]) => {
                               const current = actions[task.id] || (offerKeep(task) ? "keep" : "done");
                               const on = checked[task.id] && current === value;
                               return (
                                 <button
                                   key={value}
                                   type="button"
+                                  title={hint}
                                   className={
                                     on
                                       ? "min-h-8 rounded border border-[#a11834] bg-[#a11834] px-2 text-xs font-bold text-white"

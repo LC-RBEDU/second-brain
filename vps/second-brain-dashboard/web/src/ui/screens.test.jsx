@@ -117,7 +117,7 @@ describe("screens", () => {
     fireEvent.click(screen.getByRole("button", { name: "Chybně zadané" }));
     expect(screen.getByRole("heading", { name: "Chybně zadané 1" })).toBeInTheDocument();
     expect(screen.getByText("F-T9 — Dítě")).toBeInTheDocument();
-    expect(screen.getByText("parent_missing_or_closed")).toBeInTheDocument();
+    expect(screen.getAllByText("parent_missing_or_closed").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/Uzavřený rodič/)).toBeNull();
   });
 
@@ -139,6 +139,37 @@ describe("screens", () => {
     expect(within(preview).getByText(/Jiný/)).toBeInTheDocument();
     expect(within(preview).getByRole("checkbox", { name: "Náhled F-T3 — Pauza" })).toBeDisabled();
     expect(within(preview).queryByText(/Hotový/)).toBeNull();
+  });
+
+  it("Úklid explains actions and opens detail on title double-click", async () => {
+    const api = { item: vi.fn().mockResolvedValue({ ok: true, body: "", oid: "o1" }) };
+    renderApp([task({ id: "F-T9", title: "T6 C14 guard test" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
+    expect(screen.getByText(/status Done \(skutečně dokončeno\)/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hotovo" })).toHaveAttribute(
+      "title",
+      expect.stringMatching(/Done/),
+    );
+    await act(async () => {
+      fireEvent.doubleClick(screen.getByRole("button", { name: "T6 C14 guard test" }));
+    });
+    expect(api.item).toHaveBeenCalledWith("F-T9");
+    expect(screen.getByLabelText("Název")).toHaveValue("T6 C14 guard test");
+  });
+
+  it("Chybně zadané shows rule glossary", () => {
+    renderApp([
+      task({
+        id: "F-T8",
+        title: "Stale row",
+        status: "Next",
+        updated: "2026-08-01",
+      }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Chybně zadané" }));
+    fireEvent.click(screen.getByText("Co znamenají pravidla"));
+    expect(screen.getByText(/Next nebo Doing — pole updated starší/)).toBeInTheDocument();
+    expect(screen.getByTitle(/30 dní/)).toBeInTheDocument();
   });
 
   it("B27 sends Done as status only and ignores an empty Doing confirm", async () => {

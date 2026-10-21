@@ -56,3 +56,4 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 | 2026-10-01 | today_priority + build_agent_context + Bases + skills (deadline vs review_deadline) | uživatel: 1–4 ano, 5 rovnou | uživatel |
 | 2026-10-04 | scripts/tests/test_wiki_firemni_priority_bundle.py | čistě text skillu: test jen zrcadlí přejmenované nadpisy v create-bundle (Definition of Done, Stav plnění jako H2, Přehled milníků), žádná nová logika | agent |
 | 2026-10-08 | scripts/sync_lide_people.py (role Míša Kosinerová) | jednořádkový fix / data | agent |
+| 2026-10-21 | `vps/second-brain-dashboard/web/src/{classify.js,ui/App.jsx}`, `screens.test.jsx` | copy: vysvětlivky pravidel + Úklid akcí; wire existující `openDetail` (dvojklik na název) | agent (uživatel: stale / Zrušit·Hotovo·Ponechat / detail) |
