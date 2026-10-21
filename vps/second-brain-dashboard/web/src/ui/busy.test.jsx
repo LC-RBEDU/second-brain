@@ -188,6 +188,9 @@ describe("busy overlay", () => {
     render(wrap(<Harness />));
     fireEvent.click(screen.getByRole("button", { name: "Dual" }));
     expect(calls).toEqual(["a"]);
+    // Sync double-activate (Playwright save.click(); save.click())
+    fireEvent.click(screen.getByRole("button", { name: "Dual" }));
+    expect(calls).toEqual(["a"]);
     await act(async () => {
       resolveFirst();
       await vi.advanceTimersByTimeAsync(MIN_VISIBLE_MS + SHOW_DELAY_MS);

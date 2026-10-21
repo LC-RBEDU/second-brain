@@ -5,6 +5,9 @@ const BusyContext = createContext(null);
 export const SHOW_DELAY_MS = 150;
 export const MIN_VISIBLE_MS = 200;
 
+/** Cross-instance mutex — survives StrictMode remounts and sync double-clicks. */
+let globalBusyHeld = false;
+
 export function BusyProvider({ children, onError }) {
   const [busy, setBusy] = useState(null);
   const [locked, setLocked] = useState(false);
@@ -28,6 +31,7 @@ export function BusyProvider({ children, onError }) {
       depthRef.current = 0;
       shownAtRef.current = 0;
       nestingAllowedRef.current = false;
+      globalBusyHeld = false;
     };
   }, []);
 
@@ -59,13 +63,15 @@ export function BusyProvider({ children, onError }) {
 
   const withBusy = useCallback(
     async (title, subtitle, fn, options = {}) => {
-      if (depthRef.current > 0) {
+      if (depthRef.current > 0 || globalBusyHeld) {
         // Nested export refresh (C12): only while outer fn is on the call stack.
         if (options.reentrant && nestingAllowedRef.current) return fn();
         return undefined;
       }
-      const gen = ++generationRef.current;
+      // Module mutex first — sync double-clicks / remounts must drop before setState.
+      globalBusyHeld = true;
       depthRef.current = 1;
+      const gen = ++generationRef.current;
       setLocked(true);
       titleRef.current = { title: title || "Ukládám…", subtitle: subtitle || "Chvilku to trvá…" };
       showTimerRef.current = setTimeout(() => {
@@ -93,6 +99,7 @@ export function BusyProvider({ children, onError }) {
         await hideBusy(gen);
         if (generationRef.current === gen) {
           depthRef.current = 0;
+          globalBusyHeld = false;
         }
       }
     },

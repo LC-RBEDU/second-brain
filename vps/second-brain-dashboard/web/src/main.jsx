@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./ui/App.jsx";
 import { BusyOverlay } from "./ui/BusyOverlay.jsx";
@@ -119,11 +119,10 @@ export function Boot() {
 
 const root = document.getElementById("root");
 if (root) {
+  // No StrictMode: double-mount remounted BusyProvider and raced user mutations (B11 / T6).
   createRoot(root).render(
-    <StrictMode>
-      <BusyProvider onError={() => {}}>
-        <Boot />
-      </BusyProvider>
-    </StrictMode>,
+    <BusyProvider onError={() => {}}>
+      <Boot />
+    </BusyProvider>,
   );
 }
