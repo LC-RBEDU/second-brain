@@ -9,7 +9,7 @@ Goal: paused-awaiting-user
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
 Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVIEW.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: 2e6b320b · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
+Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: bc199965 · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 Vizuální gate člověka: pending (busy-overlay — Q2b; shell 2026-10-19 zůstává ano)
@@ -92,7 +92,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 18 | 2026-10-21 | IMPLEMENT | hlavní | blokováno Plan mode | — | → AWAITING_USER (Agent mode) |
 | 19 | 2026-10-21 | IMPLEMENT | hlavní | F1–F5 hotovo | — | BusyProvider/Overlay + mutace + vitest 48/48; → F6 commit → REVIEW |
 | 20 | 2026-10-21 | REVIEW | c6d226f5 | K OPRAVĚ | 1 BLOCKER NEW-1 + 4 MAJOR | → IMPLEMENT oprava |
-| 21 | 2026-10-21 | IMPLEMENT | hlavní | NEW-1…NEW-5 + MINOR | — | openDetail/busy race/bridge/T3/T15b; → REVIEW kolo 2 |
+| 21 | 2026-10-21 | IMPLEMENT | hlavní | NEW-1…NEW-5 + MINOR | — | openDetail/busy race/bridge/T3/T15b; commit bc199965 |
+| 22 | 2026-10-21 | REVIEW | rbu-diff-reviewer | běží | — | kolo 2 na bc199965 |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
