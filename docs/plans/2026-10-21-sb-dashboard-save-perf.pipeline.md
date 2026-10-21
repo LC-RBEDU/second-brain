@@ -7,9 +7,9 @@ Architekt: k=3 r=3 HOTOVÝ
 Kritik: f74e9f9f SCHVÁLENO
 Goal: aktivní
 Plán schválen kritikem: ano (f74e9f9f)
-Poznámka: F0–F4 commit a1c1e2c6. REVIEW v běhu. Push až po SCHVÁLENO → F5 hub-first.
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base: d419b941363a38da8bd879ae58da68a79da9ddc6 · Kódový SHA: a1c1e2c6 · Review/QA/TESTER: —
+Poznámka: REVIEW kolo 1 K OPRAVĚ (3 MAJOR) → opraveno (T20/hub enqueue/vitest/poll). Re-REVIEW.
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Base: d419b941363a38da8bd879ae58da68a79da9ddc6 · Kódový SHA: (po commit) · Review/QA/TESTER: kolo1 K OPRAVĚ
 Vizuální gate člověka: ne
 testerGate: ano
 
