@@ -1,15 +1,15 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: TESTER
+Stav: DONE
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Šťoural: g=5 2243c9d4 · A18–A33
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
-Goal: aktivní
+Goal: complete
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
-Poznámka: Strip QA PASS a13cd696 (B16); T22-reuse → DONE na strip SHA.
+Poznámka: DONE na strip SHA a13cd696 — Wiki busy, B11 mutex, F11 bez 7873; T22-reuse PASS.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 2/5 · kola TESTER 2/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: a13cd696 · Review SCHVÁLENO na: 6d93a2a4 (+ MINOR chrome a13cd696) · QA PASS na: a13cd696 (B16) · TESTER PASS na: 3a5b962c (pre-strip)
+Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: a13cd696 · Review SCHVÁLENO na: 6d93a2a4 (+ MINOR chrome a13cd696) · QA PASS na: a13cd696 (B16) · TESTER PASS na: a13cd696 (T22-reuse)
 Plán schválen uživatelem: nevyžadováno
 Vizuální gate člověka: ano (2026-10-21; busy OK; pozn.: save ~3–4 s = PATCH+export C12)
 testerGate: ano (UI produkt — zákaz TESTER skip)
