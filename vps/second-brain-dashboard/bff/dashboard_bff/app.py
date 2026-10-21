@@ -59,6 +59,10 @@ def _clean_patch(patch: dict[str, Any] | None) -> dict[str, Any]:
     return {key: value for key, value in (patch or {}).items() if key not in _STRIP}
 
 
+# Brain vault CAS / export can exceed httpx's 5s default (dashboard log: ReadTimeout on PATCH).
+BRAIN_TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+
+
 class HttpxBrain:
     def __init__(self, base_url: str, token: str, transport: httpx.BaseTransport | None = None) -> None:
         self._base = base_url.rstrip("/")
@@ -66,14 +70,23 @@ class HttpxBrain:
         self._transport = transport
 
     def call(self, method: str, path: str, *, json_body: dict | None = None, params: dict | None = None) -> httpx.Response:
-        with httpx.Client(transport=self._transport, base_url=self._base) as client:
-            return client.request(
-                method,
-                path,
-                json=json_body,
-                params=params,
-                headers={"Authorization": f"Bearer {self._token}"},
-            )
+        try:
+            with httpx.Client(
+                transport=self._transport,
+                base_url=self._base,
+                timeout=BRAIN_TIMEOUT,
+            ) as client:
+                return client.request(
+                    method,
+                    path,
+                    json=json_body,
+                    params=params,
+                    headers={"Authorization": f"Bearer {self._token}"},
+                )
+        except httpx.TimeoutException as exc:
+            raise ApiError(504, "brain_timeout") from exc
+        except httpx.HTTPError as exc:
+            raise ApiError(502, "brain_unreachable") from exc
 
 
 def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:

@@ -33,3 +33,9 @@ def test_image_does_not_mount_the_vault():
     assert "/oauth/callback" in setup
     assert "GOOGLE_CLIENT_ID" in setup
     assert "second-brain-dashboard" in setup
+
+
+def test_dockerfile_copies_web_public_for_logo():
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    assert "second-brain-dashboard/web/public" in dockerfile
+    assert (ROOT / "web" / "public" / "logo.svg").is_file()

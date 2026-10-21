@@ -5,6 +5,7 @@ WORKDIR /web
 COPY second-brain-dashboard/web/package.json second-brain-dashboard/web/package-lock.json ./
 RUN npm ci
 COPY second-brain-dashboard/web/index.html second-brain-dashboard/web/vite.config.js ./
+COPY second-brain-dashboard/web/public ./public
 COPY second-brain-dashboard/web/src ./src
 RUN npm run build
 

@@ -34,6 +34,8 @@ const ERROR_TEXT = {
   waiting_no_waituntil: "Waiting vyžaduje datum waitUntil.",
   archive_readonly: "Archivovaný task nejde upravit.",
   brain_error: "Brain API vrátilo chybu.",
+  brain_timeout: "Uložení trvalo moc dlouho (Brain). Zkus to prosím znovu.",
+  brain_unreachable: "Brain není dostupný. Zkus to prosím znovu.",
 };
 
 function errorMessage(result) {

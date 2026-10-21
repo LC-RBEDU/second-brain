@@ -1,11 +1,11 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: AWAITING_USER (z: vizuální gate busy)
+Stav: IMPLEMENT
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Šťoural: g=5 2243c9d4 · A18–A33
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
-Goal: paused-awaiting-user
+Goal: aktivní
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
 Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVIEW.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
@@ -94,7 +94,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 21 | 2026-10-21 | IMPLEMENT | hlavní | NEW-1…NEW-5 + MINOR | — | openDetail/busy race/bridge/T3/T15b; commit bc199965 |
 | 22 | 2026-10-21 | REVIEW | 89e04d45 | SCHVÁLENO | 0 BLOCKER 0 MAJOR | → push + deploy + F8 busy gate |
 | 23 | 2026-10-21 | QA | — | pending F8 | — | deploy a892094b healthz 200; čeká busy visual gate |
-| 24 | 2026-10-21 | AWAITING_USER | uživatel | F8 busy overlay | — | Q2b + T18 preview output/playwright/busy-overlay-f8.png |
+| 24 | 2026-10-21 | AWAITING_USER | uživatel | F8 busy overlay | — | ne: logo 404 + Uložení selhalo |
+| 25 | 2026-10-21 | IMPLEMENT | hlavní | F8 oprava | — | Dockerfile public/; Brain timeout 60s; → redeploy |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
