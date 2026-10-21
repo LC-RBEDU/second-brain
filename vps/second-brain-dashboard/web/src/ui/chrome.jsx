@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 export const fieldClass =
   "w-full rounded-md border border-[#b0b2b6] bg-white px-3 py-2 font-[Rubik,system-ui,sans-serif] text-[#444]";
@@ -31,12 +31,6 @@ export function ParentSuggest({ value, onChange, options, ariaLabel }) {
       return id.includes(query) || label.includes(query);
     })
     .slice(0, 40);
-
-  useEffect(() => {
-    if (!open || !inputRef.current || !listRef.current) return;
-    const input = inputRef.current.getBoundingClientRect();
-    const list = listRef.current.getBoundingClientRect();
-  }, [open, filtered.length, value]);
 
   return (
     <div className="relative">
