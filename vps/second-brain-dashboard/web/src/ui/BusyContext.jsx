@@ -5,7 +5,7 @@ const BusyContext = createContext(null);
 export const SHOW_DELAY_MS = 150;
 export const MIN_VISIBLE_MS = 200;
 
-/** Cross-instance mutex — survives StrictMode remounts and sync double-clicks. */
+/** Cross-instance mutex for sync double-clicks. Cleared on Provider unmount (StrictMode off in main). */
 let globalBusyHeld = false;
 
 export function BusyProvider({ children, onError }) {

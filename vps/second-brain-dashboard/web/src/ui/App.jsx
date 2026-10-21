@@ -767,10 +767,10 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   async function applyFocus() {
     if (!dialog?.proposalId || !api?.apply || isBusy) return;
-    // Consume id sync so a second click in the same gesture cannot re-apply (B11).
     const proposalId = dialog.proposalId;
-    setDialog((prev) => (prev?.kind === "focus" ? { ...prev, proposalId: "" } : prev));
     await withBusy("Ukládám fokus…", "Nastavuji focus týden", async () => {
+      // Clear only after mutex acquired — pre-clear + dropped withBusy would lose the proposal (B11/B14).
+      setDialog((prev) => (prev?.kind === "focus" ? { ...prev, proposalId: "" } : prev));
       try {
         const result = await api.apply({ proposal_id: proposalId });
         if (result?.ok) {
