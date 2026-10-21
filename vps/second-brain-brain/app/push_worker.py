@@ -147,3 +147,5 @@ def wake_push_worker(app: Any) -> None:
     ev = getattr(app.state, "push_wake", None)
     if isinstance(ev, asyncio.Event):
         ev.set()
+
+# F5b deploy trigger 2026-10-21T12:34Z
