@@ -1,5 +1,5 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: QA
+Stav: AWAITING_USER (z: vizuální gate busy)
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
@@ -9,10 +9,10 @@ Goal: paused-awaiting-user
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
 Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVIEW.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: bc199965 · Review SCHVÁLENO na: bc199965 · QA PASS na: — · TESTER PASS na: —
+Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: a892094b · Review SCHVÁLENO na: bc199965 · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
-Vizuální gate člověka: pending (busy-overlay — Q2b; shell 2026-10-19 zůstává ano)
+Vizuální gate člověka: pending (busy-overlay — Q2b; deploy a892094b; shell 2026-10-19 zůstává ano)
 testerGate: ano (UI produkt — zákaz TESTER skip)
 
 ## Zadání (doslovně) a rozhodnutí
@@ -119,3 +119,5 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | C6 | MINOR | PLAN | vyřešen v r=3 | 1 |
 | C7 | MINOR | PLAN | vyřešen v r=3 | 1 |
 | C8 | MINOR | PLAN | vyřešen v r=3 | 1 |
+| 23 | 2026-10-21 | QA | — | pending F8 | — | deploy a892094b healthz 200; čeká busy visual gate |
+| 24 | 2026-10-21 | AWAITING_USER | uživatel | F8 busy overlay | — | Q2b: potvrď Wiki-parity busy na dashboard.cyprovi.cz |
