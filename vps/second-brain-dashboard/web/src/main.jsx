@@ -1,6 +1,8 @@
 import { StrictMode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./ui/App.jsx";
+import { BusyOverlay } from "./ui/BusyOverlay.jsx";
+import { BusyProvider, useBusy } from "./ui/BusyContext.jsx";
 import "./index.css";
 
 function pragueToday() {
@@ -63,32 +65,57 @@ const api = {
 function Boot() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const { withBusy, setErrorHandler } = useBusy();
+
+  useEffect(() => {
+    if (data) return undefined;
+    setErrorHandler((message) => setError(message || "Export se nenačetl"));
+    return undefined;
+  }, [data, setErrorHandler]);
+
   const load = useCallback(async () => {
-    const response = await fetch("/api/export");
-    if (response.status === 401) {
-      window.location.assign("/oauth/authorize");
-      return;
-    }
-    if (!response.ok) {
-      setError("Export se nenačetl");
-      return;
-    }
-    setData(await response.json());
-  }, []);
+    const run = async () => {
+      const response = await fetch("/api/export");
+      if (response.status === 401) {
+        window.location.assign("/oauth/authorize");
+        return;
+      }
+      if (!response.ok) {
+        throw new Error("load_failed");
+      }
+      setData(await response.json());
+      setError("");
+    };
+    return withBusy("Načítám…", "Stahuji export otevřených úkolů", run, { reentrant: true });
+  }, [withBusy]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  if (!data) return <p>{error || "Načítám"}</p>;
-  return <App exportData={data} api={api} today={pragueToday()} onRefresh={load} />;
+  if (!data) {
+    return (
+      <>
+        {error ? <p className="p-4 text-sm text-red-700">{error}</p> : null}
+        <BusyOverlay />
+      </>
+    );
+  }
+  return (
+    <>
+      <App exportData={data} api={api} today={pragueToday()} onRefresh={load} />
+      <BusyOverlay />
+    </>
+  );
 }
 
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      <Boot />
+      <BusyProvider onError={() => {}}>
+        <Boot />
+      </BusyProvider>
     </StrictMode>,
   );
 }

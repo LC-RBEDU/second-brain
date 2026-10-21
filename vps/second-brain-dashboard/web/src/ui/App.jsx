@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useBusy } from "./BusyContext.jsx";
 import { classify, visibleTasks } from "../classify.js";
 import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
@@ -171,6 +172,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   const [waitDate, setWaitDate] = useState("");
   const [oids, setOids] = useState({});
   const [cleanupResult, setCleanupResult] = useState(null);
+  const { withBusy, isBusy, setErrorHandler } = useBusy();
+
+  useEffect(() => {
+    setErrorHandler((message) => setDialog({ kind: "error", text: message || "Uložení selhalo." }));
+  }, [setErrorHandler]);
 
   const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const openTasks = useMemo(() => visibleTasks(tasks), [tasks]);
@@ -245,28 +251,39 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   async function openDetail(task) {
     setReturnView(view);
     setDetailId(task.id);
-    let detailText = "";
-    let detailLine = "";
-    if (api?.item) {
-      const item = await api.item(task.id);
-      const parsed = extractDetail(item?.body || "");
-      detailText = parsed.text;
-      detailLine = parsed.line;
-      const freshOid = item?.oid || item?.expect_oid || item?.frontmatter?.oid;
-      if (freshOid) setOids((prev) => ({ ...prev, [task.id]: String(freshOid) }));
-    }
-    setDraft({
-      title: task.title || "",
-      status: task.status || "Next",
-      deadline: task.deadline || "",
-      review: task.review_deadline || "",
-      waitUntil: task.waitUntil || "",
-      parent: parentId(task.parent),
-      detail: detailText,
-      detailOriginal: detailText,
-      detailLine,
+    await withBusy("Načítám…", "Otevírám detail úkolu", async () => {
+      let detailText = "";
+      let detailLine = "";
+      try {
+        if (api?.item) {
+          const item = await api.item(task.id);
+          if (item && item.ok === false) {
+            setDialog({ kind: "error", text: errorMessage(item) });
+            return;
+          }
+          const parsed = extractDetail(item?.body || "");
+          detailText = parsed.text;
+          detailLine = parsed.line;
+          const freshOid = item?.oid || item?.expect_oid || item?.frontmatter?.oid;
+          if (freshOid) setOids((prev) => ({ ...prev, [task.id]: String(freshOid) }));
+        }
+      } catch {
+        setDialog({ kind: "error", text: "Načtení detailu selhalo (síť nebo server)." });
+        return;
+      }
+      setDraft({
+        title: task.title || "",
+        status: task.status || "Next",
+        deadline: task.deadline || "",
+        review: task.review_deadline || "",
+        waitUntil: task.waitUntil || "",
+        parent: parentId(task.parent),
+        detail: detailText,
+        detailOriginal: detailText,
+        detailLine,
+      });
+      setView("detail");
     });
-    setView("detail");
   }
 
   function fieldValue(key, value) {
@@ -282,7 +299,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   async function openConflict(result, patch, path, taskId, baseline, retried = false) {
     if (result?.ok) {
       if (result?.oid && taskId) setOids((prev) => ({ ...prev, [taskId]: result.oid }));
-      onRefresh?.();
       return true;
     }
     if (result?.error_reason === "oid_mismatch") {
@@ -371,7 +387,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         // #endregion
         if (forced?.ok) {
           if (forced.oid && taskId) setOids((prev) => ({ ...prev, [taskId]: forced.oid }));
-          onRefresh?.();
           return true;
         }
       }
@@ -413,49 +428,23 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       setDialog({ kind: "error", text: errorMessage(result) });
       return false;
     }
+    setDialog({ kind: "error", text: errorMessage(result) || "Uložení selhalo." });
     return false;
   }
 
   async function saveDetail() {
-    if (!detail || !api?.patch) return;
-    // Always send status from the form so Next→Done cannot be dropped from the patch.
-    const patch = { title: draft.title, status: draft.status || detail.status || "Next" };
-    if (draft.deadline !== (detail.deadline || "")) {
-      patch.deadline = draft.deadline;
-    } else if (draft.review !== (detail.review_deadline || "")) {
-      patch.review_deadline = draft.review;
-    }
-    if (draft.waitUntil !== (detail.waitUntil || "")) patch.waitUntil = draft.waitUntil;
-    if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
-    const baseline = baselineOf(detail);
-    const payload = patchPayload(detail, patch);
-    // #region agent log
-    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-      body: JSON.stringify({
-        sessionId: "7e3b98",
-        runId: "cas-fix",
-        hypothesisId: "H9",
-        location: "App.jsx:saveDetail",
-        message: "saveDetail patch payload",
-        data: {
-          taskId: detail.id,
-          expectOid: payload.expect_oid || "",
-          omitExpect: !payload.expect_oid,
-          patchStatus: patch.status || "",
-          baseStatus: baseline.status,
-          taskOid: detail.oid || "",
-          cachedOid: oids[detail.id] || "",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-    let result;
-    try {
-      result = await api.patch(payload);
-    } catch (err) {
+    if (!detail || !api?.patch || isBusy) return;
+    await withBusy("Ukládám…", "Zapisuji změnu do vaultu", async () => {
+      const patch = { title: draft.title, status: draft.status || detail.status || "Next" };
+      if (draft.deadline !== (detail.deadline || "")) {
+        patch.deadline = draft.deadline;
+      } else if (draft.review !== (detail.review_deadline || "")) {
+        patch.review_deadline = draft.review;
+      }
+      if (draft.waitUntil !== (detail.waitUntil || "")) patch.waitUntil = draft.waitUntil;
+      if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
+      const baseline = baselineOf(detail);
+      const payload = patchPayload(detail, patch);
       // #region agent log
       fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
         method: "POST",
@@ -463,61 +452,63 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         body: JSON.stringify({
           sessionId: "7e3b98",
           runId: "cas-fix",
-          hypothesisId: "H15",
+          hypothesisId: "H9",
           location: "App.jsx:saveDetail",
-          message: "saveDetail patch threw",
-          data: { taskId: detail.id, err: String(err?.message || err) },
+          message: "saveDetail patch payload",
+          data: {
+            taskId: detail.id,
+            expectOid: payload.expect_oid || "",
+            omitExpect: !payload.expect_oid,
+            patchStatus: patch.status || "",
+            baseStatus: baseline.status,
+            taskOid: detail.oid || "",
+            cachedOid: oids[detail.id] || "",
+          },
           timestamp: Date.now(),
         }),
       }).catch(() => {});
       // #endregion
-      setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
-      return;
-    }
-    // #region agent log
-    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-      body: JSON.stringify({
-        sessionId: "7e3b98",
-        runId: "cas-fix",
-        hypothesisId: "H14",
-        location: "App.jsx:saveDetail",
-        message: "saveDetail patch result",
-        data: {
-          taskId: detail.id,
-          ok: Boolean(result?.ok),
-          error_reason: result?.error_reason || "",
-          oid: result?.oid || "",
-          patched: result?.patched || [],
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-    const saved = await openConflict(result, patch, detail.path, detail.id, baseline);
-    if (saved) {
-      const nextOid = result?.oid || oidOf(detail);
-      if (draft.detailLine && draft.detail !== draft.detailOriginal && api?.editBody) {
-        const newLine = `**Detail:** ${draft.detail.trim() || "—"}`;
-        const bodyPayload = {
-          path: detail.path,
-          operation: "replace",
-          match: draft.detailLine,
-          new_text: newLine,
-          source: "dashboard",
-          reason: "úprava detailu v panelu",
-        };
-        if (nextOid) bodyPayload.expect_oid = nextOid;
-        await api.editBody(bodyPayload);
+      let result;
+      try {
+        result = await api.patch(payload);
+      } catch (err) {
+        setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+        return;
       }
-      setView(returnView);
-      return;
-    }
-    if (!result?.ok) return;
+      const saved = await openConflict(result, patch, detail.path, detail.id, baseline);
+      if (saved) {
+        const nextOid = result?.oid || oidOf(detail);
+        if (draft.detailLine && draft.detail !== draft.detailOriginal && api?.editBody) {
+          const newLine = `**Detail:** ${draft.detail.trim() || "—"}`;
+          const bodyPayload = {
+            path: detail.path,
+            operation: "replace",
+            match: draft.detailLine,
+            new_text: newLine,
+            source: "dashboard",
+            reason: "úprava detailu v panelu",
+          };
+          if (nextOid) bodyPayload.expect_oid = nextOid;
+          try {
+            const bodyResult = await api.editBody(bodyPayload);
+            if (bodyResult && bodyResult.ok === false) {
+              setDialog({ kind: "error", text: errorMessage(bodyResult) });
+              return;
+            }
+          } catch {
+            setDialog({ kind: "error", text: "Uložení detailu selhalo (síť nebo server)." });
+            return;
+          }
+        }
+        if (onRefresh) await onRefresh();
+        setView(returnView);
+        return;
+      }
+    });
   }
 
   async function move(task, status) {
+    if (isBusy) return;
     if (status === "Doing" && !task.deadline) {
       setDoingDate("");
       setDialog({ kind: "doing", task });
@@ -529,72 +520,81 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       return;
     }
     const patch = kanbanPatch(task, status, openTasks);
-    // #region agent log
-    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-      body: JSON.stringify({
-        sessionId: "7e3b98",
-        runId: "inline-edit",
-        hypothesisId: "H17",
-        location: "App.jsx:move",
-        message: "move after kanbanPatch",
-        data: {
-          id: task.id,
-          type: task.type || "",
-          from: task.status || "",
-          to: status,
-          patchNull: !patch,
-          hasApi: Boolean(api?.patch),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     if (!patch) {
       if (status === "Done" || status === "Cancelled") {
         setDialog({
           kind: "error",
           text: `${ERROR_TEXT.open_child_under_closed_parent} (${task.id})`,
         });
+      } else {
+        setDialog({
+          kind: "error",
+          text: `Tuto změnu statusu nelze provést. (${task.id})`,
+        });
       }
       return;
     }
-    if (!api?.patch) return;
-    const result = await api.patch(patchPayload(task, patch));
-    await openConflict(result, patch, task.path, task.id, baselineOf(task));
+    if (!api?.patch) {
+      setDialog({ kind: "error", text: "Uložení selhalo (API není dostupné)." });
+      return;
+    }
+    await withBusy("Ukládám…", "Ukládám změnu úkolu", async () => {
+      try {
+        const result = await api.patch(patchPayload(task, patch));
+        const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
+        if (ok && onRefresh) await onRefresh();
+      } catch {
+        setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+      }
+    });
   }
 
   async function confirmDoing() {
-    if (!doingDate || !dialog?.task || !api?.patch) return;
-    const patch = { status: "Doing", deadline: doingDate };
-    const result = await api.patch(patchPayload(dialog.task, patch));
-    if (result?.ok) {
-      setDialog(null);
-      onRefresh?.();
-      return;
-    }
-    if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
-      await openConflict(result, patch, dialog.task.path, dialog.task.id, baselineOf(dialog.task));
-      return;
-    }
-    setDialog(null);
+    if (!doingDate || !dialog?.task || !api?.patch || isBusy) return;
+    const task = dialog.task;
+    await withBusy("Ukládám…", "Ukládám změnu úkolu", async () => {
+      const patch = { status: "Doing", deadline: doingDate };
+      try {
+        const result = await api.patch(patchPayload(task, patch));
+        if (result?.ok) {
+          setDialog(null);
+          if (onRefresh) await onRefresh();
+          return;
+        }
+        if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
+          const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
+          if (ok && onRefresh) await onRefresh();
+          return;
+        }
+        setDialog({ kind: "error", text: errorMessage(result) });
+      } catch {
+        setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+      }
+    });
   }
 
   async function confirmWaiting() {
-    if (!waitDate || !dialog?.task || !api?.patch) return;
-    const patch = { status: "Waiting", waitUntil: waitDate };
-    const result = await api.patch(patchPayload(dialog.task, patch));
-    if (result?.ok) {
-      setDialog(null);
-      onRefresh?.();
-      return;
-    }
-    if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
-      await openConflict(result, patch, dialog.task.path, dialog.task.id, baselineOf(dialog.task));
-      return;
-    }
-    setDialog(null);
+    if (!waitDate || !dialog?.task || !api?.patch || isBusy) return;
+    const task = dialog.task;
+    await withBusy("Ukládám…", "Ukládám změnu úkolu", async () => {
+      const patch = { status: "Waiting", waitUntil: waitDate };
+      try {
+        const result = await api.patch(patchPayload(task, patch));
+        if (result?.ok) {
+          setDialog(null);
+          if (onRefresh) await onRefresh();
+          return;
+        }
+        if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
+          const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
+          if (ok && onRefresh) await onRefresh();
+          return;
+        }
+        setDialog({ kind: "error", text: errorMessage(result) });
+      } catch {
+        setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+      }
+    });
   }
 
   function rowFrom(task, action, extra = {}) {
@@ -693,33 +693,43 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   }
 
   async function submitCleanup() {
-    if (!preview || !sendAllowed || !api?.cleanup || preview.length > 80) return;
+    if (!preview || !sendAllowed || !api?.cleanup || preview.length > 80 || isBusy) return;
     const source = cleanupResult
       ? preview.filter((row) => cleanupResult.failed?.includes(row.id) || cleanupResult.pending?.includes(row.id))
       : preview;
     if (!source.length) return;
-    const result = await api.cleanup({
-      items: source.map((row) => ({
-        id: row.id,
-        path: row.path,
-        title: row.title,
-        parent: row.parent,
-        expect_oid: oids[row.id] || row.expect_oid,
-        patch: rowPatch({ resulting: row.resulting, date: rowDate(row) }),
-      })),
+    await withBusy("Provádím úklid…", "Zapisuji dávku do vaultu", async () => {
+      try {
+        const result = await api.cleanup({
+          items: source.map((row) => ({
+            id: row.id,
+            path: row.path,
+            title: row.title,
+            parent: row.parent,
+            expect_oid: oids[row.id] || row.expect_oid,
+            patch: rowPatch({ resulting: row.resulting, date: rowDate(row) }),
+          })),
+        });
+        const rejected = result?.ok === false && !(result?.failed?.length || result?.pending?.length);
+        if (rejected) {
+          setDialog({ kind: "error", text: errorMessage(result) });
+          return;
+        }
+        setCleanupResult(result);
+        if (result?.ok === false) return;
+        setOids((current) => ({ ...current, ...(result?.expect_oid || {}) }));
+        if (onRefresh) await onRefresh();
+        const stay = [...(result?.failed || []), ...(result?.pending || [])];
+        setChecked(Object.fromEntries(stay.map((id) => [id, true])));
+        if (!stay.length) setPreview(null);
+        if (detailId && (result?.written?.ids || []).includes(detailId) && !(result?.saved || []).includes(detailId)) {
+          setDetailId("");
+          setView(returnView);
+        }
+      } catch {
+        setDialog({ kind: "error", text: "Úklid selhal (síť nebo server)." });
+      }
     });
-    const rejected = result?.ok === false && !(result?.failed?.length || result?.pending?.length);
-    if (!rejected) setCleanupResult(result);
-    if (result?.ok === false) return;
-    setOids((current) => ({ ...current, ...(result?.expect_oid || {}) }));
-    onRefresh?.();
-    const stay = [...(result?.failed || []), ...(result?.pending || [])];
-    setChecked(Object.fromEntries(stay.map((id) => [id, true])));
-    if (!stay.length) setPreview(null);
-    if (detailId && (result?.written?.ids || []).includes(detailId) && !(result?.saved || []).includes(detailId)) {
-      setDetailId("");
-      setView(returnView);
-    }
   }
 
   const counts =
@@ -735,48 +745,76 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
     );
 
   async function proposeFocus(task) {
-    if (!api?.propose) return;
-    const result = await api.propose({ task_path: task.path, expect_oid: oidOf(task), focus_week: isoWeek(today) });
-    if (result?.ok && result.proposal_id) {
-      setDialog({ kind: "focus", proposalId: result.proposal_id, text: "" });
-      return;
-    }
-    const reason = result?.error_reason || "";
-    setDialog({ kind: "focus", proposalId: "", text: FOCUS_TEXT[reason] || reason });
+    if (!api?.propose || isBusy) return;
+    await withBusy("Ukládám fokus…", "Nastavuji focus týden", async () => {
+      try {
+        const result = await api.propose({ task_path: task.path, expect_oid: oidOf(task), focus_week: isoWeek(today) });
+        if (result?.ok && result.proposal_id) {
+          setDialog({ kind: "focus", proposalId: result.proposal_id, text: "" });
+          return;
+        }
+        const reason = result?.error_reason || "";
+        setDialog({ kind: "focus", proposalId: "", text: FOCUS_TEXT[reason] || reason || "Focus se nepodařilo navrhnout." });
+      } catch {
+        setDialog({ kind: "error", text: "Uložení fokusu selhalo (síť nebo server)." });
+      }
+    });
   }
 
   async function applyFocus() {
-    if (!dialog?.proposalId || !api?.apply) return;
-    const result = await api.apply({ proposal_id: dialog.proposalId });
-    if (result?.ok) {
-      setDialog(null);
-      onRefresh?.();
-      return;
-    }
-    const reason = result?.error_reason || "";
-    setDialog({ kind: "focus", proposalId: "", text: FOCUS_TEXT[reason] || reason });
+    if (!dialog?.proposalId || !api?.apply || isBusy) return;
+    await withBusy("Ukládám fokus…", "Nastavuji focus týden", async () => {
+      try {
+        const result = await api.apply({ proposal_id: dialog.proposalId });
+        if (result?.ok) {
+          setDialog(null);
+          if (onRefresh) await onRefresh();
+          return;
+        }
+        const reason = result?.error_reason || "";
+        setDialog({ kind: "focus", proposalId: "", text: FOCUS_TEXT[reason] || reason || "Focus se nepodařilo použít." });
+      } catch {
+        setDialog({ kind: "error", text: "Uložení fokusu selhalo (síť nebo server)." });
+      }
+    });
   }
 
   async function createTask() {
-    if (!api?.create) return;
-    if (newDraft.status === "Doing" && !newDraft.deadline) return;
-    if (newDraft.status === "Waiting" && !newDraft.waitUntil) return;
-    const result = await api.create({
-      slug: projectSlugValue,
-      title: newDraft.title,
-      level: newDraft.level,
-      status: newDraft.status,
-      parent: newDraft.level === "epic" ? "" : newDraft.parent,
-      deadline: newDraft.deadline,
-      review_deadline: newDraft.deadline ? "" : newDraft.review,
-      waitUntil: newDraft.waitUntil,
-      detail: newDraft.detail,
-    });
-    if (result?.error_reason === "deadline_order") {
-      setDialog({ kind: "deadline_order", text: conflictText(result.detail) });
+    if (!api?.create || isBusy) return;
+    if (newDraft.status === "Doing" && !newDraft.deadline) {
+      setDialog({ kind: "error", text: "Doing vyžaduje deadline." });
       return;
     }
-    if (result?.ok) onRefresh?.();
+    if (newDraft.status === "Waiting" && !newDraft.waitUntil) {
+      setDialog({ kind: "error", text: "Waiting vyžaduje datum waitUntil." });
+      return;
+    }
+    await withBusy("Zakládám úkol…", "Vytvářím nový záznam", async () => {
+      try {
+        const result = await api.create({
+          slug: projectSlugValue,
+          title: newDraft.title,
+          level: newDraft.level,
+          status: newDraft.status,
+          parent: newDraft.level === "epic" ? "" : newDraft.parent,
+          deadline: newDraft.deadline,
+          review_deadline: newDraft.deadline ? "" : newDraft.review,
+          waitUntil: newDraft.waitUntil,
+          detail: newDraft.detail,
+        });
+        if (result?.error_reason === "deadline_order") {
+          setDialog({ kind: "deadline_order", text: conflictText(result.detail) });
+          return;
+        }
+        if (!result?.ok) {
+          setDialog({ kind: "error", text: errorMessage(result) });
+          return;
+        }
+        if (onRefresh) await onRefresh();
+      } catch {
+        setDialog({ kind: "error", text: "Založení úkolu selhalo (síť nebo server)." });
+      }
+    });
   }
 
   function TaskLink({ task }) {
@@ -788,28 +826,20 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   }
 
   async function patchDate(task, field, value) {
-    if (!api?.patch) return;
+    if (!api?.patch || isBusy) return;
     const patch =
       field === "deadline"
         ? { deadline: value, ...(value ? { review_deadline: "" } : {}) }
         : { review_deadline: value };
-    // #region agent log
-    fetch("http://127.0.0.1:7873/ingest/cff9df26-114e-4021-9c74-b251cb269805", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7e3b98" },
-      body: JSON.stringify({
-        sessionId: "7e3b98",
-        runId: "inline-edit",
-        hypothesisId: "H2",
-        location: "App.jsx:patchDate",
-        message: "inline date patch",
-        data: { id: task.id, field, value },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-    const result = await api.patch(patchPayload(task, patch));
-    await openConflict(result, patch, task.path, task.id, baselineOf(task));
+    await withBusy("Ukládám…", "Ukládám změnu úkolu", async () => {
+      try {
+        const result = await api.patch(patchPayload(task, patch));
+        const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
+        if (ok && onRefresh) await onRefresh();
+      } catch {
+        setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+      }
+    });
   }
 
   function InlineStatus({ task }) {
@@ -818,6 +848,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         className="rounded border border-[#444] bg-white px-2 py-0.5 text-xs"
         aria-label={`Status ${task.id}`}
         value={task.status || "Next"}
+        disabled={isBusy}
         onChange={(event) => {
           const status = event.target.value;
           // #region agent log
@@ -858,7 +889,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         }`}
         aria-label={`${field === "deadline" ? "Deadline" : "Review"} ${task.id}`}
         value={value}
-        disabled={field === "review_deadline" && Boolean(task.deadline)}
+        disabled={isBusy || (field === "review_deadline" && Boolean(task.deadline))}
         onChange={(event) => patchDate(task, field, event.target.value)}
       />
     );
@@ -971,7 +1002,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#fafafa] font-[Rubik,system-ui,sans-serif] text-[#444]">
+    <div data-app-root aria-busy={isBusy || undefined} className="flex min-h-screen flex-col bg-[#fafafa] font-[Rubik,system-ui,sans-serif] text-[#444]">
       <nav className="flex flex-wrap items-center gap-2 bg-[#444444] px-8 py-2 text-[#fafafa]">
         <span className="mr-4 text-base font-black uppercase tracking-wide">Second Brain</span>
         {[
@@ -1614,7 +1645,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 draft.detail === draft.detailOriginal && <div className="text-[#5c5c5c]">Beze změny</div>}
             </div>
             <div className="flex flex-wrap gap-3">
-              <button type="button" className={btnPrimary} onClick={saveDetail}>
+              <button type="button" className={btnPrimary} disabled={isBusy} onClick={saveDetail}>
                 Uložit
               </button>
               <button type="button" className={btnGhost} onClick={() => setView(returnView)}>
@@ -1773,7 +1804,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 onChange={(event) => setNewDraft({ ...newDraft, detail: event.target.value })}
               />
             </label>
-            <button type="button" className={btnPrimary} onClick={createTask}>
+            <button type="button" className={btnPrimary} disabled={isBusy} onClick={createTask}>
               Založit
             </button>
           </section>
@@ -1953,7 +1984,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                   ))}
                 {preview.length > 80 && <p>Rodina je nad 80. Odeber předka.</p>}
                 <div className="flex flex-wrap gap-3">
-                  <button type="button" className={btnPrimary} disabled={!sendAllowed || preview.length > 80} onClick={submitCleanup}>
+                  <button type="button" className={btnPrimary} disabled={isBusy || !sendAllowed || preview.length > 80} onClick={submitCleanup}>
                     Uložit
                   </button>
                   <button type="button" className={btnGhost} onClick={() => setPreview(null)}>
@@ -2063,9 +2094,29 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
               <button
                 type="button"
                 className={btnPrimary}
+                disabled={isBusy}
                 onClick={() => {
-                  api.patch({ path: dialog.path, patch: dialog.patch, expect_oid: dialog.oid });
+                  const current = dialog;
                   setDialog(null);
+                  withBusy("Ukládám…", "Zapisuji změnu do vaultu", async () => {
+                    try {
+                      const result = await api.patch({
+                        path: current.path,
+                        patch: current.patch,
+                        expect_oid: current.oid,
+                      });
+                      const ok = await openConflict(
+                        result,
+                        current.patch,
+                        current.path,
+                        null,
+                        null,
+                      );
+                      if (ok && onRefresh) await onRefresh();
+                    } catch {
+                      setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+                    }
+                  });
                 }}
               >
                 Přesto uložit
@@ -2115,7 +2166,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         <div role="dialog" aria-label="Doplň deadline" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
             <input type="date" className={fieldClass} aria-label="Datum deadline" value={doingDate} onChange={(event) => setDoingDate(event.target.value)} />
-            <button type="button" className={btnPrimary} onClick={confirmDoing}>
+            <button type="button" className={btnPrimary} disabled={isBusy} onClick={confirmDoing}>
               Potvrdit
             </button>
           </div>
@@ -2126,7 +2177,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         <div role="dialog" aria-label="Doplň waitUntil" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
             <input type="date" className={fieldClass} aria-label="Datum waitUntil" value={waitDate} onChange={(event) => setWaitDate(event.target.value)} />
-            <button type="button" className={btnPrimary} onClick={confirmWaiting}>
+            <button type="button" className={btnPrimary} disabled={isBusy} onClick={confirmWaiting}>
               Potvrdit
             </button>
           </div>
@@ -2138,7 +2189,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           <div data-layout-panel className={`${panelClass} flex flex-col gap-3 p-5`}>
             {dialog.text && <p>{dialog.text}</p>}
             {dialog.proposalId && (
-              <button type="button" className={btnPrimary} onClick={applyFocus}>
+              <button type="button" className={btnPrimary} disabled={isBusy} onClick={applyFocus}>
                 Použít focus
               </button>
             )}

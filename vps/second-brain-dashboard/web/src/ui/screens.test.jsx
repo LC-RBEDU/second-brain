@@ -1,7 +1,9 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { App } from "./App.jsx";
+import { BusyProvider } from "./BusyContext.jsx";
+import { BusyOverlay } from "./BusyOverlay.jsx";
 
 afterEach(() => cleanup());
 
@@ -21,8 +23,17 @@ function task(fields) {
   };
 }
 
+function wrap(ui) {
+  return (
+    <BusyProvider onError={() => {}}>
+      {ui}
+      <BusyOverlay />
+    </BusyProvider>
+  );
+}
+
 function renderApp(tasks, api = {}, extra = {}) {
-  return render(<App exportData={{ tasks, projects: PROJECTS, ...extra }} api={api} today="2026-10-20" />);
+  return render(wrap(<App exportData={{ tasks, projects: PROJECTS, ...extra }} api={api} today="2026-10-20" />));
 }
 
 describe("screens", () => {
@@ -131,7 +142,7 @@ describe("screens", () => {
   });
 
   it("B27 sends Done as status only and ignores an empty Doing confirm", async () => {
-    const api = { patch: vi.fn() };
+    const api = { patch: vi.fn().mockResolvedValue({ ok: true, oid: "next" }) };
     renderApp([
       task({ id: "F-Y", title: "Hotovo karta", deadline: "2026-12-01", expect_oid: "y" }),
       task({ id: "F-D", title: "Bez data" }),
@@ -143,6 +154,7 @@ describe("screens", () => {
       patch: { status: "Done" },
       expect_oid: "y",
     });
+    await waitFor(() => expect(screen.getByLabelText("Status F-D")).not.toBeDisabled());
     fireEvent.change(screen.getByLabelText("Status F-D"), { target: { value: "Doing" } });
     fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
     expect(api.patch).toHaveBeenCalledTimes(1);
@@ -150,10 +162,12 @@ describe("screens", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
     });
+    await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(2));
     expect(api.patch).toHaveBeenLastCalledWith({
       path: "02-PROJEKTY/finance/tasks/F-D.md",
       patch: { status: "Doing", deadline: "2026-11-02" },
     });
+    await waitFor(() => expect(screen.getByLabelText("Status F-D")).not.toBeDisabled());
     fireEvent.change(screen.getByLabelText("Status F-D"), { target: { value: "Waiting" } });
     expect(screen.getByRole("dialog", { name: "Doplň waitUntil" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Potvrdit" }));
@@ -344,17 +358,17 @@ describe("screens", () => {
       tasks: [task({ id: "F-T1", title: "Review", review_deadline: "2026-11-03", updated: "2026-10-01" })],
       projects: PROJECTS,
     };
-    const view = render(<App exportData={data} today="2026-10-20" />);
+    const view = render(wrap(<App exportData={data} today="2026-10-20" />));
     fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Vybrat F-T1 — Review" }));
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
     expect(screen.getByLabelText("Termín F-T1")).toHaveValue("2026-11-03");
     fireEvent.change(screen.getByLabelText("Termín F-T1"), { target: { value: "" } });
-    view.rerender(<App exportData={data} today="2026-10-20" />);
+    view.rerender(wrap(<App exportData={data} today="2026-10-20" />));
     expect(screen.getByLabelText("Termín F-T1")).toHaveValue("");
     fireEvent.change(screen.getByLabelText("Termín F-T1"), { target: { value: "2026-11-15" } });
     fireEvent.change(screen.getByLabelText("Termín pro výběr"), { target: { value: "2026-11-12" } });
-    view.rerender(<App exportData={data} today="2026-10-20" />);
+    view.rerender(wrap(<App exportData={data} today="2026-10-20" />));
     expect(screen.getByLabelText("Termín F-T1")).toHaveValue("2026-11-15");
     fireEvent.click(screen.getByRole("button", { name: "Zavřít náhled" }));
     fireEvent.click(screen.getByRole("button", { name: "Náhled" }));
