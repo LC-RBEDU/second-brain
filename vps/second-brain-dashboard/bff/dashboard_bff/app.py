@@ -290,10 +290,21 @@ def _brain_body(response: httpx.Response) -> dict[str, Any]:
     return body if isinstance(body, dict) else {}
 
 
-def _open_ids(brain: Any) -> set[str]:
-    response = brain.call("GET", "/v1/tasks/export", params={"include_closed_days": 0})
-    body = _brain_body(response)
-    return {str(task.get("id")) for task in body.get("tasks") or [] if task.get("id")}
+_TERMINAL_STATUS = frozenset({"Done", "Cancelled"})
+
+
+def _is_terminal_item(item: dict[str, Any]) -> bool:
+    """A11‴ / A46′: keep (no status) is not terminal; Done/Cancelled are."""
+    patch = item.get("patch") or {}
+    if not isinstance(patch, dict):
+        return False
+    return str(patch.get("status") or "") in _TERMINAL_STATUS
+
+
+def _saved_from_request(written: list[str], items: list[dict[str, Any]]) -> list[str]:
+    """saved = written minus ids whose request patch closes the task (0× export)."""
+    by_id = {str(i.get("id")): i for i in items if i.get("id") is not None}
+    return [tid for tid in written if not _is_terminal_item(by_id.get(tid) or {})]
 
 
 def _lines(detail: dict[str, Any], titles: dict[str, str]) -> list[str]:
@@ -338,11 +349,14 @@ def _run_chunks(brain: Any, chunks: list[list[dict[str, Any]]], items: list[dict
         if response.status_code >= 400:
             body = _brain_body(response)
             detail = body.get("detail") if isinstance(body.get("detail"), dict) else {}
-            open_ids = _open_ids(brain)
-            failed = [str(item["id"]) for item in chunk if str(item["id"]) in open_ids]
-            pending_items = [item for later in chunks[index + 1 :] for item in later]
-            pending = [str(item["id"]) for item in pending_items if str(item["id"]) in open_ids]
-            saved = [task_id for task_id in written if task_id in open_ids]
+            # A11‴ fail path: 0× export — failed = whole failed chunk; pending = rest.
+            failed = [str(item["id"]) for item in chunk]
+            pending = [
+                str(item["id"])
+                for later in chunks[index + 1 :]
+                for item in later
+            ]
+            saved = _saved_from_request(written, items)
             expect_oid = {
                 str(failure["id"]): failure["oid"]
                 for failure in (detail.get("failures") or [])
@@ -366,10 +380,9 @@ def _run_chunks(brain: Any, chunks: list[list[dict[str, Any]]], items: list[dict
                 "stopped": response.status_code,
             }
         written.extend(str(item["id"]) for item in chunk)
-    open_ids = _open_ids(brain)
     return {
         "written": {"count": len(written), "ids": written},
-        "saved": [task_id for task_id in written if task_id in open_ids],
+        "saved": _saved_from_request(written, items),
         "failed": [],
         "pending": [],
         "expect_oid": {},

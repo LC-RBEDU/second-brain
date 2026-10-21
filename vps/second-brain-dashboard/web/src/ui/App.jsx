@@ -36,6 +36,14 @@ const ERROR_TEXT = {
   brain_error: "Brain API vrátilo chybu.",
   brain_timeout: "Uložení trvalo moc dlouho (Brain). Zkus to prosím znovu.",
   brain_unreachable: "Brain není dostupný. Zkus to prosím znovu.",
+  vault_push_keep_tip:
+    "Push na remote selhal; lokální tip zůstává (Keep tip). Po opravě sítě to dožene worker — nebo SSH dle runbooku.",
+  vault_push_enqueue_failed:
+    "Zápis OK, ale fronta push selhala. Tip je Keep — zkontroluj push queue přes SSH.",
+  vault_push_pending_failed:
+    "Async push selhal po 3 pokusech; tip je ahead. Ukliď tip přes SSH dle runbooku.",
+  vault_tip_ahead:
+    "Vault tip není sync s remote. Mutace blokovaná — ukliď tip přes SSH dle runbooku.",
 };
 
 function errorMessage(result) {
@@ -123,9 +131,18 @@ function hiddenWrittenIds(result) {
   return new Set(result.written.ids.filter((id) => !saved.has(id)));
 }
 
-export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
+export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconcile }) {
   const tasks = exportData?.tasks || [];
   const projects = exportData?.projects || [];
+
+  /** Prefer local reconcile (F2); fall back to full export. */
+  async function afterOkSave(updates) {
+    if (onReconcile && updates?.length) {
+      onReconcile(updates);
+      return;
+    }
+    if (onRefresh) await onRefresh();
+  }
   const paused = useMemo(() => pausedSlugs(projects), [projects]);
   const [view, setView] = useState("radar");
   const [radarTile, setRadarTile] = useState("overdue");
@@ -400,7 +417,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
             return;
           }
         }
-        if (onRefresh) await onRefresh();
+        await afterOkSave([{ id: detail.id, patch, oid: result?.oid }]);
         setView(returnView);
         return;
       }
@@ -442,7 +459,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       try {
         const result = await api.patch(patchPayload(task, patch));
         const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
-        if (ok && onRefresh) await onRefresh();
+        if (ok) await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
       } catch {
         setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
       }
@@ -458,12 +475,12 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         const result = await api.patch(patchPayload(task, patch));
         if (result?.ok) {
           setDialog(null);
-          if (onRefresh) await onRefresh();
+          await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
           return;
         }
         if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
           const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
-          if (ok && onRefresh) await onRefresh();
+          if (ok) await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
           return;
         }
         setDialog({ kind: "error", text: errorMessage(result) });
@@ -482,12 +499,12 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         const result = await api.patch(patchPayload(task, patch));
         if (result?.ok) {
           setDialog(null);
-          if (onRefresh) await onRefresh();
+          await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
           return;
         }
         if (result?.error_reason === "oid_mismatch" || result?.error_reason === "deadline_order") {
           const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
-          if (ok && onRefresh) await onRefresh();
+          if (ok) await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
           return;
         }
         setDialog({ kind: "error", text: errorMessage(result) });
@@ -618,7 +635,17 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         setCleanupResult(result);
         if (result?.ok === false) return;
         setOids((current) => ({ ...current, ...(result?.expect_oid || {}) }));
-        if (onRefresh) await onRefresh();
+        {
+          const byId = new Map(source.map((row) => [row.id, row]));
+          const updates = (result?.written?.ids || []).map((id) => {
+            const row = byId.get(id);
+            const patch = row
+              ? rowPatch({ resulting: row.resulting, date: rowDate(row) })
+              : null;
+            return { id, patch: patch || {} };
+          });
+          await afterOkSave(updates);
+        }
         const stay = [...(result?.failed || []), ...(result?.pending || [])];
         setChecked(Object.fromEntries(stay.map((id) => [id, true])));
         if (!stay.length) setPreview(null);
@@ -671,7 +698,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
         const result = await api.apply({ proposal_id: proposalId });
         if (result?.ok) {
           setDialog(null);
-          if (onRefresh) await onRefresh();
+          // applyFocus may touch multiple tasks — full export fallback if shape unknown
+          if (result?.task_id || result?.id) {
+            await afterOkSave([
+              {
+                id: String(result.task_id || result.id),
+                patch: { focus: result.focus || result.focus_week || isoWeek(today) },
+                oid: result?.oid,
+              },
+            ]);
+          } else if (onRefresh) {
+            await onRefresh();
+          }
           return;
         }
         const reason = result?.error_reason || "";
@@ -713,7 +751,31 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
           setDialog({ kind: "error", text: errorMessage(result) });
           return;
         }
-        if (onRefresh) await onRefresh();
+        const created = result.task || result;
+        const id = String(created.id || result.id || "");
+        if (id) {
+          await afterOkSave([
+            {
+              id,
+              task: {
+                id,
+                title: created.title || newDraft.title,
+                status: created.status || newDraft.status,
+                path: created.path || "",
+                project: created.project || projectSlugValue,
+                parent: created.parent || newDraft.parent || "",
+                deadline: created.deadline || newDraft.deadline || "",
+                review_deadline: created.review_deadline || newDraft.review || "",
+                waitUntil: created.waitUntil || newDraft.waitUntil || "",
+                type: created.type || newDraft.level,
+                oid: result.oid || created.oid,
+              },
+              oid: result.oid || created.oid,
+            },
+          ]);
+        } else if (onRefresh) {
+          await onRefresh();
+        }
       } catch {
         setDialog({ kind: "error", text: "Založení úkolu selhalo (síť nebo server)." });
       }
@@ -738,7 +800,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
       try {
         const result = await api.patch(patchPayload(task, patch));
         const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
-        if (ok && onRefresh) await onRefresh();
+        if (ok) await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
       } catch {
         setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
       }
@@ -1946,7 +2008,15 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                         null,
                         null,
                       );
-                      if (ok && onRefresh) await onRefresh();
+                      if (ok) {
+                        await afterOkSave([
+                          {
+                            id: current.id || current.task_id,
+                            patch: current.patch,
+                            oid: result?.oid,
+                          },
+                        ]);
+                      }
                     } catch {
                       setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
                     }

@@ -26,10 +26,151 @@ def test_a58_error_reason_set():
         "vault_flock_busy",
         "vault_push_reset_ok",
         "vault_push_reset_failed",
+        "vault_push_keep_tip",
+        "vault_push_enqueue_failed",
+        "vault_push_pending_failed",
         "vault_tip_ahead",
         "vault_push_disabled",
         "vault_paused",
     } <= ERROR_REASONS
+
+
+def test_t29_defer_unset_sync_push_on_end():
+    """T29 / B32: BRAIN_DEFER_PUSH unset ≡ 0 → mutate sync (push_on_end=True)."""
+    vault = MagicMock()
+    vault.skipped = False
+    vault.push_enabled = True
+    vault.is_tip_ahead.return_value = False
+    captured: dict = {}
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            return False
+
+    def _open(**kwargs):
+        captured.update(kwargs)
+        return _CM()
+
+    with patch("app.vault_deps.open_vault", side_effect=_open):
+        with brain_vault(mode="mutate", env={"GIT_VAULT_PUSH": "1"}):
+            pass
+    assert captured.get("push_on_end") is True
+    assert captured.get("on_push_fail") == "keep_tip"
+
+
+def test_defer_on_sets_push_on_end_false():
+    """A20′: BRAIN_DEFER_PUSH=1 → push_on_end=False (enqueue path)."""
+    vault = MagicMock()
+    vault.skipped = False
+    vault.push_enabled = True
+    vault.is_tip_ahead.return_value = False
+    captured: dict = {}
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            return False
+
+    def _open(**kwargs):
+        captured.update(kwargs)
+        return _CM()
+
+    with patch("app.vault_deps.open_vault", side_effect=_open):
+        with brain_vault(
+            mode="mutate",
+            env={"GIT_VAULT_PUSH": "1", "BRAIN_DEFER_PUSH": "1"},
+        ):
+            pass
+    assert captured.get("push_on_end") is False
+
+
+def test_t28_git_enqueue_error_maps_503():
+    """T28: GitEnqueueError on session end → vault_push_enqueue_failed 503."""
+    from git_io import GitEnqueueError
+
+    vault = MagicMock()
+    vault.skipped = False
+    vault.push_enabled = True
+    vault.is_tip_ahead.return_value = False
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            raise GitEnqueueError(
+                "disk full", error_reason="vault_push_enqueue_failed"
+            )
+
+    with patch("app.vault_deps.open_vault", return_value=_CM()):
+        with pytest.raises(BrainVaultError) as ei:
+            with brain_vault(
+                mode="mutate",
+                env={"GIT_VAULT_PUSH": "1", "BRAIN_DEFER_PUSH": "1"},
+            ):
+                pass
+    assert ei.value.error_reason == "vault_push_enqueue_failed"
+    assert ei.value.status_code == 503
+
+
+def test_defer_tip_ahead_allow_healthy_cover(tmp_path: Path):
+    """Allow chain: defer=1 + tip ahead + healthy pending → mutate OK."""
+    vault = MagicMock()
+    vault.skipped = False
+    vault.push_enabled = True
+    vault.is_tip_ahead.return_value = True
+    vault.root = tmp_path
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            return False
+
+    with patch("app.vault_deps.open_vault", return_value=_CM()):
+        with patch("push_queue.has_exhausted_failure", return_value=False):
+            with patch("push_queue.has_healthy_cover", return_value=True):
+                with brain_vault(
+                    mode="mutate",
+                    env={
+                        "GIT_VAULT_PUSH": "1",
+                        "BRAIN_DEFER_PUSH": "1",
+                        "GIT_VAULT_ROOT": str(tmp_path),
+                    },
+                ) as v:
+                    assert v is vault
+
+
+def test_defer_tip_ahead_exhausted_fails():
+    """Hard gate: defer=1 + exhausted fail → vault_push_pending_failed."""
+    vault = MagicMock()
+    vault.skipped = False
+    vault.push_enabled = True
+    vault.is_tip_ahead.return_value = True
+    vault.root = Path("/tmp/vault-fake")
+
+    class _CM:
+        def __enter__(self):
+            return vault
+
+        def __exit__(self, *a):
+            return False
+
+    with patch("app.vault_deps.open_vault", return_value=_CM()):
+        with patch("push_queue.has_exhausted_failure", return_value=True):
+            with pytest.raises(BrainVaultError) as ei:
+                with brain_vault(
+                    mode="mutate",
+                    env={"GIT_VAULT_PUSH": "1", "BRAIN_DEFER_PUSH": "1"},
+                ):
+                    pass
+    assert ei.value.error_reason == "vault_push_pending_failed"
 
 
 def test_brain_vault_rejects_tip_ahead_on_mutate():

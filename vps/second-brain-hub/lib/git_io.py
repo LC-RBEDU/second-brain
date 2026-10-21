@@ -18,7 +18,7 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from drive_io import (
     FOLDER_MIME,
@@ -51,10 +51,23 @@ class VaultSessionSkipped(DriveVaultError):
 
 
 class GitPushError(DriveVaultError):
-    """ff-only push failed after reset to @{upstream} (Brain strict_push)."""
+    """ff-only push failed (optionally after reset to @{upstream})."""
 
     def __init__(self, message: str = "", *, error_reason: str = "vault_push_reset_ok") -> None:
         super().__init__(message or "git push ff-only failed")
+        self.error_reason = error_reason
+
+
+class GitEnqueueError(DriveVaultError):
+    """Durable push-queue enqueue failed after local commit (Keep tip)."""
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        error_reason: str = "vault_push_enqueue_failed",
+    ) -> None:
+        super().__init__(message or "push queue enqueue failed")
         self.error_reason = error_reason
 
 
@@ -137,6 +150,8 @@ class GitVault:
         fetch_on_begin: bool = True,
         check_dirty_on_begin: bool = True,
         commit_on_end: bool = True,
+        push_on_end: bool | None = None,
+        on_push_fail: Literal["reset", "keep_tip"] = "keep_tip",
     ) -> None:
         env_map = env if env is not None else os.environ
         self._env = env_map
@@ -172,6 +187,11 @@ class GitVault:
         self.fetch_on_begin = fetch_on_begin
         self.check_dirty_on_begin = check_dirty_on_begin
         self.commit_on_end = commit_on_end
+        # A25: push_on_end ≠ push_enabled. None → sync push when push_enabled.
+        self.push_on_end = True if push_on_end is None else bool(push_on_end)
+        self.on_push_fail: Literal["reset", "keep_tip"] = (
+            on_push_fail if on_push_fail in ("reset", "keep_tip") else "keep_tip"
+        )
 
         self._session_active = False
         self.skipped = False
@@ -179,6 +199,7 @@ class GitVault:
         self._lock_fh = None
         self._git_cmds: list[list[str]] = []  # test spy
         self._object_format_name: str | None = None
+        self.last_push_job_id: str | None = None
 
         if require_git and not (self.root / ".git").is_dir():
             raise RuntimeError(
@@ -233,8 +254,13 @@ class GitVault:
             if self.skipped or self.dry_run or exc_type is not None or not self.commit_on_end:
                 return
             committed = self.commit_if_dirty()
-            if committed and self.push_enabled:
+            if not (committed and self.push_enabled):
+                return
+            if self.push_on_end:
                 self._push_ff_only()
+            else:
+                # A26: enqueue while flock still held (before unlock in finally).
+                self._enqueue_push_job(source="end_session")
         finally:
             if (
                 self.discard_dirty_on_error
@@ -724,6 +750,27 @@ class GitVault:
         self._git(["commit", "-m", msg], check=True)
         return True
 
+    def _enqueue_push_job(self, *, source: str = "brain", attempts: int = 0) -> str:
+        """Durable enqueue under flock. Raises GitEnqueueError on I/O failure."""
+        from push_queue import enqueue
+
+        try:
+            job_id = enqueue(self.root, attempts=attempts, source=source)
+        except OSError as exc:
+            raise GitEnqueueError(
+                f"push queue enqueue failed: {exc}",
+                error_reason="vault_push_enqueue_failed",
+            ) from exc
+        self.last_push_job_id = job_id
+        log.info("git_io: enqueued push job %s (source=%s)", job_id, source)
+        return job_id
+
+    def push_tip_ff_only(self) -> None:
+        """Push current tip ff-only (worker path). No commit gate (A41 / R23)."""
+        if self.dry_run or not self.push_enabled:
+            return
+        self._push_ff_only()
+
     def _push_ff_only(self) -> None:
         if self.dry_run or not self.push_enabled:
             return
@@ -735,11 +782,23 @@ class GitVault:
         )
         if proc.returncode == 0:
             return
+        if self.on_push_fail == "keep_tip":
+            log.error(
+                "git_io: push ff-only rejected (rc=%s); Keep tip "
+                "(no reset --hard @{upstream})",
+                proc.returncode,
+            )
+            if self.strict_push:
+                raise GitPushError(
+                    "git push ff-only failed; tip kept ahead of @{upstream}",
+                    error_reason="vault_push_keep_tip",
+                )
+            return
         log.error(
             "git_io: push ff-only rejected (rc=%s); resetting hard to @{upstream}",
             proc.returncode,
         )
-        # B6: reset --hard @{upstream} ONLY after failed ff-only push
+        # B6: reset --hard @{upstream} ONLY after failed ff-only push (reset mode)
         reset = self._git(["reset", "--hard", "@{upstream}"], check=False)
         if not self.strict_push:
             return

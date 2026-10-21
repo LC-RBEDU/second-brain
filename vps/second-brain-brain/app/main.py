@@ -96,12 +96,30 @@ _mcp_asgi = McpAuthMiddleware(_mcp_http)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    import asyncio
+
     if not _push_ok() and not _allow_no_push():
         raise RuntimeError(
             "Brain requires GIT_VAULT_PUSH=1 (set BRAIN_ALLOW_NO_PUSH=1 only for tests)"
         )
+    stop = asyncio.Event()
+    _app.state.push_stop = stop
+    worker_task: asyncio.Task | None = None
     async with _mcp.session_manager.run():
-        yield
+        try:
+            from app.push_worker import push_worker_loop
+
+            worker_task = asyncio.create_task(
+                push_worker_loop(stop), name="brain-push-worker"
+            )
+            yield
+        finally:
+            stop.set()
+            if worker_task is not None:
+                try:
+                    await asyncio.wait_for(worker_task, timeout=5.0)
+                except (asyncio.TimeoutError, asyncio.CancelledError):
+                    worker_task.cancel()
 
 
 class _HttpsRedirectFixMiddleware(BaseHTTPMiddleware):

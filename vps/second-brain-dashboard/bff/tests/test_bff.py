@@ -303,6 +303,38 @@ def test_b28_focus_errors_pass_through(status: int, reason: str):
     assert response.json()["force_save"] is False
 
 
+def test_cleanup_saved_keep_in_saved_done_out_no_export():
+    """A11‴ / B7: keep (no status) ∈ saved; Done ∉ saved; 0× export."""
+    api, brain = client()
+    response = api.post(
+        "/api/cleanup",
+        cookies=auth(),
+        json={
+            "items": [
+                {
+                    "id": "K1",
+                    "path": Y_PATH,
+                    "title": "Keep",
+                    "patch": {"review_deadline": "2026-11-01"},
+                    "expect_oid": "a",
+                },
+                {
+                    "id": "D1",
+                    "path": "02-PROJEKTY/finance/tasks/D.md",
+                    "title": "Done",
+                    "patch": {"status": "Done"},
+                    "expect_oid": "b",
+                },
+            ]
+        },
+    )
+    body = response.json()
+    assert body["written"]["ids"] == ["K1", "D1"]
+    assert body["saved"] == ["K1"]
+    assert "D1" not in body["saved"]
+    assert all(call["path"] != "/v1/tasks/export" for call in brain.calls)
+
+
 def test_healthz_is_open():
     api, _brain = client()
     assert api.get("/healthz").json() == {"status": "ok"}

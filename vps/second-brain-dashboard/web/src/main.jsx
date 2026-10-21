@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./ui/App.jsx";
 import { BusyOverlay } from "./ui/BusyOverlay.jsx";
 import { BusyProvider, useBusy } from "./ui/BusyContext.jsx";
+import { reconcileExport } from "./reconcile.js";
 import "./index.css";
 
 function pragueToday() {
@@ -94,6 +95,11 @@ export function Boot() {
     return withBusy("Načítám…", "Stahuji export otevřených úkolů", run, { reentrant: true });
   }, [withBusy]);
 
+  /** F2: merge local PATCH results — no full export (R3 / R5). */
+  const onReconcile = useCallback((updates) => {
+    setData((prev) => reconcileExport(prev, updates));
+  }, []);
+
   useEffect(() => {
     load();
     return () => {
@@ -111,7 +117,13 @@ export function Boot() {
   }
   return (
     <>
-      <App exportData={data} api={api} today={pragueToday()} onRefresh={load} />
+      <App
+        exportData={data}
+        api={api}
+        today={pragueToday()}
+        onRefresh={load}
+        onReconcile={onReconcile}
+      />
       <BusyOverlay />
     </>
   );

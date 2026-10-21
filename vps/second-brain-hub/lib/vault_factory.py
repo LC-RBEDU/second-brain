@@ -64,13 +64,15 @@ def open_vault(
     fetch_on_begin: bool = True,
     check_dirty_on_begin: bool = True,
     commit_on_end: bool = True,
+    push_on_end: bool | None = None,
+    on_push_fail: str = "keep_tip",
 ):
     """Return GitVault or DriveVault according to VAULT_BACKEND (default git).
 
     Prefer: ``with open_vault() as vault:``.
     When ``VAULT_WRITERS_PAUSED=1``, mutate methods raise ``VaultPausedError``.
     Session flags apply only to GitVault (Brain). Defaults keep hub cron on
-    fetch, dirty check, and commit.
+    fetch, dirty check, and commit. Production push fail = Keep tip (R17/R20).
     """
     env_map = env if env is not None else os.environ
     backend = (env_map.get("VAULT_BACKEND") or "git").strip().lower() or "git"
@@ -85,6 +87,8 @@ def open_vault(
             fetch_on_begin=fetch_on_begin,
             check_dirty_on_begin=check_dirty_on_begin,
             commit_on_end=commit_on_end,
+            push_on_end=push_on_end,
+            on_push_fail=on_push_fail,  # type: ignore[arg-type]
         )
     elif backend == "drive":
         from drive_io import DriveVault, credentials_from_env

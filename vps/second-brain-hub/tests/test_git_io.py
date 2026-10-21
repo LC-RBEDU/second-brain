@@ -154,8 +154,27 @@ def test_dirty_only_push_mock(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
     assert pushes == [True]
 
 
+def test_push_ff_reject_keep_tip_no_reset(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
+    vault = GitVault(git_repo, dry_run=False, push=True, on_push_fail="keep_tip")
+    real_git = GitVault._git
+
+    def flaky_git(self, args, **kwargs):  # noqa: ANN001
+        if args[:3] == ["-c", "push.ff=only", "push"] or args[:2] == [
+            "push",
+            "--ff-only",
+        ]:
+            return subprocess.CompletedProcess(args, 1, "", "rejected")
+        return real_git(self, args, **kwargs)
+
+    monkeypatch.setattr(GitVault, "_git", flaky_git)
+    with vault:
+        vault.write_text("00-System/keep.md", "z\n")
+    cmds = [" ".join(c) for c in vault._git_cmds]
+    assert not any("reset --hard @{upstream}" in c for c in cmds)
+
+
 def test_push_ff_reject_resets_upstream(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
-    vault = GitVault(git_repo, dry_run=False, push=True)
+    vault = GitVault(git_repo, dry_run=False, push=True, on_push_fail="reset")
     real_git = GitVault._git
 
     def flaky_git(self, args, **kwargs):  # noqa: ANN001
@@ -176,7 +195,9 @@ def test_push_ff_reject_resets_upstream(git_repo: Path, monkeypatch: pytest.Monk
 def test_strict_push_raises_after_reset_ok(git_repo: Path, monkeypatch: pytest.MonkeyPatch):
     from git_io import GitPushError
 
-    vault = GitVault(git_repo, dry_run=False, push=True, strict_push=True)
+    vault = GitVault(
+        git_repo, dry_run=False, push=True, strict_push=True, on_push_fail="reset"
+    )
     real_git = GitVault._git
 
     def flaky_git(self, args, **kwargs):  # noqa: ANN001

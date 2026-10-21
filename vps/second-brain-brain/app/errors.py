@@ -11,6 +11,9 @@ ERROR_REASONS: frozenset[str] = frozenset(
         "vault_flock_busy",
         "vault_push_reset_ok",
         "vault_push_reset_failed",
+        "vault_push_keep_tip",
+        "vault_push_enqueue_failed",
+        "vault_push_pending_failed",
         "vault_tip_ahead",
         "vault_push_disabled",
         "vault_paused",
@@ -32,6 +35,18 @@ _MESSAGES: dict[str, str] = {
     "vault_push_reset_failed": (
         "Push ff-only selhal a reset na @{upstream} taky. Tip může být ahead — "
         "ukliď přes SSH dle runbooku."
+    ),
+    "vault_push_keep_tip": (
+        "Push ff-only selhal; tip zůstal ahead (Keep tip). "
+        "Worker zkusí znovu, nebo ukliď přes SSH dle runbooku."
+    ),
+    "vault_push_enqueue_failed": (
+        "Local commit OK, ale enqueue do push fronty selhal. Tip je Keep — "
+        "zkontroluj .git/second-brain-push-queue.json přes SSH."
+    ),
+    "vault_push_pending_failed": (
+        "Async push vyčerpal N=3 pokusů; tip je ahead. "
+        "Mutate/rebuild blokováno — ukliď tip přes SSH dle runbooku."
     ),
     "vault_tip_ahead": (
         "Vault tip není sync s remote (HEAD ≠ @{upstream}). "
