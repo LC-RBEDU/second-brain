@@ -1,5 +1,5 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: QA
+Stav: TESTER
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
@@ -7,9 +7,9 @@ Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
 Goal: aktivní
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
-Poznámka: B11 fix Review SCHVÁLENO; MINOR NEW-1/2 v 3a5b962c; deploy hotov; QA → re-T6 (reuse pack).
+Poznámka: QA PASS 3a5b962c (P11 ~8.9 s poznámka); re-T6 reuse pack po B11 fix.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 1/5 · kola TESTER 1/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: 3a5b962c · Review SCHVÁLENO na: 907709b1 (+ MINOR apply 3a5b962c) · QA PASS na: 2823ba39 (PASS s výhradami P11) · TESTER PASS na: —
+Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: 3a5b962c · Review SCHVÁLENO na: 907709b1 (+ MINOR apply 3a5b962c) · QA PASS na: 3a5b962c (P11 latence poznámka) · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Vizuální gate člověka: ano (2026-10-21; busy OK; pozn.: save ~3–4 s = PATCH+export C12)
 testerGate: ano (UI produkt — zákaz TESTER skip)
@@ -102,7 +102,9 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 29 | 2026-10-21 | TESTER | rbu-tester | FAIL | B11 NEW-1/NEW-2 | Focus Potvrdit + Detail Uložit 2× API |
 | 30 | 2026-10-21 | IMPLEMENT | hlavní | B11 mutex | — | globalBusyHeld + no StrictMode + consume proposalId; commit 907709b1 push |
 | 31 | 2026-10-21 | REVIEW | 9a6b9ec7 | SCHVÁLENO | 0 BLOCKER 0 MAJOR 2 MINOR | NEW-1 komentář; NEW-2 proposalId pre-clear |
-| 32 | 2026-10-21 | IMPLEMENT | hlavní | MINOR NEW-1/2 | — | clear proposalId až v withBusy fn; komentář mutex |
+| 32 | 2026-10-21 | IMPLEMENT | hlavní | MINOR NEW-1/2 | — | clear proposalId až v withBusy fn; komentář mutex; commit 3a5b962c |
+| 33 | 2026-10-21 | QA | b03e2f0f | PASS | P11 ~8.9 s poznámka | B11≤1 mutace; B20 1× export; Escape OK |
+| 34 | 2026-10-21 | TESTER | rbu-tester | běží | — | T6 reuse pack na 3a5b962c (po B11 fix) |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
