@@ -1,5 +1,5 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: QA
+Stav: TESTER
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
@@ -7,9 +7,9 @@ Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
 Goal: aktivní
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
-Poznámka: F11 strip Review SCHVÁLENO; MINOR dead useEffect pryč; push → QA → T22-reuse → DONE.
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 2/5 · kola TESTER 1/5 · ENV opravy 0/2
-Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: a13cd696 · Review SCHVÁLENO na: 6d93a2a4 (+ MINOR chrome a13cd696) · QA PASS na: 3a5b962c (P11 latence poznámka) · TESTER PASS na: 3a5b962c
+Poznámka: Strip QA PASS a13cd696 (B16); T22-reuse → DONE na strip SHA.
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 2/5 · kola QA 2/5 · kola TESTER 2/5 · ENV opravy 0/2
+Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: a13cd696 · Review SCHVÁLENO na: 6d93a2a4 (+ MINOR chrome a13cd696) · QA PASS na: a13cd696 (B16) · TESTER PASS na: 3a5b962c (pre-strip)
 Plán schválen uživatelem: nevyžadováno
 Vizuální gate člověka: ano (2026-10-21; busy OK; pozn.: save ~3–4 s = PATCH+export C12)
 testerGate: ano (UI produkt — zákaz TESTER skip)
@@ -108,7 +108,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 35 | 2026-10-21 | IMPLEMENT | hlavní | F11 strip | — | commit 6d93a2a4; App 9 + chrome 1; rg 7873=0; vitest 50/50 |
 | 36 | 2026-10-21 | REVIEW | e0369b7f | SCHVÁLENO | 0 BLOCKER 0 MAJOR 1 MINOR | NEW-1 mrtvý useEffect chrome |
 | 37 | 2026-10-21 | IMPLEMENT | hlavní | MINOR chrome | — | smazán prázdný useEffect |
-| 38 | 2026-10-21 | QA | rbu-qa-verifier | běží | — | strip SHA + B16; pak T22-reuse |
+| 38 | 2026-10-21 | QA | 9f21dca6 | PASS | — | a13cd696 B16/B20/Boot; vitest 50 + pytest 22 |
+| 39 | 2026-10-21 | TESTER | rbu-tester | běží | — | T22-reuse plný cross-cut na a13cd696 |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
