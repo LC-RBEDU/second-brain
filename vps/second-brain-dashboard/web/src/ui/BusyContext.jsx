@@ -8,15 +8,17 @@ export const MIN_VISIBLE_MS = 200;
 export function BusyProvider({ children, onError }) {
   const [busy, setBusy] = useState(null);
   const [locked, setLocked] = useState(false);
-  const onErrorRef = useRef(onError);
+  const propErrorRef = useRef(onError);
+  const handlerRef = useRef(null);
   const depthRef = useRef(0);
   const generationRef = useRef(0);
   const showTimerRef = useRef(null);
   const shownAtRef = useRef(0);
   const titleRef = useRef({ title: "", subtitle: "" });
+  const nestingAllowedRef = useRef(false);
 
   useEffect(() => {
-    onErrorRef.current = onError;
+    propErrorRef.current = onError;
   }, [onError]);
 
   useEffect(() => {
@@ -24,15 +26,18 @@ export function BusyProvider({ children, onError }) {
       if (showTimerRef.current) clearTimeout(showTimerRef.current);
       generationRef.current += 1;
       depthRef.current = 0;
+      shownAtRef.current = 0;
+      nestingAllowedRef.current = false;
     };
   }, []);
 
   const reportError = useCallback((message) => {
-    onErrorRef.current?.(message || "Uložení selhalo (síť nebo server).");
+    const fn = handlerRef.current || propErrorRef.current;
+    fn?.(message || "Uložení selhalo (síť nebo server).");
   }, []);
 
   const setErrorHandler = useCallback((handler) => {
-    onErrorRef.current = handler;
+    handlerRef.current = handler;
   }, []);
 
   const hideBusy = useCallback(async (gen) => {
@@ -55,13 +60,13 @@ export function BusyProvider({ children, onError }) {
   const withBusy = useCallback(
     async (title, subtitle, fn, options = {}) => {
       if (depthRef.current > 0) {
-        // Nested export refresh (C12): same slot. Other concurrent user calls drop.
-        if (options.reentrant) return fn();
+        // Nested export refresh (C12): only while outer fn is on the call stack.
+        if (options.reentrant && nestingAllowedRef.current) return fn();
         return undefined;
       }
+      const gen = ++generationRef.current;
       depthRef.current = 1;
       setLocked(true);
-      const gen = generationRef.current;
       titleRef.current = { title: title || "Ukládám…", subtitle: subtitle || "Chvilku to trvá…" };
       showTimerRef.current = setTimeout(() => {
         if (generationRef.current !== gen || depthRef.current === 0) return;
@@ -69,8 +74,14 @@ export function BusyProvider({ children, onError }) {
         setBusy({ ...titleRef.current });
       }, SHOW_DELAY_MS);
       try {
-        return await fn();
+        nestingAllowedRef.current = true;
+        const result = await fn();
+        nestingAllowedRef.current = false;
+        if (generationRef.current !== gen) return undefined;
+        return result;
       } catch (err) {
+        nestingAllowedRef.current = false;
+        if (generationRef.current !== gen) return undefined;
         const msg =
           err?.message === "load_failed"
             ? "Načtení selhalo (síť nebo server)."
@@ -78,8 +89,11 @@ export function BusyProvider({ children, onError }) {
         reportError(msg);
         return undefined;
       } finally {
-        depthRef.current = 0;
+        nestingAllowedRef.current = false;
         await hideBusy(gen);
+        if (generationRef.current === gen) {
+          depthRef.current = 0;
+        }
       }
     },
     [hideBusy, reportError],

@@ -176,6 +176,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
 
   useEffect(() => {
     setErrorHandler((message) => setDialog({ kind: "error", text: message || "Uložení selhalo." }));
+    return () => setErrorHandler(null);
   }, [setErrorHandler]);
 
   const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
@@ -249,9 +250,10 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
   }
 
   async function openDetail(task) {
-    setReturnView(view);
-    setDetailId(task.id);
+    if (isBusy) return;
     await withBusy("Načítám…", "Otevírám detail úkolu", async () => {
+      setReturnView(view);
+      setDetailId(task.id);
       let detailText = "";
       let detailLine = "";
       try {
@@ -1423,7 +1425,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                           {columnTasks.map((task) => (
                             <div
                               key={task.id}
-                              draggable
+                              draggable={!isBusy}
                               data-kanban-card={task.id}
                               className="cursor-grab rounded-md border border-[#e2e2e2] bg-white p-2.5 active:cursor-grabbing"
                               onDragStart={(event) => {
@@ -1655,6 +1657,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh }) {
                 type="button"
                 className={btnGhost}
                 aria-label={`Focus ${detail.id}`}
+                disabled={isBusy}
                 onClick={() => proposeFocus(detail)}
               >
                 Focus

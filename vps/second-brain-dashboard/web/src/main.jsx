@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useState } from "react";
+import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./ui/App.jsx";
 import { BusyOverlay } from "./ui/BusyOverlay.jsx";
@@ -62,7 +62,7 @@ const api = {
   },
 };
 
-function Boot() {
+export function Boot() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const { withBusy, setErrorHandler } = useBusy();
@@ -73,7 +73,10 @@ function Boot() {
     return undefined;
   }, [data, setErrorHandler]);
 
+  const loadGenRef = useRef(0);
+
   const load = useCallback(async () => {
+    const my = ++loadGenRef.current;
     const run = async () => {
       const response = await fetch("/api/export");
       if (response.status === 401) {
@@ -83,7 +86,9 @@ function Boot() {
       if (!response.ok) {
         throw new Error("load_failed");
       }
-      setData(await response.json());
+      const json = await response.json();
+      if (my !== loadGenRef.current) return;
+      setData(json);
       setError("");
     };
     return withBusy("Načítám…", "Stahuji export otevřených úkolů", run, { reentrant: true });
@@ -91,6 +96,9 @@ function Boot() {
 
   useEffect(() => {
     load();
+    return () => {
+      loadGenRef.current += 1;
+    };
   }, [load]);
 
   if (!data) {

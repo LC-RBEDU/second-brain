@@ -91,7 +91,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 17 | 2026-10-21 | CRITIC | 409f7481 | SCHVÁLENO | 0 BLOCKER 0 MAJOR 1 MINOR | → IMPLEMENT |
 | 18 | 2026-10-21 | IMPLEMENT | hlavní | blokováno Plan mode | — | → AWAITING_USER (Agent mode) |
 | 19 | 2026-10-21 | IMPLEMENT | hlavní | F1–F5 hotovo | — | BusyProvider/Overlay + mutace + vitest 48/48; → F6 commit → REVIEW |
-| 20 | 2026-10-21 | REVIEW | rbu-diff-reviewer | běží | — | diff vs plán k=2 r=2 na 2e6b320b |
+| 20 | 2026-10-21 | REVIEW | c6d226f5 | K OPRAVĚ | 1 BLOCKER NEW-1 + 4 MAJOR | → IMPLEMENT oprava |
+| 21 | 2026-10-21 | IMPLEMENT | hlavní | NEW-1…NEW-5 + MINOR | — | openDetail/busy race/bridge/T3/T15b; → REVIEW kolo 2 |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 

@@ -290,6 +290,22 @@ describe("screens", () => {
     });
   });
 
+  it("T3 shows error dialog when patch returns ok false without error_reason", async () => {
+    const api = {
+      patch: vi.fn().mockResolvedValue({ ok: false }),
+    };
+    renderApp([task({ id: "F-T1", title: "Úkol", expect_oid: "o1" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Úkol" }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Uložit" })).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    expect(await screen.findByRole("dialog", { name: "Chyba uložení" })).toHaveTextContent(/Uložení selhalo/);
+  });
+
   it("shows an error dialog when Done is blocked by open children", async () => {
     const api = {
       patch: vi.fn().mockResolvedValue({

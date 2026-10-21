@@ -195,8 +195,10 @@ describe("busy overlay", () => {
     expect(calls).toEqual(["a"]);
   });
 
-  it("T12 createTask Doing without deadline shows error dialog", async () => {
-    const api = { create: vi.fn() };
+  it("T12 createTask guards and create failures show error dialog", async () => {
+    const api = {
+      create: vi.fn().mockResolvedValue({ ok: false }),
+    };
     render(
       wrap(
         <App
@@ -212,6 +214,18 @@ describe("busy overlay", () => {
     fireEvent.click(screen.getByRole("button", { name: "Založit" }));
     expect(api.create).not.toHaveBeenCalled();
     expect(await screen.findByText(/Doing vyžaduje deadline/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zavřít" }));
+    fireEvent.change(screen.getByLabelText("Stav nového tasku"), { target: { value: "Waiting" } });
+    fireEvent.click(screen.getByRole("button", { name: "Založit" }));
+    expect(api.create).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Waiting vyžaduje datum waitUntil/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zavřít" }));
+    fireEvent.change(screen.getByLabelText("Stav nového tasku"), { target: { value: "Next" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Založit" }));
+    });
+    expect(api.create).toHaveBeenCalled();
+    expect(await screen.findByRole("dialog", { name: "Chyba uložení" })).toBeInTheDocument();
   });
 
   it("T9c clears busy on unmount mid-operation", async () => {
