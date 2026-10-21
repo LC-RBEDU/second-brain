@@ -11,7 +11,6 @@ Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVI
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: a892094b · Review SCHVÁLENO na: bc199965 · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
 Vizuální gate člověka: pending (busy-overlay — Q2b; deploy a892094b; shell 2026-10-19 zůstává ano)
 testerGate: ano (UI produkt — zákaz TESTER skip)
 
