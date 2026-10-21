@@ -1,17 +1,17 @@
 # Pipeline: Second Brain dashboard stabilize
-Stav: AWAITING_USER (z: vizuální gate busy)
+Stav: QA
 Plán: docs/plans/2026-10-21-sb-dashboard-stabilize.md
 Schvalování plánu uživatelem: ne
 Architekt: k=1 c1884de4 · k=2 2a3eb646 r=2/3
 Šťoural: g=5 2243c9d4 · A18–A33
 Kritik: kolo 4 409f7481 (SCHVÁLENO)
-Goal: paused-awaiting-user
+Goal: aktivní
 Plán schválen kritikem: kolo 4 na otevření #1 k=2 r=2
 Poznámka: F1–F5 hotovo; commit 2e6b320b; gate vitest 48/48 + BFF 21; → REVIEW.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku): 39e76570f75ec684f72df128c3aaf19eda1cf206 · Kódový SHA: 2823ba39 · Review SCHVÁLENO na: bc199965 · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
-Vizuální gate člověka: pending (busy-overlay — Q2b; deploy a892094b; shell 2026-10-19 zůstává ano)
+Vizuální gate člověka: ano (2026-10-21; busy OK; pozn.: save ~3–4 s = PATCH+export C12)
 testerGate: ano (UI produkt — zákaz TESTER skip)
 
 ## Zadání (doslovně) a rozhodnutí
@@ -42,7 +42,7 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 ### Grill g=1 — odpovědi uživatele (2026-10-21)
 
 - **Q1 (b):** Debug ingest `7873` **nechat** v kódu přes IMPL → Review → QA → Tester. Odstranit až **po Tester PASS** (pak strip commit + Review/QA/Tester na čistém SHA, nebo minimálně strip + krátký re-gate dle plánu r=2). Důvod uživatele: při FAIL Testera by se logy jinak musely znovu doplňovat.
-- **Q2 (b):** Lidský vizuální gate na busy-overlay **aspoň jednou** — screenshot/live důkaz, že převzetí z Wiki sedí; `Vizuální gate člověka: pending` → `ano` až po souhlasu. Shell 2026-10-19 zůstává schválený.
+- **Q2 (b):** Lidský vizuální gate na busy-overlay **aspoň jednou** — screenshot/live důkaz, že převzetí z Wiki sedí; `Vizuální gate člověka: ano (2026-10-21; busy OK; pozn.: save ~3–4 s = PATCH+export C12)
 - **Q3 (b):** Busy i na **první load / refresh exportu** („Načítám…“); `editBody` uvnitř `saveDetail` `withBusy`.
 - **Q4 (a):** B3 rozšířit — `!ok` bez `error_reason` vždy dialog; `editBody` `!ok`/throw → error dialog, zůstat na Detailu.
 - **Q5–Q9 NEBLOKUJÍCÍ** → A9–A13: globální busy mutex (drop concurrent); null-patch copy; min visible 200 ms; logo Coolify rb-wiki; úklid dialog jen při rejectu bez lines.
@@ -96,7 +96,8 @@ Meta-plán: `~/.cursor/plans/dashboard_pipeline_návrat_6cc510ef.plan.md`
 | 23 | 2026-10-21 | QA | — | pending F8 | — | deploy a892094b healthz 200; čeká busy visual gate |
 | 24 | 2026-10-21 | AWAITING_USER | uživatel | F8 busy overlay | — | ne: logo 404 + Uložení selhalo |
 | 25 | 2026-10-21 | IMPLEMENT | hlavní | F8 oprava | — | Dockerfile public/; Brain timeout 60s; deploy 2823ba39 logo 200 |
-| 26 | 2026-10-21 | AWAITING_USER | uživatel | F8 znovu | — | ověř logo v busy + Uložit |
+| 26 | 2026-10-21 | AWAITING_USER | uživatel | F8 znovu | — | ano (busy OK; save ~3–4 s) |
+| 27 | 2026-10-21 | QA | rbu-qa-verifier | běží | — | po F8 ano na 2823ba39 |
 
 ### Kritik kolo 3 — odpověď uživatele (2026-10-21)
 
