@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-22 | `vps/second-brain-brain/app/mcp_app.py`, `app/tools/get_task.py`, `tests/test_get_task_mcp.py` | jasná příčina: MCP `_call` schová BrainClientError za `Error executing tool get_task`; get_task vrací CallToolResult se stejným JSON jako REST (vzor oid_mismatch) | agent (uživatel: z chyby má být vidět proč) |
 | 2026-10-21 | `vps/second-brain-dashboard/web/src/{writes.js,ui/App.jsx}`, `writes.test.js` | inline status: blokovat jen Done/Cancelled při open children + error dialog; bez Brain kontraktů | agent (uživatel: změna statusu v tabulce nic nedělá) |
 | 2026-10-21 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx`, `vps/second-brain-hub/lib/task_query.py` | CAS-only dialog: tichý retry/force + oid v card/item; bez změny Brain kontraktů zápisu | agent (uživatel: konflikt jen verze souboru) |
 | 2026-10-20 | `docs/design-system/**` (Claude ZIP export), `.cursor/rules/design-system-refresh.mdc`, `ŠABLONY/cursor-rules/design-system-refresh.mdc`, `ŠABLONY/design-system/README.md`, `ŠABLONY/skills/rbe-writing-style/SKILL.md` | čistě docs/rule/skill — přenos Claude DS balíčku do repa; bez runtime | agent (uživatel: Claude → docs/design-system + commit) |

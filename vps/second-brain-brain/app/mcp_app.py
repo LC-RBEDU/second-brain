@@ -42,6 +42,15 @@ def _err_text(exc: BaseException) -> str:
     return str(exc)
 
 
+def _error_result(exc: BrainVaultError | BrainClientError) -> CallToolResult:
+    payload = exc.as_dict()
+    return CallToolResult(
+        is_error=True,
+        content=[TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))],
+        structured_content=payload,
+    )
+
+
 def _call(fn, **kwargs: Any) -> str:
     try:
         result = fn(**kwargs)
@@ -241,7 +250,11 @@ def build_mcp() -> MCPServer:
 
     @mcp.tool(description="Read one task by file id or by an old checkbox id inside the 90-day alias window.")
     def get_task(task_id: str) -> str:
-        return _call(get_task_tool.get_task, task_id=task_id)
+        try:
+            result = get_task_tool.get_task(task_id=task_id)
+        except (BrainVaultError, BrainClientError) as exc:
+            return _error_result(exc)
+        return json.dumps(result, ensure_ascii=False, default=str)
 
     @mcp.tool(description="Children of an epic or story: id, title, status, deadline, project. project is the folder slug of the file.")
     def list_children(task_id: str) -> str:

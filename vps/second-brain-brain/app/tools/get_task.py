@@ -31,11 +31,25 @@ _STATUS = {
     "not_found": 404,
 }
 
+_WHY = {
+    "not_found": (
+        "v aktivních souborech 02-PROJEKTY/*/tasks/ tenhle id není "
+        "(archiv Done/Cancelled get_task nečte)"
+    ),
+    "alias_expired": "staré checkbox id je mimo 90denní alias okno",
+    "alias_inactive": "alias okno není aktivní",
+    "alias_ambiguous": "staré id sedí na víc než jeden úkol",
+}
+
 
 def get_task(*, task_id: str, env: dict[str, str] | None = None) -> dict[str, Any]:
     ref = (task_id or "").strip()
     if not ref:
-        raise BrainClientError(message="id required", status_code=400, error_reason="missing_id")
+        raise BrainClientError(
+            message="missing_id: id required",
+            status_code=400,
+            error_reason="missing_id",
+        )
     with brain_vault(mode="read", env=env) as vault:
         today, applied = alias_clock(vault)
         tasks = load_tasks(vault)
@@ -46,8 +60,9 @@ def get_task(*, task_id: str, env: dict[str, str] | None = None) -> dict[str, An
         task, resolved_from, error = resolve_task(tasks, ref, applied_at=applied, today=today)
     if error or task is None:
         reason = error or "not_found"
+        why = _WHY.get(reason, reason)
         raise BrainClientError(
-            message=reason,
+            message=f"{reason}: {ref}. {why}",
             status_code=_STATUS.get(reason, 404),
             error_reason=reason,
         )
