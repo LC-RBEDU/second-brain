@@ -4,6 +4,8 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-22 | `vps/second-brain-hub/deploy/setup-coolify.sh` + Coolify DB `ports_exposes` u second-brain-hub | jasná příčina: prázdný string `ports_exposes` → compose `expose: [""]` a helper 1.0.17 kontejner nespustí; cron app má mít NULL | agent (uživatel: ověř a oprav teď test pushem) |
+| 2026-10-22 | `vps/second-brain-dashboard/web/src/ui/MindMap.jsx` (+ test) | UX: spojnice vs. dlaždice (společný canvas) + drill-down kruh projekt→epic→story→task se zpětem přes střed; bez Brain kontraktů | agent (uživatel: spojnice do prázdna + navigace) |
 | 2026-10-22 | `vps/second-brain-brain/app/mcp_app.py`, `app/tools/get_task.py`, `tests/test_get_task_mcp.py` | jasná příčina: MCP `_call` schová BrainClientError za `Error executing tool get_task`; get_task vrací CallToolResult se stejným JSON jako REST (vzor oid_mismatch) | agent (uživatel: z chyby má být vidět proč) |
 | 2026-10-22 | `vps/second-brain-dashboard/web/src/{writes.js,ui/App.jsx}`, `screens.test.jsx` | copy/UX: rodič + otevřené děti s proklikem v Radar tabulce a v dialogu při Done s podúkoly | agent (uživatel: IAD-S31 nevidí děti) |
 | 2026-10-21 | `vps/second-brain-dashboard/web/src/{writes.js,ui/App.jsx}`, `writes.test.js` | inline status: blokovat jen Done/Cancelled při open children + error dialog; bez Brain kontraktů | agent (uživatel: změna statusu v tabulce nic nedělá) |

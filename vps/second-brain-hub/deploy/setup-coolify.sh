@@ -47,10 +47,11 @@ APP_ID=$($PSQL -c \
 if [[ -n "${APP_ID}" ]]; then
   echo "Application already exists id=${APP_ID}"
   APP_UUID=$($PSQL -c "SELECT uuid FROM applications WHERE id=${APP_ID};")
+  # NULL, not ''. Empty string becomes expose: [""] and Compose (helper ≥1.0.17) refuses to start.
   docker exec coolify-db psql -U coolify -d coolify -q -c \
-    "UPDATE applications SET fqdn=NULL, ports_exposes='', health_check_enabled=false, updated_at=NOW()
+    "UPDATE applications SET fqdn=NULL, ports_exposes=NULL, health_check_enabled=false, updated_at=NOW()
      WHERE id=${APP_ID};"
-  echo "Updated app ${APP_ID}: fqdn cleared, no exposed port, health check off"
+  echo "Updated app ${APP_ID}: fqdn cleared, ports_exposes NULL, health check off"
 else
   APP_UUID=$(gen_uuid)
   APP_ID=$($PSQL -c \
@@ -66,7 +67,7 @@ else
       created_at, updated_at, description, health_check_type
     ) VALUES (
       '${APP_UUID}', '${APP_NAME}', '${GIT_REPO}', '${GIT_BRANCH}', 'HEAD', 'dockerfile', 'nginx:alpine',
-      '', '${BASE_DIR}', '/', '/', 'localhost', 'GET', 200, 'http',
+      NULL, '${BASE_DIR}', '/', '/', 'localhost', 'GET', 200, 'http',
       5, 5, 10, 5,
       '0', '0', 60, '0', '0', 1024, 'exited:unknown', '{{pr_id}}.{{domain}}',
       'App\Models\StandaloneDocker', ${SERVER_DESTINATION_ID},
