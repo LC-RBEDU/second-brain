@@ -118,6 +118,7 @@ export function buildMapGroups(tasks) {
     return {
       slug,
       open: items.length,
+      items,
       epics: epics.map((epic) => ({
         epic,
         stories: childrenOf(epic.id).filter((item) => item.type === "story"),
