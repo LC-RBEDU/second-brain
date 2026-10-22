@@ -38,6 +38,14 @@ export function hasOpenDescendant(id, tasks) {
   return false;
 }
 
+/** Direct open children (Doing/Next/Backlog/Waiting) — for UI links. */
+export function openChildrenOf(id, tasks) {
+  if (!id) return [];
+  return (tasks || []).filter(
+    (task) => OPEN.has(task.status) && parentId(task.parent) === id,
+  );
+}
+
 export function kanbanPatch(task, nextStatus, tasks) {
   // Only terminal closes are blocked by open children (Brain open_child_*).
   // Non-terminal moves (Next → Doing, …) must still work on epics/stories.

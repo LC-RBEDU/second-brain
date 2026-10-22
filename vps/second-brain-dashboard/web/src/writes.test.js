@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closingPreview, kanbanPatch, resolveCloser, rowPatch } from "./writes.js";
+import { closingPreview, kanbanPatch, openChildrenOf, resolveCloser, rowPatch } from "./writes.js";
 
 const story = { id: "F-S1", type: "story", status: "Next", project: "finance", title: "Story", parent: "F-E1" };
 const same = { id: "F-T1", type: "task", status: "Next", project: "finance", title: "Stejný", parent: "F-S1" };
@@ -38,6 +38,14 @@ describe("writes", () => {
     expect(kanbanPatch(story, "Doing", tasks)).toEqual({ status: "Doing" });
     expect(kanbanPatch(story, "Backlog", tasks)).toEqual({ status: "Backlog" });
     expect(kanbanPatch(story, "Cancelled", tasks)).toBeNull();
+  });
+
+  it("openChildrenOf lists only direct open kids", () => {
+    const done = { ...same, id: "F-T9", status: "Done", title: "Hotový" };
+    expect(openChildrenOf("F-S1", [story, same, other, done]).map((t) => t.id).sort()).toEqual([
+      "F-T1",
+      "F-T2",
+    ]);
   });
 
   it("B43 lets the closer cancel replace Ponechat", () => {

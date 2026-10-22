@@ -37,6 +37,39 @@ function renderApp(tasks, api = {}, extra = {}) {
 }
 
 describe("screens", () => {
+  it("Radar TaskTable shows clickable parent and open children", async () => {
+    const api = { item: vi.fn().mockResolvedValue({ ok: true, body: "", oid: "o1" }) };
+    renderApp(
+      [
+        task({ id: "IAD-E1", type: "epic", title: "Epic", deadline: "2026-11-01" }),
+        task({
+          id: "IAD-S31",
+          type: "story",
+          title: "Onboarding do Claude Team - 1. vlna",
+          parent: "IAD-E1",
+          deadline: "2026-10-25",
+        }),
+        task({ id: "IAD-T1", title: "Podúkol A", parent: "IAD-S31", deadline: "2026-10-24" }),
+        task({ id: "IAD-T2", title: "Podúkol B", parent: "IAD-S31", status: "Done", deadline: "2026-10-20" }),
+      ],
+      api,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Radar" }));
+    fireEvent.click(screen.getByRole("button", { name: /Due soon/i }));
+    const list = screen.getByRole("region", { name: "Seznam" });
+    expect(within(list).getByText(/otevřené děti \(1\):/)).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: "IAD-T1" })).toBeInTheDocument();
+    expect(within(list).queryByRole("button", { name: "IAD-T2" })).toBeNull();
+    expect(within(list).getAllByRole("button", { name: "IAD-E1" }).length).toBeGreaterThanOrEqual(1);
+    fireEvent.change(within(list).getByLabelText("Status IAD-S31"), { target: { value: "Done" } });
+    const errDialog = screen.getByRole("dialog", { name: "Chyba uložení" });
+    expect(within(errDialog).getByText(/Otevřené podúkoly/)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(within(errDialog).getByRole("button", { name: "IAD-T1 — Podúkol A" }));
+    });
+    expect(api.item).toHaveBeenCalledWith("IAD-T1");
+  });
+
   it("B21 and B57 hide closed and archived rows and have no Done column", () => {
     renderApp([
       task({ id: "OPEN-1", title: "Otevřený", deadline: "2026-11-01" }),

@@ -3,7 +3,14 @@ import { useBusy } from "./BusyContext.jsx";
 import { classify, RULE_HELP, ruleHelp, visibleTasks } from "../classify.js";
 import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
-import { closingPreview, kanbanPatch, offerKeep, resolveCloser, rowPatch } from "../writes.js";
+import {
+  closingPreview,
+  kanbanPatch,
+  offerKeep,
+  openChildrenOf,
+  resolveCloser,
+  rowPatch,
+} from "../writes.js";
 import {
   btnGhost,
   btnNav,
@@ -442,6 +449,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         setDialog({
           kind: "error",
           text: `${ERROR_TEXT.open_child_under_closed_parent} (${task.id})`,
+          blockers: openChildrenOf(task.id, openTasks),
         });
       } else {
         setDialog({
@@ -782,11 +790,43 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     });
   }
 
-  function TaskLink({ task }) {
+  function TaskLink({ task, compact = false }) {
+    if (!task?.id) return null;
     return (
-      <button type="button" className="text-left font-bold" onClick={() => openDetail(task)}>
-        {labelOf(task)}
+      <button
+        type="button"
+        className={compact ? "text-left font-bold text-[#a11834] underline-offset-2 hover:underline" : "text-left font-bold"}
+        title={compact ? labelOf(task) : undefined}
+        onClick={() => openDetail(task)}
+      >
+        {compact ? task.id : labelOf(task)}
       </button>
+    );
+  }
+
+  function HierarchyHints({ task }) {
+    const pid = parentId(task.parent);
+    const parent = pid ? byId.get(pid) : null;
+    const kids = openChildrenOf(task.id, openTasks);
+    if (!pid && !kids.length) return null;
+    return (
+      <div className="mt-1 flex flex-col gap-0.5 text-xs text-[#5c5c5c]">
+        {pid ? (
+          <span className="flex flex-wrap items-center gap-1">
+            <span>rodič:</span>
+            {parent ? <TaskLink task={parent} compact /> : <span className="font-mono">{pid}</span>}
+            {parent?.title ? <span className="truncate text-[#888]">— {parent.title}</span> : null}
+          </span>
+        ) : null}
+        {kids.length ? (
+          <span className="flex flex-wrap items-center gap-1">
+            <span>otevřené děti ({kids.length}):</span>
+            {kids.map((child) => (
+              <TaskLink key={child.id} task={child} compact />
+            ))}
+          </span>
+        ) : null}
+      </div>
     );
   }
 
@@ -855,7 +895,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         }, new Map())]
       : [[null, rows]];
     return (
-      <div data-layout-panel className={`${panelClass} overflow-x-auto`} aria-label="Seznam">
+      <div role="region" data-layout-panel className={`${panelClass} overflow-x-auto`} aria-label="Seznam">
         <div className="flex flex-wrap items-center gap-2 border-b border-[#e2e2e2] px-4 py-3">
           {groupLabel && <span className="text-sm font-extrabold uppercase">{groupLabel}</span>}
           {groupByProject && <span className="text-sm text-[#5c5c5c]">· seskupeno podle projektu</span>}
@@ -887,30 +927,43 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                     </td>
                   </tr>
                 )}
-                {items.map((task) => (
-                  <tr key={task.id} className="border-t border-[#eeeeee]">
-                    <td className="p-3">
-                      <TaskLink task={task} />
-                    </td>
-                    <td className="p-2 text-[#5c5c5c]">{parentId(task.parent) || "—"}</td>
-                    <td className="p-2">
-                      <InlineStatus task={task} />
-                    </td>
-                    <td className="p-2">
-                      <InlineDate task={task} field="deadline" />
-                    </td>
-                    <td className="p-2">
-                      <InlineDate task={task} field="review_deadline" />
-                    </td>
-                    <td className="p-3 text-xs text-[#5c5c5c]">{task.agent || "—"}</td>
-                  </tr>
-                ))}
+                {items.map((task) => {
+                  const pid = parentId(task.parent);
+                  const parent = pid ? byId.get(pid) : null;
+                  return (
+                    <tr key={task.id} className="border-t border-[#eeeeee]">
+                      <td className="p-3">
+                        <TaskLink task={task} />
+                        <HierarchyHints task={task} />
+                      </td>
+                      <td className="p-2 text-[#5c5c5c]">
+                        {parent ? (
+                          <TaskLink task={parent} compact />
+                        ) : pid ? (
+                          <span className="font-mono">{pid}</span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="p-2">
+                        <InlineStatus task={task} />
+                      </td>
+                      <td className="p-2">
+                        <InlineDate task={task} field="deadline" />
+                      </td>
+                      <td className="p-2">
+                        <InlineDate task={task} field="review_deadline" />
+                      </td>
+                      <td className="p-3 text-xs text-[#5c5c5c]">{task.agent || "—"}</td>
+                    </tr>
+                  );
+                })}
               </Fragment>
             ))}
           </tbody>
         </table>
         <div className="border-t border-[#eeeeee] px-4 py-2.5 text-xs text-[#5c5c5c]">
-          Klik na datum nebo status = inline úprava · klik na název = detail panel
+          Klik na datum nebo status = inline úprava · klik na název / rodiče / dítě = detail
         </div>
       </div>
     );
@@ -2100,9 +2153,31 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
 
       {dialog?.kind === "error" && (
         <div role="dialog" aria-label="Chyba uložení" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div data-layout-panel className={`${panelClass} max-w-lg p-5`}>
+          <div data-layout-panel className={`${panelClass} flex max-w-lg flex-col gap-3 p-5`}>
             <p>{dialog.text}</p>
-            <button type="button" className={`${btnGhost} mt-3`} onClick={() => setDialog(null)}>
+            {Array.isArray(dialog.blockers) && dialog.blockers.length > 0 ? (
+              <div className="rounded-md border border-[#e2e2e2] bg-[#fafafa] p-3 text-sm">
+                <p className="mb-2 font-bold text-[#444]">Otevřené podúkoly (klik = detail):</p>
+                <ul className="flex flex-col gap-1">
+                  {dialog.blockers.map((child) => (
+                    <li key={child.id}>
+                      <button
+                        type="button"
+                        className="text-left font-bold text-[#a11834] underline-offset-2 hover:underline"
+                        onClick={() => {
+                          setDialog(null);
+                          openDetail(child);
+                        }}
+                      >
+                        {labelOf(child)}
+                      </button>
+                      <span className="ml-2 text-xs text-[#5c5c5c]">{child.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <button type="button" className={btnGhost} onClick={() => setDialog(null)}>
               Zavřít
             </button>
           </div>
