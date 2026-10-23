@@ -158,6 +158,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
   const [project, setProject] = useState("");
   const [board, setBoard] = useState(false);
   const [mapMode, setMapMode] = useState("tree");
+  const [mindNavStack, setMindNavStack] = useState([]);
   const [dragTaskId, setDragTaskId] = useState("");
   const [dropStatus, setDropStatus] = useState("");
   const [detailId, setDetailId] = useState("");
@@ -1179,6 +1180,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 today={today}
                 issueIds={new Set(classified.issues.map((item) => item.id))}
                 onOpen={openDetail}
+                navStack={mindNavStack}
+                onNavStackChange={setMindNavStack}
               />
             ) : (
               <div data-layout-panel className={`${panelClass} py-2`} aria-label="Strom">

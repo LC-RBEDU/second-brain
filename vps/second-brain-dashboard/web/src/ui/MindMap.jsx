@@ -1,8 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { panelClass, projectLabel } from "./chrome.jsx";
 
 const CANVAS_W = 1040;
 const CANVAS_H = 720;
+const CARD_HALF_W = 100;
+const CARD_HALF_H = 48;
+const CENTER_HALF = 90;
 
 function parentId(value) {
   return String(value || "")
@@ -53,7 +56,45 @@ function ringRadius(count) {
   return Math.max(240, 80 + count * 28);
 }
 
-/** @typedef {{ kind: 'project', slug: string } | { kind: 'epic' | 'story', slug: string, task: object }} NavFrame */
+function findTaskInGroup(group, taskId) {
+  if (!group || !taskId) return null;
+  return allTasks(group).find((task) => task.id === taskId) || null;
+}
+
+/** Resolve stored frames (taskId) against current groups. */
+export function resolveNavStack(stack, groups) {
+  const list = groups || [];
+  const out = [];
+  for (const frame of stack || []) {
+    if (frame.kind === "project") {
+      if (list.some((group) => group.slug === frame.slug)) out.push({ kind: "project", slug: frame.slug });
+      continue;
+    }
+    const group = list.find((item) => item.slug === frame.slug);
+    const task = findTaskInGroup(group, frame.taskId || frame.task?.id);
+    if (!group || !task) break;
+    out.push({ kind: frame.kind, slug: frame.slug, taskId: task.id, task });
+  }
+  return out;
+}
+
+export function fitZoomForNodes(nodes, vpW, vpH, cx, cy) {
+  let minX = cx - CENTER_HALF;
+  let maxX = cx + CENTER_HALF;
+  let minY = cy - CENTER_HALF;
+  let maxY = cy + CENTER_HALF;
+  for (const node of nodes || []) {
+    minX = Math.min(minX, node.x - CARD_HALF_W);
+    maxX = Math.max(maxX, node.x + CARD_HALF_W);
+    minY = Math.min(minY, node.y - CARD_HALF_H);
+    maxY = Math.max(maxY, node.y + CARD_HALF_H);
+  }
+  const contentW = Math.max(maxX - minX, 1);
+  const contentH = Math.max(maxY - minY, 1);
+  const pad = 0.88;
+  const raw = Math.min(vpW / contentW, vpH / contentH) * pad;
+  return Math.max(0.28, Math.min(1.35, raw));
+}
 
 function ringItems(stack, groups) {
   if (stack.length === 0) {
@@ -147,9 +188,10 @@ function centerMeta(stack, groups, today, issueIds) {
     return {
       kind: "vault",
       title: "VAULT",
-      subtitle: "projekty",
+      id: "",
       flags: { overdue: false, bad: false },
       canGoBack: false,
+      titleUpper: true,
     };
   }
   const top = stack[stack.length - 1];
@@ -159,34 +201,30 @@ function centerMeta(stack, groups, today, issueIds) {
     return {
       kind: "project",
       title: projectLabel(group.slug),
-      subtitle: `${group.epics.length} epiců · ${group.open}`,
-      slug: group.slug,
+      id: group.slug,
       flags,
       canGoBack: true,
+      titleUpper: true,
     };
   }
   if ((top.kind === "epic" || top.kind === "story") && top.task) {
     const flags = flagsForTask(top.task, today, issueIds);
-    const kids = group ? childrenOf(group, top.task.id) : [];
-    const openCount =
-      top.kind === "epic" && group
-        ? (group.epics.find((item) => item.epic.id === top.task.id)?.stories.length || 0) +
-          (group.epics.find((item) => item.epic.id === top.task.id)?.loose.length || 0)
-        : kids.length;
     return {
       kind: top.kind,
       title: top.task.title || top.task.id,
-      subtitle: `${top.task.id} · ${openCount} otevřených`,
+      id: top.task.id,
       flags,
       canGoBack: true,
+      titleUpper: false,
     };
   }
   return {
     kind: "vault",
     title: "VAULT",
-    subtitle: "projekty",
+    id: "",
     flags: { overdue: false, bad: false },
     canGoBack: false,
+    titleUpper: true,
   };
 }
 
@@ -233,12 +271,29 @@ function NodeCard({ item, today, issueIds, style, onClick, dashed }) {
   );
 }
 
-export function MindMap({ groups, today, issueIds, onOpen }) {
-  /** @type {[NavFrame[], function]} */
-  const [stack, setStack] = useState([]);
+function toStoredFrame(frame) {
+  if (frame.kind === "project") return { kind: "project", slug: frame.slug };
+  return { kind: frame.kind, slug: frame.slug, taskId: frame.taskId || frame.task?.id };
+}
+
+export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackChange }) {
+  const [localStack, setLocalStack] = useState([]);
+  const controlled = Array.isArray(navStack) && typeof onNavStackChange === "function";
+  const rawStack = controlled ? navStack : localStack;
+  const setRawStack = controlled ? onNavStackChange : setLocalStack;
+
+  const stack = useMemo(() => resolveNavStack(rawStack, groups), [rawStack, groups]);
+
+  function setStack(next) {
+    const value = typeof next === "function" ? next(stack) : next;
+    setRawStack((value || []).map(toStoredFrame));
+  }
+
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef(null);
+  const viewportRef = useRef(null);
+  const didInitialFit = useRef(false);
   const cx = CANVAS_W / 2;
   const cy = CANVAS_H / 2;
 
@@ -258,6 +313,23 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
     });
   }, [ring, cx, cy]);
 
+  function applyFit(nodeList) {
+    const el = viewportRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    if (width < 40 || height < 40) return;
+    setPan({ x: 0, y: 0 });
+    setZoom(fitZoomForNodes(nodeList, width, height, cx, cy));
+  }
+
+  useEffect(() => {
+    if (didInitialFit.current) return;
+    if (!nodes.length && !(groups || []).length) return;
+    didInitialFit.current = true;
+    applyFit(nodes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot initial fit
+  }, [nodes, groups]);
+
   function drillTo(item) {
     setPan({ x: 0, y: 0 });
     if (item.kind === "project") {
@@ -272,7 +344,7 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
     if (item.kind === "epic") {
       setStack([
         { kind: "project", slug },
-        { kind: "epic", slug, task: item.task },
+        { kind: "epic", slug, taskId: item.task.id, task: item.task },
       ]);
       return;
     }
@@ -283,12 +355,12 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
           return [
             { kind: "project", slug },
             epicFrame,
-            { kind: "story", slug, task: item.task },
+            { kind: "story", slug, taskId: item.task.id, task: item.task },
           ];
         }
         return [
           { kind: "project", slug },
-          { kind: "story", slug, task: item.task },
+          { kind: "story", slug, taskId: item.task.id, task: item.task },
         ];
       });
     }
@@ -300,7 +372,18 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
     setStack((prev) => prev.slice(0, -1));
   }
 
+  function handleReset() {
+    const vaultNodes = ringItems([], groups).map((item, index, list) => {
+      const n = Math.max(list.length, 1);
+      const angle = (Math.PI * 2 * index) / n - Math.PI / 2;
+      return { ...item, ...polar(cx, cy, ringRadius(list.length), angle) };
+    });
+    setStack([]);
+    applyFit(vaultNodes);
+  }
+
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+  const zoomLabel = `${Math.round(zoom * 100)} %`;
 
   return (
     <div data-layout-panel className={`${panelClass} relative overflow-hidden`} aria-label="Mindmapa">
@@ -309,26 +392,20 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
           Zoom: kolečko · posun: tažení podkladu · klik na dlaždici = do středu · klik na střed = zpět
         </span>
         <span className="flex-1" />
+        <span aria-live="polite">{zoomLabel}</span>
         <button type="button" className="rounded border border-[#444] px-2 py-1" onClick={() => setZoom(1)}>
           100 %
         </button>
-        <button
-          type="button"
-          className="rounded border border-[#444] px-2 py-1"
-          onClick={() => {
-            setPan({ x: 0, y: 0 });
-            setZoom(1);
-            setStack([]);
-          }}
-        >
+        <button type="button" className="rounded border border-[#444] px-2 py-1" onClick={handleReset}>
           Reset
         </button>
       </div>
       <div
+        ref={viewportRef}
         className="relative h-[720px] cursor-grab overflow-hidden active:cursor-grabbing"
         onWheel={(event) => {
           event.preventDefault();
-          setZoom((value) => Math.min(1.8, Math.max(0.55, value - event.deltaY * 0.001)));
+          setZoom((value) => Math.min(1.8, Math.max(0.28, value - event.deltaY * 0.001)));
         }}
         onPointerDown={(event) => {
           if (event.target.closest("[data-mind-node]")) return;
@@ -343,7 +420,6 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
           drag.current = null;
         }}
       >
-        {/* Jeden logický canvas — SVG i HTML v stejném px prostoru (oprava spojnic). */}
         <div
           className="absolute left-1/2 top-1/2"
           style={{
@@ -358,7 +434,7 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
           <svg
             width={CANVAS_W}
             height={CANVAS_H}
-            className="pointer-events-none absolute inset-0"
+            className="pointer-events-none absolute inset-0 overflow-visible"
             aria-hidden="true"
           >
             {nodes.map((node) => (
@@ -373,21 +449,30 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
               />
             ))}
           </svg>
-          <div className="absolute inset-0" style={{ width: CANVAS_W, height: CANVAS_H }}>
+          <div className="absolute inset-0 overflow-visible" style={{ width: CANVAS_W, height: CANVAS_H }}>
             <button
               type="button"
               data-mind-node
               data-mind-kind="center"
               aria-label={center.canGoBack ? `Zpět z ${center.title}` : center.title}
-              className={`absolute flex h-[88px] w-[88px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full px-2 text-center text-[11px] font-extrabold leading-tight text-[#fafafa] shadow-sm ${
+              className={`absolute flex min-h-[168px] w-[180px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-[40px] px-3 py-2.5 text-center text-[#fafafa] shadow-sm ${
                 center.canGoBack ? "cursor-pointer bg-[#444] hover:bg-[#333]" : "cursor-default bg-[#444]"
               } ${center.flags.overdue || center.flags.bad ? "ring-2 ring-[#b8002e] ring-offset-2" : ""}`}
               style={{ left: cx, top: cy }}
               onClick={goBack}
               disabled={!center.canGoBack}
             >
-              <span className="line-clamp-2 uppercase">{center.title}</span>
-              {center.canGoBack && <span className="mt-0.5 text-[9px] font-normal opacity-80">zpět</span>}
+              {center.id && center.kind !== "project" && (
+                <span className="mb-0.5 text-[10px] font-semibold tracking-wide opacity-75">{center.id}</span>
+              )}
+              <span
+                className={`line-clamp-3 text-[11px] font-extrabold leading-snug ${
+                  center.titleUpper ? "uppercase" : ""
+                }`}
+              >
+                {center.title}
+              </span>
+              {center.canGoBack && <span className="mt-1 text-[10px] font-normal opacity-80">zpět</span>}
             </button>
             {nodes.map((node) => (
               <NodeCard
@@ -409,6 +494,7 @@ export function MindMap({ groups, today, issueIds, onOpen }) {
         </div>
         <div>❗ overdue · ⚠️ chybně zadané</div>
         <div>Klik na dlaždici → střed · klik na střed → o úroveň výš</div>
+        <div>Reset = celá mapa do viewportu</div>
       </div>
     </div>
   );
