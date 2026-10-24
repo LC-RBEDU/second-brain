@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { linkifyParts } from "../linkify.js";
 
 export const fieldClass =
   "w-full rounded-md border border-[#b0b2b6] bg-white px-3 py-2 font-[Rubik,system-ui,sans-serif] text-[#444]";
@@ -10,6 +11,87 @@ export const btnGhost =
   "min-h-11 rounded-md border border-[#444] bg-white px-5 py-3 font-bold text-[#444]";
 export const btnNav = (on) =>
   on ? "rounded-md bg-[#a11834] px-3.5 py-2.5 font-bold" : "rounded-md px-3.5 py-2.5 font-medium";
+
+/** Render plain text with http(s) / www / bare-domain URLs as external links. */
+export function LinkifiedText({ text }) {
+  const parts = linkifyParts(text);
+  if (!parts.length) return null;
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.href ? (
+          <a
+            key={`l-${index}`}
+            href={part.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all font-bold text-[#a11834] underline underline-offset-2"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {part.text}
+          </a>
+        ) : (
+          <span key={`t-${index}`}>{part.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * Detail / popis: read view with clickable links; click (outside a link) to edit in textarea.
+ * Remount with key=task id when opening another detail.
+ */
+export function DetailField({ value, onChange, placeholder, disabled }) {
+  const [editing, setEditing] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (editing) ref.current?.focus();
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <textarea
+        ref={ref}
+        className={`${fieldClass} min-h-24 resize-y`}
+        aria-label="Detail úkolu"
+        rows={4}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => setEditing(false)}
+        placeholder={placeholder}
+      />
+    );
+  }
+
+  const empty = !String(value || "").trim();
+  return (
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label="Detail úkolu"
+      aria-disabled={disabled || undefined}
+      className={`${fieldClass} min-h-24 cursor-text whitespace-pre-wrap break-words text-sm font-normal leading-relaxed ${
+        empty ? "text-[#888]" : ""
+      }`}
+      onClick={(event) => {
+        if (disabled || event.target.closest("a")) return;
+        setEditing(true);
+      }}
+      onKeyDown={(event) => {
+        if (disabled) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setEditing(true);
+        }
+      }}
+    >
+      {empty ? placeholder || "—" : <LinkifiedText text={value} />}
+    </div>
+  );
+}
 
 /** Display-only project name (slug stays kebab-case in data/value). */
 export function projectLabel(slug) {

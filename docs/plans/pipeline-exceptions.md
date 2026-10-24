@@ -66,3 +66,4 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 | 2026-10-08 | scripts/sync_lide_people.py (role Míša Kosinerová) | jednořádkový fix / data | agent |
 | 2026-10-21 | `vps/second-brain-dashboard/web/src/{classify.js,ui/App.jsx}`, `screens.test.jsx` | copy: vysvětlivky pravidel + Úklid akcí; wire existující `openDetail` (dvojklik na název) | agent (uživatel: stale / Zrušit·Hotovo·Ponechat / detail) |
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | jednořádkový UX fix: Zahodit resetuje draft místo leaveDetail (stejné jako ×) | agent |
+| 2026-10-24 | `vps/second-brain-dashboard/web/src/{linkify.js,ui/chrome.jsx,ui/App.jsx}`, tests | malý UX: Detail/popis read view s proklikávacími URL (textarea při editaci) | agent |

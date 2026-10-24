@@ -201,15 +201,39 @@ describe("screens", () => {
     });
     await waitFor(() => expect(screen.getByLabelText("Název")).toHaveValue("Původní"));
     fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Změněný" } });
+    fireEvent.click(screen.getByLabelText("Detail úkolu"));
     fireEvent.change(screen.getByLabelText("Detail úkolu"), { target: { value: "nový popis" } });
     expect(screen.getByText(/title:/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Zahodit" }));
     expect(screen.getByRole("region", { name: "Detail" })).toBeInTheDocument();
     expect(screen.getByLabelText("Název")).toHaveValue("Původní");
-    expect(screen.getByLabelText("Detail úkolu")).toHaveValue("původní popis");
+    expect(screen.getByLabelText("Detail úkolu")).toHaveTextContent("původní popis");
     expect(screen.getByText("Beze změny")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Zahodit" }));
     expect(screen.queryByRole("region", { name: "Detail" })).toBeNull();
+  });
+
+  it("Detail / popis shows clickable links in read view", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        body: "**Detail:** Mrkni https://rb-edu.slack.com/archives/C061/p1 a dny.ai\n",
+        oid: "o1",
+      }),
+    };
+    renderApp([task({ id: "F-T1", title: "S odkazem" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — S odkazem" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Detail úkolu")).toBeInTheDocument());
+    const slack = screen.getByRole("link", {
+      name: "https://rb-edu.slack.com/archives/C061/p1",
+    });
+    expect(slack).toHaveAttribute("href", "https://rb-edu.slack.com/archives/C061/p1");
+    expect(slack).toHaveAttribute("target", "_blank");
+    const bare = screen.getByRole("link", { name: "dny.ai" });
+    expect(bare).toHaveAttribute("href", "https://dny.ai/");
   });
 
   it("Chybně zadané shows rule glossary", () => {
@@ -599,7 +623,7 @@ describe("screens", () => {
       fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
     });
     expect(api.item).toHaveBeenCalledWith("F-T1");
-    expect(screen.getByLabelText("Detail úkolu")).toHaveValue("poznámka k úkolu");
+    expect(screen.getByLabelText("Detail úkolu")).toHaveTextContent("poznámka k úkolu");
     fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Nový název" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Uložit" }));

@@ -16,6 +16,7 @@ import {
   btnNav,
   btnPrimary,
   buildMapGroups,
+  DetailField,
   fieldClass,
   labelClass,
   PageHeader,
@@ -1715,12 +1716,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
             )}
             <label className={labelClass}>
               Detail / popis
-              <textarea
-                className={`${fieldClass} min-h-24 resize-y`}
-                aria-label="Detail úkolu"
-                rows={4}
+              <DetailField
+                key={detail.id}
                 value={draft.detail}
-                onChange={(event) => setDraft({ ...draft, detail: event.target.value })}
+                disabled={isBusy}
+                onChange={(next) => setDraft({ ...draft, detail: next })}
                 placeholder={
                   draft.detailLine
                     ? "Volitelný popis úkolu"
