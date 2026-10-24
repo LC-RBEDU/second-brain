@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
-import { MindMap, fitZoomForNodes, resolveNavStack } from "./MindMap.jsx";
+import { MindMap, fitLabelLayout, fitZoomForNodes, resolveNavStack, wrapLabelLines } from "./MindMap.jsx";
 
 afterEach(() => cleanup());
 
@@ -84,6 +84,20 @@ describe("MindMap helpers", () => {
     expect(resolved).toHaveLength(2);
     expect(resolved[1].task.title).toBe("Epic One");
   });
+
+  it("fitLabelLayout: krátký text = větší font než dlouhý; max 3 řádky", () => {
+    const box = { maxWidth: 154, maxHeight: 140, maxPx: 42, minPx: 11 };
+    const short = fitLabelLayout("VAULT", box);
+    const long = fitLabelLayout(
+      "SignatureSatori — centrální e-mailové podpisy v RB Universe",
+      box,
+    );
+    expect(short.fontSize).toBeGreaterThan(long.fontSize);
+    expect(short.fontSize).toBeGreaterThanOrEqual(28);
+    expect(long.lines.length).toBeGreaterThanOrEqual(2);
+    expect(long.lines.length).toBeLessThanOrEqual(3);
+    expect(wrapLabelLines("VAULT", short.fontSize, box.maxWidth, 3)).toEqual(["VAULT"]);
+  });
 });
 
 describe("MindMap", () => {
@@ -120,8 +134,9 @@ describe("MindMap", () => {
       />,
     );
     const center = screen.getByRole("button", { name: /Zpět z SignatureSatori/i });
-    expect(center.className).toMatch(/min-h-\[168px\]/);
+    expect(center.className).toMatch(/h-\[168px\]/);
     expect(center.className).toMatch(/w-\[180px\]/);
+    expect(center.querySelector("[data-fit-label]")).toBeTruthy();
     expect(center.textContent).toMatch(/RBU-E99/);
     expect(center.textContent).toMatch(/SignatureSatori/);
     expect(center.textContent).toMatch(/zpět/);

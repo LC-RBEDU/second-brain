@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { panelClass, projectLabel } from "./chrome.jsx";
 
 const CANVAS_W = 1040;
@@ -6,6 +6,112 @@ const CANVAS_H = 720;
 const CARD_HALF_W = 100;
 const CARD_HALF_H = 48;
 const CENTER_HALF = 90;
+const CENTER_W = 180;
+const CENTER_H = 168;
+const FIT_LINE_HEIGHT = 1.15;
+const FIT_MAX_LINES = 3;
+
+/** @type {HTMLCanvasElement | false | null} */
+let measureCanvas = null;
+
+function measureTextWidth(text, fontSizePx) {
+  const jsdom =
+    typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
+  if (!jsdom && measureCanvas !== false && typeof document !== "undefined") {
+    try {
+      if (!measureCanvas) measureCanvas = document.createElement("canvas");
+      const ctx = measureCanvas.getContext("2d");
+      if (ctx && typeof ctx.measureText === "function") {
+        ctx.font = `800 ${fontSizePx}px Rubik, system-ui, sans-serif`;
+        const width = ctx.measureText(text).width;
+        if (Number.isFinite(width) && width > 0) return width;
+      }
+      measureCanvas = false;
+    } catch {
+      measureCanvas = false;
+    }
+  }
+  // jsdom / bez canvas — přibližná šířka bold
+  return String(text).length * fontSizePx * 0.62;
+}
+
+/** Greedy word-wrap; null = nevejde se do maxLines / šířky. */
+export function wrapLabelLines(text, fontSizePx, maxWidth, maxLines = FIT_MAX_LINES) {
+  const words = String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return [""];
+  const lines = [];
+  let current = "";
+  for (const word of words) {
+    const trial = current ? `${current} ${word}` : word;
+    if (measureTextWidth(trial, fontSizePx) <= maxWidth) {
+      current = trial;
+      continue;
+    }
+    if (current) lines.push(current);
+    if (lines.length >= maxLines) return null;
+    if (measureTextWidth(word, fontSizePx) > maxWidth) return null;
+    current = word;
+  }
+  if (current) lines.push(current);
+  if (lines.length > maxLines) return null;
+  return lines;
+}
+
+/** Největší font (px), který se vejde do boxu max. ve `maxLines` řádcích. */
+export function fitLabelLayout(text, { maxWidth, maxHeight, maxLines = FIT_MAX_LINES, minPx = 11, maxPx = 42 } = {}) {
+  const raw = String(text || "").trim() || " ";
+  let lo = minPx;
+  let hi = maxPx;
+  let best = { fontSize: minPx, lines: wrapLabelLines(raw, minPx, maxWidth, maxLines) || [raw] };
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const lines = wrapLabelLines(raw, mid, maxWidth, maxLines);
+    const heightOk = lines && lines.length * mid * FIT_LINE_HEIGHT <= maxHeight + 0.5;
+    if (lines && heightOk) {
+      best = { fontSize: mid, lines };
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return best;
+}
+
+function FitCenterLabel({ text, uppercase }) {
+  const ref = useRef(null);
+  const display = uppercase ? String(text || "").toUpperCase() : String(text || "");
+  const [layout, setLayout] = useState(() => ({ fontSize: 14, lines: [display] }));
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const width = Math.max(el.clientWidth, 40);
+    const height = Math.max(el.clientHeight, 24);
+    setLayout(fitLabelLayout(display, { maxWidth: width, maxHeight: height }));
+  }, [display]);
+
+  return (
+    <span
+      ref={ref}
+      data-fit-label
+      className="flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden px-0.5"
+      style={{
+        fontSize: layout.fontSize,
+        fontWeight: 800,
+        lineHeight: FIT_LINE_HEIGHT,
+      }}
+    >
+      {layout.lines.map((line, index) => (
+        <span key={`${index}-${line}`} className="block max-w-full text-center">
+          {line}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function parentId(value) {
   return String(value || "")
@@ -455,24 +561,20 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
               data-mind-node
               data-mind-kind="center"
               aria-label={center.canGoBack ? `Zpět z ${center.title}` : center.title}
-              className={`absolute flex min-h-[168px] w-[180px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-[40px] px-3 py-2.5 text-center text-[#fafafa] shadow-sm ${
+              className={`absolute flex h-[168px] w-[180px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-[40px] px-3 py-2 text-center text-[#fafafa] shadow-sm ${
                 center.canGoBack ? "cursor-pointer bg-[#444] hover:bg-[#333]" : "cursor-default bg-[#444]"
               } ${center.flags.overdue || center.flags.bad ? "ring-2 ring-[#b8002e] ring-offset-2" : ""}`}
-              style={{ left: cx, top: cy }}
+              style={{ left: cx, top: cy, width: CENTER_W, height: CENTER_H }}
               onClick={goBack}
               disabled={!center.canGoBack}
             >
               {center.id && center.kind !== "project" && (
-                <span className="mb-0.5 text-[10px] font-semibold tracking-wide opacity-75">{center.id}</span>
+                <span className="shrink-0 text-[10px] font-semibold tracking-wide opacity-75">{center.id}</span>
               )}
-              <span
-                className={`line-clamp-3 text-[11px] font-extrabold leading-snug ${
-                  center.titleUpper ? "uppercase" : ""
-                }`}
-              >
-                {center.title}
-              </span>
-              {center.canGoBack && <span className="mt-1 text-[10px] font-normal opacity-80">zpět</span>}
+              <FitCenterLabel text={center.title} uppercase={center.titleUpper} />
+              {center.canGoBack && (
+                <span className="mt-0.5 shrink-0 text-[10px] font-normal opacity-80">zpět</span>
+              )}
             </button>
             {nodes.map((node) => (
               <NodeCard

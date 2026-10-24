@@ -162,6 +162,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
   const [dragTaskId, setDragTaskId] = useState("");
   const [dropStatus, setDropStatus] = useState("");
   const [detailId, setDetailId] = useState("");
+  const [detailHistory, setDetailHistory] = useState([]);
   const [returnView, setReturnView] = useState("radar");
   const [draft, setDraft] = useState({
     title: "",
@@ -257,10 +258,22 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     };
   }
 
-  async function openDetail(task) {
-    if (isBusy) return;
+  function leaveDetail() {
+    setDetailHistory([]);
+    setDetailId("");
+    setView(returnView);
+  }
+
+  async function openDetail(task, options = {}) {
+    if (isBusy || !task?.id) return;
+    const pushHistory = options.pushHistory !== false;
     await withBusy("Načítám…", "Otevírám detail úkolu", async () => {
-      setReturnView(view);
+      if (view === "detail" && pushHistory && detailId && detailId !== task.id) {
+        setDetailHistory((prev) => [...prev, detailId]);
+      } else if (view !== "detail") {
+        setReturnView(view);
+        setDetailHistory([]);
+      }
       setDetailId(task.id);
       let detailText = "";
       let detailLine = "";
@@ -294,6 +307,18 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       });
       setView("detail");
     });
+  }
+
+  function backDetail() {
+    if (!detailHistory.length) {
+      leaveDetail();
+      return;
+    }
+    const prevId = detailHistory[detailHistory.length - 1];
+    setDetailHistory((prev) => prev.slice(0, -1));
+    const prevTask = byId.get(prevId);
+    if (prevTask) openDetail(prevTask, { pushHistory: false });
+    else leaveDetail();
   }
 
   function fieldValue(key, value) {
@@ -426,7 +451,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
           }
         }
         await afterOkSave([{ id: detail.id, patch, oid: result?.oid }]);
-        setView(returnView);
+        leaveDetail();
         return;
       }
     });
@@ -659,8 +684,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         setChecked(Object.fromEntries(stay.map((id) => [id, true])));
         if (!stay.length) setPreview(null);
         if (detailId && (result?.written?.ids || []).includes(detailId) && !(result?.saved || []).includes(detailId)) {
-          setDetailId("");
-          setView(returnView);
+          leaveDetail();
         }
       } catch {
         setDialog({ kind: "error", text: "Úklid selhal (síť nebo server)." });
@@ -1508,10 +1532,21 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         {view === "detail" && detail && (
           <section aria-label="Detail" data-layout-panel className={`${panelClass} mx-auto flex w-full max-w-xl flex-col gap-4 p-6`}>
             <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase text-[#5c5c5c]">
-              <span>
-                {detail.type || "task"} · {projectLabel(detail.project || "")} · detail panel
-              </span>
-              <button type="button" className="min-h-11 min-w-11 text-xl" onClick={() => setView(returnView)} aria-label="Zavřít">
+              <div className="flex min-w-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="min-h-11 min-w-11 text-xl"
+                  onClick={backDetail}
+                  aria-label="Zpět"
+                  title="Zpět"
+                >
+                  ←
+                </button>
+                <span className="truncate">
+                  {detail.type || "task"} · {projectLabel(detail.project || "")} · detail panel
+                </span>
+              </div>
+              <button type="button" className="min-h-11 min-w-11 text-xl" onClick={leaveDetail} aria-label="Zavřít">
                 ×
               </button>
             </div>
@@ -1571,21 +1606,80 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
               </label>
             </div>
             {detail.type !== "epic" && (
-              <label className={labelClass}>
-                Parent
-                <ParentSuggest
-                  ariaLabel="Parent úkolu"
-                  value={draft.parent}
-                  onChange={(parent) => setDraft({ ...draft, parent })}
-                  options={openTasks
-                    .filter(
-                      (task) =>
-                        (showPaused || !paused.has(projectSlug(task))) &&
-                        task.type === (detail.type === "story" ? "epic" : "story"),
-                    )
-                    .map((task) => ({ id: task.id, title: task.title || "", label: labelOf(task) }))}
-                />
-              </label>
+              <div className="flex flex-col gap-1.5">
+                <label className={labelClass}>
+                  Parent
+                  <ParentSuggest
+                    ariaLabel="Parent úkolu"
+                    value={draft.parent}
+                    onChange={(parent) => setDraft({ ...draft, parent })}
+                    options={openTasks
+                      .filter(
+                        (task) =>
+                          (showPaused || !paused.has(projectSlug(task))) &&
+                          task.type === (detail.type === "story" ? "epic" : "story"),
+                      )
+                      .map((task) => ({ id: task.id, title: task.title || "", label: labelOf(task) }))}
+                  />
+                </label>
+                {(() => {
+                  const pid = draft.parent || parentId(detail.parent);
+                  const parentTask = pid ? byId.get(pid) : null;
+                  if (!pid) return null;
+                  return (
+                    <button
+                      type="button"
+                      className="rounded-md border border-[#e2e2e2] bg-[#fafafa] px-3 py-2 text-left text-sm hover:border-[#444]"
+                      onClick={() => {
+                        if (parentTask) openDetail(parentTask);
+                      }}
+                      disabled={!parentTask || isBusy}
+                      aria-label={parentTask ? `Otevřít parent ${labelOf(parentTask)}` : `Parent ${pid}`}
+                    >
+                      <span className="font-bold">{pid}</span>
+                      {parentTask?.title ? (
+                        <span className="text-[#5c5c5c]"> — {parentTask.title}</span>
+                      ) : (
+                        <span className="text-[#888]"> — (není ve snapshotu)</span>
+                      )}
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+            {(detail.type === "epic" || detail.type === "story") && (
+              <div className="flex flex-col gap-1.5" aria-label="Children">
+                <div className="text-xs font-bold uppercase text-[#5c5c5c]">Children</div>
+                {(() => {
+                  const kids = tasks
+                    .filter((task) => parentId(task.parent) === detail.id)
+                    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+                  if (!kids.length) {
+                    return <p className="text-sm text-[#5c5c5c]">Žádné děti ve snapshotu.</p>;
+                  }
+                  return (
+                    <ul className="flex flex-col gap-1">
+                      {kids.map((child) => (
+                        <li key={child.id}>
+                          <button
+                            type="button"
+                            className="w-full rounded-md border border-[#e2e2e2] bg-[#fafafa] px-3 py-2 text-left text-sm hover:border-[#444]"
+                            onClick={() => openDetail(child)}
+                            disabled={isBusy}
+                            aria-label={`Otevřít child ${labelOf(child)}`}
+                          >
+                            <span className="font-bold">{child.id}</span>
+                            <span className="text-[#5c5c5c]"> — {child.title || "—"}</span>
+                            {child.status ? (
+                              <span className="ml-2 text-xs uppercase text-[#888]">{child.status}</span>
+                            ) : null}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
+              </div>
             )}
             <label className={labelClass}>
               Detail / popis
@@ -1645,7 +1739,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
               <button type="button" className={btnPrimary} disabled={isBusy} onClick={saveDetail}>
                 Uložit
               </button>
-              <button type="button" className={btnGhost} onClick={() => setView(returnView)}>
+              <button type="button" className={btnGhost} onClick={leaveDetail}>
                 Zahodit
               </button>
               <button
@@ -2144,7 +2238,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 aria-label="Zrušit konflikt"
                 onClick={() => {
                   setDialog(null);
-                  setView(returnView);
+                  leaveDetail();
                 }}
               >
                 Zrušit

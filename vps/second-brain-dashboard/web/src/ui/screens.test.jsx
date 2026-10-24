@@ -624,6 +624,38 @@ describe("screens", () => {
     });
   });
 
+  it("detail shows Children with title and back navigates parent→child history", async () => {
+    const api = { item: vi.fn().mockResolvedValue({ ok: true, body: "", oid: "o1" }) };
+    renderApp(
+      [
+        task({ id: "F-E1", type: "epic", title: "Epic One" }),
+        task({ id: "F-S1", type: "story", title: "Story One", parent: "F-E1" }),
+        task({ id: "F-T1", type: "task", title: "Leaf One", parent: "F-S1" }),
+      ],
+      api,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-S1 — Story One" }));
+    });
+    expect(screen.getByLabelText("Detail")).toBeInTheDocument();
+    expect(screen.getByLabelText("Otevřít parent F-E1 — Epic One")).toBeInTheDocument();
+    const children = screen.getByLabelText("Children");
+    expect(within(children).getByRole("button", { name: "Otevřít child F-T1 — Leaf One" })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(within(children).getByRole("button", { name: "Otevřít child F-T1 — Leaf One" }));
+    });
+    expect(screen.getByText("F-T1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Název")).toHaveValue("Leaf One");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Zpět" }));
+    });
+    expect(screen.getByText("F-S1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Název")).toHaveValue("Story One");
+  });
+
   it("B45 keeps the preview when the family is over 80 and when the server rejects it", async () => {
     const api = { cleanup: vi.fn().mockResolvedValue({ ok: false, error_reason: "batch_too_large" }) };
     const children = Array.from({ length: 80 }, (_, index) => task({

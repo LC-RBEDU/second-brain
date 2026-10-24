@@ -4,6 +4,8 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/App.jsx` (+ screens.test) | UX: detail Parent/Children s názvem + proklik, historie ← back; bez Brain kontraktů | agent (uživatel: detail story/epic) |
+| 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/MindMap.jsx` (+ MindMap.test) | UX: střed mindmapy — font size fit max 3 řádky podle délky textu; bez Brain kontraktů | agent (uživatel: VAULT písmo malé) |
 | 2026-10-23 | `vps/second-brain-dashboard/web/src/ui/{MindMap,App}.jsx` (+ MindMap.test) | UX: větší střed mindmapy, persist nav stack při detailu, Reset = fit viewport; bez Brain kontraktů | agent (uživatel: 3 body mindmapa) |
 | 2026-10-22 | `vps/second-brain-hub/deploy/setup-coolify.sh` + Coolify DB `ports_exposes` u second-brain-hub | jasná příčina: prázdný string `ports_exposes` → compose `expose: [""]` a helper 1.0.17 kontejner nespustí; cron app má mít NULL | agent (uživatel: ověř a oprav teď test pushem) |
 | 2026-10-22 | `vps/second-brain-dashboard/web/src/ui/{MindMap,chrome}.jsx` (+ MindMap.test) | UX: spojnice vs. dlaždice (společný canvas) + drill-down kruh projekt→epic→story→task se zpětem přes střed; bez Brain kontraktů | agent (uživatel: spojnice do prázdna + navigace) |
