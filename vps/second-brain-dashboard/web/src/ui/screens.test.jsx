@@ -190,6 +190,28 @@ describe("screens", () => {
     expect(screen.getByLabelText("Název")).toHaveValue("T6 C14 guard test");
   });
 
+  it("Zahodit resets dirty detail draft in place; clean Zahodit leaves", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({ ok: true, body: "**Detail:** původní popis\n", oid: "o1" }),
+    };
+    renderApp([task({ id: "F-T1", title: "Původní", deadline: "2026-11-01" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Původní" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Název")).toHaveValue("Původní"));
+    fireEvent.change(screen.getByLabelText("Název"), { target: { value: "Změněný" } });
+    fireEvent.change(screen.getByLabelText("Detail úkolu"), { target: { value: "nový popis" } });
+    expect(screen.getByText(/title:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zahodit" }));
+    expect(screen.getByRole("region", { name: "Detail" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Název")).toHaveValue("Původní");
+    expect(screen.getByLabelText("Detail úkolu")).toHaveValue("původní popis");
+    expect(screen.getByText("Beze změny")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zahodit" }));
+    expect(screen.queryByRole("region", { name: "Detail" })).toBeNull();
+  });
+
   it("Chybně zadané shows rule glossary", () => {
     renderApp([
       task({

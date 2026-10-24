@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-24 | `scripts/_fix_title_detail_hygiene.py` (+ Brain bulk/edit-body zápisy do vault tasků) | jednorázový skript: title_long/title_markup + **Detail:** backfill | agent (uživatel: hygiene názvů/Detail) |
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/App.jsx` (+ screens.test) | UX: detail Parent/Children s názvem + proklik, historie ← back; bez Brain kontraktů | agent (uživatel: detail story/epic) |
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/MindMap.jsx` (+ MindMap.test) | UX: střed mindmapy — font size fit max 3 řádky podle délky textu; bez Brain kontraktů | agent (uživatel: VAULT písmo malé) |
 | 2026-10-23 | `vps/second-brain-dashboard/web/src/ui/{MindMap,App}.jsx` (+ MindMap.test) | UX: větší střed mindmapy, persist nav stack při detailu, Reset = fit viewport; bez Brain kontraktů | agent (uživatel: 3 body mindmapa) |
@@ -64,3 +65,4 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 | 2026-10-04 | scripts/tests/test_wiki_firemni_priority_bundle.py | čistě text skillu: test jen zrcadlí přejmenované nadpisy v create-bundle (Definition of Done, Stav plnění jako H2, Přehled milníků), žádná nová logika | agent |
 | 2026-10-08 | scripts/sync_lide_people.py (role Míša Kosinerová) | jednořádkový fix / data | agent |
 | 2026-10-21 | `vps/second-brain-dashboard/web/src/{classify.js,ui/App.jsx}`, `screens.test.jsx` | copy: vysvětlivky pravidel + Úklid akcí; wire existující `openDetail` (dvojklik na název) | agent (uživatel: stale / Zrušit·Hotovo·Ponechat / detail) |
+| 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | jednořádkový UX fix: Zahodit resetuje draft místo leaveDetail (stejné jako ×) | agent |

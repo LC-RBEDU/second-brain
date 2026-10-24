@@ -264,6 +264,38 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     setView(returnView);
   }
 
+  /** Zahodit = vrať draft na baseline (zůstaň v panelu). Bez neuložených změn = odejdi (jako ×). */
+  function discardDetailEdits() {
+    if (!detail) {
+      leaveDetail();
+      return;
+    }
+    const baseline = {
+      title: detail.title || "",
+      status: detail.status || "Next",
+      deadline: detail.deadline || "",
+      review: detail.review_deadline || "",
+      waitUntil: detail.waitUntil || "",
+      parent: parentId(detail.parent),
+      detail: draft.detailOriginal,
+      detailOriginal: draft.detailOriginal,
+      detailLine: draft.detailLine,
+    };
+    const dirty =
+      draft.title !== baseline.title ||
+      draft.status !== baseline.status ||
+      draft.deadline !== baseline.deadline ||
+      draft.review !== baseline.review ||
+      draft.waitUntil !== baseline.waitUntil ||
+      draft.parent !== baseline.parent ||
+      draft.detail !== draft.detailOriginal;
+    if (!dirty) {
+      leaveDetail();
+      return;
+    }
+    setDraft(baseline);
+  }
+
   async function openDetail(task, options = {}) {
     if (isBusy || !task?.id) return;
     const pushHistory = options.pushHistory !== false;
@@ -1739,7 +1771,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
               <button type="button" className={btnPrimary} disabled={isBusy} onClick={saveDetail}>
                 Uložit
               </button>
-              <button type="button" className={btnGhost} onClick={leaveDetail}>
+              <button type="button" className={btnGhost} onClick={discardDetailEdits}>
                 Zahodit
               </button>
               <button
