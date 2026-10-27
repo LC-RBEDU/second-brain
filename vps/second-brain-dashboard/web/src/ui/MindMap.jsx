@@ -346,7 +346,7 @@ function NodeCard({ item, today, issueIds, style, onClick, dashed }) {
   const meta = isProject
     ? `${item.group.epics.length} epiců · ${item.group.open}`
     : item.kind === "task"
-      ? task.status || "task"
+      ? String(task.status || "").trim()
       : `${item.openCount ?? 0} otevřených`;
 
   return (
@@ -370,7 +370,9 @@ function NodeCard({ item, today, issueIds, style, onClick, dashed }) {
         <div className="min-w-0 flex-1">
           <div className="text-[11px] text-[#5c5c5c]">{eyebrow}</div>
           <div className={`font-bold ${isProject ? "uppercase" : ""}`}>{title}</div>
-          <div className={`text-xs ${alert ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"}`}>{meta}</div>
+          {meta ? (
+            <div className={`text-xs ${alert ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"}`}>{meta}</div>
+          ) : null}
         </div>
       </div>
     </button>

@@ -158,6 +158,36 @@ describe("MindMap", () => {
     expect(screen.getByRole("button", { name: /SECOND-BRAIN/i })).toBeTruthy();
   });
 
+  it("listový task ukáže status; bez statusu žádný meta řádek (ne „task“ ani „—“)", () => {
+    const orphan = [
+      { id: "SB1", title: "Alpha", type: "task", status: "Next", parent: "", deadline: null },
+      { id: "SB-EMPTY", title: "Bez statusu", type: "task", status: "", parent: "", deadline: null },
+    ];
+    const localGroups = [
+      {
+        slug: "second-brain",
+        open: 2,
+        items: orphan,
+        epics: [],
+        orphanStories: [],
+        orphanTasks: orphan,
+      },
+    ];
+    render(<MindMap groups={localGroups} today={today} issueIds={new Set()} onOpen={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /SECOND-BRAIN/i }));
+
+    const withStatus = screen.getByRole("button", { name: /Alpha/i });
+    expect(withStatus.textContent).toMatch(/Next/);
+    expect(withStatus.textContent).not.toMatch(/(^|[^a-z])task([^a-z]|$)/i);
+
+    const missing = screen.getByRole("button", { name: /Bez statusu/i });
+    expect(missing.textContent).toContain("SB-EMPTY");
+    expect(missing.textContent).toContain("Bez statusu");
+    expect(missing.textContent).not.toMatch(/—/);
+    expect(missing.textContent).not.toMatch(/(^|[^a-z])task([^a-z]|$)/i);
+    expect(missing.querySelectorAll(".text-xs").length).toBe(0);
+  });
+
   it("drill-down projekt → epic → story → task", () => {
     const onOpen = vi.fn();
     render(<MindMap groups={groups} today={today} issueIds={issueIds} onOpen={onOpen} />);
