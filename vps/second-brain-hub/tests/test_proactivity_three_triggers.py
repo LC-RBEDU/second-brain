@@ -19,13 +19,13 @@ def test_crontab_due_and_meeting_prep():
     assert "anomaly" not in text.lower() or "bez anomaly" in text
 
 
-def test_dry_run_exits_zero():
+def test_dry_run_exits_zero(tmp_path):
     r = subprocess.run(
         [sys.executable, str(CRON), "--dry-run", "--trigger", "morning"],
         cwd=str(HUB),
         capture_output=True,
         text=True,
-        env={**dict(__import__("os").environ), "VAULT_BACKEND": "git", "GIT_VAULT_ROOT": "/tmp/no-vault-f3"},
+        env={**dict(__import__("os").environ), "VAULT_BACKEND": "git", "GIT_VAULT_ROOT": str(tmp_path / "no-vault-f3")},
         timeout=30,
     )
     # May fail open_vault — accept non-zero only if vault missing; prefer dry path prints
