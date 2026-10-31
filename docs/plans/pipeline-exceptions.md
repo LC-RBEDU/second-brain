@@ -4,6 +4,8 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-31 | `vps/second-brain-hub/tests/test_vault_factory.py`, `scripts/fio_import_personal.py` | jasná příčina: Bandit B108/B310 na draft PR #4 a #6; smazat mrtvé `/tmp`, mock root přes tmp_path, Fio `urlopen` → HTTP(S) opener. Bez hub/cron logiky | agent (uživatel: vyřeš PR dle návrhu) |
+| 2026-10-31 | `vps/second-brain-dashboard/web/index.html`, `web/public/favicon.png`, `web/public/favicon.ico` | favicon 🧠 v záložce; na živém dashboardu soubor chyběl (404); bez změny zápisu | agent (uživatel: favicon pořád není vidět) |
 | 2026-10-24 | `scripts/_fix_title_detail_hygiene.py` (+ Brain bulk/edit-body zápisy do vault tasků) | jednorázový skript: title_long/title_markup + **Detail:** backfill | agent (uživatel: hygiene názvů/Detail) |
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/App.jsx` (+ screens.test) | UX: detail Parent/Children s názvem + proklik, historie ← back; bez Brain kontraktů | agent (uživatel: detail story/epic) |
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/MindMap.jsx` (+ MindMap.test) | UX: střed mindmapy — font size fit max 3 řádky podle délky textu; bez Brain kontraktů | agent (uživatel: VAULT písmo malé) |
