@@ -15,13 +15,17 @@ sys.path.insert(0, str(_LIB_DIR))
 from vault_factory import VaultPausedError, open_vault  # noqa: E402
 
 
-def test_paused_raises_on_write_and_delete():
+def test_paused_raises_on_write_and_delete(tmp_path: Path):
     inner = MagicMock()
     with patch("vault_factory._flag", return_value=True):
         # Build paused wrapper via open_vault git path with mocked GitVault
         with patch.dict(
             "os.environ",
-            {"VAULT_BACKEND": "git", "VAULT_WRITERS_PAUSED": "1", "GIT_VAULT_ROOT": "/tmp"},
+            {
+                "VAULT_BACKEND": "git",
+                "VAULT_WRITERS_PAUSED": "1",
+                "GIT_VAULT_ROOT": str(tmp_path),
+            },
             clear=False,
         ):
             pass
