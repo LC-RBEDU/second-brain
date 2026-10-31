@@ -75,6 +75,14 @@ def load_env() -> tuple[str, str]:
     return host, key
 
 
+class _HTTPOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirect = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirect is not None and redirect.type not in ("http", "https"):
+            raise ValueError("Only HTTP(S) URLs are allowed")
+        return redirect
+
+
 def api_request(host: str, key: str, method: str, path: str, payload: dict | None = None) -> dict:
     url = f"{host}{path}"
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
@@ -88,8 +96,11 @@ def api_request(host: str, key: str, method: str, path: str, payload: dict | Non
             "Accept": "application/json",
         },
     )
+    if req.type not in ("http", "https"):
+        raise ValueError("Only HTTP(S) URLs are allowed")
+    opener = urllib.request.build_opener(_HTTPOnlyRedirectHandler())
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with opener.open(req, timeout=120) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
