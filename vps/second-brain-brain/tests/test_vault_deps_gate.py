@@ -147,13 +147,13 @@ def test_defer_tip_ahead_allow_healthy_cover(tmp_path: Path):
                     assert v is vault
 
 
-def test_defer_tip_ahead_exhausted_fails():
+def test_defer_tip_ahead_exhausted_fails(tmp_path: Path):
     """Hard gate: defer=1 + exhausted fail → vault_push_pending_failed."""
     vault = MagicMock()
     vault.skipped = False
     vault.push_enabled = True
     vault.is_tip_ahead.return_value = True
-    vault.root = Path("/tmp/vault-fake")
+    vault.root = tmp_path
 
     class _CM:
         def __enter__(self):
