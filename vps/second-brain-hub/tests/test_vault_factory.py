@@ -1,8 +1,6 @@
 """Tests for lib/vault_factory.open_vault."""
 from __future__ import annotations
 
-import os
-
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -17,15 +15,6 @@ from vault_factory import VaultPausedError, open_vault  # noqa: E402
 
 def test_paused_raises_on_write_and_delete():
     inner = MagicMock()
-    with patch("vault_factory._flag", return_value=True):
-        # Build paused wrapper via open_vault git path with mocked GitVault
-        with patch.dict(
-            "os.environ",
-            {"VAULT_BACKEND": "git", "VAULT_WRITERS_PAUSED": "1", "GIT_VAULT_ROOT": "/tmp"},
-            clear=False,
-        ):
-            pass
-
     from vault_factory import _PausedVault
 
     paused = _PausedVault(inner)
@@ -83,8 +72,8 @@ def test_default_drive_needs_env():
         open_vault(env=env)
 
 
-def test_default_backend_is_git():
-    env = {"GIT_VAULT_ROOT": "/tmp/vault", "GIT_VAULT_PUSH": "0"}
+def test_default_backend_is_git(tmp_path: Path):
+    env = {"GIT_VAULT_ROOT": str(tmp_path / "vault"), "GIT_VAULT_PUSH": "0"}
     with patch("git_io.GitVault") as GV:
         GV.return_value = MagicMock(name="git_vault")
         vault = open_vault(env=env)
