@@ -89,12 +89,23 @@ def parse_import_response(xml_text: str) -> dict[str, str | bool | None]:
     }
 
 
+class _HTTPOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirect = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirect is not None and redirect.type not in ("http", "https"):
+            raise ValueError("Only HTTP(S) URLs are allowed")
+        return redirect
+
+
 def import_xml(path: Path, *, token: str, base_url: str) -> tuple[int, str]:
     xml_bytes = path.read_bytes()
     if b"<Import>" not in xml_bytes and b"<import>" not in xml_bytes.lower():
         _die(f"Soubor nevypadá jako Fio Import XML: {path}")
 
     url = f"{base_url.rstrip('/')}/import/?{urllib.parse.urlencode({'token': token, 'type': 'xml'})}"
+    parsed_url = urllib.parse.urlsplit(url)
+    if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+        _die("Fio REST base URL must be an absolute HTTP(S) URL.")
     boundary = "----FioPersonalImportBoundary7MA4YWxk"
     body = (
         f"--{boundary}\r\n"
@@ -108,8 +119,11 @@ def import_xml(path: Path, *, token: str, base_url: str) -> tuple[int, str]:
         method="POST",
         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
     )
+    if req.type not in ("http", "https"):
+        _die("Fio REST base URL must be an absolute HTTP(S) URL.")
+    opener = urllib.request.build_opener(_HTTPOnlyRedirectHandler())
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with opener.open(req, timeout=60) as resp:
             return resp.getcode(), resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
