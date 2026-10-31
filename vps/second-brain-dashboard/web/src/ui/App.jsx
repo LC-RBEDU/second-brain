@@ -160,11 +160,20 @@ function hiddenWrittenIds(result) {
   return new Set(result.written.ids.filter((id) => !saved.has(id)));
 }
 
-/** Inline date: edit locally while focused; commit on blur (Chrome month-nav fires change). */
+/** Both due fields empty after this edit → need_due dialog (same rules as patchDate). */
+function leavesBothDueEmpty(task, field, value) {
+  const deadline = field === "deadline" ? value : task.deadline || "";
+  let review = field === "review_deadline" ? value : task.review_deadline || "";
+  if (field === "deadline" && value) review = "";
+  return !String(deadline || "").trim() && !String(review || "").trim();
+}
+
+/** Inline date: draft while focused; commit on blur (Chrome month-nav). Empty→need_due opens immediately. */
 function InlineDateField({ task, field, today, isBusy, onCommit }) {
   const saved = field === "deadline" ? task.deadline || "" : task.review_deadline || "";
   const [draft, setDraft] = useState(saved);
   const [focused, setFocused] = useState(false);
+  const needDueOpenedRef = useRef(false);
   useEffect(() => {
     if (!focused) setDraft(saved);
   }, [saved, focused]);
@@ -180,13 +189,27 @@ function InlineDateField({ task, field, today, isBusy, onCommit }) {
       value={shown}
       disabled={isBusy || (field === "review_deadline" && Boolean(task.deadline))}
       onFocus={() => {
+        needDueOpenedRef.current = false;
         setFocused(true);
         setDraft(saved);
       }}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => {
+      onChange={(event) => {
+        const next = event.target.value;
+        setDraft(next);
+        // Don't wait for blur: picker close can lag 2–3s after clear.
+        if (leavesBothDueEmpty(task, field, next)) {
+          needDueOpenedRef.current = true;
+          onCommit(task, field, next);
+        }
+      }}
+      onBlur={(event) => {
         setFocused(false);
-        if (draft !== saved) onCommit(task, field, draft);
+        if (needDueOpenedRef.current) {
+          needDueOpenedRef.current = false;
+          return;
+        }
+        const value = event.target.value;
+        if (value !== saved) onCommit(task, field, value);
         else setDraft(saved);
       }}
     />

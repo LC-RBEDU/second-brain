@@ -219,7 +219,7 @@ describe("screens", () => {
     });
   });
 
-  it("clearing Deadline without review date prompts for review and saves both", async () => {
+  it("clearing Deadline without review date prompts for review immediately (no blur wait)", async () => {
     const api = { patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }) };
     renderApp([task({ id: "F-T1", title: "S termínem", deadline: "2026-10-26", expect_oid: "o1" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
@@ -227,10 +227,10 @@ describe("screens", () => {
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: "" } });
     expect(api.patch).not.toHaveBeenCalled();
-    fireEvent.blur(input);
-    expect(api.patch).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog", { name: "Doplň termín" });
     expect(within(dialog).getByText(/nemůžou být obě prázdné/i)).toBeInTheDocument();
+    fireEvent.blur(input);
+    expect(api.patch).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText("Datum review"), { target: { value: "2026-11-05" } });
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Potvrdit" }));
