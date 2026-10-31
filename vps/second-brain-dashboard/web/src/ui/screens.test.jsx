@@ -5,7 +5,15 @@ import { App } from "./App.jsx";
 import { BusyProvider } from "./BusyContext.jsx";
 import { BusyOverlay } from "./BusyOverlay.jsx";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  window.location.hash = "";
+  try {
+    sessionStorage.clear();
+  } catch {
+    /* ignore */
+  }
+});
 
 const PROJECTS = [
   { slug: "finance", hierarchy: true, status: "active" },
@@ -188,6 +196,36 @@ describe("screens", () => {
     });
     expect(api.item).toHaveBeenCalledWith("F-T9");
     expect(screen.getByLabelText("Název")).toHaveValue("T6 C14 guard test");
+  });
+
+  it("nav search lists matches across the whole Brain, not only the Radar tile", () => {
+    renderApp([
+      task({ id: "F-OVER", title: "Overdue Alpha", deadline: "2026-01-01" }),
+      task({ id: "F-SOON", title: "UniqueSoonToken due soon", deadline: "2026-10-25" }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Radar" }));
+    const tiles = screen.getByLabelText("Kategorie");
+    fireEvent.click(within(tiles).getByRole("button", { name: /Overdue/i }));
+    expect(screen.queryByText(/UniqueSoonToken/)).toBeNull();
+    fireEvent.change(screen.getByLabelText("Hledat"), { target: { value: "UniqueSoonToken" } });
+    const results = screen.getByRole("region", { name: "Hledání" });
+    expect(results).toBeInTheDocument();
+    expect(within(results).getByRole("button", { name: /UniqueSoonToken/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Radar" })).toBeNull();
+  });
+
+  it("keeps the active page in the URL hash across remount (refresh)", () => {
+    const { unmount } = renderApp([task({ id: "F-T1", title: "Alpha" })]);
+    fireEvent.click(screen.getByRole("button", { name: "Mapa" }));
+    expect(window.location.hash).toBe("#map");
+    expect(screen.getByRole("region", { name: "Mapa" })).toBeInTheDocument();
+    unmount();
+    renderApp([task({ id: "F-T1", title: "Alpha" })]);
+    expect(window.location.hash).toBe("#map");
+    expect(screen.getByRole("region", { name: "Mapa" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Úklid" }));
+    expect(window.location.hash).toBe("#cleanup");
+    expect(screen.getByRole("region", { name: "Úklid" })).toBeInTheDocument();
   });
 
   it("Zahodit resets dirty detail draft in place; clean Zahodit leaves", async () => {

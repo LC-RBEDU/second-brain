@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useBusy } from "./BusyContext.jsx";
 import { classify, RULE_HELP, ruleHelp, visibleTasks } from "../classify.js";
 import { isoWeek, pausedSlugs, projectSlug } from "../focusSlots.js";
+import { applyRouteHash, parseRoute, ROUTE_VIEWS, serializeRoute } from "../route.js";
 import { applySelection, assignDays, canSend, deleteDate, keepDate, occupancy, overwriteDate, sortQueue } from "../spread.js";
 import {
   closingPreview,
@@ -26,6 +27,26 @@ import {
   StatusPill,
 } from "./chrome.jsx";
 import { MindMap } from "./MindMap.jsx";
+
+const RETURN_VIEW_KEY = "sb-dashboard-return-view";
+
+function readStoredReturnView() {
+  try {
+    const stored = sessionStorage.getItem(RETURN_VIEW_KEY) || "";
+    if (ROUTE_VIEWS.has(stored) && stored !== "detail") return stored;
+  } catch {
+    /* private mode / SSR */
+  }
+  return "radar";
+}
+
+function storeReturnView(next) {
+  try {
+    if (ROUTE_VIEWS.has(next) && next !== "detail") sessionStorage.setItem(RETURN_VIEW_KEY, next);
+  } catch {
+    /* ignore */
+  }
+}
 
 const COLUMNS = ["Doing", "Next", "Waiting", "Backlog"];
 const FOCUS_TEXT = {
@@ -152,19 +173,31 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     if (onRefresh) await onRefresh();
   }
   const paused = useMemo(() => pausedSlugs(projects), [projects]);
-  const [view, setView] = useState("radar");
+  const bootRoute = useMemo(
+    () => parseRoute(typeof window !== "undefined" ? window.location.hash : ""),
+    [],
+  );
+  const [view, setView] = useState(bootRoute.view || "radar");
   const [radarTile, setRadarTile] = useState("overdue");
   const [showPaused, setShowPaused] = useState(false);
   const [query, setQuery] = useState("");
-  const [project, setProject] = useState("");
+  const [project, setProject] = useState(bootRoute.project || "");
   const [board, setBoard] = useState(false);
   const [mapMode, setMapMode] = useState("tree");
   const [mindNavStack, setMindNavStack] = useState([]);
   const [dragTaskId, setDragTaskId] = useState("");
   const [dropStatus, setDropStatus] = useState("");
-  const [detailId, setDetailId] = useState("");
+  const [detailId, setDetailId] = useState(bootRoute.detailId || "");
   const [detailHistory, setDetailHistory] = useState([]);
-  const [returnView, setReturnView] = useState("radar");
+  const [returnView, setReturnView] = useState(() =>
+    bootRoute.view === "detail" ? readStoredReturnView() : "radar",
+  );
+  const detailBootRef = useRef(bootRoute.view === "detail" && Boolean(bootRoute.detailId));
+  const skipHashWriteRef = useRef(false);
+  const skipHashListenRef = useRef(false);
+  const routeRef = useRef({ view: bootRoute.view || "radar", project: bootRoute.project || "", detailId: bootRoute.detailId || "" });
+  const byIdRef = useRef(new Map());
+  const openDetailRef = useRef(async () => {});
   const [draft, setDraft] = useState({
     title: "",
     status: "Next",
@@ -211,19 +244,29 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
   const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const openTasks = useMemo(() => visibleTasks(tasks), [tasks]);
   const dropped = hiddenWrittenIds(cleanupResult);
+  const searchQuery = query.trim();
+  const searching = Boolean(searchQuery);
   const listed = openTasks.filter((task) => {
     if (dropped.has(task.id)) return false;
     if (!showPaused && paused.has(projectSlug(task))) return false;
-    if (!query.trim()) return true;
-    const hay = `${task.id} ${task.title || ""} ${task.project || ""} ${task.parent || ""}`.toLowerCase();
-    return hay.includes(query.trim().toLowerCase());
+    if (!searchQuery) return true;
+    const hay = `${task.id} ${task.title || ""} ${task.project || ""} ${task.parent || ""} ${task.status || ""} ${task.type || ""}`.toLowerCase();
+    return hay.includes(searchQuery.toLowerCase());
   });
-  const classified = classify({ tasks: listed }, { today, projects });
+  /** Tile / project chrome counts stay on the full open set; search has its own list. */
+  const listedForChrome = searching
+    ? openTasks.filter((task) => {
+        if (dropped.has(task.id)) return false;
+        if (!showPaused && paused.has(projectSlug(task))) return false;
+        return true;
+      })
+    : listed;
+  const classified = classify({ tasks: listedForChrome }, { today, projects });
   const activeProjects = projects.filter((item) => showPaused || !paused.has(item.slug));
   const projectSlugValue = project || activeProjects[0]?.slug || "";
-  const projectTasks = listed.filter((task) => task.project === projectSlugValue);
+  const projectTasks = listedForChrome.filter((task) => task.project === projectSlugValue);
   const detail = byId.get(detailId);
-  const mapGroups = useMemo(() => buildMapGroups(listed), [listed]);
+  const mapGroups = useMemo(() => buildMapGroups(listedForChrome), [listedForChrome]);
   const projectEpics = projectTasks.filter((task) => task.type === "epic");
   const [epicFilter, setEpicFilter] = useState("");
   const filteredProjectTasks = projectTasks.filter((task) => {
@@ -265,6 +308,27 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     setView(returnView);
   }
 
+  useEffect(() => {
+    routeRef.current = { view, project, detailId };
+  }, [view, project, detailId]);
+
+  useEffect(() => {
+    byIdRef.current = byId;
+  }, [byId]);
+
+  useEffect(() => {
+    if (skipHashWriteRef.current) {
+      skipHashWriteRef.current = false;
+      return;
+    }
+    const nextHash = serializeRoute({ view, project, detailId });
+    skipHashListenRef.current = true;
+    applyRouteHash(nextHash);
+    queueMicrotask(() => {
+      skipHashListenRef.current = false;
+    });
+  }, [view, project, detailId]);
+
   /** Zahodit = vrať draft na baseline (zůstaň v panelu). Bez neuložených změn = odejdi (jako ×). */
   function discardDetailEdits() {
     if (!detail) {
@@ -305,6 +369,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         setDetailHistory((prev) => [...prev, detailId]);
       } else if (view !== "detail") {
         setReturnView(view);
+        storeReturnView(view);
         setDetailHistory([]);
       }
       setDetailId(task.id);
@@ -341,6 +406,49 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       setView("detail");
     });
   }
+  openDetailRef.current = openDetail;
+
+  useEffect(() => {
+    if (!detailBootRef.current) return;
+    if (view !== "detail" || !detailId) {
+      detailBootRef.current = false;
+      return;
+    }
+    const task = byId.get(detailId);
+    if (!task) {
+      detailBootRef.current = false;
+      setDetailId("");
+      setView(returnView || "radar");
+      return;
+    }
+    detailBootRef.current = false;
+    openDetailRef.current(task, { pushHistory: false });
+    // Boot hydrate once when export tasks are ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot after mount
+  }, [byId, detailId, view, returnView]);
+
+  useEffect(() => {
+    function onHashChange() {
+      if (skipHashListenRef.current) return;
+      const next = parseRoute(window.location.hash);
+      const cur = routeRef.current;
+      if (serializeRoute(next) === serializeRoute(cur)) return;
+      skipHashWriteRef.current = true;
+      setView(next.view);
+      if (next.view === "project") setProject(next.project || "");
+      if (next.view === "detail" && next.detailId) {
+        setDetailId(next.detailId);
+        if (next.detailId !== cur.detailId) {
+          const task = byIdRef.current.get(next.detailId);
+          if (task) openDetailRef.current(task, { pushHistory: false });
+        }
+      } else {
+        setDetailId("");
+      }
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   function backDetail() {
     if (!detailHistory.length) {
@@ -1052,15 +1160,40 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
           ["project", "Projekt"],
           ["cleanup", "Úklid"],
         ].map(([id, name]) => (
-          <button key={id} type="button" className={btnNav(view === id)} onClick={() => setView(id)}>
+          <button
+            key={id}
+            type="button"
+            className={btnNav(view === id)}
+            onClick={() => {
+              setDetailId("");
+              setDetailHistory([]);
+              setView(id);
+            }}
+          >
             {name}
           </button>
         ))}
         <span aria-hidden="true" className="mx-2 h-6 w-px bg-[#6b6b6b]" />
-        <button type="button" className={btnNav(view === "issues")} onClick={() => setView("issues")}>
+        <button
+          type="button"
+          className={btnNav(view === "issues")}
+          onClick={() => {
+            setDetailId("");
+            setDetailHistory([]);
+            setView("issues");
+          }}
+        >
           Chybně zadané
         </button>
-        <button type="button" className={btnNav(view === "new")} onClick={() => setView("new")}>
+        <button
+          type="button"
+          className={btnNav(view === "new")}
+          onClick={() => {
+            setDetailId("");
+            setDetailHistory([]);
+            setView("new");
+          }}
+        >
           Nový task
         </button>
         <label className="ml-auto flex items-center gap-2 text-sm">
@@ -1076,6 +1209,20 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       </nav>
 
       <main className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col gap-5 px-8 py-6">
+        {searching && view !== "detail" ? (
+          <section aria-label="Hledání" className="flex flex-col gap-6">
+            <PageHeader title={`Hledání · ${listed.length}`} />
+            <p className="w-full text-xs text-[#5c5c5c]">
+              Napříč otevřenými tasky (celý Brain) · „{searchQuery}“
+            </p>
+            {listed.length === 0 ? (
+              <p className="text-sm text-[#5c5c5c]">Nic nenalezeno.</p>
+            ) : (
+              <TaskTable rows={listed} groupByProject groupLabel="Výsledky" />
+            )}
+          </section>
+        ) : (
+          <>
         {view === "radar" && (
           <section aria-label="Radar" className="flex flex-col gap-6">
             <PageHeader title="Radar">
@@ -1084,7 +1231,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
               </button>
             </PageHeader>
             <p className="w-full text-xs text-[#5c5c5c]">
-              Snapshot z Brain · focus týden {isoWeek(today)} · {listed.length} otevřených · prošlý focus:{" "}
+              Snapshot z Brain · focus týden {isoWeek(today)} · {listedForChrome.length} otevřených · prošlý focus:{" "}
               {classified.radar.focus_stale.length}
             </p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Kategorie">
@@ -2154,6 +2301,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
               </div>
             )}
           </section>
+        )}
+          </>
         )}
       </main>
 

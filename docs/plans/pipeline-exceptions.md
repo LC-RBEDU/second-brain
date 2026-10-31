@@ -70,3 +70,5 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | jednořádkový UX fix: Zahodit resetuje draft místo leaveDetail (stejné jako ×) | agent |
 | 2026-10-24 | `vps/second-brain-dashboard/web/src/{linkify.js,ui/chrome.jsx,ui/App.jsx}`, tests | malý UX: Detail/popis read view s proklikávacími URL (textarea při editaci) | agent |
 | 2026-10-27 | `vps/second-brain-dashboard/web/src/ui/MindMap.jsx`, `MindMap.test.jsx` | jednořádkový UX fix: meta listového tasku jen při neprázdném statusu (žádný fallback „task“/„—“) | agent |
+| 2026-10-31 | `vps/second-brain-dashboard/web/src/{route.js,ui/App.jsx}`, tests | malý UX: persist view (+ project/detail) v URL hashi při refresh | agent |
+| 2026-10-31 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | malý UX: nav Hledat = globální výsledky napříč Brainem (ne jen Radar dlaždice) | agent |
