@@ -198,11 +198,36 @@ describe("screens", () => {
     expect(screen.getByLabelText("Název")).toHaveValue("T6 C14 guard test");
   });
 
+  it("inline date commits on blur, not on every change (month navigation)", async () => {
+    const api = { patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }) };
+    renderApp([task({ id: "F-T1", title: "Bez data", expect_oid: "o1" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    const input = screen.getByLabelText("Review F-T1");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "2026-11-30" } });
+    expect(api.patch).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: "2026-11-15" } });
+    expect(api.patch).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.blur(input);
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    expect(api.patch).toHaveBeenCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-T1.md",
+      patch: { review_deadline: "2026-11-15" },
+      expect_oid: "o1",
+    });
+  });
+
   it("clearing Deadline without review date prompts for review and saves both", async () => {
     const api = { patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }) };
     renderApp([task({ id: "F-T1", title: "S termínem", deadline: "2026-10-26", expect_oid: "o1" })], api);
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
-    fireEvent.change(screen.getByLabelText("Deadline F-T1"), { target: { value: "" } });
+    const input = screen.getByLabelText("Deadline F-T1");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "" } });
+    expect(api.patch).not.toHaveBeenCalled();
+    fireEvent.blur(input);
     expect(api.patch).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog", { name: "Doplň termín" });
     expect(within(dialog).getByText(/nemůžou být obě prázdné/i)).toBeInTheDocument();

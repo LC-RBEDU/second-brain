@@ -160,6 +160,39 @@ function hiddenWrittenIds(result) {
   return new Set(result.written.ids.filter((id) => !saved.has(id)));
 }
 
+/** Inline date: edit locally while focused; commit on blur (Chrome month-nav fires change). */
+function InlineDateField({ task, field, today, isBusy, onCommit }) {
+  const saved = field === "deadline" ? task.deadline || "" : task.review_deadline || "";
+  const [draft, setDraft] = useState(saved);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(saved);
+  }, [saved, focused]);
+  const shown = focused ? draft : saved;
+  const overdue = field === "deadline" && shown && shown < today;
+  return (
+    <input
+      type="date"
+      className={`w-[9.5rem] rounded border border-[#b0b2b6] bg-transparent px-1 py-0.5 text-sm ${
+        overdue ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"
+      }`}
+      aria-label={`${field === "deadline" ? "Deadline" : "Review"} ${task.id}`}
+      value={shown}
+      disabled={isBusy || (field === "review_deadline" && Boolean(task.deadline))}
+      onFocus={() => {
+        setFocused(true);
+        setDraft(saved);
+      }}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        if (draft !== saved) onCommit(task, field, draft);
+        else setDraft(saved);
+      }}
+    />
+  );
+}
+
 export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconcile }) {
   const tasks = exportData?.tasks || [];
   const projects = exportData?.projects || [];
@@ -1098,23 +1131,6 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     );
   }
 
-  function InlineDate({ task, field }) {
-    const value = field === "deadline" ? task.deadline || "" : task.review_deadline || "";
-    const overdue = field === "deadline" && value && value < today;
-    return (
-      <input
-        type="date"
-        className={`w-[9.5rem] rounded border border-[#b0b2b6] bg-transparent px-1 py-0.5 text-sm ${
-          overdue ? "font-bold text-[#b8002e]" : "text-[#5c5c5c]"
-        }`}
-        aria-label={`${field === "deadline" ? "Deadline" : "Review"} ${task.id}`}
-        value={value}
-        disabled={isBusy || (field === "review_deadline" && Boolean(task.deadline))}
-        onChange={(event) => patchDate(task, field, event.target.value)}
-      />
-    );
-  }
-
   function TaskTable({ rows, groupLabel, groupByProject = false }) {
     const groups = groupByProject
       ? [...rows.reduce((map, task) => {
@@ -1179,10 +1195,10 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                         <InlineStatus task={task} />
                       </td>
                       <td className="p-2">
-                        <InlineDate task={task} field="deadline" />
+                        <InlineDateField task={task} field="deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
                       </td>
                       <td className="p-2">
-                        <InlineDate task={task} field="review_deadline" />
+                        <InlineDateField task={task} field="review_deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
                       </td>
                       <td className="p-3 text-xs text-[#5c5c5c]">{task.agent || "—"}</td>
                     </tr>
@@ -1735,8 +1751,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                           <TaskLink task={story} />
                         </span>
                         <InlineStatus task={story} />
-                        <InlineDate task={story} field="deadline" />
-                        <InlineDate task={story} field="review_deadline" />
+                        <InlineDateField task={story} field="deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
+                        <InlineDateField task={story} field="review_deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
                         <span className="text-sm text-[#5c5c5c]">{kids.length} tasků</span>
                       </div>
                       {kids.map((child) => (
@@ -1748,8 +1764,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                             <TaskLink task={child} />
                           </span>
                           <InlineStatus task={child} />
-                          <InlineDate task={child} field="deadline" />
-                          <InlineDate task={child} field="review_deadline" />
+                          <InlineDateField task={child} field="deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
+                          <InlineDateField task={child} field="review_deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
                         </div>
                       ))}
                     </div>
@@ -1761,8 +1777,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                       <TaskLink task={task} />
                     </span>
                       <InlineStatus task={task} />
-                    <InlineDate task={task} field="deadline" />
-                    <InlineDate task={task} field="review_deadline" />
+                    <InlineDateField task={task} field="deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
+                    <InlineDateField task={task} field="review_deadline" today={today} isBusy={isBusy} onCommit={patchDate} />
                   </div>
                 ))}
                 {projectStories.length === 0 && projectOrphans.length === 0 && (

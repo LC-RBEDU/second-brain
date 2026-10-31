@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-10-31 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | jasná příčina: Chrome `type=date` při šipce měsíce fire `change` → dřív okamžitý save; draft + commit na blur (module-level InlineDateField). Bez Brain kontraktů | agent (uživatel: kalendář ukládá měsíc) |
 | 2026-10-31 | `vps/second-brain-hub/tests/test_vault_factory.py`, `scripts/fio_import_personal.py` | jasná příčina: Bandit B108/B310 na draft PR #4 a #6; smazat mrtvé `/tmp`, mock root přes tmp_path, Fio `urlopen` → HTTP(S) opener. Bez hub/cron logiky | agent (uživatel: vyřeš PR dle návrhu) |
 | 2026-10-31 | `vps/second-brain-dashboard/web/index.html`, `web/public/favicon.png`, `web/public/favicon.ico` | favicon 🧠 v záložce; na živém dashboardu soubor chyběl (404); bez změny zápisu | agent (uživatel: favicon pořád není vidět) |
 | 2026-10-24 | `scripts/_fix_title_detail_hygiene.py` (+ Brain bulk/edit-body zápisy do vault tasků) | jednorázový skript: title_long/title_markup + **Detail:** backfill | agent (uživatel: hygiene názvů/Detail) |
