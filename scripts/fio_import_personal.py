@@ -95,6 +95,9 @@ def import_xml(path: Path, *, token: str, base_url: str) -> tuple[int, str]:
         _die(f"Soubor nevypadá jako Fio Import XML: {path}")
 
     url = f"{base_url.rstrip('/')}/import/?{urllib.parse.urlencode({'token': token, 'type': 'xml'})}"
+    parsed_url = urllib.parse.urlsplit(url)
+    if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+        _die("Fio REST base URL must be an absolute HTTP(S) URL.")
     boundary = "----FioPersonalImportBoundary7MA4YWxk"
     body = (
         f"--{boundary}\r\n"
