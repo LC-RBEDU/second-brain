@@ -198,6 +198,26 @@ describe("screens", () => {
     expect(screen.getByLabelText("Název")).toHaveValue("T6 C14 guard test");
   });
 
+  it("clearing Deadline without review date prompts for review and saves both", async () => {
+    const api = { patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }) };
+    renderApp([task({ id: "F-T1", title: "S termínem", deadline: "2026-10-26", expect_oid: "o1" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    fireEvent.change(screen.getByLabelText("Deadline F-T1"), { target: { value: "" } });
+    expect(api.patch).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog", { name: "Doplň termín" });
+    expect(within(dialog).getByText(/nemůžou být obě prázdné/i)).toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText("Datum review"), { target: { value: "2026-11-05" } });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Potvrdit" }));
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    expect(api.patch).toHaveBeenCalledWith({
+      path: "02-PROJEKTY/finance/tasks/F-T1.md",
+      patch: { deadline: "", review_deadline: "2026-11-05" },
+      expect_oid: "o1",
+    });
+  });
+
   it("nav search lists matches across the whole Brain, not only the Radar tile", () => {
     renderApp([
       task({ id: "F-OVER", title: "Overdue Alpha", deadline: "2026-01-01" }),

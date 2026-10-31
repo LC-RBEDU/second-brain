@@ -232,6 +232,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
   const [dialog, setDialog] = useState(null);
   const [doingDate, setDoingDate] = useState("");
   const [waitDate, setWaitDate] = useState("");
+  const [duePromptDate, setDuePromptDate] = useState("");
   const [oids, setOids] = useState({});
   const [cleanupResult, setCleanupResult] = useState(null);
   const { withBusy, isBusy, setErrorHandler } = useBusy();
@@ -548,6 +549,21 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
 
   async function saveDetail() {
     if (!detail || !api?.patch || isBusy) return;
+    const draftDeadline = String(draft.deadline || "").trim();
+    const draftReview = String(draft.review || "").trim();
+    const deadlineTouched = draftDeadline !== String(detail.deadline || "").trim();
+    const reviewTouched = draftReview !== String(detail.review_deadline || "").trim();
+    if ((deadlineTouched || reviewTouched) && !draftDeadline && !draftReview) {
+      setDuePromptDate("");
+      setDialog({
+        kind: "need_due",
+        task: detail,
+        cleared: deadlineTouched ? "deadline" : "review_deadline",
+        ask: deadlineTouched ? "review_deadline" : "deadline",
+        fromDetail: true,
+      });
+      return;
+    }
     await withBusy("Ukládám…", "Zapisuji změnu do vaultu", async () => {
       const patch = { title: draft.title, status: draft.status || detail.status || "Next" };
       if (draft.deadline !== (detail.deadline || "")) {
@@ -996,8 +1012,26 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     );
   }
 
+  function dueAfterPatch(task, field, value) {
+    const deadline = field === "deadline" ? value : task.deadline || "";
+    let review = field === "review_deadline" ? value : task.review_deadline || "";
+    if (field === "deadline" && value) review = "";
+    return { deadline: String(deadline || "").trim(), review: String(review || "").trim() };
+  }
+
   async function patchDate(task, field, value) {
     if (!api?.patch || isBusy) return;
+    const next = dueAfterPatch(task, field, value);
+    if (!next.deadline && !next.review) {
+      setDuePromptDate("");
+      setDialog({
+        kind: "need_due",
+        task,
+        cleared: field,
+        ask: field === "deadline" ? "review_deadline" : "deadline",
+      });
+      return;
+    }
     const patch =
       field === "deadline"
         ? { deadline: value, ...(value ? { review_deadline: "" } : {}) }
@@ -1007,6 +1041,36 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         const result = await api.patch(patchPayload(task, patch));
         const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
         if (ok) await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
+      } catch {
+        setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
+      }
+    });
+  }
+
+  async function confirmNeedDue() {
+    if (!dialog?.task || !duePromptDate || !api?.patch || isBusy) return;
+    const task = dialog.task;
+    const ask = dialog.ask === "deadline" ? "deadline" : "review_deadline";
+    const patch =
+      ask === "review_deadline"
+        ? { deadline: "", review_deadline: duePromptDate }
+        : { deadline: duePromptDate, review_deadline: "" };
+    await withBusy("Ukládám…", "Ukládám změnu úkolu", async () => {
+      try {
+        const result = await api.patch(patchPayload(task, patch));
+        const ok = await openConflict(result, patch, task.path, task.id, baselineOf(task));
+        if (ok) {
+          await afterOkSave([{ id: task.id, patch, oid: result?.oid }]);
+          if (dialog.fromDetail) {
+            setDraft((prev) => ({
+              ...prev,
+              deadline: patch.deadline || "",
+              review: patch.review_deadline || "",
+            }));
+          }
+          setDialog(null);
+          setDuePromptDate("");
+        }
       } catch {
         setDialog({ kind: "error", text: "Uložení selhalo (síť nebo server)." });
       }
@@ -2480,6 +2544,44 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
             <button type="button" className={btnPrimary} disabled={isBusy} onClick={confirmDoing}>
               Potvrdit
             </button>
+          </div>
+        </div>
+      )}
+
+      {dialog?.kind === "need_due" && (
+        <div role="dialog" aria-label="Doplň termín" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div data-layout-panel className={`${panelClass} flex max-w-md flex-col gap-3 p-5`}>
+            <p className="text-sm">
+              Deadline a review date nemůžou být obě prázdné.{" "}
+              {dialog.ask === "review_deadline"
+                ? "Doplň review date (kdy se k úkolu vrátit)."
+                : "Doplň deadline (externí závazek)."}
+            </p>
+            <label className={labelClass}>
+              {dialog.ask === "review_deadline" ? "Review date" : "Deadline"}
+              <input
+                type="date"
+                className={fieldClass}
+                aria-label={dialog.ask === "review_deadline" ? "Datum review" : "Datum deadline"}
+                value={duePromptDate}
+                onChange={(event) => setDuePromptDate(event.target.value)}
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={btnPrimary} disabled={isBusy || !duePromptDate} onClick={confirmNeedDue}>
+                Potvrdit
+              </button>
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => {
+                  setDialog(null);
+                  setDuePromptDate("");
+                }}
+              >
+                Zrušit
+              </button>
+            </div>
           </div>
         </div>
       )}
