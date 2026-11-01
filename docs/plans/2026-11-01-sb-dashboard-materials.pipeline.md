@@ -1,12 +1,12 @@
 # Pipeline: sb-dashboard-materials
 
-Stav: QA
+Stav: DONE
 Plán: docs/plans/2026-11-01-sb-dashboard-materials.md
 Schvalování plánu uživatelem: ne
 Architekt: e7dc58bd→465e2959→hlavní r=3…6; Šťoural 4eb5646c; Kritik 8fc150ad SCHVÁLENO
 Implementace: F1–F5 hotovo (normalize, FE A12–A16, testy); lokální gate pytest+vitest PASS
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): ff46df06016e90f065201f77625ae8794d7d0ac2 · Kódový SHA: 0f20d546b1a494d14d2ab21a80c1624c14fd94d6 · Review SCHVÁLENO na: 0f20d546b1a494d14d2ab21a80c1624c14fd94d6 · QA PASS na: — · TESTER PASS na: —
+Base (origin/main před pipeline): ff46df06016e90f065201f77625ae8794d7d0ac2 · Kódový SHA: 0f20d546b1a494d14d2ab21a80c1624c14fd94d6 · Review SCHVÁLENO na: 0f20d546b1a494d14d2ab21a80c1624c14fd94d6 · QA PASS na: 033ed58da671752c1bdfdff60735280b8fa8722d (PASS s výhradami: T14 live OAuth DATA-NELZE; přijato orchestrátorem) · TESTER PASS na: 033ed58 (T6 PASS, 93905f4a)
 Plán schválen uživatelem: nevyžadováno
 Vizuální gate člověka: ne (A4)
 Goal: aktivní
@@ -49,8 +49,21 @@ Vizuální gate člověka: ne (A4)
 | 11 | 2026-11-01 | CRITIC | 8fc150ad | SCHVÁLENO | 0B 0M | MINOR NEW-11 T10(d) → IMPLEMENT |
 | 12 | 2026-11-01 | IMPLEMENT | hlavní | gate PASS | — | → REVIEW |
 | 13 | 2026-11-01 | REVIEW | 2c997311 | SCHVÁLENO | 0B 0M | T7/T10/T16 OK → push + QA |
+| 14 | 2026-11-01 | QA | f320c65a | PASS s výhradami | DATA-NELZE T14 | → testerGate T6 |
+| 15 | 2026-11-01 | TESTER | 93905f4a | PASS | T6 9/9 | → DONE audit |
+| 16 | 2026-11-01 | DONE | hlavní | gate exit 0 | — | pytest+vitest+T6 |
 
 ## Otevřené nálezy
 
 | ID | Závažnost | Typ | Stav | Kolikrát |
 |---|---|---|---|---|
+
+- 2026-11-01: QA PASS s výhradami (OAuth DATA-NELZE) přijato → Tester T6.
+
+## DONE audit
+- Kritik SCHVÁLENO (8fc150ad) na plán r=6
+- Review SCHVÁLENO (2c997311) na 0f20d54
+- QA PASS s výhradami přijato (f320c65a) na 033ed58
+- Tester PASS (93905f4a) T6 na 033ed58
+- Vizuální gate člověka: ne (A4)
+- Vlastní gate: pytest materials 7+1, BFF 1, vitest 42 — exit 0
