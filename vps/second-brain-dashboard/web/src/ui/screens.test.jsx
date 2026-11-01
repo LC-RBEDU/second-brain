@@ -370,6 +370,154 @@ describe("screens", () => {
     expect(api.create.mock.calls[0][0].materials).toEqual(["[[Wiki]]", "https://event.example/rsvp"]);
   });
 
+  it("B4 clear materials with Detail without URL writes empty list", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "o1",
+        body: "**Detail:** bez odkazu jen text\n",
+        frontmatter: { materials: ["https://old.example/a"] },
+      }),
+      patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }),
+    };
+    renderApp([task({ id: "F-T1", title: "Clear empty" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Clear empty" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Materiály a odkazy")).toHaveValue("https://old.example/a"));
+    fireEvent.change(screen.getByLabelText("Materiály a odkazy"), { target: { value: "" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    expect(api.patch.mock.calls[0][0].patch.materials).toEqual([]);
+  });
+
+  it("T10 materials CAS: baseline from original avoids false Q9; vault drift opens Q9", async () => {
+    const api = {
+      item: vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          oid: "o1",
+          body: "**Detail:** x\n",
+          frontmatter: { materials: ["https://a.example/x"] },
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          oid: "oid-new",
+          frontmatter: {
+            title: "CAS mat",
+            status: "Next",
+            materials: ["https://a.example/x"],
+          },
+        }),
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          error_reason: "oid_mismatch",
+          oid: "oid-new",
+          current: { title: "CAS mat", status: "Next", materials: ["https://a.example/x"] },
+        })
+        .mockResolvedValueOnce({ ok: true, oid: "oid-written" }),
+    };
+    // list export has no materials (A15)
+    renderApp([task({ id: "F-T1", title: "CAS mat", expect_oid: "stale" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — CAS mat" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Materiály a odkazy")).toHaveValue("https://a.example/x"));
+    fireEvent.change(screen.getByLabelText("Materiály a odkazy"), {
+      target: { value: "https://a.example/x\nhttps://b.example/y" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("dialog", { name: "Neshoda verze" })).toBeNull();
+    expect(api.patch.mock.calls[1][0].patch.materials).toEqual([
+      "https://a.example/x",
+      "https://b.example/y",
+    ]);
+
+    cleanup();
+    const drifted = {
+      item: vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          oid: "o1",
+          body: "**Detail:** x\n",
+          frontmatter: { materials: ["https://a.example/x"] },
+        })
+        .mockResolvedValue({
+          ok: true,
+          oid: "oid-new",
+          frontmatter: {
+            title: "CAS mat",
+            status: "Next",
+            materials: ["https://other.example/z", "https://extra.example/w"],
+          },
+        }),
+      patch: vi.fn().mockResolvedValue({
+        ok: false,
+        error_reason: "oid_mismatch",
+        oid: "oid-new",
+        current: {
+          title: "CAS mat",
+          status: "Next",
+          materials: ["https://other.example/z", "https://extra.example/w"],
+        },
+      }),
+    };
+    renderApp([task({ id: "F-T1", title: "CAS mat", expect_oid: "stale" })], drifted);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — CAS mat" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Materiály a odkazy")).toHaveValue("https://a.example/x"));
+    fireEvent.change(screen.getByLabelText("Materiály a odkazy"), {
+      target: { value: "https://a.example/x\nhttps://b.example/y" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Neshoda verze" })).toBeInTheDocument());
+    expect(screen.getByText("Materiály")).toBeInTheDocument();
+  });
+
+  it("T16 PATCH materials OK then editBody fail shows error and stays in Detail", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "o1",
+        body: "**Detail:** původní\n",
+        frontmatter: { materials: [] },
+      }),
+      patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }),
+      editBody: vi.fn().mockResolvedValue({ ok: false, error_reason: "edit_failed", message: "body fail" }),
+    };
+    renderApp([task({ id: "F-T1", title: "Dual write" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dual write" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Detail úkolu")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Materiály a odkazy"), { target: { value: "https://m.example/a" } });
+    fireEvent.click(screen.getByLabelText("Detail úkolu"));
+    fireEvent.change(screen.getByLabelText("Detail úkolu"), { target: { value: "nový popis" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(api.editBody).toHaveBeenCalled());
+    expect(api.patch).toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Chyba uložení" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Detail" })).toBeInTheDocument();
+  });
+
   it("nav search lists matches across the whole Brain, not only the Radar tile", () => {
     renderApp([
       task({ id: "F-OVER", title: "Overdue Alpha", deadline: "2026-01-01" }),

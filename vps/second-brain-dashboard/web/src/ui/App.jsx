@@ -693,7 +693,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       const materialsText = materialsKey(materialsMerged);
       if (materialsText !== draft.materialsOriginal) patch.materials = materialsMerged;
       // A15: list export has no materials — baseline from openDetail original, not byId row.
-      const baseline = { ...baselineOf(detail), materials: draft.materialsOriginal };
+      const baseline = { ...baselineOf(detail), materials: materialsKey(draft.materialsOriginal) };
       const payload = patchPayload(detail, patch);
       let result;
       try {
