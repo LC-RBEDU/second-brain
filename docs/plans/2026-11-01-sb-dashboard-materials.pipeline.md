@@ -1,12 +1,12 @@
 # Pipeline: sb-dashboard-materials
 
-Stav: REVIEW
+Stav: QA
 Plán: docs/plans/2026-11-01-sb-dashboard-materials.md
 Schvalování plánu uživatelem: ne
 Architekt: e7dc58bd→465e2959→hlavní r=3…6; Šťoural 4eb5646c; Kritik 8fc150ad SCHVÁLENO
 Implementace: F1–F5 hotovo (normalize, FE A12–A16, testy); lokální gate pytest+vitest PASS
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main před pipeline): ff46df06016e90f065201f77625ae8794d7d0ac2 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
+Base (origin/main před pipeline): ff46df06016e90f065201f77625ae8794d7d0ac2 · Kódový SHA: 0f20d546b1a494d14d2ab21a80c1624c14fd94d6 · Review SCHVÁLENO na: 0f20d546b1a494d14d2ab21a80c1624c14fd94d6 · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Vizuální gate člověka: ne (A4)
 Goal: aktivní
@@ -48,6 +48,7 @@ Vizuální gate člověka: ne (A4)
 | 10 | 2026-11-01 | CRITIC | 409eb9b3 | K PŘEPRACOVÁNÍ | NEW-9 | T4 vs A16 |
 | 11 | 2026-11-01 | CRITIC | 8fc150ad | SCHVÁLENO | 0B 0M | MINOR NEW-11 T10(d) → IMPLEMENT |
 | 12 | 2026-11-01 | IMPLEMENT | hlavní | gate PASS | — | → REVIEW |
+| 13 | 2026-11-01 | REVIEW | 2c997311 | SCHVÁLENO | 0B 0M | T7/T10/T16 OK → push + QA |
 
 ## Otevřené nálezy
 
