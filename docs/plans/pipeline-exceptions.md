@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-11-01 | `vps/second-brain-brain/app/tools/{update_task,create_task}.py`, `main.py`, dashboard `App.jsx`/`linkify.js`/BFF | jasná příčina: materials se při save neukládaly (+ YAML list orphan); pole Materiály/odkazy v detailu/Nový | agent (uživatel: materials u IAD-T168) — **superseded by** `/rbu-pipeline` `docs/plans/2026-11-01-sb-dashboard-materials.pipeline.md` |
 | 2026-10-31 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | malý UX: need_due dialog hned při clear deadline (ne čekat na blur pickeru) | agent (uživatel: 2–3 s prodleva) |
 | 2026-10-31 | `vps/second-brain-dashboard/web/src/ui/App.jsx`, `screens.test.jsx` | jasná příčina: Chrome `type=date` při šipce měsíce fire `change` → dřív okamžitý save; draft + commit na blur (module-level InlineDateField). Bez Brain kontraktů | agent (uživatel: kalendář ukládá měsíc) |
 | 2026-10-31 | `vps/second-brain-hub/tests/test_vault_factory.py`, `scripts/fio_import_personal.py` | jasná příčina: Bandit B108/B310 na draft PR #4 a #6; smazat mrtvé `/tmp`, mock root přes tmp_path, Fio `urlopen` → HTTP(S) opener. Bez hub/cron logiky | agent (uživatel: vyřeš PR dle návrhu) |

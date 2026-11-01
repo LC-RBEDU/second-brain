@@ -85,11 +85,12 @@ describe("layout views probe T17", () => {
     expect(within(project).getAllByRole("columnheader").length).toBe(4);
     expect(looksBare(container)).toBe(false);
 
-    // B-V6 Nový
+    // B-V6 Nový (+ B-V6m Materiály)
     fireEvent.click(screen.getByRole("button", { name: "Nový task" }));
     const neo = screen.getByRole("region", { name: "Nový task" });
     expect(within(neo).getByRole("radiogroup")).toBeInTheDocument();
     expect(within(neo).getByRole("button", { name: "Založit" })).toBeInTheDocument();
+    expect(within(neo).getByLabelText("Materiály nového tasku")).toBeInTheDocument();
     expect(looksBare(container)).toBe(false);
 
     // B-V7 Úklid
@@ -97,7 +98,7 @@ describe("layout views probe T17", () => {
     expect(screen.getByRole("button", { name: "Náhled" })).toBeInTheDocument();
     expect(looksBare(container)).toBe(false);
 
-    // B-V5 Detail
+    // B-V5 Detail (+ B-V5m Materiály)
     fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "F-T1 — Dítě" }));
@@ -105,6 +106,7 @@ describe("layout views probe T17", () => {
     const detail = screen.getByRole("region", { name: "Detail" });
     expect(detail.className).toMatch(/max-w-xl/);
     expect(within(detail).getByRole("button", { name: "Uložit" })).toBeInTheDocument();
+    expect(within(detail).getByLabelText("Materiály a odkazy")).toBeInTheDocument();
     expect(looksBare(container)).toBe(false);
   });
 });

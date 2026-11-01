@@ -141,6 +141,24 @@ def test_story_without_parent_is_rejected():
     vault.write_text.assert_not_called()
 
 
+def test_render_task_materials_url_and_wikilink():
+    text = create_mod._render_task(
+        task_id="RBU-E1",
+        title="S materiály",
+        slug="rb-universe-development",
+        hub="RB Universe",
+        level="epic",
+        status="Next",
+        detail="Go https://event.example/rsvp",
+        materials=["https://event.example/rsvp", "[[RB Universe]]", "https://event.example/rsvp"],
+    )
+    assert '  - "https://event.example/rsvp"' in text
+    assert "[[RB Universe]]" in text
+    # once in materials list (+ optionally again in Detail body) — list deduped
+    materials_block = text.split("---", 2)[1]
+    assert materials_block.count("https://event.example/rsvp") == 1
+
+
 def test_dry_run_batch_returns_distinct_ids():
     vault = _vault()
     story = "---\nid: RBU-S1\ntype: story\nslug: rb-universe-development\nstatus: Next\n---\n"

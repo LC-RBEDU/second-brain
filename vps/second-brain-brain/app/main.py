@@ -392,6 +392,7 @@ class CreateTaskBody(BaseModel):
     deadline: str = ""
     review_deadline: str = ""
     waitUntil: str = ""
+    materials: list[str] = []
     dry_run: bool = False
 
 
@@ -407,6 +408,7 @@ def rest_create_task(body: CreateTaskBody, _auth: AuthPrincipal) -> dict:
         deadline=body.deadline,
         review_deadline=body.review_deadline,
         waitUntil=body.waitUntil,
+        materials=body.materials,
         dry_run=body.dry_run,
     )
 

@@ -12,6 +12,7 @@ import {
   resolveCloser,
   rowPatch,
 } from "../writes.js";
+import { extractUrls, toHref } from "../linkify.js";
 import {
   btnGhost,
   btnNav,
@@ -20,6 +21,7 @@ import {
   DetailField,
   fieldClass,
   labelClass,
+  LinkifiedText,
   PageHeader,
   panelClass,
   ParentSuggest,
@@ -86,7 +88,7 @@ function errorMessage(result) {
   if (ERROR_TEXT[reason]) return ERROR_TEXT[reason];
   return reason ? `Uložení selhalo: ${reason}` : "Uložení selhalo.";
 }
-const COMPARE_FIELDS = ["title", "status", "deadline", "review_deadline", "waitUntil", "parent"];
+const COMPARE_FIELDS = ["title", "status", "deadline", "review_deadline", "waitUntil", "parent", "materials"];
 const Q9_LABELS = {
   title: "Název",
   status: "Status",
@@ -94,6 +96,7 @@ const Q9_LABELS = {
   review_deadline: "Review",
   waitUntil: "Wait until",
   parent: "Parent",
+  materials: "Materiály",
 };
 
 function parentId(value) {
@@ -121,6 +124,48 @@ function extractDetail(body) {
     text: raw === "—" ? "" : raw,
     line: matched[0],
   };
+}
+
+/** [[wikilink]] passthrough; URL-like → toHref; invalid URL → null (drop). */
+function canonicalizeMaterialLine(raw) {
+  const item = String(raw || "").trim();
+  if (!item) return null;
+  if (/^\[\[[\s\S]+\]\]$/.test(item)) return item;
+  return toHref(item);
+}
+
+/** Stable join for COMPARE / baseline / fieldValue (list | string | null). */
+function materialsKey(value) {
+  if (value == null || value === "") return "";
+  const lines = Array.isArray(value) ? value : String(value).split("\n");
+  const out = [];
+  const seen = new Set();
+  for (const line of lines) {
+    const item = canonicalizeMaterialLine(line);
+    if (!item || seen.has(item)) continue;
+    seen.add(item);
+    out.push(item);
+  }
+  return out.join("\n");
+}
+
+/** materials frontmatter ↔ textarea (one URL / wikilink per line). */
+function materialsToText(list) {
+  return materialsKey(list);
+}
+
+function textToMaterials(text) {
+  const key = materialsKey(text);
+  return key ? key.split("\n") : [];
+}
+
+function mergeMaterials(base, extra) {
+  return textToMaterials([...textToMaterials(materialsToText(base)), ...textToMaterials(materialsToText(extra))].join("\n"));
+}
+
+/** Textarea materials ∪ harvested Detail URLs (wikilink never via toHref). */
+function effectiveMaterials(draft) {
+  return mergeMaterials(textToMaterials(draft?.materials), extractUrls(draft?.detail || ""));
 }
 
 function showValue(value) {
@@ -264,6 +309,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     detail: "",
     detailOriginal: "",
     detailLine: "",
+    materials: "",
+    materialsOriginal: "",
   });
   const [newDraft, setNewDraft] = useState({
     title: "",
@@ -274,6 +321,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     parent: "",
     waitUntil: "",
     detail: "",
+    materials: "",
   });
   const [checked, setChecked] = useState({});
   const [actions, setActions] = useState({});
@@ -402,6 +450,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       detail: draft.detailOriginal,
       detailOriginal: draft.detailOriginal,
       detailLine: draft.detailLine,
+      materials: draft.materialsOriginal,
+      materialsOriginal: draft.materialsOriginal,
     };
     const dirty =
       draft.title !== baseline.title ||
@@ -410,7 +460,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       draft.review !== baseline.review ||
       draft.waitUntil !== baseline.waitUntil ||
       draft.parent !== baseline.parent ||
-      draft.detail !== draft.detailOriginal;
+      draft.detail !== draft.detailOriginal ||
+      draft.materials !== draft.materialsOriginal;
     if (!dirty) {
       leaveDetail();
       return;
@@ -432,6 +483,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       setDetailId(task.id);
       let detailText = "";
       let detailLine = "";
+      let materialsList = Array.isArray(task.materials) ? task.materials : [];
       try {
         if (api?.item) {
           const item = await api.item(task.id);
@@ -442,6 +494,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
           const parsed = extractDetail(item?.body || "");
           detailText = parsed.text;
           detailLine = parsed.line;
+          const fromItem = item?.frontmatter?.materials;
+          if (Array.isArray(fromItem)) materialsList = fromItem;
           const freshOid = item?.oid || item?.expect_oid || item?.frontmatter?.oid;
           if (freshOid) setOids((prev) => ({ ...prev, [task.id]: String(freshOid) }));
         }
@@ -449,6 +503,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         setDialog({ kind: "error", text: "Načtení detailu selhalo (síť nebo server)." });
         return;
       }
+      const materialsText = materialsToText(materialsList);
       setDraft({
         title: task.title || "",
         status: task.status || "Next",
@@ -459,6 +514,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
         detail: detailText,
         detailOriginal: detailText,
         detailLine,
+        materials: materialsText,
+        materialsOriginal: materialsText,
       });
       setView("detail");
     });
@@ -521,6 +578,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
 
   function fieldValue(key, value) {
     if (key === "parent") return parentId(value);
+    if (key === "materials") return materialsKey(value);
     if (value == null) return "";
     const text = String(value).trim();
     if (key === "deadline" || key === "review_deadline" || key === "waitUntil") {
@@ -559,6 +617,8 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       // Concurrent = vault drifted from form baseline (not "your patch vs vault").
       const concurrent = COMPARE_FIELDS.some((key) => {
         if (!Object.prototype.hasOwnProperty.call(current, key)) return false;
+        // List export omits materials — skip when baseline never carried the key (A15/NEW-10).
+        if (key === "materials" && !Object.prototype.hasOwnProperty.call(base, key)) return false;
         return showValue(vault[key]) !== showValue(fieldValue(key, base[key]));
       });
       // Proposal already matches vault on compared fields → pure CAS / stale oid.
@@ -629,7 +689,11 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
       }
       if (draft.waitUntil !== (detail.waitUntil || "")) patch.waitUntil = draft.waitUntil;
       if (detail.type !== "epic" && draft.parent !== parentId(detail.parent)) patch.parent = draft.parent;
-      const baseline = baselineOf(detail);
+      const materialsMerged = effectiveMaterials(draft);
+      const materialsText = materialsKey(materialsMerged);
+      if (materialsText !== draft.materialsOriginal) patch.materials = materialsMerged;
+      // A15: list export has no materials — baseline from openDetail original, not byId row.
+      const baseline = { ...baselineOf(detail), materials: draft.materialsOriginal };
       const payload = patchPayload(detail, patch);
       let result;
       try {
@@ -978,6 +1042,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
     }
     await withBusy("Zakládám úkol…", "Vytvářím nový záznam", async () => {
       try {
+        const materials = effectiveMaterials(newDraft);
         const result = await api.create({
           slug: projectSlugValue,
           title: newDraft.title,
@@ -988,6 +1053,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
           review_deadline: newDraft.deadline ? "" : newDraft.review,
           waitUntil: newDraft.waitUntil,
           detail: newDraft.detail,
+          materials,
         });
         if (result?.error_reason === "deadline_order") {
           setDialog({ kind: "deadline_order", text: conflictText(result.detail) });
@@ -1013,6 +1079,7 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 deadline: created.deadline || newDraft.deadline || "",
                 review_deadline: created.review_deadline || newDraft.review || "",
                 waitUntil: created.waitUntil || newDraft.waitUntil || "",
+                materials,
                 type: created.type || newDraft.level,
                 oid: result.oid || created.oid,
               },
@@ -1978,6 +2045,23 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 }
               />
             </label>
+            <label className={labelClass}>
+              Materiály / odkazy
+              <textarea
+                className={`${fieldClass} min-h-20 resize-y font-mono text-xs`}
+                aria-label="Materiály a odkazy"
+                rows={3}
+                disabled={isBusy}
+                placeholder={"Jeden odkaz nebo [[wikilink]] na řádek\nnapř. https://… nebo Slack permalink"}
+                value={draft.materials}
+                onChange={(event) => setDraft({ ...draft, materials: event.target.value })}
+              />
+              {draft.materials.trim() ? (
+                <div className="mt-1 text-sm font-normal text-[#5c5c5c]">
+                  <LinkifiedText text={draft.materials} />
+                </div>
+              ) : null}
+            </label>
             <div className="rounded-md bg-[#f3f3f3] p-3.5 text-sm">
               <div className="mb-1 text-xs font-extrabold uppercase">Náhled změn</div>
               {draft.title !== (detail.title || "") && (
@@ -2010,12 +2094,20 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                   <b>detail:</b> {draft.detailOriginal || "—"} → {draft.detail || "—"}
                 </div>
               )}
+              {materialsKey(effectiveMaterials(draft)) !== draft.materialsOriginal && (
+                <div>
+                  <b>materials:</b> {draft.materialsOriginal || "—"} → {materialsKey(effectiveMaterials(draft)) || "—"}
+                </div>
+              )}
               {draft.title === (detail.title || "") &&
                 draft.status === detail.status &&
                 draft.deadline === (detail.deadline || "") &&
                 draft.review === (detail.review_deadline || "") &&
                 draft.parent === parentId(detail.parent) &&
-                draft.detail === draft.detailOriginal && <div className="text-[#5c5c5c]">Beze změny</div>}
+                draft.detail === draft.detailOriginal &&
+                materialsKey(effectiveMaterials(draft)) === draft.materialsOriginal && (
+                  <div className="text-[#5c5c5c]">Beze změny</div>
+                )}
             </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" className={btnPrimary} disabled={isBusy} onClick={saveDetail}>
@@ -2176,6 +2268,17 @@ export function App({ exportData, api, today = "2026-10-20", onRefresh, onReconc
                 rows={3}
                 value={newDraft.detail}
                 onChange={(event) => setNewDraft({ ...newDraft, detail: event.target.value })}
+              />
+            </label>
+            <label className={labelClass}>
+              Materiály / odkazy (volitelně)
+              <textarea
+                className={`${fieldClass} min-h-16 resize-y font-mono text-xs`}
+                aria-label="Materiály nového tasku"
+                rows={2}
+                placeholder="Jeden odkaz na řádek — URL z Detailu se přidají automaticky"
+                value={newDraft.materials}
+                onChange={(event) => setNewDraft({ ...newDraft, materials: event.target.value })}
               />
             </label>
             <button type="button" className={btnPrimary} disabled={isBusy} onClick={createTask}>

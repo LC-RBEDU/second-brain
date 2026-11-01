@@ -243,6 +243,133 @@ describe("screens", () => {
     });
   });
 
+  it("Detail save patches materials and harvests URLs from Detail", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "o1",
+        body: "# F-T1\n\n**Detail:** Go https://event.example/rsvp\n",
+        frontmatter: { materials: ["https://mail.example/a"] },
+      }),
+      patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }),
+      editBody: vi.fn().mockResolvedValue({ ok: true, oid: "n2" }),
+    };
+    renderApp([task({ id: "F-T1", title: "S materiály", expect_oid: "o1", materials: ["https://mail.example/a"] })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — S materiály" }));
+    });
+    await waitFor(() => expect(api.item).toHaveBeenCalled());
+    const materials = screen.getByLabelText("Materiály a odkazy");
+    expect(materials).toHaveValue("https://mail.example/a");
+    fireEvent.change(materials, { target: { value: "https://mail.example/a\nhttps://slack.example/t" } });
+    fireEvent.click(screen.getByLabelText("Detail úkolu"));
+    fireEvent.change(screen.getByLabelText("Detail úkolu"), { target: { value: "Go https://event.example/rsvp" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    expect(api.patch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patch: expect.objectContaining({
+          materials: expect.arrayContaining([
+            "https://mail.example/a",
+            "https://slack.example/t",
+            "https://event.example/rsvp",
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("Detail save keeps wikilink and harvests URL (B1/T18)", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "o1",
+        body: "**Detail:** see https://event.example/rsvp\n",
+        frontmatter: { materials: ["[[RB Universe]]"] },
+      }),
+      patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }),
+    };
+    renderApp([task({ id: "F-T1", title: "Wiki mat", expect_oid: "o1" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Wiki mat" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Materiály a odkazy")).toHaveValue("[[RB Universe]]"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    expect(api.patch.mock.calls[0][0].patch.materials).toEqual([
+      "[[RB Universe]]",
+      "https://event.example/rsvp",
+    ]);
+  });
+
+  it("B11 clear materials textarea still harvests Detail URL", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "o1",
+        body: "**Detail:** https://keep.example/x\n",
+        frontmatter: { materials: ["https://old.example/a"] },
+      }),
+      patch: vi.fn().mockResolvedValue({ ok: true, oid: "n1" }),
+    };
+    renderApp([task({ id: "F-T1", title: "Clear harvest", expect_oid: "o1" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Clear harvest" }));
+    });
+    await waitFor(() => expect(api.item).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText("Materiály a odkazy"), { target: { value: "" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Uložit" }));
+    });
+    await waitFor(() => expect(api.patch).toHaveBeenCalled());
+    expect(api.patch.mock.calls[0][0].patch.materials).toEqual(["https://keep.example/x"]);
+  });
+
+  it("harvest-only without form edit: Zahodit leaves (A16)", async () => {
+    const api = {
+      item: vi.fn().mockResolvedValue({
+        ok: true,
+        oid: "o1",
+        body: "**Detail:** https://only.example/z\n",
+        frontmatter: { materials: [] },
+      }),
+    };
+    renderApp([task({ id: "F-T1", title: "Harvest only" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Projekt" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "F-T1 — Harvest only" }));
+    });
+    await waitFor(() => expect(screen.getByLabelText("Materiály a odkazy")).toHaveValue(""));
+    expect(screen.getByText(/materials:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zahodit" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Detail" })).toBeNull());
+  });
+
+  it("createTask sends materials union with Detail URLs", async () => {
+    const api = {
+      create: vi.fn().mockResolvedValue({ ok: true, id: "F-T9", path: "02-PROJEKTY/finance/tasks/F-T9.md" }),
+    };
+    renderApp([task({ id: "F-E1", type: "epic", title: "Epic" })], api);
+    fireEvent.click(screen.getByRole("button", { name: "Nový task" }));
+    fireEvent.change(screen.getByLabelText("Název nového tasku"), { target: { value: "Nový s linky" } });
+    fireEvent.change(screen.getByLabelText("Materiály nového tasku"), { target: { value: "[[Wiki]]" } });
+    fireEvent.change(screen.getByLabelText("Detail nového tasku"), {
+      target: { value: "reg https://event.example/rsvp" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Založit" }));
+    });
+    await waitFor(() => expect(api.create).toHaveBeenCalled());
+    expect(api.create.mock.calls[0][0].materials).toEqual(["[[Wiki]]", "https://event.example/rsvp"]);
+  });
+
   it("nav search lists matches across the whole Brain, not only the Radar tile", () => {
     renderApp([
       task({ id: "F-OVER", title: "Overdue Alpha", deadline: "2026-01-01" }),

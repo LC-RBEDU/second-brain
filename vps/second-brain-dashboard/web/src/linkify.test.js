@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkifyParts, toHref } from "./linkify.js";
+import { extractUrls, linkifyParts, toHref } from "./linkify.js";
 
 describe("linkify", () => {
   it("splits https URLs and strips trailing punctuation", () => {
@@ -30,5 +30,11 @@ describe("linkify", () => {
   it("rejects non-http schemes via toHref", () => {
     expect(toHref("javascript:alert(1)")).toBeNull();
     expect(toHref("https://ok.example")).toBe("https://ok.example/");
+  });
+
+  it("extractUrls returns unique http(s) links", () => {
+    expect(
+      extractUrls("RSVP https://no-work.circle.so a znovu https://no-work.circle.so"),
+    ).toEqual(["https://no-work.circle.so/"]);
   });
 });

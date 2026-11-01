@@ -5,7 +5,7 @@ import re
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any  # noqa: TC003 — used at runtime in normalize_materials
 
 for _lib in (
     Path("/app/lib"),
@@ -22,6 +22,7 @@ from task_id_allocate import peek_ids, with_level  # noqa: E402
 from task_io import iter_active_tasks, parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError  # noqa: E402
+from app.tools.materials_yaml import normalize_materials  # noqa: E402
 from app.tools.parent_link import resolve_parent_raw  # noqa: E402
 from app.tools.project_guard import require_project  # noqa: E402
 from app.fm_contract import strip_aliases_for_new_write  # noqa: E402
@@ -34,6 +35,21 @@ def _slugify_title(title: str) -> str:
     t = _SAFE_TITLE.sub("", title).strip()
     t = re.sub(r"\s+", "-", t)
     return t[:80] or "task"
+
+
+def _yaml_list_block(key: str, items: list[str]) -> list[str]:
+    if not items:
+        return [f"{key}: []"]
+    lines = [f"{key}:"]
+    for item in items:
+        if any(c in item for c in (":", "#", "[", "]", "{", "}", ",", '"', "'")) or item.startswith(
+            "[["
+        ) or "://" in item:
+            escaped = item.replace("\\", "\\\\").replace('"', '\\"')
+            lines.append(f'  - "{escaped}"')
+        else:
+            lines.append(f"  - {item}")
+    return lines
 
 
 def _render_task(
@@ -50,12 +66,14 @@ def _render_task(
     review_deadline: str = "",
     wait_until: str = "",
     promoted_from: str = "",
+    materials: list[str] | None = None,
     hierarchy: bool = True,
 ) -> str:
     hierarchy = True
     today = date.today().isoformat()
     type_map = {"epic": "epic", "story": "story", "task": "task"}
     work_type = type_map.get(level, "story")
+    material_items = normalize_materials(materials)
     fm = {
         "id": task_id,
         "type": work_type,
@@ -71,7 +89,7 @@ def _render_task(
         "waitUntil": wait_until,
         "created": today,
         "updated": today,
-        "materials": [],
+        "materials": material_items,
         "source": "brain-api",
         "promoted_from": promoted_from,
         "company_priorities": [],
@@ -90,11 +108,12 @@ def _render_task(
     lines = ["---"]
     for k, v in fm.items():
         if isinstance(v, list):
-            lines.append(f"{k}: []")
+            lines.extend(_yaml_list_block(k, [str(x) for x in v]))
         elif v == "" and k in ("parent", "focus", "deadline", "review_deadline", "waitUntil"):
             lines.append(f"{k}:")
-        elif isinstance(v, str) and (":" in v or v.startswith("[[")):
-            lines.append(f'{k}: "{v}"')
+        elif isinstance(v, str) and (":" in v or v.startswith("[[") or "://" in v):
+            escaped = v.replace("\\", "\\\\").replace('"', '\\"')
+            lines.append(f'{k}: "{escaped}"')
         else:
             lines.append(f"{k}: {v}")
     lines.append("---")
@@ -184,6 +203,7 @@ def create_task(
     deadline: str = "",
     review_deadline: str = "",
     waitUntil: str = "",
+    materials: list[str] | None = None,
     promoted_from: str = "",
     dry_run: bool = False,
     items: list[dict[str, Any]] | None = None,
@@ -202,6 +222,7 @@ def create_task(
             "deadline": deadline,
             "review_deadline": review_deadline,
             "waitUntil": waitUntil,
+            "materials": materials or [],
             "promoted_from": promoted_from,
         }
     ]
@@ -262,6 +283,7 @@ def create_task(
                 review_deadline=str(spec.get("review_deadline") or ""),
                 wait_until=str(spec.get("waitUntil") or ""),
                 promoted_from=spec["promoted_from"],
+                materials=normalize_materials(spec.get("materials")),
                 hierarchy=True,
             )
             if not dry_run:

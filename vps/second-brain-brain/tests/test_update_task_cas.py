@@ -19,6 +19,52 @@ from app.errors import BrainClientError  # noqa: E402
 from app.tools import update_task as mod  # noqa: E402
 
 
+def test_render_frontmatter_patch_replaces_materials_list():
+    text = (
+        "---\n"
+        "id: X1\n"
+        "title: T\n"
+        "materials:\n"
+        '  - "[[Old]]"\n'
+        "  - https://old.example/a\n"
+        "status: Next\n"
+        "---\n\n"
+        "# X1 — T\n"
+    )
+    out = mod.render_frontmatter_patch(
+        text,
+        {
+            "materials": [
+                "https://no-work.circle.so/events/digi",
+                "https://mail.google.com/mail/#all/abc",
+            ]
+        },
+    )
+    assert "[[Old]]" not in out
+    assert "https://old.example/a" not in out
+    assert '  - "https://no-work.circle.so/events/digi"\n' in out
+    assert '  - "https://mail.google.com/mail/#all/abc"\n' in out
+    assert out.count("materials:") == 1
+    assert "status: Next\n" in out
+
+
+def test_render_frontmatter_patch_empty_materials_list():
+    text = "---\nid: X1\nmaterials:\n  - https://x.test\n---\n\nbody\n"
+    out = mod.render_frontmatter_patch(text, {"materials": []})
+    assert "materials: []\n" in out
+    assert "https://x.test" not in out
+
+
+def test_normalize_materials_string_and_dedupe():
+    from app.tools.materials_yaml import normalize_materials
+
+    assert normalize_materials("https://a.test\n[[Wiki]]\nhttps://a.test\n") == [
+        "https://a.test",
+        "[[Wiki]]",
+    ]
+    assert normalize_materials(None) == []
+
+
 def test_drive_conflict_maps_to_409():
     vault = MagicMock()
     meta = MagicMock()

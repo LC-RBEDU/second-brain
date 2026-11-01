@@ -163,6 +163,9 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
     def create_task(request: Request, body: dict[str, Any]) -> dict[str, Any]:
         email_of(request)
         deadline = body.get("deadline") or ""
+        materials = body.get("materials")
+        if not isinstance(materials, list):
+            materials = []
         sent = {
             "slug": body.get("slug") or "",
             "title": body.get("title") or "",
@@ -173,6 +176,7 @@ def create_app(brain: Any, *, secret: str, batch_limit: int = 40) -> FastAPI:
             "review_deadline": "" if deadline else (body.get("review_deadline") or ""),
             "waitUntil": body.get("waitUntil") or "",
             "detail": body.get("detail") or "",
+            "materials": [str(item).strip() for item in materials if str(item or "").strip()],
         }
         return brain_json(app.state.brain.call("POST", "/v1/tasks", json_body=sent))
 

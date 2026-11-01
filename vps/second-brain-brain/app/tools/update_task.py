@@ -24,6 +24,7 @@ from hierarchy import parse_parent_id  # noqa: E402
 from task_io import iter_active_tasks, parse_task_text  # noqa: E402
 
 from app.errors import BrainClientError
+from app.tools.materials_yaml import normalize_materials
 from app.tools.open_child import assert_no_open_child
 from app.tools.parent_link import check_overlay, needs_forest
 from app.policy import FOCUS_PROPOSAL_MESSAGE, deny_focus_write, deny_stav_auto_write
@@ -32,12 +33,58 @@ from app.vault_deps import brain_vault
 _FM_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n(.*)$", re.DOTALL)
 
 
+def _yaml_scalar(val: str) -> str:
+    if any(c in val for c in (":", "#", "[", "]", "{", "}", ",", '"', "'")) or val.startswith(
+        "[["
+    ) or "://" in val or val.startswith(" ") or val.endswith(" "):
+        escaped = val.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return val
+
+
 def _yaml_value(key: str, val: Any) -> str:
     if val is None or val == "":
         return f"{key}:\n"
-    if isinstance(val, str) and (":" in val or val.startswith("[[")):
-        return f'{key}: "{val}"\n'
+    if isinstance(val, list):
+        items = [str(item).strip() for item in val if str(item or "").strip()]
+        if not items:
+            return f"{key}: []\n"
+        out = [f"{key}:\n"]
+        for item in items:
+            out.append(f"  - {_yaml_scalar(item)}\n")
+        return "".join(out)
+    if isinstance(val, str) and (":" in val or val.startswith("[[") or "://" in val):
+        return f"{key}: {_yaml_scalar(val)}\n"
     return f"{key}: {val}\n"
+
+
+def _is_yaml_key_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or stripped.startswith("-"):
+        return False
+    if line[:1] in (" ", "\t"):
+        return False
+    return ":" in line
+
+
+def _skip_yaml_value(lines: list[str], start: int) -> int:
+    """After replacing a key line at start-1, skip its old multi-line value."""
+    i = start
+    while i < len(lines):
+        raw = lines[i]
+        if _is_yaml_key_line(raw):
+            break
+        if not raw.strip():
+            # blank line: keep if next is a new key, else part of block
+            if i + 1 < len(lines) and _is_yaml_key_line(lines[i + 1]):
+                break
+            i += 1
+            continue
+        if raw.startswith(" ") or raw.startswith("\t") or raw.lstrip().startswith("-"):
+            i += 1
+            continue
+        break
+    return i
 
 
 def render_frontmatter_patch(text: str, patch: dict[str, Any]) -> str:
@@ -48,14 +95,18 @@ def render_frontmatter_patch(text: str, patch: dict[str, Any]) -> str:
     lines = fm_raw.splitlines(keepends=True)
     keys_done: set[str] = set()
     new_lines: list[str] = []
-    for line in lines:
-        if ":" in line and not line.strip().startswith("#"):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if _is_yaml_key_line(line):
             key = line.split(":", 1)[0].strip()
             if key in patch:
                 new_lines.append(_yaml_value(key, patch[key]))
                 keys_done.add(key)
+                i = _skip_yaml_value(lines, i + 1)
                 continue
         new_lines.append(line if line.endswith("\n") else line + "\n")
+        i += 1
     for key, val in patch.items():
         if key not in keys_done:
             new_lines.append(_yaml_value(key, val))
@@ -183,6 +234,8 @@ def update_task(
             write_patch.pop("updated", None)
             if "deadline" in write_patch and write_patch.get("deadline") not in (None, ""):
                 write_patch["review_deadline"] = ""
+            if "materials" in write_patch:
+                write_patch["materials"] = normalize_materials(write_patch.get("materials"))
             new_text = render_frontmatter_patch(text, write_patch)
             if dry_run:
                 return {

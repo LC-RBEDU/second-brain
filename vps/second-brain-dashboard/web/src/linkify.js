@@ -42,6 +42,18 @@ export function linkifyParts(text) {
   return parts;
 }
 
+/** Unique http(s) URLs found in plain text (Detail / poznámky). */
+export function extractUrls(text) {
+  const found = [];
+  const seen = new Set();
+  for (const part of linkifyParts(text)) {
+    if (!part.href || seen.has(part.href)) continue;
+    seen.add(part.href);
+    found.push(part.href);
+  }
+  return found;
+}
+
 /** @param {string} raw */
 export function toHref(raw) {
   const trimmed = String(raw || "").trim();

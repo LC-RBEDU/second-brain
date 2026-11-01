@@ -47,6 +47,28 @@ def auth(email: str = ALLOWED_EMAIL) -> dict[str, str]:
     return {COOKIE: sign_session(email, SECRET)}
 
 
+def test_create_forwards_materials_list():
+    api, brain = client()
+    brain.queue.append(FakeResponse(200, {"ok": True, "id": "F-T9", "path": Y_PATH}))
+    response = api.post(
+        "/api/tasks",
+        cookies=auth(),
+        json={
+            "slug": "finance",
+            "title": "S materiály",
+            "level": "task",
+            "status": "Next",
+            "detail": "x",
+            "materials": ["https://event.example/rsvp", "[[Wiki]]", ""],
+        },
+    )
+    assert response.status_code == 200
+    sent = brain.calls[-1]
+    assert sent["method"] == "POST"
+    assert sent["path"] == "/v1/tasks"
+    assert sent["json"]["materials"] == ["https://event.example/rsvp", "[[Wiki]]"]
+
+
 def test_b17_cookie_email_and_focus_strip():
     api, brain = client()
     assert api.get("/api/export").status_code == 401
