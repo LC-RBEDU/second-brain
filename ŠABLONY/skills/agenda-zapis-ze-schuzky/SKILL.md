@@ -1,11 +1,10 @@
 ---
 name: agenda-zapis-ze-schuzky
 description: >-
-  DEEP zápis ze schůzky (Sembly / Plaud): HTML brand RB EDU do ~/Downloads/ + MD
-  meeting_summary do 05-RESOURCES/vystupy/zapisy/YYYY-MM/, pak rovnou založí
-  Lukášovy tasky (bez druhého schválení). Triggers: zápis ze schůzky, summary
-  z meetingu, zpracuj Sembly/Plaud přepis, DEEP triáž sembly/, nebo Plaud
-  v daily/. Default varianta full.
+  DEEP zápis ze schůzky (Sembly / Plaud): HTML brand RB EDU do ~/Downloads/.
+  MD do vaultu jde Brain finalize_meeting (ne zápisem do klonu), pak tasky
+  přes create_task. Triggers: zápis ze schůzky, summary z meetingu, zpracuj
+  Sembly/Plaud přepis, DEEP triáž sembly/, nebo Plaud v daily/. Default varianta full.
 ---
 
 **F1 (git vault):** pokud vault je git klon (`SECOND_BRAIN_VAULT` / `~/GitHub/second-brain-vault`), skill = **pull + read only** — žádný FS zápis do klonu. Snapshot = VPS; lidský zápis = GitHub web UI PR. Až F2.
@@ -28,10 +27,10 @@ jde jen to, co v přepisu explicitně zaznělo.
 2. Napíše plný zápis (default `variant: full`).
 2a. Jazykový průchod draftu MD přes `rbedu-grammar-nazi` (GN-1 / GN-2, s fingerprint kontrolou) — Krok 5; běží u `full` i `shared`.
 3. Vyrobí **HTML** → `~/Downloads/YYYY-MM-DD_<slug>_zapis.html`.
-4. Vyrobí **MD** → `~/GitHub/second-brain-vault/05-RESOURCES/vystupy/zapisy/YYYY-MM/…_zapis.md`.
-5. U jasných projektů přidá **wikilink stub** do `02-PROJEKTY/<slug>/materials/`.
-6. Z tabulky úkolů **rovnou založí** Lukášovy tasky (Lukáš-only filter) — bez druhého schválení.
-7. Archivuje zdroj přes `scripts/archive_inbox_item.py`.
+4. Po schválení preview zavolá Brain `finalize_meeting` (nejdřív `dry_run`) — ten uloží MD do `zapisy/YYYY-MM/` a archivuje přepis.
+5. Stub v `02-PROJEKTY/<slug>/materials/` se nezakládá.
+6. Z tabulky úkolů **rovnou založí** Lukášovy tasky přes Brain `create_task` (Lukáš-only filter) — bez druhého schválení. `materials` = wikilink na zápis.
+7. Přepis archivuje jen `finalize_meeting`. `scripts/archive_inbox_item.py` se nevolá.
 8. Interní schůzku rozešle na Slack (**HTML jako příloha** + **odkaz na MD na Drive**). Pravidlo: `.cursor/rules/internal-meeting-slack.mdc`.
 
 **Sdílená / stručná varianta** jen když uživatel **výslovně** řekne „pro tým“ /
@@ -178,7 +177,20 @@ python3 "ŠABLONY/skills/rbedu-grammar-nazi/scripts/md_fingerprint.py" compare -
    v preview → default `Vault?=jen zápis` (+ 1 řádek ve shrnutí).
 3. `capture` → GN-2 → `compare` (stejný retry/stop pro exit 1 i 2).
 4. Až exit 0: odvoď `meta.json` + `body.html` **1:1 z post-GN MD** (bez druhého language pass)
-   → `build_html.py` → write MD/HTML → Krok 8 z **upraveného preview**.
+   → `build_html.py` (jen HTML do Downloads) → **Uzavření přepisu** → Krok 8 z **upraveného preview**.
+
+## Uzavření přepisu
+
+Před zápisem rozhodni: zápis, nebo přeskočit (`skip_reason`: `smoke` | `empty` | `duplicate` | `fragment` | `other` + `skip_note`). Generický název („Meeting Friday“, „Google Meet“) vezmi z kalendáře. Bez události se zeptej, nevymýšlej. Skip taky až po krátkém ano.
+
+1:1 (název nebo kalendář obsahuje `1:1` nebo „Lukáš–…“, nebo to Lukáš v tom tahu řekne) a citlivé (P&C, jednání s CEO, klient pod NDA): default jen vault, na týmový disk se neptej. Počet účastníků 1:1 nedělá. Pojmenovaná týmová schůzka se dvěma lidmi jde dál do Kroku 9.
+
+Po ano na preview:
+
+1. Slož `zapis_md` v `/tmp`. `source_transcript` a `drive_copies` nepíš — doplní Brain. `related_tasks` nech `[]`. `drive_folder` jen když se bude sdílet; u 1:1 a citlivých chybí a není to chyba.
+2. Brain `finalize_meeting(dry_run=true)`.
+3. Ostré `finalize_meeting` s `expect_oid` z dry-runu.
+4. Teprve potom Krok 8 a nabídka Kroku 9. Odmítnuté sdílení přepis do Inboxu nevrací.
 
 ### HTML vzhled — standard (Lucie & Luky / Claude Team, schváleno 2026-10-09)
 
@@ -271,16 +283,18 @@ type: material
 material_kind: schuzka
 doc_type: meeting_summary
 variant: full          # nebo shared
-drive_folder: "https://drive.google.com/drive/folders/<ID>"   # povinné — kam jde kanonické MD
+drive_folder: "https://drive.google.com/drive/folders/<ID>"   # jen když se bude sdílet; u 1:1 a citlivých vynech
 projects:
   - "[[<slug>]]"       # 0–N projektů
-related_tasks: []      # doplň po apply tasků
+related_tasks: []      # needoplňuj po create_task
 created: YYYY-MM-DD
 ```
 
-**Úložiště MD (povinné u každého zápisu):**
+MD do vaultu nezapisuj do klonu. Pošli ho jako `zapis_md` do Brain `finalize_meeting`. Existující soubor se stejným názvem nástroj nepřepíše (409).
 
-1. `drive_folder:` ve frontmatter (URL sdílené Drive složky).
+**Úložiště MD:**
+
+1. `drive_folder:` jen u schůzky, která půjde na týmový disk.
 2. V `## 0. Meta` jeden řádek `Úložiště MD: <URL nebo název složky>` (agentí + lidský kontext).
 3. Folder ber z tabulky v `.cursor/rules/internal-meeting-slack.mdc` (Strategická / Strategy sync = známý folder). Není v tabulce → **zeptej se** před rozesláním; do preview uveď „Drive folder: ???“.
 4. Vault soubor výše = **pracovní kopie** agenta. **Kanonické sdílení s týmem** = upload MD do `drive_folder` + Slack odkaz na ten soubor (ne MD příloha).
@@ -289,7 +303,9 @@ Existující soubor se stejným názvem **nepřepisuj** — zeptej se.
 
 ### Wikilink do project materials/
 
-Pro každý jasný `projects:` slug vytvoř (pokud ještě není) krátký stub:
+V tomhle kroku stub v `02-PROJEKTY/<slug>/materials/` nezakládej. Odkaz na zápis je `materials` na tasku z `create_task`.
+
+Historický tvar stubu (nezakládat):
 
 `02-PROJEKTY/<slug>/materials/YYYY-MM-DD — Zápis — <název schůzky>.md`
 
@@ -341,16 +357,12 @@ schválení zápisu tasky zakládej / updatuj ve stejném tahu jako HTML + MD.
    `jen zápis` / cizí akce zůstanou v zápisu.
 2. **Drobná `solo` práce** (Vault? = nabídnout rovnou) → nezakládej task;
    v závěrečném shrnutí nabídni „řešit rovnou?“ (viz bootstrap `agent: solo`).
-3. Jinak **hned**: `python3 scripts/next_task_id.py <slug> [--type story|…]` → file-per-task
-   + `materials:` / `related_tasks:` na kanónický MD zápis **a samonosný kontext**
-   (viz níže — povinné). Update existujícího tasku stejně bez druhého schválení.
+3. Jinak **hned** Brain `create_task`: `materials` = jeden wikilink na kanonický `…_zapis` (bez stubu), `detail` = jeden odstavec (schůzka, datum, wikilink, co je hotovo, kdo drží míček). To nahrazuje **Cíl:**, **Kontext ze zápisu:** a checkbox s *proč/DoD*. Soubor zápisu se znovu neotevírá a `related_tasks` se na něj nedoplňuje. Update existujícího tasku zápis taky nemění; řádek do logu jde přes `append_task_note`.
 4. Hotové úkoly ze schůzky (Lukáš už udělal / označil done) → v zápisu nech jako
    **hotovo**; vault task nezakládej, nebo existující odškrtni / Done.
 5. Ve **finálním shrnutí** v chatu vždy vypiš tabulku založených / updatovaných tasků
    (`#` | ID — title | projekt | status | 1 věta Cíl) — ať jde ověřit bez otevírání vaultu.
-6. `python3 scripts/sync_lide_people.py --incremental --paths "…"`  
-   `python3 scripts/build_agent_context.py`
-7. Archiv zdroje: `python3 scripts/archive_inbox_item.py <source.md>`
+6. Lidi a snapshot nespouštěj lokálním skriptem do klonu. Přepis už archivoval `finalize_meeting`.
 
 ### Samonosný kontext v tasku (povinné)
 
@@ -364,12 +376,10 @@ U **nového** i **update** tasku ze zápisu vždy:
 
 | Pole / místo | Co napsat |
 |---|---|
-| `materials:` | wikilink na kanónický `…_zapis` (+ materials stub, pokud je) |
-| `related_tasks:` na zápisu | plný název task souboru |
-| **Z:** | schůzka + datum + wikilink na zápis (případně sekce / `id:` karty) |
-| **Cíl:** / **Cíl teď:** | 1–3 věty — co je hotovo, až je story/krok done |
-| **Kontext ze zápisu:** | 2–5 vět — rozhodnutí, kdo drží míček, omezení, vazba na jiné priority |
-| Checkbox `**ID-N**` | krátký název + `→ *proč:* …; *DoD:* …` (1 věta proč, 1 věta DoD) |
+| `materials` v `create_task` | jeden wikilink na kanonický `…_zapis`, bez stubu |
+| `detail` | jeden odstavec: schůzka, datum, wikilink, co je hotovo, kdo drží míček |
+| `related_tasks` na zápisu | needoplňovat |
+| **Cíl:** / **Kontext ze zápisu:** / checkbox | nezakládat; text je v `detail` |
 
 **Update existujícího tasku:** nepřepisuj celou historii; doplň **Kontext ze zápisu**
 (datum schůzky), případně **Cíl teď**, nové checkboxy s *proč/DoD*, řádek do logu
@@ -387,7 +397,7 @@ v preview stačí navrhovaný title + 1 věta o čem (editovatelný seznam před
 
 ## Krok 9 — rozeslání (Drive MD + Slack)
 
-Až jsou HTML (`~/Downloads/`) a vault MD na disku. Detail, Slack kanály a Drive foldery: `.cursor/rules/internal-meeting-slack.mdc` (při rozporu vyhraje pravidlo).
+Až `finalize_meeting` vrátí OK a HTML je v `~/Downloads/`. 1:1 a citlivé tento krok přeskoč, pokud Lukáš v tom tahu výslovně neřekl sdílet. Odmítnuté sdílení není důvod vracet přepis do Inboxu. Detail, Slack kanály a Drive foldery: `.cursor/rules/internal-meeting-slack.mdc` (při rozporu vyhraje pravidlo).
 
 **Model (pevný):**
 
@@ -471,12 +481,12 @@ Preview = kontrola úkolů a **routing** (Vault?/Projekt) + Slack — ne šablon
 - [ ] Checklist před `build_html.py` (výše) splněný
 - [ ] Jména + `name_aliases`
 - [ ] HTML bez vlastního CSS, přes `build_html.py` (až po GN-2)
-- [ ] MD v `vystupy/zapisy/YYYY-MM/` + `type: material` + **`drive_folder:`** + řádek Úložiště MD v Meta
-- [ ] Stubs v `materials/` u jasných projektů
-- [ ] Lukášovy tasky založené / updatované ve stejném tahu (bez druhého schválení)
+- [ ] MD ve vaultu jen přes `finalize_meeting` (dry-run, pak ostré volání); `drive_folder` není povinné u 1:1 a citlivých
+- [ ] Stub v `materials/` se nezakládá
+- [ ] Lukášovy tasky přes `create_task` s `materials` na zápis a `detail` jako samonosný odstavec
 - [ ] Finální tabulka tasků v chatu (# | ID — title | projekt | status | Cíl)
-- [ ] Každý task/update ze zápisu: **Z:** + **Cíl** + **Kontext ze zápisu** + checkbox *proč/DoD* + `materials:` na zápis
-- [ ] Zdroj archivován
+- [ ] `related_tasks` na zápisu se needoplňuje
+- [ ] Přepis archivoval `finalize_meeting`, ne `archive_inbox_item.py`
 - [ ] MD nahráno do Drive `drive_folder` (nebo folder chybí → dotaz, neposílat)
 - [ ] Interní zápis na Slacku: **HTML příloha** + **odkaz na MD na Drive** (ne MD attach); kanál z pravidla nebo dotaz; podpis kurzívou
 - [ ] Default = full DEEP (ne shared / ne stručný)

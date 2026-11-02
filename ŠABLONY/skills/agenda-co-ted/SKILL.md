@@ -98,6 +98,7 @@ CO TEĎ — DD/MM/YYYY
 
 ═══════════════════════════════════════════════
 📝 Lessons ke schválení: N (nebo vynech řádek) — „schval lessons“
+📥 Sembly inbox: N přepisů (nejstarší X dní). Když oldest_pending_age_days ≥ 1, doplň „starší než 24 h“. Vynech řádek, když je počet 0 nebo pole v contextu chybí.
 ═══════════════════════════════════════════════
 Příkazy: ukliď | detail <slug> | revize priorit | schval lessons
 ```

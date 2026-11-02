@@ -227,6 +227,21 @@ def create_task(
         }
     ]
     for spec in specs:
+        raw_materials = spec.get("materials")
+        if raw_materials is not None and not isinstance(raw_materials, list):
+            raise BrainClientError(
+                message="materials must be a list",
+                status_code=400,
+                error_reason="bad_materials",
+            )
+        if isinstance(raw_materials, list) and (
+            len(raw_materials) > 20 or any(not str(item).strip() for item in raw_materials)
+        ):
+            raise BrainClientError(
+                message="materials must be 1-20 non-empty strings",
+                status_code=400,
+                error_reason="bad_materials",
+            )
         if not str(spec.get("title") or "").strip():
             raise BrainClientError(message="title required", status_code=400, error_reason="missing_title")
         if spec.get("level", "story") not in ("epic", "story", "task"):

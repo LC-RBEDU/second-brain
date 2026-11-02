@@ -24,6 +24,7 @@ from app.tools import create_task as create_task_tool
 from app.tools import external_propose_apply as external_tool
 from app.tools import get_context as get_context_tool
 from app.tools import get_triage_candidates as triage_tool
+from app.tools import finalize_meeting as finalize_tool
 from app.tools import ingest_sembly as ingest_tool
 from app.tools import list_dir as list_dir_tool
 from app.tools import mailbox_propose_apply as mailbox_tool
@@ -463,6 +464,33 @@ class IngestSemblyBody(BaseModel):
 @app.post("/v1/ingest_sembly")
 def rest_ingest_sembly(body: IngestSemblyBody, _auth: AuthPrincipal) -> dict:
     return ingest_tool.ingest_sembly(body.payload)
+
+
+class FinalizeMeetingBody(BaseModel):
+    transcript_path: str
+    expect_oid: str | None = None
+    zapis_md: str | None = None
+    meeting_date: str | None = None
+    slug: str | None = None
+    drive_urls: list[str] = []
+    skip_reason: str | None = None
+    skip_note: str | None = None
+    dry_run: bool = False
+
+
+@app.post("/v1/finalize_meeting")
+def rest_finalize_meeting(body: FinalizeMeetingBody, _auth: AuthPrincipal) -> dict:
+    return finalize_tool.finalize_meeting(
+        transcript_path=body.transcript_path,
+        expect_oid=body.expect_oid,
+        zapis_md=body.zapis_md,
+        meeting_date=body.meeting_date,
+        slug=body.slug,
+        drive_urls=body.drive_urls,
+        skip_reason=body.skip_reason,
+        skip_note=body.skip_note,
+        dry_run=body.dry_run,
+    )
 
 
 class CaptureDailyBody(BaseModel):

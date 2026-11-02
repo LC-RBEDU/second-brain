@@ -23,6 +23,7 @@ from drive_io import DriveNotFoundError  # noqa: E402
 
 from app.context_freshness import needs_rebuild  # noqa: E402
 from app.errors import BrainVaultError, vault_error  # noqa: E402
+from app.tools.sembly_pending import attach_sembly_pending  # noqa: E402
 from app.vault_deps import brain_vault  # noqa: E402
 
 
@@ -50,6 +51,7 @@ def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
         if not rebuild:
             assert full is not None
             # Warm size guard (plan §3 ≤256 KB) — return as-is; oversized rare.
+            attach_sembly_pending(full, vault)
             return {"mode": "warm", "context": full}
 
     # needs_rebuild — mutate/rebuild gates (tip/PUSH) apply.
@@ -64,6 +66,7 @@ def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
                     "vault_push_reset_failed",
                     "post-rebuild verify failed (trio timestamps)",
                 )
+            attach_sembly_pending(snapshot, vault)
             return {"mode": "rebuild", "context": snapshot}
     except BrainVaultError:
         raise

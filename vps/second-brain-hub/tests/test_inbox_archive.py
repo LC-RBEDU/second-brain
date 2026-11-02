@@ -100,3 +100,18 @@ def test_inbox_archive_dest_sb_personal_iso_date(tmp_path: Path):
     assert len(moves) == 1
     assert not (slack_in / att).exists()
     assert (arch / att).exists()
+
+
+def test_inbox_archive_rel_sembly_and_daily():
+    assert mod.inbox_archive_rel("01-INBOX/sembly/2026-10-13-1000-x.md") == (
+        "07-ARCHIV/inbox-processed/2026/10/sembly/2026-10-13-1000-x.md"
+    )
+    assert mod.inbox_archive_rel("01-INBOX/daily/2026-10-13-1000-x.md").endswith(
+        "/daily/2026-10-13-1000-x.md"
+    )
+    assert mod.attachment_belongs(
+        "2026-10-13-1000-sync.md", "2026-10-13-1000-notes.pdf"
+    )
+    assert not mod.attachment_belongs(
+        "2026-10-13-1000-sync.md", "2026-10-13-1100-other.pdf"
+    )

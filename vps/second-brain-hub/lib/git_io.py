@@ -270,6 +270,8 @@ class GitVault:
             ):
                 try:
                     self._git(["reset", "--hard", "HEAD"], check=False)
+                    # Untracked files survive reset --hard and poison the next mutate.
+                    self._git(["clean", "-fd"], check=False)
                 except Exception as exc:  # noqa: BLE001
                     log.error("git_io: discard_dirty_on_error reset failed: %s", exc)
             self._release_lock()
@@ -526,6 +528,13 @@ class GitVault:
     def exists(self, rel_path: str) -> bool:
         return self._abspath(rel_path).exists()
 
+    def is_tracked(self, rel_path: str) -> bool:
+        rel = _norm_rel(rel_path)
+        if not rel:
+            return False
+        result = self._git(["ls-files", "--error-unmatch", "--", rel], check=False)
+        return result.returncode == 0
+
     def stat(self, rel_path: str) -> FileMeta:
         return self._meta_for_path(rel_path)
 
@@ -746,7 +755,11 @@ class GitVault:
         diff = self._git(["diff", "--cached", "--quiet"], check=False)
         if diff.returncode == 0:
             return False
-        msg = message or f"hub: vault update {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        msg = (
+            message
+            or getattr(self, "commit_message", None)
+            or f"hub: vault update {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        )
         self._git(["commit", "-m", msg], check=True)
         return True
 

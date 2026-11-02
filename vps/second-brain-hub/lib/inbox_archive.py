@@ -71,13 +71,42 @@ def _year_month_from_sb_email(md_path: Path) -> tuple[str, str] | None:
         return None
 
 
+def inbox_archive_rel(rel: str) -> str:
+    """Archive path for a date-prefixed INBOX file. Does not read the vault."""
+    parts = Path(rel.replace("\\", "/")).parts
+    if not parts:
+        raise ValueError(f"cannot parse date from {rel}")
+    name = parts[-1]
+    m = INBOX_DATE_PREFIX_RE.match(name)
+    if not m:
+        raise ValueError(f"cannot parse date from {rel}")
+    year, month = m.group(1), m.group(2)
+    kind = parts[1] if len(parts) > 2 else "misc"
+    return f"07-ARCHIV/inbox-processed/{year}/{month}/{kind}/{name}"
+
+
+def attachment_belongs(md_name: str, other_name: str) -> bool:
+    """True when ``other_name`` is a co-located non-md attachment of ``md_name``."""
+    if other_name in {md_name, ".keep"}:
+        return False
+    if Path(other_name).suffix.lower() == ".md":
+        return False
+    email_prefix = email_attachment_prefix(md_name)
+    slack_prefix = capture_ts_prefix(md_name)
+    if email_prefix and other_name.startswith(email_prefix):
+        return True
+    if slack_prefix and other_name.startswith(slack_prefix + "-"):
+        return True
+    return False
+
+
 def inbox_archive_dest(vault: Path, rel: str) -> Path:
     """Compute archive destination path for an INBOX relative path."""
     parts = Path(rel.replace("\\", "/")).parts
     name = parts[-1]
     m = INBOX_DATE_PREFIX_RE.match(name)
     if m:
-        year, month = m.group(1), m.group(2)
+        return vault / inbox_archive_rel(rel)
     elif SB_EMAIL_RE.match(name):
         md_path = vault.joinpath(*parts)
         ym = _year_month_from_sb_email(md_path)
@@ -106,20 +135,13 @@ def list_colocated_attachments(inbox_dir: Path, md_name: str) -> list[Path]:
     """Return non-markdown files in ``inbox_dir`` belonging to ``md_name`` capture."""
     if not inbox_dir.is_dir():
         return []
-    email_prefix = email_attachment_prefix(md_name)
-    slack_prefix = capture_ts_prefix(md_name)
     out: list[Path] = []
     for p in sorted(inbox_dir.iterdir()):
         if not p.is_file():
             continue
         if p.name in {md_name, ".keep"}:
             continue
-        if p.suffix.lower() == ".md":
-            continue
-        if email_prefix and p.name.startswith(email_prefix):
-            out.append(p)
-            continue
-        if slack_prefix and p.name.startswith(slack_prefix + "-"):
+        if attachment_belongs(md_name, p.name):
             out.append(p)
     return out
 

@@ -25,6 +25,7 @@ from drive_io import DriveNotFoundError  # noqa: E402
 
 from app.context_freshness import needs_rebuild  # noqa: E402
 from app.errors import vault_error  # noqa: E402
+from app.tools.sembly_pending import attach_sembly_pending  # noqa: E402
 from app.vault_deps import brain_vault  # noqa: E402
 
 
@@ -50,4 +51,5 @@ def get_context_light(*, env: dict[str, str] | None = None) -> dict[str, Any]:
                 "rebuild via get_context / cron — light endpoint does not rebuild",
             )
         assert light is not None
+        attach_sembly_pending(light, vault)
         return {"mode": "warm", "context": light}

@@ -15,6 +15,7 @@ from app.tools import create_task as create_task_tool
 from app.tools import external_propose_apply as external_tool
 from app.tools import get_context as get_context_tool
 from app.tools import get_triage_candidates as triage_tool
+from app.tools import finalize_meeting as finalize_tool
 from app.tools import ingest_sembly as ingest_tool
 from app.tools import list_dir as list_dir_tool
 from app.tools import mailbox_propose_apply as mailbox_tool
@@ -69,7 +70,8 @@ def build_mcp() -> MCPServer:
             "Second Brain vault tools. Mutate requires OAuth (human) or service token. "
             "Vault errors return JSON {error_reason, message}. "
             "External/mailbox mutate: propose here, then client apply (1×/2× UX). "
-            "Focus: propose_focus, then apply_focus after a yes. set_focus does not write."
+            "Focus: propose_focus, then apply_focus after a yes. set_focus does not write. "
+            "Close a meeting transcript with finalize_meeting, not archive_inbox_item."
         ),
     )
 
@@ -359,8 +361,10 @@ def build_mcp() -> MCPServer:
         promoted_from: str = "",
         dry_run: bool = False,
         items_json: str = "",
+        materials_json: str = "",
     ) -> str:
         items = json.loads(items_json) if items_json else None
+        materials = json.loads(materials_json) if materials_json else None
         return _call(
             create_task_tool.create_task,
             slug=slug,
@@ -372,6 +376,7 @@ def build_mcp() -> MCPServer:
             deadline=deadline,
             review_deadline=review_deadline,
             promoted_from=promoted_from,
+            materials=materials,
             dry_run=dry_run,
             items=items,
         )
@@ -429,6 +434,45 @@ def build_mcp() -> MCPServer:
     @mcp.tool(description="Cancel a pending reminder by id substring.")
     def cancel_reminder(reminder_id: str) -> str:
         return _call(reminders_tool.cancel_reminder, reminder_id=reminder_id)
+
+    @mcp.tool(
+        description=(
+            "Save a meeting note and archive its inbox transcript in one commit, "
+            "or archive with skip_reason. dry_run writes nothing."
+        )
+    )
+    def finalize_meeting(
+        transcript_path: str,
+        expect_oid: str | None = None,
+        zapis_md: str | None = None,
+        meeting_date: str | None = None,
+        slug: str | None = None,
+        drive_urls_json: str = "[]",
+        skip_reason: str | None = None,
+        skip_note: str | None = None,
+        dry_run: bool = False,
+    ) -> str:
+        urls = json.loads(drive_urls_json) if drive_urls_json else []
+        try:
+            result = finalize_tool.finalize_meeting(
+                transcript_path=transcript_path,
+                expect_oid=expect_oid,
+                zapis_md=zapis_md,
+                meeting_date=meeting_date,
+                slug=slug,
+                drive_urls=urls,
+                skip_reason=skip_reason,
+                skip_note=skip_note,
+                dry_run=dry_run,
+            )
+        except BrainClientError as exc:
+            payload = exc.as_dict()
+            return CallToolResult(
+                is_error=True,
+                content=[TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))],
+                structured_content=payload,
+            )
+        return json.dumps(result, ensure_ascii=False, default=str)
 
     @mcp.tool(description="Ingest Sembly payload → 01-INBOX/sembly MD (no LLM).")
     def ingest_sembly(payload_json: str) -> str:
