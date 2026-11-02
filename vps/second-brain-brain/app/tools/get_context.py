@@ -51,7 +51,7 @@ def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
         if not rebuild:
             assert full is not None
             # Warm size guard (plan §3 ≤256 KB) — return as-is; oversized rare.
-            attach_sembly_pending(full, vault)
+            attach_sembly_pending(full, vault, env=env)
             return {"mode": "warm", "context": full}
 
     # needs_rebuild — mutate/rebuild gates (tip/PUSH) apply.
@@ -66,7 +66,7 @@ def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
                     "vault_push_reset_failed",
                     "post-rebuild verify failed (trio timestamps)",
                 )
-            attach_sembly_pending(snapshot, vault)
+            attach_sembly_pending(snapshot, vault, env=env)
             return {"mode": "rebuild", "context": snapshot}
     except BrainVaultError:
         raise

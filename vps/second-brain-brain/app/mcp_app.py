@@ -465,7 +465,7 @@ def build_mcp() -> MCPServer:
                 skip_note=skip_note,
                 dry_run=dry_run,
             )
-        except BrainClientError as exc:
+        except (BrainClientError, BrainVaultError) as exc:
             payload = exc.as_dict()
             return CallToolResult(
                 is_error=True,

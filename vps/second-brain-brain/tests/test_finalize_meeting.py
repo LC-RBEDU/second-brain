@@ -157,3 +157,55 @@ def test_other_without_note_is_400():
     with pytest.raises(BrainClientError) as exc:
         mod.finalize_meeting(transcript_path=TRANSCRIPT, skip_reason="other", env={})
     assert exc.value.error_reason == "skip_note_required"
+
+
+def test_existing_archive_is_not_overwritten():
+    vault = _Vault()
+    vault.files[TRANSCRIPT] = "the meeting said hello"
+    vault.tracked.add(TRANSCRIPT)
+    archive = "07-ARCHIV/inbox-processed/2026/10/sembly/2026-10-13-1000-finance.md"
+    vault.files[archive] = "**ZPRACOVÁNO**\nskip_reason: smoke\n\nold body\n"
+    with _patch(vault):
+        with pytest.raises(BrainClientError) as exc:
+            mod.finalize_meeting(transcript_path=TRANSCRIPT, zapis_md=ZAPIS, env={})
+    assert exc.value.error_reason == "archive_exists"
+    assert vault.files[archive].endswith("old body\n")
+    assert TRANSCRIPT in vault.files
+
+
+def test_matching_archive_only_removes_inbox():
+    vault = _Vault()
+    body = "the meeting said hello"
+    vault.files[TRANSCRIPT] = body
+    vault.tracked.add(TRANSCRIPT)
+    with _patch(vault):
+        first = mod.finalize_meeting(transcript_path=TRANSCRIPT, zapis_md=ZAPIS, env={})
+    vault.files[TRANSCRIPT] = body
+    vault.tracked.add(TRANSCRIPT)
+    with _patch(vault):
+        second = mod.finalize_meeting(transcript_path=TRANSCRIPT, zapis_md=ZAPIS, env={})
+    assert TRANSCRIPT not in vault.files
+    assert second["zapis_path"] == first["zapis_path"]
+    assert vault.files[first["archive_path"]].count("the meeting said hello") == 1
+
+
+def test_oid_mismatch_and_bad_inputs():
+    vault = _Vault()
+    vault.files[TRANSCRIPT] = "x"
+    vault.tracked.add(TRANSCRIPT)
+    with _patch(vault):
+        with pytest.raises(BrainClientError) as exc:
+            mod.finalize_meeting(
+                transcript_path=TRANSCRIPT,
+                zapis_md=ZAPIS,
+                expect_oid="nope",
+                env={},
+            )
+    assert exc.value.error_reason == "oid_mismatch"
+    assert exc.value.oid == f"oid-{TRANSCRIPT}"
+    with pytest.raises(BrainClientError) as exc:
+        mod.finalize_meeting(transcript_path="01-INBOX/slack/2026-10-13-1000-x.md", zapis_md=ZAPIS, env={})
+    assert exc.value.error_reason == "bad_inbox_kind"
+    with pytest.raises(BrainClientError) as exc:
+        mod.finalize_meeting(transcript_path=TRANSCRIPT, zapis_md=ZAPIS, drive_urls=["ftp://x"], env={})
+    assert exc.value.error_reason == "bad_drive_url"

@@ -189,7 +189,7 @@ Po ano na preview:
 
 1. Slož `zapis_md` v `/tmp`. `source_transcript` a `drive_copies` nepíš — doplní Brain. `related_tasks` nech `[]`. `drive_folder` jen když se bude sdílet; u 1:1 a citlivých chybí a není to chyba.
 2. Brain `finalize_meeting(dry_run=true)`.
-3. Ostré `finalize_meeting` s `expect_oid` z dry-runu.
+3. Ostré `finalize_meeting` s `expect_oid` = `transcript_oid` z dry-runu.
 4. Teprve potom Krok 8 a nabídka Kroku 9. Odmítnuté sdílení přepis do Inboxu nevrací.
 
 ### HTML vzhled — standard (Lucie & Luky / Claude Team, schváleno 2026-10-09)
@@ -381,17 +381,14 @@ U **nového** i **update** tasku ze zápisu vždy:
 | `related_tasks` na zápisu | needoplňovat |
 | **Cíl:** / **Kontext ze zápisu:** / checkbox | nezakládat; text je v `detail` |
 
-**Update existujícího tasku:** nepřepisuj celou historii; doplň **Kontext ze zápisu**
-(datum schůzky), případně **Cíl teď**, nové checkboxy s *proč/DoD*, řádek do logu
-s wikilinkem na zápis.
+**Update existujícího tasku:** zápis neměň. Řádek do logu přidej přes `append_task_note`.
 
-**Ne:** holý checkbox „udělat X“ + jen `materials:` bez vět v těle.  
-**Ne:** kopírovat celou kartu „co zaznělo“ do tasku — zůstaň u zhuštění.  
+**Ne:** holý `materials` bez vět v `detail`.  
+**Ne:** kopírovat celou kartu „co zaznělo“ do tasku — zůstaň u zhuštění v `detail`.  
 **Ne:** čekat na „schval tasky“ / druhé preview jen pro Lukášovy položky ze zápisu.
 **Ne:** v preview zápisu skrývat úkoly za počty („~4 Lukáš“) — viz Krok Preview.
 
-Detail **Cíl** + **Kontext ze zápisu** patří do založeného tasku + finální tabulky po zápisu;
-v preview stačí navrhovaný title + 1 věta o čem (editovatelný seznam před „ano“).
+Samonosný odstavec je `detail` v `create_task`. Do zápisu se po založení tasku nic nedopisuje.
 
 ---
 
@@ -425,11 +422,13 @@ Až `finalize_meeting` vrátí OK a HTML je v `~/Downloads/`. 1:1 a citlivé ten
 - 3 highlights
 - počet položek osnovy (stačí číslo + 1 řádek témat)
 - **konkrétní úkoly** — tabulka níže (povinné; hlavní místo úprav před schválením)
-- cílové cesty HTML (Downloads) a MD (vault pracovní + **Drive `drive_folder`**)
+- cílové cesty HTML (Downloads). MD cesty až z `finalize_meeting(dry_run=true)` po ano; v preview napiš, kam MD půjde (`zapisy/YYYY-MM/`)
+- řádek „jen vault“ (1:1 / citlivé) nebo „po finalize nabídnu Drive/Slack“
+- řádek skip vs zápis, když přepis vypadá na smoke / prázdný / duplicitu
 - řádek „Jazykový průchod: proběhl / přeskočen (důvod)“
-- kam to půjde: Slack kanál / DM (+ HTML attach, MD = odkaz po uploadu), nebo e-mail když je někdo mimo RB
-- Drive folder: URL z tabulky / návrh / „??? — zeptám se“
-- navržené projekty pro `projects:` / materials stubs
+- kam to půjde: Slack kanál / DM (+ HTML attach, MD = odkaz po uploadu), nebo e-mail když je někdo mimo RB. U 1:1 a citlivých tento řádek vynech
+- Drive folder: URL z tabulky / návrh / „??? — zeptám se“, jen když se bude sdílet
+- navržené projekty pro `projects:` (stub v materials se nezakládá)
 
 ### Úkoly v preview (povinné)
 

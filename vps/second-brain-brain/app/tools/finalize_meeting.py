@@ -166,10 +166,10 @@ def _header(archive_body_note: str, transcript: str) -> str:
     return f"**ZPRACOVÁNO**\n{archive_body_note}\n\n{transcript}"
 
 
-def _archive_header_matches(existing: str, marker: str) -> bool:
-    return existing.startswith(f"**ZPRACOVÁNO**\n{marker}\n") or existing.startswith(
-        f"**ZPRACOVÁNO**\n{marker}\n\n"
-    )
+def _archive_matches(existing: str, marker: str, expected_full: str, *, have_transcript: bool) -> bool:
+    if have_transcript:
+        return existing == expected_full
+    return existing.startswith(f"**ZPRACOVÁNO**\n{marker}\n\n")
 
 
 class _Decision:
@@ -281,15 +281,17 @@ def finalize_meeting(
             decision.zapis_oid = getattr(hit[1], "oid", None)
             return hit[0] == zapis_body
 
-        def _archive_header_ok() -> bool | None:
+        def _archive_ok() -> bool | None:
             hit = _read(vault, archive_rel)
             if hit is None:
                 return None
-            return _archive_header_matches(hit[0], marker)
+            return _archive_matches(
+                hit[0], marker, archive_body, have_transcript=transcript is not None
+            )
 
         if transcript is None:
             same = _zapis_same()
-            arch = _archive_header_ok()
+            arch = _archive_ok()
             if zapis_path and same is False:
                 raise _client("zapis_exists", "zapis already exists", status=409, oid=decision.zapis_oid)
             if arch is False:
@@ -323,11 +325,16 @@ def finalize_meeting(
         same = _zapis_same()
         if zapis_path and same is False:
             raise _client("zapis_exists", "zapis already exists", status=409, oid=decision.zapis_oid)
-        arch = _archive_header_ok()
+        arch = _archive_ok()
         if arch is False:
             raise _client("archive_exists", "archive already exists", status=409)
-        if arch and (not zapis_path or same):
-            decision.idempotent = True
+        if arch is True and zapis_path and same is False:
+            raise _client("zapis_exists", "zapis already exists", status=409, oid=decision.zapis_oid)
+        if arch is True and zapis_path and same is None:
+            raise _client("inconsistent_state", "archive exists without the zapis", status=409)
+        if arch is True:
+            decision.delete_inbox = True
+            decision.would_write = True
             return decision
         decision.write_zapis = bool(zapis_path and same is None)
         decision.write_archive = True

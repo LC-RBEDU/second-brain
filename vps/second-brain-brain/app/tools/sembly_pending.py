@@ -19,8 +19,9 @@ from drive_io import DriveNotFoundError  # noqa: E402
 _PREFIX = "01-INBOX/sembly/"
 
 
-def sembly_pending_stats(vault, *, today: date | None = None) -> dict:
-    today = today or datetime.now(ZoneInfo("Europe/Prague")).date()
+def sembly_pending_stats(vault, *, today: date | None = None, env: dict | None = None) -> dict:
+    tz_name = (env or {}).get("TZ") or "Europe/Prague"
+    today = today or datetime.now(ZoneInfo(tz_name)).date()
     try:
         entries = vault.list_dir("01-INBOX/sembly", pattern="*.md", recursive=False)
     except DriveNotFoundError:
@@ -47,6 +48,6 @@ def sembly_pending_stats(vault, *, today: date | None = None) -> dict:
     }
 
 
-def attach_sembly_pending(context: dict, vault) -> dict:
-    context.update(sembly_pending_stats(vault))
+def attach_sembly_pending(context: dict, vault, *, env: dict | None = None) -> dict:
+    context.update(sembly_pending_stats(vault, env=env))
     return context

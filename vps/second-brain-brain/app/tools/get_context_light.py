@@ -51,5 +51,5 @@ def get_context_light(*, env: dict[str, str] | None = None) -> dict[str, Any]:
                 "rebuild via get_context / cron — light endpoint does not rebuild",
             )
         assert light is not None
-        attach_sembly_pending(light, vault)
+        attach_sembly_pending(light, vault, env=env)
         return {"mode": "warm", "context": light}
