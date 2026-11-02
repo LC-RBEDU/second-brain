@@ -1,11 +1,11 @@
 # Pipeline: finalize_meeting
 
-Stav: IMPLEMENT
+Stav: REVIEW
 Plán: docs/plans/2026-11-02-finalize-meeting.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 753d61cf-727f-41e5-b779-208c8048ffc8, otevření plánu #1, generace v otevření k=1/3, kolo r=3/3
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (rbu-base, origin/main při vzniku větve): 5888d5a3674dcfbc6b013b14009c4793164205d0 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: přeskočeno až na testerGate (bez UI)
+Base (rbu-base, origin/main při vzniku větve): 5888d5a3674dcfbc6b013b14009c4793164205d0 · Kódový SHA: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b · Review SCHVÁLENO na: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b · QA PASS na: — · TESTER PASS na: přeskočeno až na testerGate (bez UI)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -129,11 +129,19 @@ Klasifikace je *Inference* z dat a názvů na Drivu; před importem ověřit pro
 | 4 | 2026-11-02 02:40 | PLAN | 753d61cf-727f-41e5-b779-208c8048ffc8 | plán k=1 r=2 | C1–C5 označeny vyřešeno | Čeká na nového kritika. |
 | 5 | 2026-11-02 02:55 | CRITIC | 365d4629-aab3-42c0-99f7-3f257dc6d978 | K PŘEPRACOVÁNÍ | C3 MAJOR podruhé | C1 C2 C4 C5 vyřešeny. Resume architekta r=3 jen na C3. |
 | 6 | 2026-11-02 03:10 | CRITIC | 47c585be-fd70-4573-8639-b74543f25e6c | SCHVÁLENO | 0 | C1–C5 vyřešeny. Schvalování plánu nevyžadováno. Přechod IMPLEMENT. |
+| 7 | 2026-11-02 03:20 | REVIEW | 0bb9e22b-3fec-496b-9a1d-aa0ad847e0d8 | SCHVÁLENO | 0 | Review na 9be2e7a. |
+| 8 | 2026-11-02 03:09 | IMPLEMENT | — | gate exit 0 | — | `pytest vps/second-brain-hub/tests` + finalize: 413 passed. |
 
 ## Otevřené nálezy
 
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
 |---|---|---|---|---|
+| D1 | BLOCKER | IMPL | opraveno v 9be2e7a, čeká na review | 1 |
+| D2 | MAJOR | IMPL | opraveno v 9be2e7a, čeká na review | 1 |
+| D3 | MAJOR | IMPL | opraveno v 9be2e7a, čeká na review | 1 |
+| D4 | MAJOR | IMPL | částečně: přidány archive/oid/cesta testy, T9/T12/T15/T16 pořád chybí | 1 |
+| D5 | MAJOR | IMPL | opraveno v 9be2e7a, čeká na review | 1 |
+| D6 | MINOR | IMPL | opraveno v 9be2e7a, čeká na review | 1 |
 | C1 | BLOCKER | PLAN | vyřešen v #6 | 1 |
 | C2 | MAJOR | PLAN | vyřešen v #6 | 1 |
 | C3 | MAJOR | PLAN | vyřešen v #6 | 2 |
