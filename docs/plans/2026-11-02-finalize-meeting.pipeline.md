@@ -1,11 +1,11 @@
 # Pipeline: finalize_meeting
 
-Stav: REVIEW
+Stav: DONE
 Plán: docs/plans/2026-11-02-finalize-meeting.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 753d61cf-727f-41e5-b779-208c8048ffc8, otevření plánu #1, generace v otevření k=1/3, kolo r=3/3
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (rbu-base, origin/main při vzniku větve): 5888d5a3674dcfbc6b013b14009c4793164205d0 · Kódový SHA: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b · Review SCHVÁLENO na: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b · QA PASS na: — · TESTER PASS na: přeskočeno až na testerGate (bez UI)
+Base (rbu-base, origin/main při vzniku větve): 5888d5a3674dcfbc6b013b14009c4793164205d0 · Kódový SHA: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b · Review SCHVÁLENO na: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b · QA PASS na: 9be2e7ae8f7afcdba38e55059fc40b0595ed284b (nasazeno 5e2f511, rozdíl jen ledger) · TESTER PASS na: přeskočeno (profil SECOND_BRAIN, bez UI)
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní
 
@@ -131,6 +131,10 @@ Klasifikace je *Inference* z dat a názvů na Drivu; před importem ověřit pro
 | 6 | 2026-11-02 03:10 | CRITIC | 47c585be-fd70-4573-8639-b74543f25e6c | SCHVÁLENO | 0 | C1–C5 vyřešeny. Schvalování plánu nevyžadováno. Přechod IMPLEMENT. |
 | 7 | 2026-11-02 03:20 | REVIEW | 0bb9e22b-3fec-496b-9a1d-aa0ad847e0d8 | SCHVÁLENO | 0 | Review na 9be2e7a. |
 | 8 | 2026-11-02 03:09 | IMPLEMENT | — | gate exit 0 | — | `pytest vps/second-brain-hub/tests` + finalize: 413 passed. |
+| 9 | 2026-11-02 03:12 | QA | — | nasazeno | — | coolify-dev brain+hub image `5e2f511`, healthz 200. |
+| 10 | 2026-11-02 03:20 | QA | 020de7c5-65ca-49ef-9fc3-c90b7c2ec98f | PASS | 0 | B1–B24. Produkční vault se nezapisoval. |
+| 11 | 2026-11-02 03:22 | TESTER | — | přeskočeno | — | profil SECOND_BRAIN, bez UI. |
+| 12 | 2026-11-02 03:23 | DONE | — | gate exit 0 | — | Vlastní pytest hub+scripts+finalize: 485 passed. |
 
 ## Otevřené nálezy
 
