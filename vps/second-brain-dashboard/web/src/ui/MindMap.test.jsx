@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { MindMap, fitLabelLayout, fitZoomForNodes, resolveNavStack, wrapLabelLines } from "./MindMap.jsx";
@@ -143,6 +143,7 @@ describe("MindMap", () => {
   });
 
   it("drill-down projekt → tasky a zpět přes střed", () => {
+    vi.useFakeTimers();
     const onOpen = vi.fn();
     render(<MindMap groups={groups} today={today} issueIds={issueIds} onOpen={onOpen} />);
 
@@ -154,8 +155,12 @@ describe("MindMap", () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "SB1" }));
 
     fireEvent.click(screen.getByRole("button", { name: /Zpět z SECOND-BRAIN/i }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(screen.getByRole("button", { name: /^VAULT$/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /SECOND-BRAIN/i })).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("listový task ukáže status; bez statusu žádný meta řádek (ne „task“ ani „—“)", () => {
@@ -189,6 +194,7 @@ describe("MindMap", () => {
   });
 
   it("drill-down projekt → epic → story → task", () => {
+    vi.useFakeTimers();
     const onOpen = vi.fn();
     render(<MindMap groups={groups} today={today} issueIds={issueIds} onOpen={onOpen} />);
 
@@ -201,9 +207,46 @@ describe("MindMap", () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "RBU-T1" }));
 
     fireEvent.click(screen.getByRole("button", { name: /Zpět z Story One/i }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(screen.getByRole("button", { name: /Zpět z Epic One/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Zpět z Epic One/i }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(screen.getByRole("button", { name: /Zpět z RB-UNIVERSE-DEVELOPMENT/i })).toBeTruthy();
+    vi.useRealTimers();
+  });
+
+  it("dvojklik na střed epiku nebo story otevře kartu a nevrátí pohled", () => {
+    vi.useFakeTimers();
+    const onOpen = vi.fn();
+    render(<MindMap groups={groups} today={today} issueIds={issueIds} onOpen={onOpen} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /RB-UNIVERSE-DEVELOPMENT/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Epic One/i }));
+    const epicCenter = screen.getByRole("button", { name: /Zpět z Epic One/i });
+    fireEvent.click(epicCenter);
+    fireEvent.click(epicCenter, { detail: 2 });
+    fireEvent.doubleClick(epicCenter);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "RBU-E1", title: "Epic One" }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(screen.getByRole("button", { name: /Zpět z Epic One/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Story One/i }));
+    const storyCenter = screen.getByRole("button", { name: /Zpět z Story One/i });
+    fireEvent.doubleClick(storyCenter);
+    expect(onOpen).toHaveBeenCalledTimes(2);
+    expect(onOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: "RBU-S1", title: "Story One" }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(screen.getByRole("button", { name: /Zpět z Story One/i })).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("po unmount/remount s navStack zůstane úroveň (návrat z detailu)", () => {

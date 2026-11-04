@@ -322,6 +322,7 @@ function centerMeta(stack, groups, today, issueIds) {
       flags,
       canGoBack: true,
       titleUpper: false,
+      task: top.task,
     };
   }
   return {
@@ -400,6 +401,7 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef(null);
+  const centerClickTimer = useRef(null);
   const viewportRef = useRef(null);
   const didInitialFit = useRef(false);
   const cx = CANVAS_W / 2;
@@ -438,6 +440,8 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot initial fit
   }, [nodes, groups]);
 
+  useEffect(() => () => clearCenterClick(), []);
+
   function drillTo(item) {
     setPan({ x: 0, y: 0 });
     if (item.kind === "project") {
@@ -475,9 +479,31 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
   }
 
   function goBack() {
-    if (stack.length === 0) return;
     setPan({ x: 0, y: 0 });
-    setStack((prev) => prev.slice(0, -1));
+    setStack((prev) => (prev.length === 0 ? prev : prev.slice(0, -1)));
+  }
+
+  function clearCenterClick() {
+    if (centerClickTimer.current) {
+      window.clearTimeout(centerClickTimer.current);
+      centerClickTimer.current = null;
+    }
+  }
+
+  function handleCenterClick(event) {
+    clearCenterClick();
+    if (event.detail > 1) return;
+    if (!center.canGoBack) return;
+    centerClickTimer.current = window.setTimeout(() => {
+      centerClickTimer.current = null;
+      goBack();
+    }, 280);
+  }
+
+  function handleCenterDoubleClick(event) {
+    event.preventDefault();
+    clearCenterClick();
+    if (center.task) onOpen?.(center.task);
   }
 
   function handleReset() {
@@ -497,7 +523,7 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
     <div data-layout-panel className={`${panelClass} relative overflow-hidden`} aria-label="Mindmapa">
       <div className="flex flex-wrap items-center gap-3 border-b border-[#e2e2e2] px-4 py-2 text-xs text-[#5c5c5c]">
         <span>
-          Zoom: kolečko · posun: tažení podkladu · klik na dlaždici = do středu · klik na střed = zpět
+          Zoom: kolečko · posun: tažení podkladu · klik na dlaždici = do středu · klik na střed = zpět · dvojklik na střed = karta
         </span>
         <span className="flex-1" />
         <span aria-live="polite">{zoomLabel}</span>
@@ -567,7 +593,8 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
                 center.canGoBack ? "cursor-pointer bg-[#444] hover:bg-[#333]" : "cursor-default bg-[#444]"
               } ${center.flags.overdue || center.flags.bad ? "ring-2 ring-[#b8002e] ring-offset-2" : ""}`}
               style={{ left: cx, top: cy, width: CENTER_W, height: CENTER_H }}
-              onClick={goBack}
+              onClick={handleCenterClick}
+              onDoubleClick={handleCenterDoubleClick}
               disabled={!center.canGoBack}
             >
               {center.id && center.kind !== "project" && (
@@ -597,7 +624,7 @@ export function MindMap({ groups, today, issueIds, onOpen, navStack, onNavStackC
           <b className="text-[#b8002e]">Červený rámeček</b> = něco k řešení
         </div>
         <div>❗ overdue · ⚠️ chybně zadané</div>
-        <div>Klik na dlaždici → střed · klik na střed → o úroveň výš</div>
+        <div>Klik na dlaždici → střed · klik na střed → o úroveň výš · dvojklik na střed → karta</div>
         <div>Reset = celá mapa do viewportu</div>
       </div>
     </div>
