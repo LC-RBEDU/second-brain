@@ -1,6 +1,6 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: PLAN
+Stav: CRITIC
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 9628d3a7-2aca-4985-b99f-a77b13444d46, otevření plánu #2, generace k=1/3, kolo r=3/3
@@ -64,6 +64,7 @@ SECOND_BRAIN
 | 6 | 2026-11-11 16:50 | CRITIC | 59c0da30-70f3-459d-a46b-d497edb04f40 | K PŘEPRACOVÁNÍ | 1 BLOCKER, 2 MAJOR, 1 MINOR | Otevření #2 kolo r=1. C1–C4 vyřešené. NEW-1 volume se nespustí restartem. NEW-2 audit mimo `_call`. NEW-3 SQLite bez zámku. NEW-4 MINOR `get_context` error_reason. Zpět architektovi, r=2. |
 | 7 | 2026-11-11 17:10 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v3 | — | Otevření #2 kolo r=2. NEW-1–NEW-4 označené jako vyřešené. Přechod na nového kritika. |
 | 8 | 2026-11-11 17:25 | CRITIC | fa6362d7-f3c6-4f2a-8599-68ec6fc8b7fb | K PŘEPRACOVÁNÍ | 0 BLOCKER, 1 MAJOR, 1 MINOR | Otevření #2 kolo r=2. C1–C4 a C5–C8 potvrzené. C9 token endpoint nemá OAuth JSON `error` / `access_token`. C10 MINOR souběžný refresh nesmí zrušit výherní access. Součet BLOCKER+MAJOR klesl (3→1), architekt zůstává, r=3. |
+| 9 | 2026-11-11 17:45 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v4 | — | Otevření #2 kolo r=3. C9 a C10 označené jako vyřešené (RFC 6749 JSON, pardon u souběžného refreshe). Přechod na nového kritika. |
 
 ## Otevřené nálezy
 

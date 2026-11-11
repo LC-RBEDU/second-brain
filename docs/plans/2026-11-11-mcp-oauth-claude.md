@@ -8,7 +8,7 @@ R2 — Allowlist je jen `lukas@redbuttonedu.cz` a `lukas.cypra@gmail.com`. Bez o
 
 R3 — Rozsah je jen MCP OAuth pro Claude. Jeden `BRAIN_SERVICE_TOKEN` pro Cursor, Grok, hub, dashboard a n8n zůstává. Tokeny se nedělí. Audit starých IP se nedělá. Zdroj: rozhodnutí z konverzace.
 
-R4 — Úložiště tokenů je nový SQLite soubor na druhém Coolify persistent volume. Není to vault a nesmí ležet v `/data/vault` (host `/data/second-brain-vault`). Cesta: host `/data/second-brain-oauth`, v kontejneru `/data/oauth`. Google Drive ani Mac disk se nepoužijí. Restart ani deploy nesmí odhlásit Claude, jakmile je volume skutečně připojené. Replicas Brainu zůstávají 1. Řádek v `local_persistent_volumes` sám mount nevytvoří: compose se skládá až při deploymentu. Po INSERT se queueuje deployment se `restart_only=false`, stejně jako vault ve `setup-coolify.sh:192-207`. Restart už běžícího kontejneru volume ani nový env (pepper) do procesu nedostane. Pepper v Coolify UI musí být uložený před tím deploymentem. Zdroj: rozhodnutí z konverzace + nález NEW-1.
+R4 — Úložiště tokenů je nový SQLite soubor na druhém Coolify persistent volume. Není to vault a nesmí ležet v `/data/vault` (host `/data/second-brain-vault`). Cesta: host `/data/second-brain-oauth`, v kontejneru `/data/oauth`. Google Drive ani Mac disk se nepoužijí. Restart ani deploy nesmí odhlásit Claude, jakmile je volume skutečně připojené. Replicas Brainu zůstávají 1. Řádek v `local_persistent_volumes` sám mount nevytvoří: compose se skládá až při deploymentu. Po INSERT se queueuje deployment se `restart_only=false`, stejně jako vault ve `setup-coolify.sh:192-207`. Restart už běžícího kontejneru volume ani nový env (pepper) do procesu nedostane. Pepper v Coolify UI musí být uložený před tím deploymentem. Zdroj: rozhodnutí z konverzace + nález NEW-1 (ledger C5).
 
 R5 — Dnešní cookie OAuth (`/oauth/authorize`, `/oauth/callback`, cookie `sb_brain_session`) zůstává. Claude ho jako MCP OAuth nepoužije. Zdroj: rozhodnutí z konverzace.
 
@@ -16,21 +16,21 @@ R6 — Google IdP: stávající `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Nov
 
 R7 — Registrace klienta oběma cestami, aby seděl dialog Claude: Dynamic Client Registration (RFC 7591) a Client ID Metadata Document („Use Claude's published identity“). Redirect host jen `claude.ai` a `claude.com`, včetně `https://claude.ai/api/mcp/auth_callback` a `https://claude.com/api/mcp/auth_callback`. V connectoru žádný secret. Zdroj: rozhodnutí z konverzace. Ověřeno v dokumentaci Claude (11. 11. 2026) a na živém CIMD `https://claude.ai/oauth/mcp-oauth-client-metadata`: `client_name` je `Claude`, `token_endpoint_auth_method` je `none`, redirect je jen `https://claude.ai/api/mcp/auth_callback`. Claude CIMD vybere, jen když metadata authorization serveru mají `client_id_metadata_document_supported: true` a v `token_endpoint_auth_methods_supported` je `none`. Jinak padá na DCR. `private_key_jwt` se neinzeruje.
 
-R8 — Brain vydává vlastní neprůhledné tokeny. V úložišti jen hash. Access krátký, refresh delší, obojí odvolatelné. PKCE S256, granty `authorization_code` a `refresh_token`. Token endpoint bere `application/x-www-form-urlencoded`. Neplatný refresh je `invalid_grant` a refresh se rotuje. Dva souběžné refreshe serializuje zámek kolem SQL, ne sdílené spojení přes vlákna. Transakce se nedrží přes `await` na Google. Zdroj: rozhodnutí + dokumentace Claude + nález NEW-3.
+R8 — Brain vydává vlastní neprůhledné tokeny. V úložišti jen hash. Access krátký, refresh delší, obojí odvolatelné. PKCE S256, granty `authorization_code` a `refresh_token`. Token endpoint bere `application/x-www-form-urlencoded` a odpovídá podle RFC 6749 §5.1–5.2: úspěch je HTTP 200 a JSON s klíči `access_token`, `token_type`, `expires_in`, `refresh_token`, `scope`. Chyba je HTTP 400 a JSON s klíčem `error` (`invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `invalid_request`, `invalid_target`). Tělo chyby nemá `detail` ani `error_reason`. Route nesmí házet `HTTPException` (dnešní cookie callback v `oauth_routes.py:102-103` z něj udělá `{"detail": "…"}` a ten tvar se nekopíruje). MCP `401` dál používá `error_reason` (B1). Refresh se rotuje. Dva souběžné refreshe serializuje zámek kolem SQL. Vlákno, které na ten zámek čekalo, dostane `invalid_grant` a family neruší; access z vítězné odpovědi dál platí. Family se zruší až když starý refresh přijde znovu až po uvolnění zámku. Transakce se nedrží přes `await` na Google. Zdroj: rozhodnutí + RFC 6749 + nález NEW-3 (ledger C7) + C9 a C10.
 
 R9 — Každý požadavek znovu ověří allowlist. Odebrání e-mailu nebo smazání tokenu zastaví další volání. Service token se tím nemění. Zdroj: rozhodnutí z konverzace.
 
 R10 — Scope `brain:read` a `brain:write`. Lukáš dostane oba, když o ně klient požádá nebo scope vynechá. Nástroj mimo scope se odmítne. Mapa scope je totální: každé jméno `@mcp.tool` má klíč a chybějící klíč je odmítnutí, funkce se nespustí. Zdroj: rozhodnutí z konverzace + nález C4.
 
-R11 — Focus smí na pokyn člověka Grok, Cursor i Claude. `BRAIN_SERVICE_TOKEN` dál smí `apply_focus` (`allow_focus_write(ServicePrincipal)` se nezakazuje). Claude OAuth principal smí focus taky, prakticky `OAuthPrincipal` se scope `brain:write`. Samotný `brain:read` focus nezapisuje. Lukáš dostává oba scope, takže Claude na jeho účtu focus zapíše. „Pokyn člověka“ je dnešní tok `propose_focus` a pak `apply_focus`; nový příznak souhlasu se nezavádí. Zdroj: rozhodnutí uživatele „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ (C1, v tomhle kole beze změny).
+R11 — Focus smí na pokyn člověka Grok, Cursor i Claude. `BRAIN_SERVICE_TOKEN` dál smí `apply_focus` (`allow_focus_write(ServicePrincipal)` se nezakazuje). Claude OAuth principal smí focus taky, prakticky `OAuthPrincipal` se scope `brain:write`. Samotný `brain:read` focus nezapisuje. Lukáš dostává oba scope, takže Claude na jeho účtu focus zapíše. „Pokyn člověka“ je dnešní tok `propose_focus` a pak `apply_focus`; nový příznak souhlasu se nezavádí. Zdroj: rozhodnutí uživatele „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ (C1, beze změny).
 
-R12 — Audit: jeden JSON řádek na stdout Brainu na každé volání nástroje, na všech cestách ven (`ok`, `error`, `insufficient_scope`). Řádek píše jedna funkce, kterou zavolá každý z 33 wrapperů, včetně pěti, které dnes `_call` míjí (`update_task`, `export_tasks`, `bulk_update`, `finalize_meeting`, `get_task`). Do git vaultu se nezapisuje. Pole: identita, klient z registrace, nástroj, čas, výsledek. U service tokenu je identita přesně `service`, protože jeden token pořád sdílí Cursor, Grok, hub, dashboard a n8n. Zdroj: rozhodnutí z konverzace + nález NEW-2.
+R12 — Audit: jeden JSON řádek na stdout Brainu na každé volání nástroje, na všech cestách ven (`ok`, `error`, `insufficient_scope`). Řádek píše jedna funkce, kterou zavolá každý z 33 wrapperů, včetně pěti, které dnes `_call` míjí (`update_task`, `export_tasks`, `bulk_update`, `finalize_meeting`, `get_task`). Do git vaultu se nezapisuje. Pole: identita, klient z registrace, nástroj, čas, výsledek. U service tokenu je identita přesně `service`, protože jeden token pořád sdílí Cursor, Grok, hub, dashboard a n8n. Zdroj: rozhodnutí z konverzace + nález NEW-2 (ledger C6).
 
 R13 — MCP bez platného tokenu: `401` a `WWW-Authenticate` s odkazem na `/.well-known/oauth-protected-resource`. REST pro cron (hub, n8n) zůstává na dnešním JSON `401` bez nucení OAuth discovery. Pole `resource` se rovná URL, kterou člověk zadá do Claude, včetně lomítka: `https://brain.cyprovi.cz/mcp/`. Zdroj: rozhodnutí z konverzace.
 
 R14 — Po Google loginu e-mail mimo allowlist: stránka „přístup zamítnut“ a redirect do Claude s `access_denied`. Žádný token. Redirect nese `state`, který Claude poslal na authorize, ne `state`, který Google vrátil (to je id transakce). Zdroj: rozhodnutí z konverzace + nález C2.
 
-R15 — `get_context` pro OAuth principal s pouhým `brain:read` smí jen warm větev (`brain_vault(mode="read")`, `commit_on_end` je tam false). Když `needs_rebuild` je true, vrátí `BrainClientError` `context_rebuild_requires_write` a `mode="rebuild"` neotevře, tedy 0 commitů. MCP wrapper tu chybu vrátí jako `_error_result`, stejně jako `get_task`. Neprojde `_call`, protože ten z ní udělá `RuntimeError` a klient vidí jen `Error executing tool get_context` (`mcp_app.py:55-63`). Rebuild smí `OAuthPrincipal` s `brain:write` (Lukáš ho má). Service token, cookie session, dev a REST `get_context` rebuildují jako dnes. Zdroj: nález C3 + NEW-4, kód `get_context.py:45-70`, `vault_deps.py:137-153`, `test_get_task_mcp.py:45-52`.
+R15 — `get_context` pro OAuth principal s pouhým `brain:read` smí jen warm větev (`brain_vault(mode="read")`, `commit_on_end` je tam false). Když `needs_rebuild` je true, vrátí `BrainClientError` `context_rebuild_requires_write` a `mode="rebuild"` neotevře, tedy 0 commitů. MCP wrapper tu chybu vrátí jako `_error_result`, stejně jako `get_task`. Neprojde `_call`, protože ten z ní udělá `RuntimeError` a klient vidí jen `Error executing tool get_context` (`mcp_app.py:55-63`). Rebuild smí `OAuthPrincipal` s `brain:write` (Lukáš ho má). Service token, cookie session, dev a REST `get_context` rebuildují jako dnes. Zdroj: nález C3 + NEW-4 (ledger C8), kód `get_context.py:45-70`, `vault_deps.py:137-153`, `test_get_task_mcp.py:45-52`.
 
 R16 — Org connector se přidá až po lidském testu: Lukáš v claude.ai dokončí Sign in now a vidí nástroje; druhý účet z organizace mimo allowlist token nedostane. Ten test není pytest a není `rbu-tester`. Zdroj: rozhodnutí z konverzace + profil SECOND_BRAIN.
 
@@ -56,7 +56,7 @@ A6 — Publikované `resource` je `{BRAIN_PUBLIC_URL}/mcp/` s koncovým lomítke
 
 A7 — TTL: authorize transakce 10 min, authorization code 60 s, access 3600 s, refresh 30 dní od vydání (rotace posune jen nový refresh), absolutní strop grantu 90 dní od vytvoření. Časy v UTC. `expires_at <= now` je vypršelé. Pepper je `BRAIN_OAUTH_TOKEN_PEPPER` (HMAC-SHA256). Chybějící pepper nepadá na service token.
 
-A8 — SQLite se neotevírá při importu ani při úspěšném service-token requestu. Chybějící volume neshodí lifespan. Metadata a `401` jedou i bez databáze. Authorize, register a token bez zapsatelné DB nebo pepperu vrací `503`.
+A8 — SQLite se neotevírá při importu ani při úspěšném service-token requestu. Chybějící volume neshodí lifespan. Metadata a `401` jedou i bez databáze. Authorize, register a token bez zapsatelné DB nebo pepperu vrací `503`. `503` tohoto stavu je JSON `{"error":"temporarily_unavailable"}` se statusem 503, ne `detail`. Claude ho neplete s `invalid_grant`.
 
 A9 — Re-run celého `setup-coolify.sh` na živé aplikaci se pro tuhle změnu nespouští (kopíruje env a může sáhnout na service token). Volume a následný deployment přidá malý skript. Plný setup skript dostane stejný INSERT jen pro novou instalaci, a protože queue je až na konci souboru, greenfield deploy volume uvidí.
 
@@ -72,7 +72,9 @@ Focus už není předpoklad. Je to R11, uzavřené rozhodnutím uživatele. Tohl
 
 `vps/second-brain-brain/app/oauth_routes.py:91-99` — výměna kódu u Google posílá `redirect_uri: cfg.callback_url`, tedy cookie callback `/oauth/callback`. MCP callback, který by tenhle POST zkopíroval, dostane od Google `redirect_uri_mismatch`. Cizí e-mail je HTTP 403 a v těle je vypsaný allowlist (`113-117`). `BRAIN_SESSION_SECRET` při prázdnu padá na `BRAIN_SERVICE_TOKEN` (`25-29`). Route `/oauth/mcp/*` dnes nejsou.
 
-`vps/second-brain-brain/app/mcp_auth.py:14-65` — MCP pustí cookie e-mail, nebo Bearer shodný s `BRAIN_SERVICE_TOKEN`, nebo dev bez tokenu. Jinak JSON `401` s `error_reason: client_error`. `WWW-Authenticate` se nenastavuje. Cookie vyhraje nad Bearerem.
+`vps/second-brain-brain/app/oauth_routes.py:102-103` — neúspěch Google token POST je `raise HTTPException(401, "token exchange failed")`. FastAPI z `HTTPException` udělá tělo `{"detail": "token exchange failed"}`, klíč `error` v něm není. `/oauth/mcp/token` tuhle výjimku nepoužije. Cookie callback ji smí nechat, Claude ho jako token endpoint nečte.
+
+`vps/second-brain-brain/app/mcp_auth.py:14-65` — MCP pustí cookie e-mail, nebo Bearer shodný s `BRAIN_SERVICE_TOKEN`, nebo dev bez tokenu. Jinak JSON `401` s `error_reason: client_error`. `WWW-Authenticate` se nenastavuje. Cookie vyhraje nad Bearerem. Tohle tělo MCP `401` zůstává (B1). Není to odpověď token endpointu.
 
 `vps/second-brain-brain/app/auth_deps.py:17-49` — REST je cookie, nebo service Bearer, nebo dev. Cizí Bearer je `401` bez OAuth hlavičky. REST nenastavuje ContextVar principalu.
 
@@ -108,19 +110,19 @@ Netýká se: Alembic, SQLAlchemy, RBAC, Celery, React, `api.ts`, subnav, hub dla
 
 ### Úložiště
 
-Nový `vps/second-brain-brain/app/oauth_mcp_store.py`. Soubor z `BRAIN_OAUTH_DB`, default `/data/oauth/brain-oauth.sqlite`. Cesta, jejíž `realpath` leží v `GIT_VAULT_ROOT` nebo pod `/data/vault`, se neotevře. Zápisové OAuth route pak vrací `503` (R4).
+Nový `vps/second-brain-brain/app/oauth_mcp_store.py`. Soubor z `BRAIN_OAUTH_DB`, default `/data/oauth/brain-oauth.sqlite`. Cesta, jejíž `realpath` leží v `GIT_VAULT_ROOT` nebo pod `/data/vault`, se neotevře. Zápisové OAuth route pak vrací `503` s `{"error":"temporarily_unavailable"}` (R4, A8).
 
-Žádné sdílené spojení a žádné `check_same_thread=False`. Každá operace pod `threading.Lock` otevře vlastní `sqlite3.connect` (default `check_same_thread=True`), nastaví `PRAGMA journal_mode=WAL` a `PRAGMA busy_timeout=5000`, provede `BEGIN IMMEDIATE`, commitne a spojení zavře ještě před návratem z funkce. Zámek se pouští před každým `await`. Callback tedy: pod zámkem načte transakci a spojení zavře, pak teprve `await` na Google token a userinfo, a až potom pod zámkem zapíše kód nebo nic. Dva refreshe čekají na stejný zámek; druhý uvidí už rotovaný refresh a vrátí `invalid_grant`, ne `InterfaceError` a ne HTTP 500 (R8, NEW-3).
+Žádné sdílené spojení a žádné `check_same_thread=False`. Každá operace pod `threading.Lock` otevře vlastní `sqlite3.connect` (default `check_same_thread=True`), nastaví `PRAGMA journal_mode=WAL` a `PRAGMA busy_timeout=5000`, provede `BEGIN IMMEDIATE`, commitne a spojení zavře ještě před návratem z funkce. Zámek se pouští před každým `await`. Callback tedy: pod zámkem načte transakci a spojení zavře, pak teprve `await` na Google token a userinfo, a až potom pod zámkem zapíše kód nebo nic.
 
-Tabulky:
+Refresh a odvolání family (C10, navazuje na C7):
 
-- `oauth_clients` — `client_id` PK, `client_name`, `redirect_uris_json`, `source` (`dcr`|`cimd`), `created_at`. Žádný secret.
-- `oauth_transactions` — `id` (tohle jde Google jako `state`), `claude_state` (tohle přišlo od Claude a jen tohle se vrací), `client_id`, `redirect_uri`, `code_challenge`, `scope`, `resource`, `auth_code_hash`, expirace, `consumed_at`. Dva state se nesmí slít do jednoho sloupce.
-- `oauth_grants` — family id, `client_id`, `client_name`, `email`, `scope`, `resource`, `created_at`, `revoked_at`.
-- `oauth_tokens` — `token_hash` PK (HMAC-SHA256 hex pepperem), `grant_id`, `kind` (`access`|`refresh`), `expires_at`, `revoked_at`, `replaced_by_hash`, `created_at`.
-- `cimd_cache` — URL, JSON, `fetched_at`. TTL čtení 1 hodina. Na MCP request se nečte.
+- Funkce `refresh` si před `lock.acquire()` zapamatuje, že vešla, počítadlem `waiters` (pod vlastním krátkým zámkem). Po získání hlavního zámku se z `waiters` odečte.
+- Držitel, který refresh ještě umí rotovat, ho zrotuje a do paměti procesu zapíše `pardon[old_hash] = waiters` v okamžiku commitu (kolik jiných volání `refresh` ještě čeká na zámek). Family neruší.
+- Držitel, který už vidí nahrazený refresh a `pardon[old_hash] > 0`, pardon o jedničku sníží, vrátí `invalid_grant` a family neruší. To je vlákno, které čekalo na stejnou rotaci.
+- Držitel, který vidí nahrazený refresh a pardon je 0, family odvolá a vrátí `invalid_grant`. To je další request až po uvolnění zámku (B34), ne čekající vlákno.
+- Pardon je jen v paměti procesu. Po restartu je prázdný, takže replay starého refreshe family zruší. To je přísnější a pořád v souladu s B34.
 
-`revoke_grants_for_email(email)` a CLI `python -m app.oauth_mcp_revoke <email>` jen nad SQLite, bez HTTP. Pepper jen z `BRAIN_OAUTH_TOKEN_PEPPER`. Prázdný pepper: OAuth zápisové route `503` (R18).
+Access z vítězné odpovědi tedy po souběhu pořád projde na MCP. Zruší ho až ten pozdější replay, nebo revoke CLI, nebo vypršení, nebo vyřazení e-mailu z allowlistu.
 
 ### Metadata a 401
 
@@ -137,7 +139,7 @@ Nový `vps/second-brain-brain/app/oauth_mcp_metadata.py`, v `main.py` před moun
 
 `WWW-Authenticate: Bearer resource_metadata="{issuer}/.well-known/oauth-protected-resource", scope="brain:read brain:write"`
 
-Tělo JSON zůstává `{"error_reason":"client_error","message":"authentication required"}` (u API key dnešní text). Hlavička není na `200` ani na tool error. REST `HTTPException` hlavičku nedostane.
+Tělo JSON zůstává `{"error_reason":"client_error","message":"authentication required"}` (u API key dnešní text). Hlavička není na `200` ani na tool error. REST `HTTPException` hlavičku nedostane. Token endpoint tohle tělo nepoužívá.
 
 Pořadí: `X-API-Key` → cookie (`read_session_email`, principal řetězec `oauth:{email}`, oba scope, bez SQLite) → `hmac` service token (bez SQLite, `ServicePrincipal`) → HMAC access tokenu a jeden SELECT podle PK → dev jako dnes. Selhání SQLite u neznámého Beareru je `401`, ne `500`. Service token při rozbité SQLite projde.
 
@@ -151,9 +153,9 @@ Redirect URI: `https`, host přesně `claude.ai` nebo `claude.com`, bez userinfo
 
 `POST /oauth/mcp/register` JSON, max 8 KiB, `201`, `client_id` = `brain_` + `token_urlsafe`, `token_endpoint_auth_method: none`, v odpovědi ani v DB žádný secret. Strop 500 klientů, pak `429`.
 
-CIMD: `client_id` je `https` URL na těch dvou hostech, bez query, fragmentu a userinfo. `httpx` timeout 5 s, `follow_redirects=False`, tělo max 64 KiB. JSON `client_id` se rovná URL. `token_endpoint_auth_method` je `none` nebo chybí. Cache 1 h. Grant `jwt-bearer` v dokumentu klienta neodmítne; na token endpointu je `unsupported_grant_type`.
+CIMD: `client_id` je `https` URL na těch dvou hostech, bez query, fragmentu a userinfo. `httpx` timeout 5 s, `follow_redirects=False`, tělo max 64 KiB. JSON `client_id` se rovná URL. `token_endpoint_auth_method` je `none` nebo chybí. Cache 1 h. Grant `jwt-bearer` v dokumentu klienta neodmítne; na token endpointu je HTTP 400 `{"error":"unsupported_grant_type"}`.
 
-`GET /oauth/mcp/authorize`: `response_type=code`, PKCE jen `S256`, klient z DCR nebo CIMD, `redirect_uri` přesná shoda. Špatná `redirect_uri` → `400` a žádný `Location`. Platná URI a špatné PKCE nebo scope → `302` s `error=invalid_request` nebo `invalid_scope`, `state` = Claude state z query (ne id transakce), plus `iss`. Resource se uloží; cizí resource → `invalid_target`. V SQLite vznikne transakce: `id` je nové `token_urlsafe`, `claude_state` je query `state` od Claude. Prohlížeč jde na Google s `redirect_uri={public}/oauth/mcp/callback` a `state={transaction.id}`. Žádná cookie.
+`GET /oauth/mcp/authorize`: `response_type=code`, PKCE jen `S256`, klient z DCR nebo CIMD, `redirect_uri` přesná shoda. Špatná `redirect_uri` → `400` a žádný `Location`. Platná URI a špatné PKCE nebo scope → `302` s `error=invalid_request` nebo `invalid_scope`, `state` = Claude state z query (ne id transakce), plus `iss`. To je redirect prohlížeče, ne tělo token endpointu. Resource se uloží; cizí resource → `invalid_target`. V SQLite vznikne transakce: `id` je nové `token_urlsafe`, `claude_state` je query `state` od Claude. Prohlížeč jde na Google s `redirect_uri={public}/oauth/mcp/callback` a `state={transaction.id}`. Žádná cookie.
 
 `GET /oauth/mcp/callback` nesdílí funkci `oauth_callback`. Pod zámkem načte transakci podle query `state` (to je `transaction.id`) a spojení zavře. Pak teprve Google POST na `https://oauth2.googleapis.com/token` s `redirect_uri` přesně `oauth_mcp_callback_url`, timeout 20 s, a userinfo. Zámek přes ten `await` nedrží. Do žádného redirectu na Claude se query `state` od Google nekopíruje.
 
@@ -161,7 +163,9 @@ CIMD: `client_id` je `https` URL na těch dvou hostech, bez query, fragmentu a u
 - E-mail mimo allowlist, `verified_email is false` nebo prázdný e-mail → žádný grant, HTML „Přístup zamítnut.“ a meta refresh na Claude s `error=access_denied` a `state={transaction.claude_state}`.
 - Google 5xx nebo timeout → žádný token; u známé transakce redirect `error=server_error` se stejným uloženým Claude state, jinak `400`.
 
-`POST /oauth/mcp/token` jen form body. `authorization_code`: jednorázový kód, shoda `redirect_uri` s tou uloženou (Claude callback, ne Google callback), PKCE S256, resource shodný až na jedno lomítko. Replay spotřebovaného kódu je `invalid_grant`. `refresh_token`: celá rotace v jednom držení zámku; opakované předložení starého refreshe odvolá family a vrátí `invalid_grant`. Allowlist se kontroluje znovu. Vypršelý, odvolaný, nebo grant starší 90 dní je `invalid_grant`. `client_secret` se ignoruje. `client_credentials` a `jwt-bearer` jsou `unsupported_grant_type`. Odpověď: `token_type=Bearer`, `expires_in=3600`, nový refresh, scope jen `brain:read` / `brain:write`.
+`POST /oauth/mcp/token` jen form body. Odpověď je `JSONResponse`, nikdy `HTTPException`. Úspěch: HTTP 200, `Cache-Control: no-store`, tělo přesně s klíči `access_token`, `token_type` (`Bearer`), `expires_in` (`3600`), `refresh_token`, `scope` (jen `brain:read` / `brain:write`). Chyba: HTTP 400, tělo `{"error":"<kód>"}`. Klíče `detail` a `error_reason` v té odpovědi nejsou. `503` při chybějícím pepperu nebo DB je výjimka z toho 400 a má `error=temporarily_unavailable` (A8).
+
+`authorization_code`: jednorázový kód, shoda `redirect_uri` s tou uloženou (Claude callback, ne Google callback), PKCE S256, resource shodný až na jedno lomítko. Replay spotřebovaného kódu, špatný verifier, jiná `redirect_uri`, vypršelý kód: HTTP 400 `invalid_grant`. `refresh_token`: celá rotace v jednom držení zámku podle pravidel pardonu výše. Allowlist se kontroluje znovu. Vypršelý, odvolaný, nebo grant starší 90 dní, nebo e-mail mimo allowlist: HTTP 400 `invalid_grant`. Scope na token requestu, který není podmnožina grantu: HTTP 400 `invalid_scope`. `client_secret` se ignoruje a úspěch tím nepadá. `client_credentials` a `jwt-bearer`: HTTP 400 `unsupported_grant_type`. Tělo není form (`Content-Type` není `application/x-www-form-urlencoded`): HTTP 400 `invalid_request`, ne 415. Cizí resource: HTTP 400 `invalid_target`.
 
 ### Scope, get_context, audit
 
@@ -195,7 +199,7 @@ Do `setup-coolify.sh` stejný INSERT hned za vault volume (před queue na `192`)
 
 `config.example.env` — zakomentované `BRAIN_OAUTH_DB` a `BRAIN_OAUTH_TOKEN_PEPPER`. Pepper jednou v Coolify UI, není odvozený ze service tokenu. Uložení v UI proces neaktualizuje; chytí ho až deployment.
 
-`docs/brain-api-runbook.md` — endpointy, resource URL s lomítkem, Google token POST MCP flow používá `/oauth/mcp/callback`, volume, pepper, ruční redirect URI, CLI revoke, repliky 1, connector až po T-H1. Pořadí na živé appce: (1) pepper v Coolify UI, (2) `add-oauth-volume.sh`, (3) počkat na deployment, který skript zařadil (`restart_only=false`); když queue přeskočil, spustit skript znovu až ten běžící deployment skončí, (4) redirect URI v Google konzoli, (5) T-H1, (6) connector. Docker restart mount ani pepper nezapne. SQLite se nesmí založit dřív, než je volume v kontejneru, jinak další deployment soubor ve vrstvě schová a Claude odhlásí. Odstavec o service tokenu zůstane.
+`docs/brain-api-runbook.md` — endpointy, resource URL s lomítkem, Google token POST MCP flow používá `/oauth/mcp/callback`, že `/oauth/mcp/token` vrací RFC 6749 JSON (`error`, ne `detail`), volume, pepper, ruční redirect URI, CLI revoke, repliky 1, connector až po T-H1. Pořadí na živé appce: (1) pepper v Coolify UI, (2) `add-oauth-volume.sh`, (3) počkat na deployment, který skript zařadil (`restart_only=false`); když queue přeskočil, spustit skript znovu až ten běžící deployment skončí, (4) redirect URI v Google konzoli, (5) T-H1, (6) connector. Docker restart mount ani pepper nezapne. SQLite se nesmí založit dřív, než je volume v kontejneru, jinak další deployment soubor ve vrstvě schová a Claude odhlásí. Odstavec o service tokenu zůstane.
 
 ## Kontrakt chování (B#)
 
@@ -203,47 +207,47 @@ Checklist A, co tu není samostatný řádek: fiskální rok a měny se netýkaj
 
 | B# | Vstup / stav | Očekávaný výsledek | R# | Test T# |
 |---|---|---|---|---|
-| B1 | `POST /mcp` a `POST /mcp/` bez Authorization | `401`, JSON `error_reason=client_error`, `WWW-Authenticate` obsahuje `resource_metadata` a `scope="brain:read brain:write"`. Hlavička není na `200`. | R13 | T1 |
+| B1 | `POST /mcp` a `POST /mcp/` bez Authorization | `401`, JSON `error_reason=client_error`, `WWW-Authenticate` obsahuje `resource_metadata` a `scope="brain:read brain:write"`. Hlavička není na `200`. Klíč `error` tu není. Tohle není token endpoint | R13 | T1 |
 | B2 | `GET /v1/context` bez cookie a bez Beareru | `401`, `WWW-Authenticate` chybí | R3, R13 | T2 |
 | B3 | `GET /healthz` a oba well-known GET bez tokenu | `200` | R13 | T3 |
 | B4 | Protected resource metadata | `resource` je `{BRAIN_PUBLIC_URL}/mcp/` včetně lomítka; `authorization_servers` má jediný prvek | R13 | T3 |
 | B5 | Authorization server metadata | DCR, CIMD true, `none`, S256, granty code+refresh. Není tam `private_key_jwt` ani `offline_access` | R7, R8 | T3 |
 | B6 | MCP `initialize` s platným service tokenem, SQLite chybí nebo je rozbitá | není `401` ani `500`; SQLite se neotevírá | R3, R9 | T4 |
 | B7 | `BRAIN_OAUTH_DB` uvnitř `GIT_VAULT_ROOT` nebo `/data/vault` | zápisové OAuth route `503`, soubor nevznikne | R4 | T5 |
-| B8 | Prázdná DB, chybí pepper nebo adresář | metadata `200`; register, authorize a token `503`; lifespan naběhne; service MCP projde | R4, R18 | T5 |
+| B8 | Prázdná DB, chybí pepper nebo adresář | metadata `200`; register, authorize a token `503` s `error=temporarily_unavailable`, bez `detail`; lifespan naběhne; service MCP projde | R4, R18 | T5 |
 | B9 | DCR s oběma auth_callback URI | `201`, žádný `client_secret` v těle ani v DB | R7 | T6 |
 | B10 | DCR s cizím hostem, `http://claude.ai/...`, `www.claude.ai`, userinfo, nebo mix dobré a zlé URI | `400`, 0 nových klientů | R7 | T6 |
 | B11 | DCR nebo authorize s `http://localhost/callback` nebo `http://127.0.0.1:<port>/callback` | odmítnuto, kód se nevydá | R7 | T6 |
 | B12 | CIMD jako živý dokument (mock), redirect jen claude.ai callback | authorize klienta přijme, fetch bez redirectů | R7 | T7 |
 | B13 | CIMD s cizím redirectem, neshodou `client_id`, nebo jiným hostem | `invalid_client` | R7 | T7 |
 | B14 | CIMD URL vrátí redirect, timeout nebo 5xx | redirect se nesleduje; klient odmítnut; token není | R7 | T7 |
-| B15 | Token request s neprázdným `client_secret` | secret se nekontroluje a neukládá; platný code projde | R7 | T8 |
-| B16 | Authorize bez PKCE, method `plain`, nebo bez `code_challenge` | při platné redirect URI `302 error=invalid_request` a `state` je Claude state; kód v DB není | R8 | T8 |
-| B17 | Platné S256, allowlist e-mail, scope vynechaný | oba scope, access + refresh, v DB jen HMAC; raw token v souboru není | R2, R8, R10 | T8 |
-| B18 | Špatný `code_verifier` | `invalid_grant`, tokeny nejsou | R8 | T8 |
-| B19 | Stejný authorization code podruhé | `invalid_grant`, druhá sada nevznikne | R8 | T8 |
-| B20 | Kód starší než 60 s, nebo transakce starší než 10 min | kód: `invalid_grant`. Transakce: žádný token; redirect `invalid_request` se uloženým Claude state, pokud URI známe | R8 | T9 |
-| B21 | Token exchange s jinou `redirect_uri`, než šla na authorize | `invalid_grant` | R7 | T8 |
+| B15 | Token request s neprázdným `client_secret` a platným kódem | HTTP 200, klíče `access_token`, `token_type=Bearer`, `expires_in=3600`, `refresh_token`, `scope`. Secret se nekontroluje a neukládá. V těle není `detail` ani `error_reason` | R7, R8 | T8 |
+| B16 | Authorize bez PKCE, method `plain`, nebo bez `code_challenge` | redirect `302` s `error=invalid_request` a Claude `state`. Kód v DB není. Není to JSON token endpointu | R8 | T8 |
+| B17 | Platné S256, allowlist e-mail, scope vynechaný | HTTP 200 a stejné klíče jako B15, `scope` obsahuje oba. V DB jen HMAC; raw token v souboru není | R2, R8, R10 | T8 |
+| B18 | Špatný `code_verifier` | HTTP 400, tělo `{"error":"invalid_grant"}`. Není `detail`, není `error_reason`, tokeny nejsou | R8 | T8 |
+| B19 | Stejný authorization code podruhé | HTTP 400 `error=invalid_grant`, bez `detail`. Druhá sada nevznikne | R8 | T8 |
+| B20 | Kód starší než 60 s | token endpoint HTTP 400 `error=invalid_grant`. Transakce starší než 10 min: žádný token; redirect `invalid_request` se uloženým Claude state, pokud URI známe. Redirect není tělo token endpointu | R8 | T9 |
+| B21 | Token exchange s jinou `redirect_uri`, než šla na authorize | HTTP 400 `error=invalid_grant`, bez `detail` | R7, R8 | T8 |
 | B22 | Authorize s `redirect_uri` mimo registraci klienta | HTTP `400`, `Location` na tu URI neukazuje | R7 | T6 |
-| B23 | Oba allowlist e-maily, jiná velikost písmen, scope oba nebo vynechaný | tokeny, scope oba. Google authorize URL nemá `hd` | R2, R10 | T10 |
-| B24 | Scope jen `brain:read` | v tokenu jen read | R10 | T10 |
-| B25 | Scope jen `foo` | `invalid_scope`, token není | R10 | T10 |
-| B26 | Scope obsahuje `offline_access` a `brain:read` | uložený scope je jen `brain:read`; refresh v odpovědi je | R8, R10 | T10 |
+| B23 | Oba allowlist e-maily, jiná velikost písmen, scope oba nebo vynechaný | tokeny, scope oba. Google authorize URL nemá `hd`. Úspěch tokenu je B17 | R2, R10 | T10 |
+| B24 | Scope jen `brain:read` | v tokenu jen read, HTTP 200 | R10 | T10 |
+| B25 | Scope jen `foo` na authorize | redirect `error=invalid_scope`, token není. Když token endpoint dostane scope mimo grant: HTTP 400 `{"error":"invalid_scope"}`, bez `detail` | R10, R8 | T10, T8 |
+| B26 | Scope obsahuje `offline_access` a `brain:read` | uložený scope je jen `brain:read`; HTTP 200 a `refresh_token` v těle je | R8, R10 | T10 |
 | B27 | Userinfo mimo allowlist | HTTP 200 HTML obsahuje „Přístup zamítnut.“, neobsahuje e-mail ani allowlist; meta refresh má `error=access_denied`; grant ani token v DB není; cookie `sb_brain_session` není | R14 | T11 |
 | B28 | `verified_email: false` nebo prázdný e-mail | stejné jako B27 | R2, R14 | T11 |
 | B29 | Google token endpoint timeout nebo 5xx | žádný token; u známé transakce redirect `error=server_error` | R8 | T11 |
-| B30 | `GET /oauth/callback` cizí e-mail | pořád `403`; MCP route se nezavolá; Google POST pořád používá `/oauth/callback` | R5 | T12 |
+| B30 | `GET /oauth/callback` cizí e-mail | pořád `403` a dnešní `HTTPException`; MCP token route se nezavolá; Google POST pořád používá `/oauth/callback` | R5 | T12 |
 | B31 | `GET /oauth/authorize` | redirect na Google s `/oauth/callback`, ne s `/oauth/mcp/callback` | R5, R6 | T12 |
-| B32 | Access s `expires_at <= now` na MCP | `401` + `WWW-Authenticate`, nástroj neběží | R8, R9 | T13 |
-| B33 | Grant odvolaný CLI nebo smazaný řádek tokenu | MCP `401`; refresh `invalid_grant` | R8, R9 | T13 |
-| B34 | Platný refresh | nový access i refresh; starý refresh pak `invalid_grant` a family je odvolaná | R8 | T14 |
-| B35 | Dva thready zavolají refresh téhož tokenu | právě jedna úspěšná odpověď; druhá `invalid_grant`. Ani jedna není HTTP 500 a nevznikne `sqlite3.InterfaceError`. Zámek drží celou rotaci a pouští se před návratem | R8 | T14 |
-| B36 | E-mail zmizel z allowlistu | MCP `401`; refresh `invalid_grant`; service token funguje | R9 | T15 |
+| B32 | Access s `expires_at <= now` na MCP | `401` + `WWW-Authenticate`, tělo `error_reason`, nástroj neběží. Token endpoint se tu nevolá | R8, R9 | T13 |
+| B33 | Grant odvolaný CLI nebo smazaný řádek tokenu | MCP `401` s `error_reason`; refresh HTTP 400 `error=invalid_grant` | R8, R9 | T13 |
+| B34 | Platný refresh, a až po návratu obou stran další request se starým refreshem | První odpověď HTTP 200 s klíči z B15, nový refresh. Ten další request (začal až po uvolnění zámku, pardon je 0) je HTTP 400 `error=invalid_grant` a family je odvolaná: access z té první odpovědi pak na MCP neprojde | R8 | T14 |
+| B35 | Dva thready zavolají refresh téhož tokenu a oba vejdou do `refresh` dřív, než jeden commitne | Jedna odpověď HTTP 200 s klíči z B15. Druhá HTTP 400 `error=invalid_grant`, bez `detail`. Ani jedna není 500 a nevznikne `sqlite3.InterfaceError`. Family zůstane neodvolaná. Access z vítězné odpovědi na MCP projde (není 401) | R8 | T14 |
+| B36 | E-mail zmizel z allowlistu | MCP `401` s `error_reason`; refresh HTTP 400 `error=invalid_grant`; service token funguje | R9 | T15 |
 | B37 | E-mail se vrátí, grant nebyl odvolaný a nevypršel | stejný access znovu projde | R9 | T15 |
-| B38 | Grant starší než 90 dní | `invalid_grant` | R8 | T13 |
-| B39 | Resource `…/mcp` i `…/mcp/` | přijato. Jiná URL | `invalid_target` | R13 | T8 |
-| B40 | Token endpoint s JSON tělem | `400` nebo `415`, token není | R8 | T8 |
-| B41 | Grant `client_credentials` nebo jwt-bearer | `unsupported_grant_type` | R8 | T8 |
+| B38 | Grant starší než 90 dní | HTTP 400 `error=invalid_grant` | R8 | T13 |
+| B39 | Resource `…/mcp` i `…/mcp/` | přijato, úspěch je B17. Jiná URL: HTTP 400 `{"error":"invalid_target"}`, bez `detail` | R13, R8 | T8 |
+| B40 | Token endpoint s JSON tělem místo form | HTTP 400 `{"error":"invalid_request"}`. Není 415, není `detail`, token není | R8 | T8 |
+| B41 | Grant `client_credentials` nebo jwt-bearer | HTTP 400 `{"error":"unsupported_grant_type"}`, bez `detail` | R8 | T8 |
 | B42 | OAuth jen `brain:read`, write nástroj včetně `create_task`, `update_task`, `bulk_update`, `finalize_meeting` | HTTP 200, `isError`, `insufficient_scope`, vnitřní funkce se nezavolá. Není to `401` | R10 | T16 |
 | B43 | OAuth jen `brain:write`, read nástroj včetně `read_file` a `export_tasks` | `insufficient_scope`, vnitřní funkce se nezavolá | R10 | T16 |
 | B44 | `OAuthPrincipal` s `brain:write` (Lukáš má i read), `apply_focus` | `allow_focus_write` pustí. Zápis do vaultu tenhle test nevolá, jen bránu. `propose_focus` před `apply_focus` zůstává | R11 | T17 |
@@ -252,7 +256,7 @@ Checklist A, co tu není samostatný řádek: fiskální rok a měny se netýkaj
 | B47 | OAuth access token na `GET /v1/context` | `401` | R3 | T2 |
 | B48 | `str(OAuthPrincipal)` a `mailbox_apply` / `external_apply` | principal `oauth:<email>`; brána → 501. Service → pořád 403. Natvrdo `ServicePrincipal(label="mcp")` zmizí | R10 | T19 |
 | B49 | `tools/call` přes `run_tool`, úspěch i denial | právě jeden stdout JSON řádek na cestu. Úspěšný `update_task` (nástroj, který dnes `_call` míjí): `result=ok`. OAuth jen s read na write nástroji: `result=denied`, `error_reason=insufficient_scope`, a vnitřní funkce se nezavolá. OAuth identita `oauth:<email>` a `client_name` z registrace. Service: `identity=service`, client fieldy null. Bez argumentů a bez tokenu. Do vaultu se nezapíše | R12 | T20 |
-| B50 | `X-API-Key` na MCP | `401` + `WWW-Authenticate` | R13 | T1 |
+| B50 | `X-API-Key` na MCP | `401` + `WWW-Authenticate`, tělo `error_reason` | R13 | T1 |
 | B51 | Dev bez service tokenu a s `BRAIN_ALLOW_NO_PUSH` | principal `dev`; import testů neotevírá OAuth DB | R3 | T4 |
 | B52 | Úspěšný MCP login | nenastaví `sb_brain_session` a hash neleží ve vaultu | R4, R5 | T8, T5 |
 | B53 | Stránka zamítnutí | HTML v `/oauth/mcp/callback`, ne dashboard; text „Přístup zamítnut.“ je v těle | R14, R16 | T11 |
@@ -271,9 +275,9 @@ Prázdná data: B8. Chybějící e-mail a kód: B20, B28. Hranice expirace: B32,
 
 ## Výkonový rozpočet (P)
 
-Produkční OAuth tabulky dnes neexistují (A10). Strop za dva roky: pod 500 klientů, pod 100 grantů, pod 200 token řádků, soubor v řádu stovek KiB. Lookup access tokenu je jeden SELECT podle PK. Na cestě MCP nástroje není Google, Allfred ani CIMD. CIMD fetch je jen na authorize, timeout 5 s, pak cache 1 h. Token endpoint Google nevolá. Stránkování a frontend se netýkají. Payload metadat je pod 2 KiB, token odpověď pod 1 KiB, auditní řádek pod 500 B. Platnost tokenu se v procesu necachuje. Uvicorn zůstává jeden proces. Repliky se nenastavují nad 1.
+Produkční OAuth tabulky dnes neexistují (A10). Strop za dva roky: pod 500 klientů, pod 100 grantů, pod 200 token řádků, soubor v řádu stovek KiB. Lookup access tokenu je jeden SELECT podle PK. Na cestě MCP nástroje není Google, Allfred ani CIMD. CIMD fetch je jen na authorize, timeout 5 s, pak cache 1 h. Token endpoint Google nevolá. Stránkování a frontend se netýkají. Payload metadat je pod 2 KiB, token odpověď pod 1 KiB (pět klíčů z B15), auditní řádek pod 500 B. Platnost tokenu se v procesu necachuje. Uvicorn zůstává jeden proces. Repliky se nenastavují nad 1.
 
-Zámek serializuje jen SQL. Refresh ho drží po dobu jedné transakce (stále cíl pod 50 ms) a ne přes síť. Callback ho přes Google (timeout 20 s) nedrží, takže jeden pomalý login neblokuje druhý refresh déle než samotný zápis. `scope_denial` a audit jsou slovník a jeden zápis na stdout, 0 SQL. `get_context` pro read-only a stale stav udělá jen dnešní read sondu (`mode="read"`, `commit_on_end` false) a rebuild neotevře.
+Zámek serializuje jen SQL. Refresh ho drží po dobu jedné transakce (stále cíl pod 50 ms) a ne přes síť. Callback ho přes Google (timeout 20 s) nedrží, takže jeden pomalý login neblokuje druhý refresh déle než samotný zápis. Pardon je jeden int v paměti, další SQL nepřidává. `scope_denial` a audit jsou slovník a jeden zápis na stdout, 0 SQL. `get_context` pro read-only a stale stav udělá jen dnešní read sondu (`mode="read"`, `commit_on_end` false) a rebuild neotevře.
 
 | Endpoint | SQL | Externí volání | Cíl | Měření |
 |---|---|---|---|---|
@@ -281,7 +285,7 @@ Zámek serializuje jen SQL. Refresh ho drží po dobu jedné transakce (stále c
 | `POST /oauth/mcp/register` | 1 INSERT pod zámkem, nové spojení | 0 | pod 50 ms | T6 |
 | `GET /oauth/mcp/authorize` | 1 INSERT, u CIMD navíc 1 SELECT cache | CIMD jen při miss, timeout 5 s, mimo zámek | cache hit pod 50 ms | T7 |
 | `GET /oauth/mcp/callback` | načtení a zápis jako dvě krátké transakce | Google token + userinfo mezi nimi, timeout 20 s, zámek puštěný | lokální část pod 50 ms | T8, T11 mock |
-| `POST /oauth/mcp/token` včetně refresh | 1 transakce pod zámkem, nejvýš 4 statementy | 0 | cold pod 50 ms, warm pod 20 ms | T8, T14 |
+| `POST /oauth/mcp/token` včetně refresh | 1 transakce pod zámkem, nejvýš 4 statementy | 0 | cold pod 50 ms, warm pod 20 ms; tělo úspěchu pod 1 KiB | T8, T14 |
 | MCP gate pro service token | 0 | 0 | přidaná režie pod 5 ms | T4 |
 | MCP gate pro OAuth access + `run_tool` | 1 PK SELECT, pak 0 | 0 | přidaná režie pod 15 ms | T13, T16, T20 |
 
@@ -293,21 +297,21 @@ Primární gate: `python3 -m pytest vps/second-brain-brain/tests -q`. Hub pytest
 
 | T# | Typ | Owner | Soubor | Co ověřuje (B#) |
 |---|---|---|---|---|
-| T1 | pytest | gate | `vps/second-brain-brain/tests/test_mcp_oauth.py` a doplnění `test_mcp_auth.py` | B1, B50. Starý JSON `401` zůstane, přibude hlavička |
+| T1 | pytest | gate | `vps/second-brain-brain/tests/test_mcp_oauth.py` a doplnění `test_mcp_auth.py` | B1, B50. Starý JSON `401` s `error_reason` zůstane, přibude hlavička. Klíč `error` v tom MCP `401` není |
 | T2 | pytest | gate | oauth soubor | B2, B47 |
 | T3 | pytest | gate | oauth soubor | B3, B4, B5 |
 | T4 | pytest | gate | `test_mcp_auth.py` + oauth soubor | B6, B45 průchod, B51 |
-| T5 | pytest | gate | oauth soubor | B7, B8, B52 cesta |
+| T5 | pytest | gate | oauth soubor | B7, B8, B52 cesta. `503` má `error=temporarily_unavailable` a nemá `detail` |
 | T6 | pytest | gate | oauth soubor | B9, B10, B11, B22 |
 | T7 | pytest | gate | oauth soubor, mock httpx | B12, B13, B14 |
-| T8 | pytest | gate | oauth soubor, mock Google | B15–B19, B21, B39–B41, B52, B54, B55. Mock POST: `redirect_uri` rovna `{public}/oauth/mcp/callback`. Google authorize URL má tutéž `redirect_uri` a `state` = id transakce. `302` na Claude má `state` rovný tomu, co klient poslal na `/oauth/mcp/authorize`, a nerovný id transakce |
-| T9 | pytest | gate | oauth soubor | B20 |
-| T10 | pytest | gate | oauth soubor | B23, B24, B25, B26 |
+| T8 | pytest | gate | oauth soubor, mock Google | B15–B19, B21, B25 (větev tokenu), B39–B41, B52, B54, B55. Úspěch: status 200 a klíče `access_token`, `token_type`, `expires_in`, `refresh_token`, `scope`; `token_type` je `Bearer`, `expires_in` je 3600; v těle není `detail` ani `error_reason`. Chyby tokenu: status 400, klíč `error` je `invalid_grant` / `invalid_scope` / `invalid_request` / `invalid_target` / `unsupported_grant_type` podle řádku, a `detail` ani `error_reason` v JSON nejsou. Mock POST: `redirect_uri` rovna `{public}/oauth/mcp/callback`. Google authorize URL má tutéž `redirect_uri` a `state` = id transakce. `302` na Claude má `state` rovný tomu, co klient poslal na `/oauth/mcp/authorize`, a nerovný id transakce |
+| T9 | pytest | gate | oauth soubor | B20. Vypršelý kód: HTTP 400 a `error=invalid_grant` |
+| T10 | pytest | gate | oauth soubor | B23, B24, B25 (redirect authorize), B26. Úspěšný token assertuje klíče jako T8 |
 | T11 | pytest | gate | oauth soubor | B27, B28, B29, B53, B54, B55, B63. I při zamítnutí allowlistu šel Google POST na `/oauth/mcp/callback` a meta refresh nese uložený Claude state. Testový double zámku ukáže, že během mockovaného Google volání zámek není držený |
-| T12 | pytest | gate | `test_mcp_and_oauth_routes.py`, `test_auth_b37.py` | B30, B31 |
-| T13 | pytest | gate | oauth soubor | B32, B33, B38 |
-| T14 | pytest | gate | oauth soubor | B34, B35. Dva thready, jeden refresh token. Jedna odpověď má nový pár tokenů, druhá `invalid_grant`. Žádná není 500 a žádná nevyhodí `sqlite3.InterfaceError` |
-| T15 | pytest | gate | oauth soubor | B36, B37 |
+| T12 | pytest | gate | `test_mcp_and_oauth_routes.py`, `test_auth_b37.py` | B30, B31. Cookie `403` smí zůstat `HTTPException` |
+| T13 | pytest | gate | oauth soubor | B32, B33, B38. Refresh chyba je HTTP 400 `error=invalid_grant`. MCP `401` zůstává `error_reason` |
+| T14 | pytest | gate | oauth soubor | B34, B35. Dva thready, oba zavolají refresh dřív, než jeden commitne. Vítěz: HTTP 200 a klíče z B15. Poražený: HTTP 400 `error=invalid_grant`, bez `detail`. Žádná není 500 a žádná nevyhodí `sqlite3.InterfaceError`. Po joinu obou: access z vítěze na MCP není 401 a `revoked_at` family je prázdné. Až potom třetí request se starým refreshem: HTTP 400 `error=invalid_grant`, family odvolaná, a ten samý access na MCP už je 401 |
+| T15 | pytest | gate | oauth soubor | B36, B37. Refresh při vyřazeném e-mailu je HTTP 400 `error=invalid_grant` |
 | T16 | pytest | gate | oauth soubor | B42, B43, B59, B60. Jména vezme z nástrojů registrovaných `build_mcp()` a porovná je s `set(TOOL_SCOPES)`. Žádný druhý ruční seznam v testu. Pro každé write jméno nastaví `OAuthPrincipal` jen s `brain:read`, zavolá registrovaný wrapper a assertuje, že monkeypatch vnitřní funkce (`update_task`, `bulk_update`, `finalize_meeting` a zbylé write funkce) nebyl zavolaný. Neznámé jméno v `run_tool` sentinel nezavolá |
 | T17 | pytest | gate | `test_set_focus.py` zůstává; oauth soubor | B44, B45. `allow_focus_write(ServicePrincipal)` allowed. `allow_focus_write(OAuthPrincipal` s `brain:write`)` allowed. `OAuthPrincipal` jen s `brain:read` se k `apply_focus` přes wrapper nedostane (T16) |
 | T18 | pytest | gate | oauth soubor | B46 |
@@ -315,20 +319,20 @@ Primární gate: `python3 -m pytest vps/second-brain-brain/tests -q`. Hub pytest
 | T20 | pytest | gate | oauth soubor, capsys | B49. `call_tool("update_task")` při úspěchu (vnitřní funkce namockovaná, nástroj dnes `_call` míjí) vypíše právě jeden JSON s `result=ok`. `call_tool` write nástroje s OAuth jen `brain:read` vypíše právě jeden JSON s `result=denied` a `error_reason=insufficient_scope`. V obou případech žádný druhý řádek |
 | T21 | pytest | gate | `vps/second-brain-brain/tests/test_get_context_scope.py` | B56, B57, B58, B62. `needs_rebuild` se namockuje. Spy na `brain_vault`: u read-only a stale není `mode="rebuild"` a není commit. U service, cookie řetězce, `dev`, `None` a OAuth s `brain:write` se rebuild větev otevře. Navíc `asyncio.run(mcp.call_tool("get_context", {}))` s principalem nastaveným na OAuth jen `brain:read` a `needs_rebuild` true: text nezačíná `Error executing tool`, `error_reason` je `context_rebuild_requires_write` |
 | T22 | pytest | gate | oauth soubor, čte text skriptu | B61. `deploy/add-oauth-volume.sh` obsahuje INSERT do `application_deployment_queues` s `restart_only` false. Neobsahuje instrukci, že stačí restart kontejneru. Nemění `BRAIN_SERVICE_TOKEN`. Proti Coolify se nespouští |
-| T-Q1 | curl proti `https://brain.cyprovi.cz` až po deploymentu, který zařadil volume skript | QA | není nový skript | B1, B3, B4, B5, B6. Žádný zápis do vaultu. Service token z env, do chatu se nekopíruje. Restart bez toho deploymentu důkaz o volume není |
-| T-H1 | ruční v claude.ai | člověk, ne gate a ne Tester | — | R16. Až po doběhnutí volume deploymentu, pepperu v tom image a Google redirect URI |
+| T-Q1 | curl proti `https://brain.cyprovi.cz` až po deploymentu, který zařadil volume skript | QA | není nový skript | B1, B3, B4, B5, B6. Žádný zápis do vaultu. Service token z env, do chatu se nekopíruje. Restart bez toho deploymentu důkaz o volume není. MCP `401` má `error_reason`, ne klíč `error` |
+| T-H1 | ruční v claude.ai | člověk, ne gate a ne Tester | — | R16. Až po doběhnutí volume deploymentu, pepperu v tom image a Google redirect URI. Po hodině Claude obnoví session přes refresh (HTTP 200 s `access_token`), bez nového loginu |
 
 ## Pořadí implementace
 
-F1 — `oauth_mcp_store.py`: dvě state pole, zámek, nové spojení na operaci, WAL, žádné sdílené spojení, principal dataclass, pepper, zákaz cesty ve vaultu, CLI revoke.
+F1 — `oauth_mcp_store.py`: dvě state pole, zámek, počítadlo `waiters`, pardon v paměti, nové spojení na operaci, WAL, žádné sdílené spojení, principal dataclass, pepper, zákaz cesty ve vaultu, CLI revoke.
 
-F2 — metadata a `WWW-Authenticate`. Service větev bez SQLite.
+F2 — metadata a `WWW-Authenticate`. Service větev bez SQLite. MCP `401` zůstává `error_reason`.
 
-F3 — DCR, CIMD, authorize, callback, token. Callback načte řádek, zámek pustí, pak teprve Google POST s `oauth_mcp_callback_url`. Redirect na Claude čte jen `claude_state`. Cookie `oauth_routes.oauth_callback` se nevolá. Závisí na F1.
+F3 — DCR, CIMD, authorize, callback, token. Token route vrací `JSONResponse` podle B15 a B18, ne `HTTPException`. Callback načte řádek, zámek pustí, pak teprve Google POST s `oauth_mcp_callback_url`. Redirect na Claude čte jen `claude_state`. Cookie `oauth_routes.oauth_callback` se nevolá. Závisí na F1.
 
 F4 — `TOOL_SCOPES` a `run_tool` jako jediný návrat všech 33 wrapperů, včetně `update_task`, `export_tasks`, `bulk_update`, `finalize_meeting` a `get_task`. Audit jen v `run_tool`. `BrainClientError` vrací `_error_result`, ne `RuntimeError`. `allow_focus_write` pro `OAuthPrincipal` s write, větev `ServicePrincipal` zůstává allowed. `gate_brain_apply`. MCP apply bez natvrdo service principalu. Brána rebuildu v `get_context.py` a wrapper přes `run_tool`. Závisí na F1. Tokeny z F3 nejsou podmínka unit testu brány.
 
-F5 — `add-oauth-volume.sh` s queue `restart_only=false`, INSERT v `setup-coolify.sh` před stávající queue, `config.example.env`, runbook s pořadím pepper → skript → počkat na deployment. Souběžně s F4, ve stejném diffu před pushem na `main`.
+F5 — `add-oauth-volume.sh` s queue `restart_only=false`, INSERT v `setup-coolify.sh` před stávající queue, `config.example.env`, runbook s pořadím pepper → skript → počkat na deployment a s větou, že token endpoint mluví klíčem `error`. Souběžně s F4, ve stejném diffu před pushem na `main`.
 
 F6 — pytest T1–T22 a kontrola, že T12 zůstane zelený. Až po F2–F4.
 
@@ -338,7 +342,7 @@ Push na `main` spustí Coolify deploy image Brain podle watch paths. Ten deploy 
 
 ## Rizika a zpětná kompatibilita
 
-1. Deploy z pushe na `main` před řádkem volume: kontejner `/data/oauth` nemá. Authorize, register a token vrací `503`, service token žije dál. Když se v tom stavu někdo přihlásí a SQLite vznikne ve vrstvě kontejneru, další deployment se správným mountem ten soubor schová a Claude odhlásí. Proto se Claude přihlašuje až po deploymentu ze skriptu. Restart starého kontejneru tohle nespraví.
+1. Deploy z pushe na `main` před řádkem volume: kontejner `/data/oauth` nemá. Authorize, register a token vrací `503` s `error=temporarily_unavailable`, service token žije dál. Když se v tom stavu někdo přihlásí a SQLite vznikne ve vrstvě kontejneru, další deployment se správným mountem ten soubor schová a Claude odhlásí. Proto se Claude přihlašuje až po deploymentu ze skriptu. Restart starého kontejneru tohle nespraví.
 
 2. Bez ručního redirect URI v Google konzoli produkční callback skončí `redirect_uri_mismatch`. Pytest to mockuje a hlídá, že POST neposílá `/oauth/callback` (B54).
 
@@ -346,11 +350,11 @@ Push na `main` spustí Coolify deploy image Brain podle watch paths. Ten deploy 
 
 4. `resource` v metadatech musí mít koncové lomítko, protože takovou URL člověk zadá. Srovnání přijme i variantu bez něj.
 
-5. Dva paralelní refreshe: zámek pustí právě jednu rotaci, druhý dostane `invalid_grant` a family odvolá. Claude se znovu přihlásí. Bez zámku by druhé vlákno dostalo `InterfaceError` (B35).
+5. Dva paralelní refreshe: zámek pustí právě jednu rotaci. Čekající vlákno dostane HTTP 400 `invalid_grant` a family nechá živou, takže access z vítěze Claude dál používá (B35). Až další request se starým refreshem, který začal po uvolnění zámku, family odvolá (B34) a Claude se znovu přihlásí. Bez zámku by druhé vlákno dostalo `InterfaceError`. Kdyby čekající vlákno family rušilo hned, vítězný access by umřel ve stejné vteřině a hodinový refresh by vypadal jako odhlášení.
 
 6. Ztráta pepperu v Coolify env odhlásí Claude, ale až po deploymentu, který ten env načte. Samotné uložení v UI běžící proces nezmění. Volume, které už deployment připojil, restart souboru tokenů nesmaže. Pepper se v téhle změně nerotuje.
 
-7. Repliky nad 1 by SQLite rozbily. Runbook je nechá na 1. Zámek je jen uvnitř jednoho procesu.
+7. Repliky nad 1 by SQLite rozbily a pardon v paměti by mezi procesy neplatil. Runbook je nechá na 1. Zámek je jen uvnitř jednoho procesu.
 
 8. Otevřené DCR je omezené hostem redirectu a stropem 500 řádků.
 
@@ -358,13 +362,13 @@ Push na `main` spustí Coolify deploy image Brain podle watch paths. Ten deploy 
 
 10. `mailbox_apply` a `external_apply` přestanou předstírat service principal. Service volání pořád skončí 403. OAuth člověk dostane 501, stejně jako REST cookie.
 
-11. `WWW-Authenticate` uvidí jen neautentizovaný MCP. REST ji nedostane.
+11. `WWW-Authenticate` uvidí jen neautentizovaný MCP. REST ji nedostane. Token endpoint `WWW-Authenticate` na `400` nepřidává, aby Claude nezačal discovery znovu místo čtení `error`.
 
-12. Grant `jwt-bearer` z CIMD se neimplementuje. Enterprise Managed Auth tímhle konektorem nepoběží.
+12. Grant `jwt-bearer` z CIMD se neimplementuje. Enterprise Managed Auth tímhle konektorem nepoběží. Odpověď je HTTP 400 `unsupported_grant_type`.
 
 13. Claude Code loopback je zamítnutý (A5). Org connector na claude.ai loopback nepoužívá.
 
-14. Cookie callback pořád vypisuje allowlist do HTML 403. MCP stránka to nedělá. Stará stránka se nepřepisuje.
+14. Cookie callback pořád vypisuje allowlist do HTML 403 a pořád používá `HTTPException`. MCP stránka allowlist nevypisuje. Token endpoint `HTTPException` nepoužívá. Stará cookie stránka se nepřepisuje.
 
 15. Vrácení e-mailu do allowlistu oživí neodvolaný grant (A4). Tvrdý stop je CLI revoke.
 
@@ -380,6 +384,8 @@ Push na `main` spustí Coolify deploy image Brain podle watch paths. Ten deploy 
 
 21. Skriptový queue se přeskočí, když už jeden deployment běží. Ten běžící mohl začít před INSERT a volume nemá. Druhé spuštění skriptu po jeho konci queue doplní (B61). Bez toho druhého běhu mount nevznikne.
 
+22. Kdyby token endpoint vrátil `{"detail":"invalid_grant"}` nebo `error_reason`, pytest na slově v textu může projít a Claude po vypršení access tokenu (3600 s) refresh nepoužije. T8 a T14 proto assertují status a klíč `error`, ne podřetězec v `detail`.
+
 ## Otevřené otázky pro uživatele
 
 Q1 — Má Brain přijmout i Claude Code loopback (`http://localhost` a `http://127.0.0.1` s libovolným portem)? Předpoklad A5: ne. Kdyby ano, přibude port-agnostic výjimka jen pro ty dva hosty a T6 přestane loopback odmítat. Org connector na claude.ai to nepotřebuje.
@@ -390,13 +396,17 @@ Focus je uzavřený v R11. `allow_focus_write(ServicePrincipal)` se nezakazuje. 
 
 ## Vyřešení nálezů
 
+Ledger: NEW-1 = C5, NEW-2 = C6, NEW-3 = C7, NEW-4 = C8. Tohle kolo: NEW-5 = C9, NEW-6 = C10.
+
 | ID | Stav |
 |---|---|
-| C1 | vyřešeno (rozhodnutí uživatele, beze změny v tomhle kole). R11, B44, B45: service token i `OAuthPrincipal` s `brain:write` smí `apply_focus`. `allow_focus_write(ServicePrincipal)` se nezakazuje. Samotný `brain:read` focus nezapisuje. |
+| C1 | vyřešeno (rozhodnutí uživatele, beze změny). R11, B44, B45: service token i `OAuthPrincipal` s `brain:write` smí `apply_focus`. `allow_focus_write(ServicePrincipal)` se nezakazuje. Samotný `brain:read` focus nezapisuje. |
 | C2 | vyřešeno. B54, B55, T8, T11. Google POST dostane `/oauth/mcp/callback`. Na Claude jde uložený `claude_state`. |
 | C3 | vyřešeno. R15, B56–B58, T21. Read smí jen warm. Při stale a OAuth jen s read se `mode="rebuild"` neotevře. |
 | C4 | vyřešeno. R10, B59, B60, T16. Mapa je totální. Neznámý nástroj a každý write nástroj s pouhým `brain:read` vnitřní funkci nespustí. |
-| NEW-1 | vyřešeno. R4, B61, T22, F5, F7, riziko 1 a 21. `add-oauth-volume.sh` po INSERT queueje deployment se `restart_only=false` jako `setup-coolify.sh:192-207`. Pepper se ukládá v UI před tím deploymentem. Restart kontejneru mount ani env nezapne. Když queue přeskočí, skript se spustí znovu po doběhnutí běžícího deploymentu. |
-| NEW-2 | vyřešeno. R12, B49, T20, F4. `run_tool` je jediný východ všech 33 wrapperů a na cestách `ok`, `error` a `denied` píše právě jeden JSON. T20 vezme úspěšný `update_task` (dnes mimo `_call`, `mcp_app.py:103-137`) a jedno scope denial. |
-| NEW-3 | vyřešeno. R8, B35, B54, B63, T14, T11. Nové spojení na operaci, zámek jen kolem SQL, žádné `check_same_thread=False` a žádný zámek přes `await` na Google. Dva thready: jedna rotace, druhý `invalid_grant`, ne `InterfaceError` a ne 500. |
-| NEW-4 | vyřešeno. R15, B62, T21. `get_context` nejde přes `_call` (`mcp_app.py:55-63`). `run_tool` vrátí `_error_result` jako `get_task` (`254-258`). `call_tool` assertuje `error_reason=context_rebuild_requires_write` a text nezačíná `Error executing tool`. |
+| C5 (NEW-1) | vyřešeno. R4, B61, T22, F5, F7, riziko 1 a 21. `add-oauth-volume.sh` po INSERT queueje deployment se `restart_only=false` jako `setup-coolify.sh:192-207`. Pepper se ukládá v UI před tím deploymentem. Restart kontejneru mount ani env nezapne. |
+| C6 (NEW-2) | vyřešeno. R12, B49, T20, F4. `run_tool` je jediný východ všech 33 wrapperů a na cestách `ok`, `error` a `denied` píše právě jeden JSON. |
+| C7 (NEW-3) | vyřešeno. R8, B54, B63, T11, T14. Nové spojení na operaci, zámek jen kolem SQL, žádné `check_same_thread=False` a žádný zámek přes `await` na Google. Navazující věta kvůli C10: čekající vlákno family neruší; ruší ji až pozdější replay (B34, B35). |
+| C8 (NEW-4) | vyřešeno. R15, B62, T21. `get_context` nejde přes `_call` (`mcp_app.py:55-63`). `run_tool` vrátí `_error_result` jako `get_task` (`254-258`). |
+| C9 (NEW-5) | vyřešeno. R8, A8, B8, B15, B17–B21, B25, B33, B34, B36, B38–B41, T5, T8, T9, T13, T14, F3, riziko 22. Úspěch token endpointu je HTTP 200 a klíče `access_token`, `token_type`, `expires_in`, `refresh_token`, `scope`. Chyba je HTTP 400 a klíč `error`. `HTTPException` z `oauth_routes.py:102-103` se nekopíruje, takže v těle není `detail` ani `error_reason`. MCP `401` (B1) `error_reason` nechává. |
+| C10 (NEW-6) | vyřešeno. R8, úložiště (pardon podle `waiters`), B34, B35, T14, riziko 5. Po dvou souběžných refreshech access z vítěze na MCP projde a family žije. Family se ruší až třetím requestem se starým refreshem, který začne až po uvolnění zámku. |
