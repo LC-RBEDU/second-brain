@@ -1,6 +1,6 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: PLAN
+Stav: CRITIC
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 9628d3a7-2aca-4985-b99f-a77b13444d46, otevření plánu #2, generace k=1/3, kolo r=1/3
@@ -61,12 +61,13 @@ SECOND_BRAIN
 | 2 | 2026-11-11 15:40 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v1 | — | Otevření #1 kolo 1. Předpoklady A1–A12, otázky Q1–Q3 neblokující. Přechod na kritika. |
 | 3 | 2026-11-11 16:05 | CRITIC | 035b611d-d005-4090-bf84-f12186f91b4a | K PŘEPRACOVÁNÍ | 0 BLOCKER, 4 MAJOR, 0 MINOR | C1 blokující (focus a service token). C2–C4 jdou architektovi až po odpovědi. |
 | 4 | 2026-11-11 16:20 | AWAITING_USER | — | odpověď | — | C1: omezení neplatí. Focus smí Grok, Cursor i Claude. Service token `apply_focus` zůstává. Nové otevření plánu #2. |
+| 5 | 2026-11-11 16:35 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v2 | — | Otevření #2. C1–C4 označené jako vyřešené v plánu. Přechod na nového kritika. |
 
 ## Otevřené nálezy
 
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
 |---|---|---|---|---|
 | C1 | MAJOR | PLAN | rozhodnuto uživatelem (otevření #2) | 1 |
-| C2 | MAJOR | PLAN | otevřený | 1 |
-| C3 | MAJOR | PLAN | otevřený | 1 |
-| C4 | MAJOR | PLAN | otevřený | 1 |
+| C2 | MAJOR | PLAN | čeká na kritika (plán v2 tvrdí vyřešeno) | 1 |
+| C3 | MAJOR | PLAN | čeká na kritika (plán v2 tvrdí vyřešeno) | 1 |
+| C4 | MAJOR | PLAN | čeká na kritika (plán v2 tvrdí vyřešeno) | 1 |
