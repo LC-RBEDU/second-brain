@@ -1,13 +1,13 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: PLAN
+Stav: CRITIC
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
-Architekt: (čeká na první běh), otevření plánu #1, generace k=1/3, kolo r=1/3
+Architekt: agent ID 9628d3a7-2aca-4985-b99f-a77b13444d46, otevření plánu #1, generace k=1/3, kolo r=1/3
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) až v DONE auditu
 Plán schválen uživatelem: nevyžadováno
-Goal: (zakládá se)
+Goal: aktivní
 
 Větev: `feat/mcp-oauth-claude` z `origin/main` (lokální `main` byl 59 commitů pozadu). Push na konci pipeline je na `main` dle profilu SECOND_BRAIN.
 
@@ -56,6 +56,7 @@ SECOND_BRAIN
 | # | Čas | Stav | Agent (ID) | Verdikt | BLOCKER/MAJOR/MINOR | Poznámka / přechod |
 |---|-----|------|------------|---------|---------------------|--------------------|
 | 1 | 2026-11-11 15:14 | PLAN | — | — | — | Ledger založen. CLARIFY hotové v předchozím chatu. Start architekta k=1 r=1. |
+| 2 | 2026-11-11 15:40 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v1 | — | Otevření #1 kolo 1. Předpoklady A1–A12, otázky Q1–Q3 neblokující. Přechod na kritika. |
 
 ## Otevřené nálezy
 
