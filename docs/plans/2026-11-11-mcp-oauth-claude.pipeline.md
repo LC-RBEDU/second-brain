@@ -1,13 +1,13 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: AWAITING_USER (z: blokující otázka)
+Stav: PLAN
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
-Architekt: agent ID 9628d3a7-2aca-4985-b99f-a77b13444d46, otevření plánu #1, generace k=1/3, kolo r=1/3
+Architekt: agent ID 9628d3a7-2aca-4985-b99f-a77b13444d46, otevření plánu #2, generace k=1/3, kolo r=1/3
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) až v DONE auditu
 Plán schválen uživatelem: nevyžadováno
-Goal: paused-awaiting-user
+Goal: aktivní (znovu po odpovědi)
 
 Větev: `feat/mcp-oauth-claude` z `origin/main` (lokální `main` byl 59 commitů pozadu). Push na konci pipeline je na `main` dle profilu SECOND_BRAIN.
 
@@ -32,6 +32,8 @@ Brief (varianta A, schválená jako realizovatelná): org connector v Claude Tea
 - Dnešní cookie OAuth (`/oauth/callback`, cookie `sb_brain_session`) zůstává. Claude ho jako MCP OAuth nepoužije.
 - Google IdP: stávající `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Nový redirect URI na tom samém klientovi.
 - Org connector se do Claude organizace přidá až po testu, že cizí účet z organizace token nedostane.
+- Focus (11. 11., odpověď na C1, doslovně): „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ `BRAIN_SERVICE_TOKEN` dál smí `apply_focus`. Claude OAuth principal ho smí taky. `allow_focus_write(ServicePrincipal)` se nezakazuje.
+- Focus (11. 11., odpověď na C1, doslovně): „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ `BRAIN_SERVICE_TOKEN` dál smí `apply_focus`. Claude OAuth principal ho smí taky. `allow_focus_write(ServicePrincipal)` se nezakazuje.
 
 ### Mimo rozsah
 
@@ -58,12 +60,13 @@ SECOND_BRAIN
 | 1 | 2026-11-11 15:14 | PLAN | — | — | — | Ledger založen. CLARIFY hotové v předchozím chatu. Start architekta k=1 r=1. |
 | 2 | 2026-11-11 15:40 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v1 | — | Otevření #1 kolo 1. Předpoklady A1–A12, otázky Q1–Q3 neblokující. Přechod na kritika. |
 | 3 | 2026-11-11 16:05 | CRITIC | 035b611d-d005-4090-bf84-f12186f91b4a | K PŘEPRACOVÁNÍ | 0 BLOCKER, 4 MAJOR, 0 MINOR | C1 blokující (focus a service token). C2–C4 jdou architektovi až po odpovědi. |
+| 4 | 2026-11-11 16:20 | AWAITING_USER | — | odpověď | — | C1: omezení neplatí. Focus smí Grok, Cursor i Claude. Service token `apply_focus` zůstává. Nové otevření plánu #2. |
 
 ## Otevřené nálezy
 
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
 |---|---|---|---|---|
-| C1 | MAJOR | PLAN | otevřený | 1 |
+| C1 | MAJOR | PLAN | rozhodnuto uživatelem (otevření #2) | 1 |
 | C2 | MAJOR | PLAN | otevřený | 1 |
 | C3 | MAJOR | PLAN | otevřený | 1 |
 | C4 | MAJOR | PLAN | otevřený | 1 |
