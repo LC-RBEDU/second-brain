@@ -4,6 +4,7 @@ Zapisuje agent při každém vynechání pipeline (pravidlo `subagent-pipeline`,
 
 | Datum | Soubory | Výjimka | Kdo rozhodl |
 |---|---|---|---|
+| 2026-11-12 | `vps/second-brain-brain/app/oauth_mcp_routes.py` | vzhled souhlasové stránky MCP OAuth ve stylu RB EDU; formulář, jeden submit a odkaz Zrušit beze změny. Není to dashboard | agent (uživatel: grafická podoba) |
 | 2026-11-12 | `vps/second-brain-brain/app/main.py`, `tests/test_mcp_auth.py`, `tests/test_oauth_mcp.py` | jednořádkový fix: Claude při kontrole konektoru nebere 307 z `/mcp` na `/mcp/` a přihlášení přeskočí; stejná cesta se přepíše ještě před routováním | agent (uživatel: screenshot Add custom connector, 307 Not found) |
 | 2026-11-05 | `vps/second-brain-dashboard/web/src/ui/MindMap.jsx` (+ MindMap.test) | UX: dvojklik na střed mindmapy otevře detail epicu/story; klik dál jde o úroveň výš. Bez Brain kontraktů | agent (uživatel: dvojklik na střed = karta) |
 | 2026-11-01 | `vps/second-brain-brain/app/tools/{update_task,create_task}.py`, `main.py`, dashboard `App.jsx`/`linkify.js`/BFF | jasná příčina: materials se při save neukládaly (+ YAML list orphan); pole Materiály/odkazy v detailu/Nový | agent (uživatel: materials u IAD-T168) — **superseded by** `/rbu-pipeline` `docs/plans/2026-11-01-sb-dashboard-materials.pipeline.md` |

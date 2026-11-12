@@ -189,26 +189,96 @@ def _resolve_client(client_id: str) -> dict[str, Any] | None:
     return row
 
 
+def _scope_label(scope: str) -> str:
+    parts = scope.split()
+    labels = []
+    if "brain:read" in parts:
+        labels.append("čtení")
+    if "brain:write" in parts:
+        labels.append("zápis")
+    return " a ".join(labels) if labels else scope
+
+
+def _page(*, title: str, lead: str, body: str) -> str:
+    """RB EDU card. One consent submit stays the only <button> in the document."""
+    return f"""<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23e9244a'/%3E%3C/svg%3E">
+<title>{html.escape(title, quote=True)}</title>
+<style>
+  :root {{ color-scheme: light; }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    padding: 24px; background: #f4f4f5; color: #3c3c3d;
+    font-family: "Plus Jakarta Sans", Arial, sans-serif;
+  }}
+  .card {{
+    width: min(440px, 100%); background: #fff; border-radius: 16px;
+    padding: 32px 28px; box-shadow: 0 12px 40px rgba(60, 60, 61, .08);
+  }}
+  .mark {{ display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.03em; }}
+  .dot {{ width: 14px; height: 14px; border-radius: 4px; background: #e9244a; }}
+  h1 {{ margin: 22px 0 8px; font-size: 26px; line-height: 1.2; font-weight: 800; letter-spacing: -.03em; }}
+  .lead {{ margin: 0 0 22px; color: #5c5c5e; font-size: 15px; line-height: 1.45; }}
+  dl {{ margin: 0 0 24px; }}
+  .row {{
+    display: flex; justify-content: space-between; gap: 16px;
+    padding: 12px 0; border-top: 1px solid #ebeced; font-size: 14px;
+  }}
+  dt {{ color: #5c5c5e; }}
+  dd {{ margin: 0; font-weight: 700; text-align: right; }}
+  .raw {{ display: block; margin-top: 2px; color: #5c5c5e; font-weight: 500; font-size: 12px; }}
+  button {{
+    width: 100%; border: 0; background: #e9244a; color: #fff; cursor: pointer;
+    font: 700 15px/1 "Plus Jakarta Sans", Arial, sans-serif;
+    padding: 14px 18px; border-radius: 12px;
+  }}
+  button:hover {{ background: #c41e3d; }}
+  button:focus-visible {{ outline: 2px solid #3c3c3d; outline-offset: 3px; }}
+  .cancel {{ display: block; margin-top: 14px; text-align: center; color: #5c5c5e; font-size: 14px; }}
+  .state {{ margin: 22px 0 0; color: #5c5c5e; font-size: 12px; line-height: 1.4; word-break: break-all; }}
+  @media (prefers-reduced-motion: reduce) {{ button {{ transition: none; }} }}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="mark"><span class="dot"></span>RB EDU</div>
+  <h1>{html.escape(title, quote=True)}</h1>
+  <p class="lead">{html.escape(lead, quote=True)}</p>
+  {body}
+</main>
+</body>
+</html>"""
+
+
 def _consent_html(*, name: str, scope: str, redirect_uri: str, state: str, tx_id: str) -> str:
     host = urlparse(redirect_uri).hostname or ""
-    return (
-        "<!doctype html><html><body>"
-        f"<p>{html.escape(name, quote=True)}</p>"
-        f"<p>{html.escape(scope, quote=True)}</p>"
-        f"<p>{html.escape(host, quote=True)}</p>"
-        f"<p>{html.escape(state, quote=True)}</p>"
+    body = (
+        "<dl>"
+        f'<div class="row"><dt>Kdo</dt><dd>{html.escape(name, quote=True)}</dd></div>'
+        f'<div class="row"><dt>Oprávnění</dt><dd>{html.escape(_scope_label(scope), quote=True)}'
+        f'<span class="raw">{html.escape(scope, quote=True)}</span></dd></div>'
+        f'<div class="row"><dt>Návrat</dt><dd>{html.escape(host, quote=True)}</dd></div>'
+        "</dl>"
         '<form method="post" action="/oauth/mcp/continue">'
         f'<input type="hidden" name="id" value="{html.escape(tx_id, quote=True)}">'
         '<button type="submit">Pokračovat</button>'
         "</form>"
-        '<a href="/oauth/mcp/cancelled">Zrušit</a>'
-        "</body></html>"
+        '<a class="cancel" href="/oauth/mcp/cancelled">Zrušit</a>'
+        f'<p class="state">Kód žádosti {html.escape(state, quote=True)}</p>'
     )
+    return _page(title="Připojení k Second Brain", lead="Claude žádá o přístup. Pokračování jde na Google.", body=body)
 
 
 @router.get("/oauth/mcp/cancelled")
 def oauth_mcp_cancelled() -> HTMLResponse:
-    return HTMLResponse("<!doctype html><html><body><p>zrušeno</p></body></html>")
+    return HTMLResponse(
+        _page(title="Zrušeno", lead="Přihlášení je zrušeno. Klient nedostal přístup.", body="")
+    )
 
 
 @router.post("/oauth/mcp/register")
@@ -354,7 +424,11 @@ async def oauth_mcp_callback(request: Request) -> Response:
     if not email_allowed(email):
         target = redirect_uri + "?" + urlencode({"error": "access_denied", "state": client_state})
         response = HTMLResponse(
-            "<!doctype html><html><body><p>přístup zamítnut</p></body></html>",
+            _page(
+                title="Přístup zamítnut",
+                lead="Tenhle Google účet k Second Brain přístup nemá.",
+                body="<p>přístup zamítnut</p>",
+            ),
             status_code=302,
         )
         response.headers["location"] = target
