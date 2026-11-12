@@ -7,7 +7,7 @@ Architekt: generace k=1 skončila na r=3/3. Převzetí k=2 se nespustilo (uživa
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) až v DONE auditu
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní, smyčka zastavená na pokyn uživatele (12. 11.). Po „pokračuj“ nejdřív načíst aktualizovaný skill `subagent-orchestration`, pak teprve další krok.
+Goal: paused-awaiting-user (12. 11.). Nový skill je načtený. Další krok až po „pokračuj“: architekt k=2, bez Šťourala, kritik nad deltou.
 
 Větev: `feat/mcp-oauth-claude` z `origin/main` (lokální `main` byl 59 commitů pozadu). Push na konci pipeline je na `main` dle profilu SECOND_BRAIN.
 
