@@ -1,13 +1,13 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: CRITIC
+Stav: AWAITING_USER (z: aktualizace rbu-pipeline v jiné konverzaci)
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
-Architekt: agent ID 9628d3a7-2aca-4985-b99f-a77b13444d46, otevření plánu #2, generace k=1/3, kolo r=3/3
+Architekt: generace k=1 skončila na r=3/3. Převzetí k=2 se nespustilo (uživatel stop). 9628d3a7 neresumovat.
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) až v DONE auditu
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní (znovu po odpovědi)
+Goal: aktivní, smyčka zastavená na pokyn uživatele (12. 11.). Po „pokračuj“ nejdřív načíst aktualizovaný skill `subagent-orchestration`, pak teprve další krok.
 
 Větev: `feat/mcp-oauth-claude` z `origin/main` (lokální `main` byl 59 commitů pozadu). Push na konci pipeline je na `main` dle profilu SECOND_BRAIN.
 
@@ -33,6 +33,7 @@ Brief (varianta A, schválená jako realizovatelná): org connector v Claude Tea
 - Google IdP: stávající `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Nový redirect URI na tom samém klientovi.
 - Org connector se do Claude organizace přidá až po testu, že cizí účet z organizace token nedostane.
 - Focus (11. 11., odpověď na C1, doslovně): „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ `BRAIN_SERVICE_TOKEN` dál smí `apply_focus`. Claude OAuth principal ho smí taky. `allow_focus_write(ServicePrincipal)` se nezakazuje.
+- Pauza (12. 11., doslovně): „v jiné konverzaci provádím aktualizaci rbu-pipeline. Budu chtít, abys zde pokračoval až bude dokončena - 4 verze architekta tímto směrem nikam moc nevedou a utrácí zbytečně tokeny.“ Převzetí k=2 se nespouští. Další krok až po té aktualizaci a pokynu pokračovat.
 
 ### Mimo rozsah
 
@@ -65,6 +66,8 @@ SECOND_BRAIN
 | 7 | 2026-11-11 17:10 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v3 | — | Otevření #2 kolo r=2. NEW-1–NEW-4 označené jako vyřešené. Přechod na nového kritika. |
 | 8 | 2026-11-11 17:25 | CRITIC | fa6362d7-f3c6-4f2a-8599-68ec6fc8b7fb | K PŘEPRACOVÁNÍ | 0 BLOCKER, 1 MAJOR, 1 MINOR | Otevření #2 kolo r=2. C1–C4 a C5–C8 potvrzené. C9 token endpoint nemá OAuth JSON `error` / `access_token`. C10 MINOR souběžný refresh nesmí zrušit výherní access. Součet BLOCKER+MAJOR klesl (3→1), architekt zůstává, r=3. |
 | 9 | 2026-11-11 17:45 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v4 | — | Otevření #2 kolo r=3. C9 a C10 označené jako vyřešené (RFC 6749 JSON, pardon u souběžného refreshe). Přechod na nového kritika. |
+| 10 | 2026-11-11 18:05 | CRITIC | d776cdd0-e17c-40f9-965e-3222e215c099 | K PŘEPRACOVÁNÍ | 0 BLOCKER, 2 MAJOR, 2 MINOR | Otevření #2 kolo r=3. C1–C10 potvrzené. C11 vynechaný scope na refreshi. C12 HTML escape state na zamítací stránce. C13 MINOR pardon je globální. C14 MINOR chybí assert `iss`. r=3, další by byl nový architekt k=2. |
+| 11 | 2026-11-12 01:07 | AWAITING_USER | — | stop | — | Uživatel: nepokračovat, dokud v jiné konverzaci nedoběhne aktualizace rbu-pipeline. Převzetí k=2 se nespustilo. |
 
 ## Otevřené nálezy
 
@@ -78,5 +81,9 @@ SECOND_BRAIN
 | C6 | MAJOR | PLAN | vyřešen v #8 (kritik značil NEW-2, potvrdil) | 1 |
 | C7 | MAJOR | PLAN | vyřešen v #8 (kritik značil NEW-3, potvrdil) | 1 |
 | C8 | MINOR | PLAN | vyřešen v #8 (kritik značil NEW-4, potvrdil) | 1 |
-| C9 | MAJOR | PLAN | otevřený (kritik značil NEW-5) | 1 |
-| C10 | MINOR | PLAN | otevřený (kritik značil NEW-6) | 1 |
+| C9 | MAJOR | PLAN | vyřešen v #10 (kritik potvrdil) | 1 |
+| C10 | MINOR | PLAN | vyřešen v #10 (kritik potvrdil) | 1 |
+| C11 | MAJOR | PLAN | otevřený (kritik značil NEW-7) | 1 |
+| C12 | MAJOR | PLAN | otevřený (kritik značil NEW-8) | 1 |
+| C13 | MINOR | PLAN | otevřený (kritik značil NEW-9) | 1 |
+| C14 | MINOR | PLAN | otevřený (kritik značil NEW-10) | 1 |
