@@ -6,7 +6,7 @@ Schvalování plánu uživatelem: ne
 Architekt: agent ID 9c40c621-d63a-42f8-8b60-f4bafdfff34f, otevření plánu #1, generace k=2/3, kolo r=1/3
 Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, Q1 zodpovězeno
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: d78c516bb52fe31fe84caaab3216c1f5a88a977a · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
+Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: 3e3f0b1faaf310ba20a369f4c5e2b53a4473e46b · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní (znovu po „pokračuj“)
 Větev: `feat/mcp-oauth-claude`
