@@ -28,8 +28,9 @@ def client():
 
 
 def test_mcp_without_auth_401(client: TestClient):
-    r = client.post("/mcp", json={})
+    r = client.post("/mcp", json={}, follow_redirects=False)
     assert r.status_code == 401
+    assert r.headers.get("location") is None
     assert r.json().get("error_reason") == "client_error"
 
 

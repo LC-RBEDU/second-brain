@@ -129,6 +129,10 @@ class _HttpsRedirectFixMiddleware(BaseHTTPMiddleware):
     """Behind Traefik, slash redirects must keep https (BRAIN_PUBLIC_URL)."""
 
     async def dispatch(self, request: Request, call_next):
+        # Claude's connector check does not follow the /mcp → /mcp/ redirect.
+        if request.scope.get("path") == "/mcp":
+            request.scope["path"] = "/mcp/"
+            request.scope["raw_path"] = b"/mcp/"
         response = await call_next(request)
         public = (os.environ.get("BRAIN_PUBLIC_URL") or "").strip()
         loc = response.headers.get("location")
@@ -138,7 +142,7 @@ class _HttpsRedirectFixMiddleware(BaseHTTPMiddleware):
 
 
 app = FastAPI(title="Second Brain Brain", version="0.2.0", lifespan=lifespan)
-# Trust X-Forwarded-Proto/Host from Coolify Traefik (fixes /mcp → http://…/mcp/).
+# Trust X-Forwarded-Proto/Host from Coolify Traefik (slash redirect must stay https).
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 app.add_middleware(_HttpsRedirectFixMiddleware)
 app.include_router(oauth_router)

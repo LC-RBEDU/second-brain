@@ -151,8 +151,9 @@ def _pair(scope: str = "brain:read brain:write") -> dict:
 
 
 def test_t1_mcp_401_advertises_resource(client: TestClient):
-    response = client.post("/mcp", json={})
+    response = client.post("/mcp", json={}, follow_redirects=False)
     assert response.status_code == 401
+    assert response.headers.get("location") is None
     assert response.json().get("error_reason") == "client_error"
     header = response.headers["www-authenticate"]
     assert header == www_authenticate()
