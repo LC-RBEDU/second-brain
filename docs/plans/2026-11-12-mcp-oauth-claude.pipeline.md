@@ -1,14 +1,14 @@
 # Pipeline: MCP OAuth Claude (nový běh)
 
-Stav: BLOCKED (subagent nedostupný: rbu-architect)
+Stav: CRITIC
 Plán: docs/plans/2026-11-12-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
-Architekt: nová generace k=2/3, kolo r=1/3 (převzetí; cb53849f se neresumuje, r=3 pořád má 2 MAJOR)
+Architekt: agent ID 9c40c621-d63a-42f8-8b60-f4bafdfff34f, otevření plánu #1, generace k=2/3, kolo r=1/3
 Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, Q1 zodpovězeno
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
-Goal: complete (BLOCKED, převzetí k=2 se nespustilo)
+Goal: aktivní (znovu po „pokračuj“)
 Větev: `feat/mcp-oauth-claude` (beze změny kódu; předchozí běh na ní jen plány)
 
 Předchůdce [docs/plans/2026-11-11-mcp-oauth-claude.pipeline.md](2026-11-11-mcp-oauth-claude.pipeline.md) je ABANDONED. Tenhle běh ho nepřebírá v kole k=3. Necommitnutá revize C15 v `docs/plans/2026-11-11-mcp-oauth-claude.md` je kontext, ne závazek.
@@ -77,6 +77,8 @@ SECOND_BRAIN
 | 9 | 2026-11-12 14:55 | PLAN | cb53849f-256b-4e2e-b34e-e3a06942fd96 | revize r=3 | — | C1: jiné redirect_uri Google nezavolá; stejné nebo chybějící jde dál. Formulář má action bez query. Přechod na kritika, kolo 2+. |
 | 10 | 2026-11-12 15:10 | CRITIC | 4833138f-4fb4-4cd8-b630-c8a5c639aa67 | K PŘEPRACOVÁNÍ | 0 BLOCKER, 2 MAJOR, 1 MINOR | C1 vyřešené. C7 test nehlídá produkční POST jen s id ani zákaz přepsat transakci. C8 desetiminutový stop není v kontraktu. C9 MINOR Zrušit spustí Google. r=3, nový architekt k=2. |
 | 11 | 2026-11-12 15:25 | BLOCKED | c2897b51-f72d-4461-8a70-aa686ef2e286 | unavailable | — | Task rbu-architect skončil bez zápisu („repeated resume attempts made no progress“). Delta v souboru je pořád C1. C7–C9 zůstávají otevřené. |
+| 12 | 2026-11-12 17:20 | PLAN | — | pokračuj | — | Uživatel: další iterace architekta na C7–C9. Šťoural se nespouští. Start převzetí k=2 r=1. |
+| 13 | 2026-11-12 17:35 | PLAN | 9c40c621-d63a-42f8-8b60-f4bafdfff34f | revize k=2 | — | C7–C9 zapsané. Přechod na kritika, kolo 2+ (delta). |
 
 ## Grill
 
@@ -100,9 +102,9 @@ Neblokující předpoklady (architekt je zapíše jako A#, bez dalšího grilu):
 | ID (C#/D#/Q#/S#) | Závažnost | Typ IMPL/PLAN/ENV | Stav (otevřený / vyřešen v # / odmítnut) | Kolikrát vznesen |
 |---|---|---|---|---|
 | C1 | BLOCKER | PLAN | vyřešen v #10 (kritik potvrdil) | 2 |
-| C7 | MAJOR | PLAN | otevřený (kritik značil NEW-1) | 1 |
-| C8 | MAJOR | PLAN | otevřený (kritik značil NEW-2) | 1 |
-| C9 | MINOR | PLAN | otevřený (kritik značil NEW-3) | 1 |
+| C7 | MAJOR | PLAN | čeká na kritika (převzetí k=2 tvrdí vyřešeno) | 1 |
+| C8 | MAJOR | PLAN | čeká na kritika (převzetí k=2 tvrdí vyřešeno) | 1 |
+| C9 | MINOR | PLAN | čeká na kritika (převzetí k=2 tvrdí vyřešeno) | 1 |
 | C2 | BLOCKER | PLAN | vyřešen v #8 (kritik potvrdil) | 1 |
 | C3 | MAJOR | PLAN | vyřešen v #8 (kritik potvrdil) | 1 |
 | C4 | MAJOR | PLAN | vyřešen v #8 (kritik potvrdil) | 1 |

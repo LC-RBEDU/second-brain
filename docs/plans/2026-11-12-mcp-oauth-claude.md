@@ -83,7 +83,7 @@ R1 až R16 jsou v osnově, včetně Q1 jako R16. Tady jen to, co grill upřesnil
 - A-G2: `get_context` s `brain:read` je jen warm čtení. Rebuild chce `brain:write`. Service token a cookie session rebuildují jako dnes.
 - A-G3: Access z nového OAuth platí jen na MCP. REST `/v1/*` dál bere cookie nebo service token. `WWW-Authenticate` je jen na MCP `401`, a jen když request nemá platnou cookie, platný service token ani platný OAuth access. Platný service token na SQLite nesahá.
 - A-G4: Odvolání jednoho grantu je příkaz v kontejneru, bez HTTP route. Odebrání e-mailu je změna allowlistu v kódu. Každé MCP volání s OAuth tokenem allowlist znovu ověří.
-- A-G5: transakce 10 minut, kód 60 sekund, access 1 hodina, refresh 30 dní, absolutní strop grantu 90 dní. Restart s připojeným volume session neruší.
+- A-G5: transakce 10 minut, kód 60 sekund, access 1 hodina, refresh 30 dní, absolutní strop grantu 90 dní. Životnost transakce se zapíše jen jako `expires_at` (now + 10 min). Odmítnutí neznámé nebo staré transakce je predikát `expires_at <= now`, včetně rovnosti. „Věk nad 10 minut“ se nepoužívá a není to jiný test. Stejný predikát běží na `POST /oauth/mcp/continue` a znovu na callbacku před výměnou u Google a před vložením kódu. Restart s připojeným volume session neruší.
 - A-G6: každý úspěšný login je vlastní family. Rotace v jedné family neodhlásí druhou.
 - A-G7: před Google je stránka se jménem klienta, scope a hostname redirectu. Zamítnutí allowlistu allowlist nevypisuje a vrátí `access_denied` se `state` klienta. `state` v HTML je `urlencode` a HTML escape.
 - A-G8: Enterprise Managed Auth a `jwt-bearer` se nedělají.
@@ -138,7 +138,7 @@ A11 — Checklisty jsou z RB Universe `docs/agent_playbooks/quality-checklists.m
 
 `vps/second-brain-brain/Dockerfile:28` — jeden proces `uvicorn` bez `--workers`.
 
-`vps/second-brain-brain/requirements.txt` — fastapi, httpx, itsdangerous, mcp. Authlib tam není. `sqlite3` je ve stdlib.
+`vps/second-brain-brain/requirements.txt` — fastapi, httpx, itsdangerous, mcp, `google-auth-oauthlib`. Balík Authlib tam není. Cookie OAuth ho nevolá: výměna kódu je `httpx` v `oauth_routes.py:91-101`. MCP OAuth Authlib nepřidává. `sqlite3` je ve stdlib.
 
 `vps/second-brain-brain/deploy/setup-coolify.sh:103-107` — persistent volume jen `/data/vault` → host `/data/second-brain-vault`. `192-207` queueje deployment s `restart_only=false`. Samotný INSERT volume bez deploymentu mount na běžícím kontejneru nezapne. Celý skript se znovu nespouští, sahá na env včetně service tokenu (`165-171`).
 
@@ -161,7 +161,7 @@ Tabulky, vše čas v UTC ISO:
 - `refresh_tokens` — hash, `family_id`, stav `active` nebo `rotated`, hash nástupce, `expires_at`, `rotated_at`.
 - `access_tokens` — hash, `family_id`, e-mail, scope, `client_id`, `expires_at`.
 
-Raw token se nezapisuje. Hash je HMAC-SHA256 s pepperem. `expires_at <= now` je vypršelé.
+Raw token se nezapisuje. Hash je HMAC-SHA256 s pepperem. `expires_at <= now` je vypršelé, včetně rovnosti. Věk v minutách se nepočítá. U transakce ten predikát platí na POST pokračování a znovu na callbacku před vložením kódu (B49), ne jen u refreshe.
 
 Cesta: A8. Když pepper chybí, nebo soubor nejde otevřít, nebo cesta padá do vaultu, zápisové OAuth route vrací HTTP 503 a tělo `{"error":"temporarily_unavailable"}`. Bez klíče `detail` a bez `error_reason`. Metadata a MCP `401` jedou dál. Service token SQLite nevolá.
 
@@ -195,11 +195,20 @@ DCR `POST /oauth/mcp/register`, JSON. Klient je veřejný: `token_endpoint_auth_
 
 CIMD: `client_id` ve tvaru `https://claude.ai/...` nebo `https://claude.com/...` se stáhne (timeout 3 s, bez přesměrování na jiný host, limit velikosti). Jiný host se nestahuje (SSRF). Dokument musí mít `client_id` shodné s URL. Dokument se neodmítne proto, že v `redirect_uris` má loopback, ani proto, že v `grant_types` má `jwt-bearer` (A-G8 a R16). Authorize pak vezme jen requested `redirect_uri`, které je v dokumentu a zároveň je jedna ze dvou URL z R11. Loopback na authorize je odmítnutí bez kódu a bez Google. Cache dokumentu v procesu 5 minut podle této URL. Hostovaný dokument tedy přihlášení na `https://claude.ai/api/mcp/auth_callback` nezablokuje. Claude Code dokument přihlášení loopbackem neotevře.
 
-`GET /oauth/mcp/authorize` na Google ještě nejde. Ověří klienta, redirect (jen dvě URL z R11), `code_challenge_method=S256` (plain a chybějící PKCE jsou `invalid_request`), resource a scope. `offline_access` se zahodí. Vynechaný scope u allowlistovaného toku znamená oba scope. Teprve potom uloží transakci pod náhodné id. HTML formulář má `action` na `/oauth/mcp/continue` bez query, aby prohlížeč znovu neposlal query z GET. Skryté pole je jen id transakce, ne redirect, ne scope a ne `state`. Na stránce je jméno klienta, scope a hostname redirectu, pokračovat / zrušit. Do HTML jdou jméno klienta, scope i `state` jen přes `html.escape(..., quote=True)`. `state` v query navíc přes `urllib.parse.urlencode`. Zrušení transakci nepoužije a kód nevydá.
+`GET /oauth/mcp/authorize` na Google ještě nejde. Ověří klienta, redirect (jen dvě URL z R11), `code_challenge_method=S256` (plain a chybějící PKCE jsou `invalid_request`), resource a scope. `offline_access` se zahodí. Vynechaný scope u allowlistovaného toku znamená oba scope. Teprve potom uloží transakci pod náhodné id. HTML souhlasu má jeden formulář: atribut `method="post"` (chybějící method je výchozí GET a na POST route nesedí), `action="/oauth/mcp/continue"` bez query, aby prohlížeč znovu neposlal query z GET. Jediné úspěšné pole je skryté id transakce. Jediný submit je tlačítko Pokračovat. Zrušit je `<a href="/oauth/mcp/cancelled">` mimo ten formulář, bez id a bez `redirect_uri`. `GET /oauth/mcp/cancelled` vrátí 200 a HTML, na SQLite nesáhne, cookie `sb_mcp_oauth_tx` nenastaví, Google nezavolá a kód nezaloží. Není to druhý submit téhož těla: handler by Pokračovat a Zrušit nerozeznal a Zrušit by spustilo Google. Do HTML jdou jméno klienta, scope i `state` jen přes `html.escape(..., quote=True)`. `state` v query navíc přes `urllib.parse.urlencode`.
 
-Pokračování je `POST /oauth/mcp/continue`, sync `def`. Načte transakci podle id z formuláře. Neznámé id nebo věk nad 10 minut: Google se nezavolá a kód se nevydá. Když je v těle nebo v query `redirect_uri` a po decode se nerovná uloženému, totéž: stop, transakce se nemění, Google se nezavolá, kód se nevydá. Když parametr chybí nebo se po decode rovná uloženému, nastaví cookie `sb_mcp_oauth_tx` (HttpOnly, SameSite=Lax, Secure podle `_cookie_secure`, max_age 600 s) na to id a teprve pak přesměruje na Google. Uložený redirect se z requestu nikdy nepřepisuje. Redirect URI předaný Google je `https://brain.cyprovi.cz/oauth/mcp/callback`, ne cookie callback. Bez `hd`, s `prompt=select_account`. `state` vůči Google je id transakce. Cookie `sb_oauth_state` a `sb_brain_session` se nepřepisují.
+Pokračování je `POST /oauth/mcp/continue`, sync `def`. Tělo je `application/x-www-form-urlencoded`. Načte transakci podle id. Neznámé id, nebo známé id s `expires_at <= now`: HTTP 400, bez hlavičky `Location`, bez cookie `sb_mcp_oauth_tx`, žádný socket na `accounts.google.com` ani `oauth2.googleapis.com`, řádek transakce se nezmění (neznámé id = žádný INSERT; známé = stejný tuple `SELECT *`), v `codes` nepřibude řádek. Věta „kód se nevydá“ sama nestačí, protože kód vzniká až na callbacku: i tahle větev proto assertuje prázdný přírůstek v `codes`, a callback tu kontrolu opakuje (B49).
 
-`GET /oauth/mcp/callback` je `async def` kvůli Google, stejně jako dnešní cookie callback (`oauth_routes.py:80-88`). Než zavolá Google, srovná query `state` s cookie `sb_mcp_oauth_tx`. Bez shody kód nevydá a na redirect klienta nejde (žádný `Location` na claude.ai ani claude.com). Shoda cookie se maže až po vyřízení. Výměna kódu u Google používá MCP redirect URI (timeout 20 s). Neúspěch Google nevydá token. E-mail mimo allowlist: HTML „přístup zamítnut“ bez seznamu adres, pak redirect na uložený redirect transakce s `error=access_denied` a se `state` klienta, ne se `state` Google. E-mail na allowlistu: nová family (A-G6), jednorázový kód, redirect s `code` a `state` klienta.
+`redirect_uri` se z requestu do řádku nikdy nezapíše. POST řádek neaktualizuje ani při úspěchu. Srovnání je po jednom URL-decode, tělo a query zvlášť. Žádné `or`, které vezme první kanál a druhý už nečte:
+
+- parametr v těle chybí a v query chybí → pokračuj (produkční formulář: jen id)
+- je jen v jednom kanálu a po decode se rovná uloženému redirectu → pokračuj
+- je v obou a po decode se oba rovnají uloženému a sobě navzájem → pokračuj
+- cizí hodnota v těle, nebo zvlášť cizí hodnota v query, nebo se tělo a query po decode liší (i když jeden z nich sedí na uložený redirect) → stop. HTTP 400, `Location` chybí (ani Google, ani předané URI), cookie se nenastaví, žádný socket na Google, tuple řádku je stejný jako před requestem, v `codes` nic nepřibude.
+
+Když se pokračuje, nastaví cookie `sb_mcp_oauth_tx` (HttpOnly, SameSite=Lax, Secure podle `_cookie_secure`, max_age 600 s) na to id a teprve pak přesměruje na Google. `Location` vede na `accounts.google.com`. Redirect URI předaný Google je `https://brain.cyprovi.cz/oauth/mcp/callback`, ne cookie callback. Bez `hd`, s `prompt=select_account`. `state` vůči Google je id transakce. Cookie `sb_oauth_state` a `sb_brain_session` se nepřepisují.
+
+`GET /oauth/mcp/callback` je `async def` kvůli Google, stejně jako dnešní cookie callback (`oauth_routes.py:80-88`). Než zavolá Google, srovná query `state` s cookie `sb_mcp_oauth_tx`. Bez shody kód nevydá a na redirect klienta nejde (žádný `Location` na claude.ai ani claude.com). Když cookie sedí, načte transakci znovu. Neznámé id nebo `expires_at <= now`: Google se nezavolá, do `codes` se nevloží řádek, tuple transakce zůstane, odpověď je HTTP 400 bez `Location` (ani Google, ani redirect klienta s `code`). Cookie se na tom stopu nemaže. Jinak výměna kódu u Google používá MCP redirect URI (timeout 20 s). Neúspěch Google nevydá token. E-mail mimo allowlist: HTML „přístup zamítnut“ bez seznamu adres, pak redirect na uložený redirect transakce s `error=access_denied` a se `state` klienta, ne se `state` Google. E-mail na allowlistu: nová family (A-G6), jednorázový kód, redirect s `code` a `state` klienta. Cookie `sb_mcp_oauth_tx` se maže až po tom vyřízení, ne před výměnou u Google.
 
 `POST /oauth/mcp/token` je sync `def`, aby ho Starlette pustil do threadpoolu. Bere `application/x-www-form-urlencoded`. Úspěch je HTTP 200 a JSON `access_token`, `token_type` `Bearer`, `expires_in`, `refresh_token`, `scope`. Chyba je HTTP 400 a JSON s klíčem `error` (`invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `invalid_request`, `invalid_target`, `invalid_client`). Bez `detail` a bez `error_reason`. Route nehází `HTTPException`. Uvnitř zámku není `await`.
 
@@ -290,7 +299,7 @@ README Brainu: člověk přidá v Google konzoli redirect `https://brain.cyprovi
 | B17 | `resource` sedí i s jinou velikostí písmen hosta nebo jedním lomítkem navíc | přijmout; neshoda je `invalid_target`; chybějící `resource` přijmout | R11 | T17 |
 | B18 | authorize bez scope | grant má `brain:read` i `brain:write` | A-G1 | T18 |
 | B19 | scope obsahuje `offline_access` | zahodí se, není `invalid_scope`, code grant stejně vrátí refresh | A-G1 | T19 |
-| B20 | souhlasová stránka | před Google je jméno klienta, scope a hostname redirectu; formulář má `action` bez query a posílá jen id transakce; zrušení nevydá kód | A-G7, R9 | T20 |
+| B20 | souhlasová stránka | před Google je jméno klienta, scope a hostname redirectu; formulář má atribut `method="post"`, `action` bez query a posílá jen id; jediný submit je Pokračovat; Zrušit je odkaz na `GET /oauth/mcp/cancelled` a ten request nevolá Google, kód nezaloží a řádek transakce nechá stejný | A-G7, R9 | T20 |
 | B21 | `state`, jméno klienta a scope v HTML | vše přes `html.escape(..., quote=True)`; `state` v query navíc `urlencode`; surový `<` ani uvozovka v těle nejsou | A-G7 | T21, T53 |
 | B22 | Google userinfo e-mail mimo allowlist | žádný token, HTML bez výpisu allowlistu, redirect `access_denied` se `state` klienta | R2, A-G7 | T22 |
 | B23 | Google token endpoint vrátí non-200 | žádný token | R6 | T23 |
@@ -315,16 +324,17 @@ README Brainu: člověk přidá v Google konzoli redirect `https://brain.cyprovi
 | B42 | příkaz revoke `--family` | ta family je `401`, jiná family téhož e-mailu žije; HTTP route na revoke není | A-G4, A-G6 | T51 |
 | B43 | prázdná SQLite (soubor bez řádků) | service token funguje; neznámý Bearer je 401 jako B1 | A-G3 | T2 |
 | B44 | code starší než 60 s, access starší než 1 h, refresh starší než 30 dní | `invalid_grant` | A-G5 | T37 |
-| B45 | POST pokračování | jiné `redirect_uri` v těle nebo query (po decode) Google nezavolá, kód nevydá a transakci nezmění; chybějící parametr nebo stejné URI jako uložené cookie nastaví a na Google jde | R11 | T52 |
+| B45 | POST `/oauth/mcp/continue` | POST jen s id a bez query nastaví cookie `sb_mcp_oauth_tx` a `Location` vede na `accounts.google.com`; stejně i jediný kanál, nebo oba, když po decode sedí na uložený redirect; cizí `redirect_uri` v těle a zvlášť cizí v query nechá řádek byte-shodný (stejný tuple `SELECT *`, žádný UPDATE ani INSERT), žádný socket na Google, HTTP 400 bez `Location` na Google i bez `Location` na předané URI; tělo a query se po decode liší → stop, i když jeden kanál sedí (žádné `or` na první shodě) | R11 | T52 |
 | B46 | callback bez cookie `sb_mcp_oauth_tx`, nebo cookie nesedí na `state` | kód se nevydá, odpověď nemá `Location` na redirect klienta | R11 | T54 |
 | B47 | výměna kódu se špatným `code_verifier` | `invalid_grant`, žádný access ani refresh, `used_at` zůstane prázdné | R11 | T55 |
 | B48 | dvě překrývající se výměny téhož kódu s platným verifierem | právě jedna sada tokenů, druhá `invalid_grant` | R11 | T56 |
+| B49 | POST pokračování, nebo callback po shodě cookie a před vydáním kódu; neznámé id nebo `expires_at <= now` | Google se nezavolá, řádek transakce se nezmění, v `codes` nic nepřibude, HTTP 400 bez `Location` na Google a bez `code` na redirect klienta; predikát je `expires_at <= now` včetně rovnosti, ne věk nad 10 minut | A-G5, R11 | T57 |
 
 Checklist A, co v tabulce není samostatně:
 
 1. Prázdná data — B43 a B31. Prázdný soubor není výpadek.
-2. Chybějící hodnoty — B16, B17, B18, B31. `None` scope a chybějící `resource` mají řádek.
-3. Hranice období — fiskální rok se netýká. Hranice TTL je B30 a B44, časy UTC. `set_focus` dál počítá týden v Europe/Prague, tahle změna to nemění.
+2. Chybějící hodnoty — B16, B17, B18, B31, B49 (neznámé id). `None` scope a chybějící `resource` mají řádek.
+3. Hranice období — fiskální rok se netýká. Hranice TTL je B30, B44 a B49 (`expires_at <= now` včetně rovnosti). Časy UTC. Test B49 sloupec nastaví, nespí 10 minut. `set_focus` dál počítá týden v Europe/Prague, tahle změna to nemění.
 4. Měny a DPH — netýká se, žádné peníze.
 5. Oprávnění — B2, B4, B5, B33, B38, B39. RBAC RB Universe se netýká.
 6. Stav syncu — netýká se, není to sync pipeline. Rebuild kontextu je B36 a B37.
@@ -349,8 +359,8 @@ Společné pro všechny nové cesty: do Pythonu jdou jen řádky podle primárn�
 | P3 MCP auth, OAuth access | 1 SELECT podle hashe access + 1 SELECT family | 0 | žádná | < 20 ms |
 | P4 DCR | 1 INSERT | 0 | žádná | < 50 ms |
 | P5 CIMD na authorize | 0 SQL při cache hitu | 1 GET jen když `client_id` je URL na `claude.ai` nebo `claude.com`, timeout 3 s | proces, 5 min, klíč je URL dokumentu; pád procesu cache smaže | hit < 20 ms, miss < 3 s a pak chyba klientovi, ne tichý průchod |
-| P6 GET authorize uloží transakci; POST pokračování jen SELECT podle id | 1 INSERT, pak 1 SELECT | 0 (Google až po souhlasu) | žádná | < 50 ms |
-| P7 callback | 1 UPDATE/INSERT family a kódu | 1 POST Google, timeout 20 s | žádná | mimo rozpočet 500 ms; při non-200 žádný token (B23) |
+| P6 GET authorize uloží transakci; POST pokračování jen SELECT podle id a řádek neaktualizuje | 1 INSERT, pak 1 SELECT | 0, dokud POST neprojde B45 a B49; Google až pak | žádná | < 50 ms |
+| P7 callback po B46 a B49 | 1 UPDATE/INSERT family a kódu | 1 POST Google, timeout 20 s, až když transakce existuje a `expires_at > now` | žádná | mimo rozpočet 500 ms; při non-200 žádný token (B23); B49 je 0 POST na Google |
 | P8 token, code i refresh bez čekání | 1 transakce, jednotky SELECT/INSERT podle PK | 0 | žádná | < 50 ms |
 | P9 refresh, který čeká na zámek | stejná transakce až po vítězi | 0 | žádná | čeká jen na P8 vítěze, pak < 50 ms; není 503 |
 
@@ -383,7 +393,7 @@ Pytest v `vps/second-brain-brain/tests/`. Gate: `python3 -m pytest vps/second-br
 | T17 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B17 |
 | T18 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B18 |
 | T19 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B19 |
-| T20 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B20 |
+| T20 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B20; v HTML je atribut `method="post"` (chybějící method nebo `get` test shodí), `action` bez query, uvnitř formuláře jediný submit Pokračovat a jen pole id; aktivace odkazu Zrušit je `GET /oauth/mcp/cancelled`, odpověď bez `Location` na Google, v `codes` žádný řádek, tuple transakce stejný, a ten request není POST na `/oauth/mcp/continue` |
 | T21 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B21, `state` s `<` a uvozovkou |
 | T22 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B22 |
 | T23 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B23 |
@@ -406,11 +416,12 @@ Pytest v `vps/second-brain-brain/tests/`. Gate: `python3 -m pytest vps/second-br
 | T49 | pytest | gate | `tests/test_oauth_mcp_scope.py` | B40 |
 | T50 | pytest | gate | `tests/test_oauth_mcp_token.py` | B41 |
 | T51 | pytest | gate | `tests/test_oauth_mcp_revoke.py` | B42, a že router nemá `/oauth/mcp/revoke` |
-| T52 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B45; jiné URI = nulový socket na Google; POST se stejným URI z query na Google jde |
+| T52 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B45; POST jen s id a bez query nastaví cookie a `Location` je `accounts.google.com`; cizí URI v těle a zvlášť cizí URI v query: řádek byte-shodný, nulový socket na Google, HTTP 400 a žádná `Location` na Google ani na předané URI (nulový socket sám nestačí); tělo a query se liší v obou pořadích (uložené vs. cizí) → stop, ne `or` na první shodě |
 | T53 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B21, `client_name` s `<` a uvozovkou je v těle jen jako text |
 | T54 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B46 |
 | T55 | pytest | gate | `tests/test_oauth_mcp_token.py` | B47 |
 | T56 | pytest | gate | `tests/test_oauth_mcp_token.py` | B48, dvě překrývající se volání té samé funkce jako route |
+| T57 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B49; neznámé id (v `transactions` nepřibude řádek) i `expires_at == now` a `expires_at < now` (u existujícího řádku stejný tuple; sloupec se nastaví, test nespí) na POST i na callbacku, kde cookie sedí na `state`: žádný socket na Google, v `codes` žádný nový řádek, HTTP 400 bez `Location` a bez `code` |
 | T60 | ruční | člověk, ne Tester | claude.ai web | B20 v prohlížeči: Lukáš dokončí Sign in a vidí nástroje; druhý účet organizace token nedostane. Až potom se connector smí přidat do organizace (R7). Desktop, mobil a Cowork jedou stejným redirectem, samostatný pytest nemají. Claude Code se nezkouší. |
 
 T34 a T35 jsou jeden test se dvěma asserty a volají funkci route, ne zámek bokem. Když čekající volání family zruší, spadne první assert. Když pozdější replay family nechá živou, spadne druhý. Jiný čítač v produkci k tomu testu není.
@@ -423,7 +434,7 @@ F2 — metadata a MCP `401` s hlavičkou. Service token a cookie se nemění. Ne
 
 F3 — DCR a CIMD. Potřebuje F1 jen pro uložení DCR klienta. CIMD se do SQLite neukládá.
 
-F4 — GET uloží transakci, POST pokračování zastaví jiné `redirect_uri` a při shodě nebo chybějícím parametru nastaví cookie, callback bez cookie kód nevydá. Potřebuje F1 a F3. T52 a T54 patří sem.
+F4 — GET uloží transakci s `expires_at` = now + 10 min a souhlasovou stránku (`method="post"`, Zrušit mimo formulář). POST pokračování: tělo jen s id a bez query nastaví cookie a jde na Google; cizí `redirect_uri` v těle, zvlášť v query, nebo neshoda těla s query, stop bez zápisu řádku. Neznámé id a `expires_at <= now` stopnou POST (400, bez Google, bez kódu, řádek se nemění). Stejná kontrola je znovu na callbacku před výměnou u Google a před vložením kódu. Callback bez shody cookie kód nevydá. Potřebuje F1 a F3. T20, T52, T54 a T57 patří sem.
 
 F5 — sync token endpoint, PKCE a podmíněné `used_at` v `BEGIN IMMEDIATE`, zámek refresh s get-or-create a vlastním spojením. Potřebuje F1 a F4. T34, T35, T55 a T56 patří sem, dřív než se gate napojí na MCP.
 
@@ -447,6 +458,8 @@ F9 — celý pytest gate. Nasazení volume a pepperu je až s image Brainu. Hub 
 8. Existující klienti MCP se service tokenem a cookie se nemění. Nový Bearer, který není service token, už není jen anonymní 401: když má tvar access tokenu, jde do SQLite. Service token se porovnává dřív, takže shoda SQLite neotevře.
 9. Opuštěný plán z 11. 11. se needituje. Jeho množiny `request_id` se nepřebírají. Počítadlo čekajících se nepřidává.
 10. Cookie `sb_mcp_oauth_tx` je jiná než `sb_oauth_state` a `sb_brain_session`. Dokončení MCP loginu dnešní cookie session nepřepíše a cookie přihlášení neodhlásí.
+11. Formulář bez `method` je GET. POST route ho nevezme a test, který čte jen `action`, to nevidí. Markup má `method="post"`. Dva submit buttony se stejným tělem (jen id) by Zrušit pustily na Google. Zrušit proto na `/oauth/mcp/continue` neposílá.
+12. Stop „kód se nevydá“ jen na POST kód nezastaví: řádek v `codes` vzniká až na callbacku. Neznámé id a `expires_at <= now` se kontrolují na obou koncích. Predikát „věk nad 10 minut“ by `expires_at == now` pustil dál.
 
 ## Otevřené otázky pro uživatele
 
@@ -454,10 +467,12 @@ F9 — celý pytest gate. Nasazení volume a pepperu je až s image Brainu. Hub 
 
 ## Delta tohoto kola
 
-Kolo r=3. Q1 hosted a focus beze změny. C2–C6 se neotvíraly.
+Kolo převzetí, revize C7–C9. Q1 hosted a focus beze změny. C1–C6 se neotvíraly.
 
-Sekce: DCR/authorize (odstavec GET a POST pokračování), Kontrakt B20 a B45, Testy T52, Pořadí F4.
+Sekce: A-G5, úložiště (predikát `expires_at`), současný stav (`requirements.txt`), návrh (souhlasový formulář, POST pokračování, callback), kontrakt B20, B45, nový B49, checklist A body 2 a 3, P6, P7, testy T20, T52, nový T57, pořadí F4, rizika 11 a 12.
 
 | ID | Stav |
 |---|---|
-| C1 | vyřešeno — jiné `redirect_uri` po decode zastaví Google a kód; chybějící nebo stejné URI jde na Google; formulář má `action` bez query (B45, T52) |
+| C7 | vyřešeno — T52 chce produkční POST jen s id a bez query (cookie a `Location` na Google); cizí URI v těle a zvlášť v query nechá řádek byte-shodný, nulový socket a odpověď bez `Location` na Google i na předané URI; liší-li se tělo a query, stop bez `or` na první shodě; B20/T20 vyžadují `method="post"` |
+| C8 | vyřešeno — predikát je `expires_at <= now` včetně rovnosti; B49 a T57 hlídají neznámé id i vypršení na POST a znovu na callbacku před kódem (bez Google, řádek beze změny, kód nevznikne); F4 ten krok jmenuje |
+| C9 | vyřešeno — Zrušit je odkaz na `GET /oauth/mcp/cancelled`, ne submit `/oauth/mcp/continue`; T20 ten odkaz aktivuje a čeká žádný redirect na Google a žádný kód |
