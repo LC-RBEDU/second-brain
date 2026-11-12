@@ -1,13 +1,14 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: AWAITING_USER (z: aktualizace rbu-pipeline v jiné konverzaci)
+Stav: CRITIC
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
-Architekt: generace k=1 skončila na r=3/3. Převzetí k=2 se nespustilo (uživatel stop). 9628d3a7 neresumovat.
+Architekt: agent ID 8bb6010c-3439-4f43-863b-df0c0424ceac, otevření plánu #2, generace k=2/3, kolo r=1/3
+Šťoural: přeskočeno (plán už je celý, grill mezi koly kritiky neběží)
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) až v DONE auditu
 Plán schválen uživatelem: nevyžadováno
-Goal: paused-awaiting-user (12. 11.). Nový skill je načtený. Další krok až po „pokračuj“: architekt k=2, bez Šťourala, kritik nad deltou.
+Goal: aktivní (znovu po „pokračuj“, nový skill)
 
 Větev: `feat/mcp-oauth-claude` z `origin/main` (lokální `main` byl 59 commitů pozadu). Push na konci pipeline je na `main` dle profilu SECOND_BRAIN.
 
@@ -33,7 +34,8 @@ Brief (varianta A, schválená jako realizovatelná): org connector v Claude Tea
 - Google IdP: stávající `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Nový redirect URI na tom samém klientovi.
 - Org connector se do Claude organizace přidá až po testu, že cizí účet z organizace token nedostane.
 - Focus (11. 11., odpověď na C1, doslovně): „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ `BRAIN_SERVICE_TOKEN` dál smí `apply_focus`. Claude OAuth principal ho smí taky. `allow_focus_write(ServicePrincipal)` se nezakazuje.
-- Pauza (12. 11., doslovně): „v jiné konverzaci provádím aktualizaci rbu-pipeline. Budu chtít, abys zde pokračoval až bude dokončena - 4 verze architekta tímto směrem nikam moc nevedou a utrácí zbytečně tokeny.“ Převzetí k=2 se nespouští. Další krok až po té aktualizaci a pokynu pokračovat.
+- Pauza (12. 11., doslovně): „v jiné konverzaci provádím aktualizaci rbu-pipeline. Budu chtít, abys zde pokračoval až bude dokončena - 4 verze architekta tímto směrem nikam moc nevedou a utrácí zbytečně tokeny.“
+- Pokračování (12. 11.): „ok, pokračuj dle nové podoby pipeline.“ Šťoural se nespouští. Převzetí k=2, kritik pak čte deltu.
 
 ### Mimo rozsah
 
@@ -68,6 +70,8 @@ SECOND_BRAIN
 | 9 | 2026-11-11 17:45 | PLAN | 9628d3a7-2aca-4985-b99f-a77b13444d46 | plán v4 | — | Otevření #2 kolo r=3. C9 a C10 označené jako vyřešené (RFC 6749 JSON, pardon u souběžného refreshe). Přechod na nového kritika. |
 | 10 | 2026-11-11 18:05 | CRITIC | d776cdd0-e17c-40f9-965e-3222e215c099 | K PŘEPRACOVÁNÍ | 0 BLOCKER, 2 MAJOR, 2 MINOR | Otevření #2 kolo r=3. C1–C10 potvrzené. C11 vynechaný scope na refreshi. C12 HTML escape state na zamítací stránce. C13 MINOR pardon je globální. C14 MINOR chybí assert `iss`. r=3, další by byl nový architekt k=2. |
 | 11 | 2026-11-12 01:07 | AWAITING_USER | — | stop | — | Uživatel: nepokračovat, dokud v jiné konverzaci nedoběhne aktualizace rbu-pipeline. Převzetí k=2 se nespustilo. |
+| 12 | 2026-11-12 11:18 | PLAN | — | pokračuj | — | Nový skill. Šťoural přeskočen. Start převzetí k=2 r=1, bez grilu. |
+| 13 | 2026-11-12 11:25 | PLAN | 8bb6010c-3439-4f43-863b-df0c0424ceac | revize | — | C11–C14 zapsané do souboru. Přechod na kritika, kolo 2+ (delta). |
 
 ## Otevřené nálezy
 
@@ -83,7 +87,7 @@ SECOND_BRAIN
 | C8 | MINOR | PLAN | vyřešen v #8 (kritik značil NEW-4, potvrdil) | 1 |
 | C9 | MAJOR | PLAN | vyřešen v #10 (kritik potvrdil) | 1 |
 | C10 | MINOR | PLAN | vyřešen v #10 (kritik potvrdil) | 1 |
-| C11 | MAJOR | PLAN | otevřený (kritik značil NEW-7) | 1 |
-| C12 | MAJOR | PLAN | otevřený (kritik značil NEW-8) | 1 |
-| C13 | MINOR | PLAN | otevřený (kritik značil NEW-9) | 1 |
-| C14 | MINOR | PLAN | otevřený (kritik značil NEW-10) | 1 |
+| C11 | MAJOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
+| C12 | MAJOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
+| C13 | MINOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
+| C14 | MINOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
