@@ -1,6 +1,6 @@
 # Pipeline: MCP OAuth Claude
 
-Stav: BLOCKED (subagent nedostupný: rbu-architect)
+Stav: ABANDONED
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: nová generace k=3/3, kolo r=1/3 (převzetí; 8bb6010c se neresumuje, kolo 2 nesnížilo součet BLOCKER+MAJOR)
@@ -75,7 +75,8 @@ SECOND_BRAIN
 | 14 | 2026-11-12 11:40 | CRITIC | 56057659-5af2-4a4c-a5cd-7a27967e3539 | K PŘEPRACOVÁNÍ | 0 BLOCKER, 1 MAJOR, 1 MINOR | C12–C14 vyřešené. C11 test nevolá update_task u prázdného scope a offline_access. C15 MINOR pardon po výjimce. Zpět architektovi, r=2. |
 | 15 | 2026-11-12 11:55 | PLAN | 8bb6010c-3439-4f43-863b-df0c0424ceac | revize r=2 | — | C11 a C15 zapsané. Přechod na kritika, kolo 2+ (delta). |
 | 16 | 2026-11-12 12:10 | CRITIC | 2031d58f-56df-416e-8854-30e216fd07eb | K PŘEPRACOVÁNÍ | 0 BLOCKER, 1 MAJOR, 0 MINOR | C11 vyřešené. C15 znovu: pád před odečtem waiters nechá pardon a replay family neodvolá. Součet MAJOR neklesl (1→1). Nový architekt k=3. |
-| 17 | 2026-11-12 12:20 | BLOCKED | c552a652-a66a-41f1-bb70-2e17996efc22 | unavailable | — | Task rbu-architect vrátil chybu nástroje. Převzetí k=3 se nespustilo. |
+| 17 | 2026-11-12 12:20 | BLOCKED | c552a652-a66a-41f1-bb70-2e17996efc22 | unavailable | — | Task rbu-architect vrátil chybu nástroje. Převzetí k=3 se nespustilo. Na disku zůstala necommitnutá revize C15 (množiny request_id). |
+| 18 | 2026-11-12 12:40 | ABANDONED | — | nová pipeline | — | Uživatel v novém chatu: nová /rbu-pipeline, ne pokračuj. Nástupce: docs/plans/2026-11-12-mcp-oauth-claude.pipeline.md |
 
 ## Otevřené nálezy
 
