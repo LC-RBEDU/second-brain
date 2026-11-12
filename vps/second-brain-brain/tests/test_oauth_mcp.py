@@ -37,6 +37,7 @@ from app.oauth_mcp_routes import (  # noqa: E402
     complete_token,
     google_outbound,
     oauth_mcp_token,
+    reset_routes,
 )
 from app.oauth_mcp_scope import OAuthPrincipal, READ, TOOL_SCOPES, WRITE  # noqa: E402
 from app.oauth_mcp_store import (  # noqa: E402
@@ -83,7 +84,7 @@ def _env(monkeypatch, tmp_path, client):
     monkeypatch.setenv("BRAIN_SERVICE_TOKEN", "test-service-token")
     client.cookies.clear()
     reset_runtime()
-    google_outbound.clear()
+    reset_routes()
     yield
     reset_runtime()
 
@@ -1037,6 +1038,84 @@ def test_t57_unknown_and_expired_transaction_stops(client: TestClient, monkeypat
     assert snapshot is not None
 
 
+def test_review_secure_cookie_is_cleared(client: TestClient, monkeypatch):
+    monkeypatch.setenv("BRAIN_ALLOW_NO_PUSH", "0")
+    created = _register(client)
+    page = _authorize(client, created["client_id"])
+    tx = _tx_id(page.text)
+    continued = client.post("/oauth/mcp/continue", data={"id": tx}, follow_redirects=False)
+    assert "secure" in continued.headers["set-cookie"].lower()
+    monkeypatch.setattr("app.oauth_mcp_routes.exchange_google", _async_return((200, EMAIL)))
+    client.cookies.set("sb_mcp_oauth_tx", tx)
+    done = client.get(
+        "/oauth/mcp/callback",
+        params={"code": "g", "state": tx},
+        follow_redirects=False,
+    )
+    cleared = done.headers["set-cookie"].lower()
+    assert "secure" in cleared
+    assert "httponly" in cleared
+    assert "max-age=0" in cleared
+
+
+def test_review_cimd_stream_stops_past_the_cap(monkeypatch):
+    class Stream:
+        is_redirect = False
+        status_code = 200
+
+        def iter_bytes(self):
+            yield b"a" * 20_000
+            yield b"b" * 20_000
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr("app.oauth_mcp_routes.httpx.stream", lambda *a, **k: Stream())
+    from app.oauth_mcp_routes import fetch_cimd_bytes
+
+    assert fetch_cimd_bytes("https://claude.ai/oauth/mcp-oauth-client-metadata") is None
+
+
+def test_review_oversized_cimd_is_not_cached(client: TestClient, monkeypatch):
+    calls = {"n": 0}
+
+    def fetch(_url: str):
+        calls["n"] += 1
+        return b"x" * (32_768 + 1)
+
+    monkeypatch.setattr("app.oauth_mcp_routes.fetch_cimd_bytes", fetch)
+    url = "https://claude.ai/oauth/mcp-oauth-client-metadata"
+    first = _authorize(client, url)
+    second = _authorize(client, url)
+    assert first.status_code == 400
+    assert second.status_code == 400
+    assert calls["n"] == 2
+
+
+def test_review_rejected_continue_stays_400_when_another_code_appears(client: TestClient):
+    def insert() -> None:
+        verifier, challenge = _pkce("other-verifier-value-which-is-long-enough")
+        issue_code(
+            email=EMAIL,
+            client_id="other",
+            client_name="Claude",
+            redirect_uri=AI,
+            scope="brain:read",
+            code_challenge=challenge,
+        )
+        del verifier
+
+    worker = threading.Thread(target=insert)
+    worker.start()
+    response = client.post("/oauth/mcp/continue", data={"id": "missing"}, follow_redirects=False)
+    worker.join(2)
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid_request"}
+
+
 def _probe(headers: dict[bytes, bytes]) -> tuple[int, list]:
     from starlette.responses import PlainTextResponse
 
@@ -1086,14 +1165,8 @@ def _client_count() -> int:
 
 
 def _mock_cimd(monkeypatch, doc: dict) -> None:
-    class Response:
-        status_code = 200
-        is_redirect = False
-
-        def json(self):
-            return doc
-
-    monkeypatch.setattr("app.oauth_mcp_routes.httpx.get", lambda *a, **k: Response())
+    raw = json.dumps(doc).encode()
+    monkeypatch.setattr("app.oauth_mcp_routes.fetch_cimd_bytes", lambda url: raw)
 
 
 def _async_return(value):

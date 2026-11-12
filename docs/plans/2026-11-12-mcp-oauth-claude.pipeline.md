@@ -5,7 +5,7 @@ Plán: docs/plans/2026-11-12-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 9c40c621-d63a-42f8-8b60-f4bafdfff34f, otevření plánu #1, generace k=2/3, kolo r=1/3
 Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, Q1 zodpovězeno
-Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
+Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 1/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: d78c516bb52fe31fe84caaab3216c1f5a88a977a · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní (znovu po „pokračuj“)
@@ -81,6 +81,8 @@ SECOND_BRAIN
 | 13 | 2026-11-12 17:35 | PLAN | 9c40c621-d63a-42f8-8b60-f4bafdfff34f | revize k=2 | — | C7–C9 zapsané. Přechod na kritika, kolo 2+ (delta). |
 | 14 | 2026-11-12 17:50 | CRITIC | b29ed72f-f858-406e-8125-60072a97f091 | SCHVÁLENO | 0 BLOCKER, 0 MAJOR | C7–C9 potvrzené. Schvalování plánu se nečeká. Přechod na implementaci. |
 | 15 | 2026-11-12 18:10 | IMPLEMENT | — | lokální commit | — | Pytest `vps/second-brain-brain/tests` 281 passed, 1 skipped. Bez push. Přechod na diff reviewer, první kolo. |
+| 16 | 2026-11-12 18:40 | REVIEW | 1d496733-9e9c-484e-b455-8681fe83ea22 | K PŘEPRACOVÁNÍ | 0 BLOCKER, 3 MAJOR | NEW-1 Secure cookie se nesmaže. NEW-2 CIMD bez stropu. NEW-3 COUNT v handleru spadne na 500. IMPL, zpět do kódu. |
+| 17 | 2026-11-12 18:55 | IMPLEMENT | — | oprava NEW-1–3 | — | Mazání cookie se Secure, strop CIMD 32 KB, handler vrací 400 bez COUNT. Pytest 285 passed, 1 skipped. Bez push. Kolo review 2. |
 
 ## Grill
 
@@ -112,3 +114,6 @@ Neblokující předpoklady (architekt je zapíše jako A#, bez dalšího grilu):
 | C4 | MAJOR | PLAN | vyřešen v #8 (kritik potvrdil) | 1 |
 | C5 | MAJOR | PLAN | vyřešen v #8 (kritik potvrdil) | 1 |
 | C6 | MAJOR | PLAN | vyřešen v #8 (kritik potvrdil) | 1 |
+| NEW-1 | MAJOR | IMPL | otevřený — oprava v #17, čeká review kolo 2 | 1 |
+| NEW-2 | MAJOR | IMPL | otevřený — oprava v #17, čeká review kolo 2 | 1 |
+| NEW-3 | MAJOR | IMPL | otevřený — oprava v #17, čeká review kolo 2 | 1 |

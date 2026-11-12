@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import json
 import time
 from typing import Annotated, Any, Callable
 from urllib.parse import unquote, urlencode, urlparse
@@ -26,6 +27,7 @@ SCOPES = ("brain:read", "brain:write")
 google_outbound: list[str] = []
 _cimd_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 CIMD_TTL = 300.0
+CIMD_MAX_BYTES = 32_768
 
 
 def reset_routes() -> None:
@@ -131,6 +133,24 @@ async def exchange_google(code: str, redirect_uri: str) -> tuple[int, str | None
         return 200, email or None
 
 
+def fetch_cimd_bytes(url: str) -> bytes | None:
+    """Stop reading once the document exceeds the cap. Oversized bytes are not kept."""
+    try:
+        with httpx.stream("GET", url, timeout=3, follow_redirects=False) as response:
+            if response.is_redirect or response.status_code != 200:
+                return None
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in response.iter_bytes():
+                total += len(chunk)
+                if total > CIMD_MAX_BYTES:
+                    return None
+                chunks.append(chunk)
+            return b"".join(chunks)
+    except httpx.HTTPError:
+        return None
+
+
 def _load_cimd(url: str) -> dict[str, Any] | None:
     host = (urlparse(url).hostname or "").lower()
     if host not in {"claude.ai", "claude.com"}:
@@ -139,14 +159,11 @@ def _load_cimd(url: str) -> dict[str, Any] | None:
     now = time.monotonic()
     if cached and now - cached[0] < CIMD_TTL:
         return cached[1]
-    try:
-        response = httpx.get(url, timeout=3, follow_redirects=False)
-    except httpx.HTTPError:
-        return None
-    if response.is_redirect or response.status_code != 200:
+    raw = fetch_cimd_bytes(url)
+    if not raw or len(raw) > CIMD_MAX_BYTES:
         return None
     try:
-        doc = response.json()
+        doc = json.loads(raw)
     except ValueError:
         return None
     if not isinstance(doc, dict) or doc.get("client_id") != url:
@@ -266,15 +283,19 @@ def oauth_mcp_authorize(request: Request) -> Response:
     return _guard(run)
 
 
-def _stop_unchanged(tx_id: str, snapshot: tuple[Any, ...] | None, codes_before: int) -> JSONResponse:
-    if snapshot is None:
-        if store.transaction_row(tx_id) is not None:
-            raise RuntimeError("unknown id must not insert a transaction")
-    elif store.transaction_row(tx_id) != snapshot:
-        raise RuntimeError("transaction row changed")
-    if store.count_codes() != codes_before:
-        raise RuntimeError("code row appeared")
+def _stop() -> JSONResponse:
     return JSONResponse({"error": "invalid_request"}, status_code=400)
+
+
+def _clear_tx_cookie(response: Response) -> None:
+    """Match set_cookie, including Secure on HTTPS, or the browser keeps the cookie."""
+    response.delete_cookie(
+        TX_COOKIE,
+        path="/",
+        secure=_cookie_secure(public_base()),
+        httponly=True,
+        samesite="lax",
+    )
 
 
 @router.post("/oauth/mcp/continue")
@@ -284,21 +305,13 @@ def oauth_mcp_continue(
     redirect_uri: Annotated[str | None, Form()] = None,
 ) -> Response:
     def run() -> Response:
-        codes_before = store.count_codes()
-        tx_before = store.count_transactions()
         row = store.transaction_row(id) if id else None
-        if row is None:
-            if store.count_transactions() != tx_before:
-                raise RuntimeError("unknown id inserted a row")
-            if store.count_codes() != codes_before:
-                raise RuntimeError("unknown id inserted a code")
-            return JSONResponse({"error": "invalid_request"}, status_code=400)
-        if store.is_expired(row[8]):
-            return _stop_unchanged(id, row, codes_before)
+        if row is None or store.is_expired(row[8]):
+            return _stop()
         body = _decode(redirect_uri)
         query = _decode(request.query_params.get("redirect_uri"))
         if not _redirect_decision(row[3], body, query):
-            return _stop_unchanged(id, row, codes_before)
+            return _stop()
         cfg = load_oauth_config()
         if not cfg.client_id or not cfg.public_url:
             return _oauth_error("invalid_request")
@@ -316,8 +329,6 @@ def oauth_mcp_continue(
             secure=_cookie_secure(cfg.public_url),
             max_age=600,
         )
-        if store.transaction_row(id) != row:
-            raise RuntimeError("continue updated the transaction")
         return response
 
     return _guard(run)
@@ -331,14 +342,9 @@ async def oauth_mcp_callback(request: Request) -> Response:
         return JSONResponse({"error": "invalid_request"}, status_code=400)
     try:
         row = store.transaction_row(state)
-        codes_before = store.count_codes()
     except store.OAuthUnavailable:
         return _unavailable()
     if row is None or store.is_expired(row[8]):
-        if row is not None and store.transaction_row(state) != row:
-            raise RuntimeError("expired callback changed the row")
-        if store.count_codes() != codes_before:
-            raise RuntimeError("expired callback inserted a code")
         return JSONResponse({"error": "invalid_request"}, status_code=400)
     status, email = await exchange_google(request.query_params.get("code") or "", mcp_callback_url())
     if status != 200 or not email:
@@ -352,7 +358,7 @@ async def oauth_mcp_callback(request: Request) -> Response:
             status_code=302,
         )
         response.headers["location"] = target
-        response.delete_cookie(TX_COOKIE)
+        _clear_tx_cookie(response)
         return response
     try:
         raw = store.issue_code(
@@ -367,7 +373,7 @@ async def oauth_mcp_callback(request: Request) -> Response:
         return _unavailable()
     target = redirect_uri + "?" + urlencode({"code": raw, "state": client_state})
     response = RedirectResponse(target, status_code=302)
-    response.delete_cookie(TX_COOKIE)
+    _clear_tx_cookie(response)
     return response
 
 
@@ -423,9 +429,7 @@ def oauth_mcp_token(
     scope: Annotated[str | None, Form()] = None,
     resource: Annotated[str | None, Form()] = None,
     client_secret: Annotated[str | None, Form()] = None,
-    scope_sent: Annotated[str | None, Form()] = None,
 ) -> JSONResponse:
-    del scope_sent
     form: dict[str, str | None] = {
         "grant_type": grant_type,
         "code": code,
