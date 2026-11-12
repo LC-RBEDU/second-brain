@@ -1,12 +1,12 @@
 # Pipeline: MCP OAuth Claude (nový běh)
 
-Stav: IMPLEMENT
+Stav: REVIEW
 Plán: docs/plans/2026-11-12-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID 9c40c621-d63a-42f8-8b60-f4bafdfff34f, otevření plánu #1, generace k=2/3, kolo r=1/3
 Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, Q1 zodpovězeno
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
-Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
+Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: d78c516bb52fe31fe84caaab3216c1f5a88a977a · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
 Goal: aktivní (znovu po „pokračuj“)
 Větev: `feat/mcp-oauth-claude`
