@@ -114,7 +114,7 @@ A11 — Checklisty jsou z RB Universe `docs/agent_playbooks/quality-checklists.m
 
 `vps/second-brain-brain/app/auth_google.py:9-14` — `ALLOWLIST` jsou přesně ty dva e-maily. `email_allowed` (`45-46`) je case-insensitive. `authorize_url` (`49-67`) skládá query přes `urlencode`, posílá `prompt=select_account` a neposílá `hd`.
 
-`vps/second-brain-brain/app/oauth_routes.py:21-29` — cookie `sb_brain_session`. Prázdný `BRAIN_SESSION_SECRET` spadne na `BRAIN_SERVICE_TOKEN`. `80-111` mění kód u Google s `redirect_uri` cookie callbacku. `113-117` při cizím e-mailu vrací 403 a v textu je allowlist. MCP callback tuhle větev nekopíruje. Cookie callback se v tomhle kole nemění.
+`vps/second-brain-brain/app/oauth_routes.py:21-29` — cookie `sb_brain_session`. Prázdný `BRAIN_SESSION_SECRET` spadne na `BRAIN_SERVICE_TOKEN`. `57-77` je sync `GET /oauth/authorize` a stav drží v HttpOnly cookie `sb_oauth_state`. `80-88` je `async def` callback a kód u Google nevymění, dokud `state` nesedí na tu cookie. `91-111` posílá cookie `redirect_uri`. `113-117` při cizím e-mailu vrací 403 a v textu je allowlist. MCP callback allowlist v textu nekopíruje. Cookie route se v tomhle kole nemění. MCP má vlastní cookie, ne `sb_oauth_state`.
 
 `vps/second-brain-brain/app/mcp_auth.py:34-59` — MCP pustí cookie, nebo Bearer shodný se service tokenem, nebo dev bez tokenu. Jinak JSON `401` s `error_reason: client_error`. `WWW-Authenticate` se nenastavuje. Cookie vyhraje nad Bearerem.
 
@@ -150,12 +150,12 @@ RB Universe vrstvy se netýkají: žádná Alembic migrace, žádné RBAC, žád
 
 ### Úložiště
 
-Nový `vps/second-brain-brain/app/oauth_mcp_store.py`. Otevře SQLite jen když nějaká OAuth cesta token čte nebo píše. Import modulu ani úspěšný service-token request soubor neotevírá.
+Nový `vps/second-brain-brain/app/oauth_mcp_store.py`. Otevře SQLite jen když nějaká OAuth cesta token čte nebo píše. Import modulu ani úspěšný service-token request soubor neotevírá. Každé volání má vlastní spojení a na zápis `BEGIN IMMEDIATE`. Sdílené spojení mezi vlákny není: default `check_same_thread` by při dvou family spadl. Spojení se zavře ve `finally`.
 
 Tabulky, vše čas v UTC ISO:
 
 - `clients` — DCR klient: `client_id`, `client_name`, `redirect_uris` (JSON). Jen podmnožina dvou URL z R11. Žádný secret.
-- `transactions` — rozpracované přihlášení: klient, redirect, scope po A-G1, PKCE challenge, `state` klienta, resource, `expires_at` (+10 min).
+- `transactions` — rozpracované přihlášení. Primární klíč je `secrets.token_urlsafe`, ne SQLite `rowid`. Dál: klient, přesný redirect z R11 ověřený při GET, scope po A-G1, PKCE challenge, `state` klienta, resource, `expires_at` (+10 min).
 - `codes` — hash kódu, vazba na transakci, e-mail, `expires_at` (+60 s), `used_at`.
 - `families` — jeden řádek na úspěšný login: e-mail, klient, scope, `created_at`, `absolute_expires_at` (+90 dní), `revoked_at`.
 - `refresh_tokens` — hash, `family_id`, stav `active` nebo `rotated`, hash nástupce, `expires_at`, `rotated_at`.
@@ -191,29 +191,32 @@ REST `401` tuhle hlavičku nedostane. OAuth access na `/v1/*` je `401` bez ní.
 
 Nový `vps/second-brain-brain/app/oauth_mcp_routes.py`.
 
-DCR `POST /oauth/mcp/register`, JSON. Klient je veřejný: `token_endpoint_auth_method` je `none` nebo chybí. `redirect_uris` je neprázdná podmnožina dvou URL z R11. Jakýkoli jiný redirect, včetně loopbacku, je 400 a klient se neuloží. Secret v odpovědi není. Samotné dvě URL z R11, i každá zvlášť, projdou (R16).
+DCR `POST /oauth/mcp/register`, JSON. Klient je veřejný: `token_endpoint_auth_method` je `none` nebo chybí. `redirect_uris` je neprázdná podmnožina dvou URL z R11. Jakýkoli jiný redirect, včetně loopbacku, je 400 a klient se neuloží. Samotné dvě URL z R11, i každá zvlášť, projdou (R16). Úspěch je HTTP 201 a JSON s `client_id` (náhodné, ne rowid) a `token_endpoint_auth_method` `none`. Klíč `client_secret` v těle není. Bez `client_id` by Claude neměl čím volat authorize.
 
 CIMD: `client_id` ve tvaru `https://claude.ai/...` nebo `https://claude.com/...` se stáhne (timeout 3 s, bez přesměrování na jiný host, limit velikosti). Jiný host se nestahuje (SSRF). Dokument musí mít `client_id` shodné s URL. Dokument se neodmítne proto, že v `redirect_uris` má loopback, ani proto, že v `grant_types` má `jwt-bearer` (A-G8 a R16). Authorize pak vezme jen requested `redirect_uri`, které je v dokumentu a zároveň je jedna ze dvou URL z R11. Loopback na authorize je odmítnutí bez kódu a bez Google. Cache dokumentu v procesu 5 minut podle této URL. Hostovaný dokument tedy přihlášení na `https://claude.ai/api/mcp/auth_callback` nezablokuje. Claude Code dokument přihlášení loopbackem neotevře.
 
-`GET /oauth/mcp/authorize` nic nevydá a na Google ještě nejde. Ověří klienta, redirect, `code_challenge_method=S256` (plain a chybějící PKCE jsou `invalid_request`), resource a scope. `offline_access` se zahodí. Vynechaný scope u allowlistovaného toku znamená oba scope. Odpověď je HTML: jméno klienta, scope, hostname redirectu, pokračovat / zrušit. `state` se do HTML a do odkazů skládá jen jako `urllib.parse.urlencode` a do atributu přes `html.escape(..., quote=True)`. Zrušení nevydá kód.
+`GET /oauth/mcp/authorize` na Google ještě nejde. Ověří klienta, redirect (jen dvě URL z R11), `code_challenge_method=S256` (plain a chybějící PKCE jsou `invalid_request`), resource a scope. `offline_access` se zahodí. Vynechaný scope u allowlistovaného toku znamená oba scope. Teprve potom uloží transakci pod náhodné id. HTML formulář má `action` na `/oauth/mcp/continue` bez query, aby prohlížeč znovu neposlal query z GET. Skryté pole je jen id transakce, ne redirect, ne scope a ne `state`. Na stránce je jméno klienta, scope a hostname redirectu, pokračovat / zrušit. Do HTML jdou jméno klienta, scope i `state` jen přes `html.escape(..., quote=True)`. `state` v query navíc přes `urllib.parse.urlencode`. Zrušení transakci nepoužije a kód nevydá.
 
-Pokračování uloží transakci a teprve pak přesměruje na Google. Redirect URI předaný Google je `https://brain.cyprovi.cz/oauth/mcp/callback`, ne cookie callback. Bez `hd`, s `prompt=select_account`. `state` vůči Google je id transakce.
+Pokračování je `POST /oauth/mcp/continue`, sync `def`. Načte transakci podle id z formuláře. Neznámé id nebo věk nad 10 minut: Google se nezavolá a kód se nevydá. Když je v těle nebo v query `redirect_uri` a po decode se nerovná uloženému, totéž: stop, transakce se nemění, Google se nezavolá, kód se nevydá. Když parametr chybí nebo se po decode rovná uloženému, nastaví cookie `sb_mcp_oauth_tx` (HttpOnly, SameSite=Lax, Secure podle `_cookie_secure`, max_age 600 s) na to id a teprve pak přesměruje na Google. Uložený redirect se z requestu nikdy nepřepisuje. Redirect URI předaný Google je `https://brain.cyprovi.cz/oauth/mcp/callback`, ne cookie callback. Bez `hd`, s `prompt=select_account`. `state` vůči Google je id transakce. Cookie `sb_oauth_state` a `sb_brain_session` se nepřepisují.
 
-`GET /oauth/mcp/callback` vymění kód u Google s touto MCP redirect URI (timeout 20 s, jako cookie callback). Neúspěch Google nevydá token. E-mail mimo allowlist: HTML „přístup zamítnut“ bez seznamu adres, pak redirect na redirect klienta s `error=access_denied` a se `state` klienta, ne se `state` Google. E-mail na allowlistu: nová family (A-G6), jednorázový kód, redirect s `code` a `state` klienta.
+`GET /oauth/mcp/callback` je `async def` kvůli Google, stejně jako dnešní cookie callback (`oauth_routes.py:80-88`). Než zavolá Google, srovná query `state` s cookie `sb_mcp_oauth_tx`. Bez shody kód nevydá a na redirect klienta nejde (žádný `Location` na claude.ai ani claude.com). Shoda cookie se maže až po vyřízení. Výměna kódu u Google používá MCP redirect URI (timeout 20 s). Neúspěch Google nevydá token. E-mail mimo allowlist: HTML „přístup zamítnut“ bez seznamu adres, pak redirect na uložený redirect transakce s `error=access_denied` a se `state` klienta, ne se `state` Google. E-mail na allowlistu: nová family (A-G6), jednorázový kód, redirect s `code` a `state` klienta.
 
-`POST /oauth/mcp/token` bere `application/x-www-form-urlencoded`. Úspěch je HTTP 200 a JSON `access_token`, `token_type` `Bearer`, `expires_in`, `refresh_token`, `scope`. Chyba je HTTP 400 a JSON s klíčem `error` (`invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `invalid_request`, `invalid_target`, `invalid_client`). Bez `detail` a bez `error_reason`. Route nehází `HTTPException`.
+`POST /oauth/mcp/token` je sync `def`, aby ho Starlette pustil do threadpoolu. Bere `application/x-www-form-urlencoded`. Úspěch je HTTP 200 a JSON `access_token`, `token_type` `Bearer`, `expires_in`, `refresh_token`, `scope`. Chyba je HTTP 400 a JSON s klíčem `error` (`invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `invalid_request`, `invalid_target`, `invalid_client`). Bez `detail` a bez `error_reason`. Route nehází `HTTPException`. Uvnitř zámku není `await`.
 
-`authorization_code` vždy vrátí i refresh (A-G1). Kód je jednorázový. `refresh_token` rotuje aktivní refresh. Vynechaný scope na refreshi znamená scope grantu. Požadovaný scope musí být podmnožina grantu. Read se na write nerozšíří, jinak `invalid_scope` a family zůstane. `offline_access` se před srovnáním zahodí. `jwt-bearer` a jakýkoli jiný grant je `unsupported_grant_type`. Žádná Enterprise Managed Auth route.
+`authorization_code` vždy vrátí i refresh (A-G1), ale jen po PKCE. Výměna běží v `BEGIN IMMEDIATE` na vlastním spojení. `S256(code_verifier)` se porovná s uloženou challenge (`compare_digest`). Neshoda je `invalid_grant`, žádný řádek tokenu, `used_at` zůstane prázdné. Shoda udělá `UPDATE … SET used_at=now WHERE used_at IS NULL`. Když se neaktualizuje právě jeden řádek, je to `invalid_grant` a druhý souběh tokeny nezaloží. `refresh_token` rotuje aktivní refresh. Vynechaný scope na refreshi znamená scope grantu. Požadovaný scope musí být podmnožina grantu. Read se na write nerozšíří, jinak `invalid_scope` a family zůstane. `offline_access` se před srovnáním zahodí. `jwt-bearer` a jakýkoli jiný grant je `unsupported_grant_type`. Žádná Enterprise Managed Auth route.
 
 ### Souběžný refresh
 
-Jeden `threading.Lock` na hash předloženého refresh tokenu, v procesu. Žádné počítadlo, žádná množina id requestů.
+Route tokenu je sync `def`. Starlette ji dá do threadpoolu, takže druhý refresh může běžet, dokud první drží zámek. `async def` na jednom event loopu (`Dockerfile:28`, jeden uvicorn bez `--workers`) by druhý request pustil až po doběhnutí prvního. Poražený by pak viděl `rotated` a `waited=false` a family by zrušil, což je opak R10. Uvnitř drženého zámku není `await`: na tom samém vlákně by to deadlocklo. Google na token route není.
+
+Jeden procesový `threading.Lock` obalí get-or-create zámku na hash předloženého refresh tokenu. Dvě vlákna nemůžou pro stejný hash dostat dva objekty `Lock`. Žádné počítadlo čekajících, žádná množina id requestů.
 
 ```text
+lock = get_or_create(hash)          # pod jedním zámkem registru
 waited = not lock.acquire(blocking=False)
-pokud waited: lock.acquire()   # čeká, až vítěz zámek pustí
+pokud waited: lock.acquire()        # čeká, až vítěz zámek pustí
 try:
-    v jedné SQLite transakci (BEGIN IMMEDIATE):
+    vlastní spojení, BEGIN IMMEDIATE:
         token neznámý, family odvolaná, vypršelá, nebo po absolutním stropu
             → invalid_grant, family se znovu neruší, když už revoked je
         stav active
@@ -224,21 +227,21 @@ try:
             → family.revoked_at = now, invalid_grant
 finally:
     lock.release()
+    spojení zavřít
 ```
 
 Čekající vlákno je to, které `acquire(blocking=False)` neudělalo. Po uvolnění zámku je další volání už nové: zámek je volný, `waited` je false, a to je replay, který family zruší. Dva různé tokeny mají dva zámky, takže rotace jedné family nečeká na druhou (A-G6).
 
-Zámek je v paměti. Drží to jen proto, že Dockerfile spouští jeden uvicorn bez `--workers` a replicas jsou 1. Druhý proces by čekajícího neviděl a replay by přišel dřív. Zámek se z dictu nemaže: smazání mezi `acquire(False)` a blokujícím `acquire` by čekajícího nechalo na starém objektu. Počet klíčů je počet předložených refresh tokenů jednoho člověka.
+Zámek je v paměti. Drží to jen proto, že proces je jeden a replicas jsou 1. Druhý proces by čekajícího neviděl a replay by přišel dřív. Zámek se z dictu nemaže: smazání mezi `acquire(False)` a blokujícím `acquire` by čekajícího nechalo na starém objektu. Počet klíčů je počet předložených refresh tokenů jednoho člověka.
 
 `temporarily_unavailable` je jen chybějící pepper nebo nezapsatelné úložiště, ne výsledek souběhu.
 
-Test (T34 a T35 v jednom testu) musí projít oběma zámky a selhat v obou směrech:
+Test (T34 a T35 v jednom testu) volá dvakrát tutéž funkci, kterou volá route, ze dvou vláken. Nevolá zámek bokem. Assert navíc: endpoint není coroutine (`inspect.iscoroutinefunction` je false). Háček, který v produkci nic nedělá, podrží vítěze uvnitř funkce před `release`. Poražený mezitím vstoupí do té samé funkce (`on_wait` nastaví `Event`, bez spánku).
 
-1. Test podrží vítěze uvnitř kritické sekce háčkem, který v produkci nic nedělá. Poražený mezitím musí být na zámku (`on_wait` nastaví `Event`, bez spánku).
-2. Po puštění vítěze poražený vrátí `error == invalid_grant`, ne `temporarily_unavailable`. Nový refresh z vítězné odpovědi pořád funguje a family nemá `revoked_at`. Kdyby čekající family zrušil, tohle selže.
-3. Až obě vlákna skončí, třetí volání se starým refreshem (zámek volný) family zruší. Nový refresh z kroku 2 pak nefunguje. Kdyby family zůstala živá, tohle selže.
+1. Po puštění vítěze poražený vrátí `error == invalid_grant`, ne `temporarily_unavailable`. Nový refresh z vítězné odpovědi pořád funguje a family nemá `revoked_at`. Kdyby čekající family zrušil, tohle selže.
+2. Až obě volání skončí, třetí volání té samé funkce se starým refreshem family zruší. Nový refresh z kroku 1 pak nefunguje. Kdyby family zůstala živá, tohle selže.
 
-Háček a `on_wait` nejsou počítadla. Produkční kód je jen `acquire(blocking=False)` a větev `waited`.
+Háček a `on_wait` nejsou počítadla. Produkční kód je jen get-or-create, `acquire(blocking=False)` a větev `waited`.
 
 ### Scope, get_context, focus, apply, audit
 
@@ -279,7 +282,7 @@ README Brainu: člověk přidá v Google konzoli redirect `https://brain.cyprovi
 | B9 | `X-API-Key` na MCP | `401`, klíč se nebere jako token | R3 | T9 |
 | B10 | oba well-known PRM | stejný `resource` `{báze}/mcp/`, jediný authorization server | R11 | T10 |
 | B11 | AS metadata | `registration_endpoint`, CIMD true, auth methods jen `none`, granty jen code a refresh, žádný OIDC dokument | R11, A-G8 | T11 |
-| B12 | DCR s oběma URL z R11, nebo s jednou z nich | 201, bez secretu, klient uložen | R11, R16 | T12 |
+| B12 | DCR s oběma URL z R11, nebo s jednou z nich | 201, tělo má `client_id` a `token_endpoint_auth_method=none`, klíč `client_secret` není; s tím `client_id` GET authorize dojde na souhlasovou stránku | R11, R16 | T12 |
 | B13 | DCR s loopbackem nebo jiným redirectem | 400, klient se neuloží | R16 | T13 |
 | B14 | CIMD dokument jen s `https://claude.ai/api/mcp/auth_callback` a s `jwt-bearer` v grant_types | authorize na ten redirect dojde na souhlasovou stránku, dokument se neodmítne | R16, A-G8, A10 | T14 |
 | B15 | CIMD dokument, který navíc uvádí loopback; authorize s loopbackem | klient se načte, kód se nevydá, Google se nezavolá | R16 | T15 |
@@ -287,11 +290,11 @@ README Brainu: člověk přidá v Google konzoli redirect `https://brain.cyprovi
 | B17 | `resource` sedí i s jinou velikostí písmen hosta nebo jedním lomítkem navíc | přijmout; neshoda je `invalid_target`; chybějící `resource` přijmout | R11 | T17 |
 | B18 | authorize bez scope | grant má `brain:read` i `brain:write` | A-G1 | T18 |
 | B19 | scope obsahuje `offline_access` | zahodí se, není `invalid_scope`, code grant stejně vrátí refresh | A-G1 | T19 |
-| B20 | souhlasová stránka | před Google je jméno klienta, scope a hostname redirectu; zrušení nevydá kód | A-G7, R9 | T20 |
-| B21 | `state` v HTML souhlasu i zamítnutí | složené přes `urlencode`, do atributu `html.escape(quote=True)`; surový `state` v HTML není | A-G7 | T21 |
+| B20 | souhlasová stránka | před Google je jméno klienta, scope a hostname redirectu; formulář má `action` bez query a posílá jen id transakce; zrušení nevydá kód | A-G7, R9 | T20 |
+| B21 | `state`, jméno klienta a scope v HTML | vše přes `html.escape(..., quote=True)`; `state` v query navíc `urlencode`; surový `<` ani uvozovka v těle nejsou | A-G7 | T21, T53 |
 | B22 | Google userinfo e-mail mimo allowlist | žádný token, HTML bez výpisu allowlistu, redirect `access_denied` se `state` klienta | R2, A-G7 | T22 |
 | B23 | Google token endpoint vrátí non-200 | žádný token | R6 | T23 |
-| B24 | platný code | access i refresh, nová family; druhé předložení kódu je `invalid_grant` | A-G1, A-G6 | T24 |
+| B24 | platný code a platný verifier, podruhé až po prvním návratu | access i refresh, nová family; druhé předložení je `invalid_grant` | A-G1, A-G6, R11 | T24 |
 | B25 | refresh bez scope, grant je jen read | zůstane read, write se nepřidá | A-G1 | T25 |
 | B26 | refresh chce write a grant je read | `invalid_scope`, family živá | A-G1 | T26 |
 | B27 | dva souběžné refreshe téhož tokenu | jeden vrátí tokeny, druhý `invalid_grant` (ne `temporarily_unavailable`), family živá, nový refresh funguje | R10, A-G10 | T34 |
@@ -312,6 +315,10 @@ README Brainu: člověk přidá v Google konzoli redirect `https://brain.cyprovi
 | B42 | příkaz revoke `--family` | ta family je `401`, jiná family téhož e-mailu žije; HTTP route na revoke není | A-G4, A-G6 | T51 |
 | B43 | prázdná SQLite (soubor bez řádků) | service token funguje; neznámý Bearer je 401 jako B1 | A-G3 | T2 |
 | B44 | code starší než 60 s, access starší než 1 h, refresh starší než 30 dní | `invalid_grant` | A-G5 | T37 |
+| B45 | POST pokračování | jiné `redirect_uri` v těle nebo query (po decode) Google nezavolá, kód nevydá a transakci nezmění; chybějící parametr nebo stejné URI jako uložené cookie nastaví a na Google jde | R11 | T52 |
+| B46 | callback bez cookie `sb_mcp_oauth_tx`, nebo cookie nesedí na `state` | kód se nevydá, odpověď nemá `Location` na redirect klienta | R11 | T54 |
+| B47 | výměna kódu se špatným `code_verifier` | `invalid_grant`, žádný access ani refresh, `used_at` zůstane prázdné | R11 | T55 |
+| B48 | dvě překrývající se výměny téhož kódu s platným verifierem | právě jedna sada tokenů, druhá `invalid_grant` | R11 | T56 |
 
 Checklist A, co v tabulce není samostatně:
 
@@ -322,7 +329,7 @@ Checklist A, co v tabulce není samostatně:
 5. Oprávnění — B2, B4, B5, B33, B38, B39. RBAC RB Universe se netýká.
 6. Stav syncu — netýká se, není to sync pipeline. Rebuild kontextu je B36 a B37.
 7. Smazané entity — odvolaná family je B6 a B42. Pipedrive merge se netýká.
-8. Duplicitní akce — B24 (kód podruhé), B27, B28, B29.
+8. Duplicitní akce — B24 (kód podruhé), B27, B28, B29, B48 (souběh jedné výměny).
 9. Chyba externí služby — B23. Timeout Google je 20 s a taky nevydá token (T23 to mockuje jako non-200).
 10. Zpětná kompatibilita — B2, B3, B7, B8, B32, B39. Staré URL `/oauth/callback` a `/mcp` zůstávají.
 11. Konzistence Pipedrive / Allfred / Universe — netýká se.
@@ -342,7 +349,7 @@ Společné pro všechny nové cesty: do Pythonu jdou jen řádky podle primárn�
 | P3 MCP auth, OAuth access | 1 SELECT podle hashe access + 1 SELECT family | 0 | žádná | < 20 ms |
 | P4 DCR | 1 INSERT | 0 | žádná | < 50 ms |
 | P5 CIMD na authorize | 0 SQL při cache hitu | 1 GET jen když `client_id` je URL na `claude.ai` nebo `claude.com`, timeout 3 s | proces, 5 min, klíč je URL dokumentu; pád procesu cache smaže | hit < 20 ms, miss < 3 s a pak chyba klientovi, ne tichý průchod |
-| P6 souhlasová stránka a zápis transakce | 1 INSERT | 0 (Google až po souhlasu) | žádná | < 50 ms |
+| P6 GET authorize uloží transakci; POST pokračování jen SELECT podle id | 1 INSERT, pak 1 SELECT | 0 (Google až po souhlasu) | žádná | < 50 ms |
 | P7 callback | 1 UPDATE/INSERT family a kódu | 1 POST Google, timeout 20 s | žádná | mimo rozpočet 500 ms; při non-200 žádný token (B23) |
 | P8 token, code i refresh bez čekání | 1 transakce, jednotky SELECT/INSERT podle PK | 0 | žádná | < 50 ms |
 | P9 refresh, který čeká na zámek | stejná transakce až po vítězi | 0 | žádná | čeká jen na P8 vítěze, pak < 50 ms; není 503 |
@@ -368,7 +375,7 @@ Pytest v `vps/second-brain-brain/tests/`. Gate: `python3 -m pytest vps/second-br
 | T9 | pytest | gate | `tests/test_oauth_mcp_metadata.py` | B9 |
 | T10 | pytest | gate | `tests/test_oauth_mcp_metadata.py` | B10 |
 | T11 | pytest | gate | `tests/test_oauth_mcp_metadata.py` | B11 |
-| T12 | pytest | gate | `tests/test_oauth_mcp_register.py` | B12 |
+| T12 | pytest | gate | `tests/test_oauth_mcp_register.py` | B12; vrácené `client_id` dojde GET authorize na souhlasovou stránku |
 | T13 | pytest | gate | `tests/test_oauth_mcp_register.py` | B13 |
 | T14 | pytest | gate | `tests/test_oauth_mcp_register.py` | B14, fixture podle živého hostovaného dokumentu (A10), včetně `jwt-bearer` |
 | T15 | pytest | gate | `tests/test_oauth_mcp_register.py` | B15, fixture s loopbackem, žádný socket na Google |
@@ -383,7 +390,7 @@ Pytest v `vps/second-brain-brain/tests/`. Gate: `python3 -m pytest vps/second-br
 | T24 | pytest | gate | `tests/test_oauth_mcp_token.py` | B24 |
 | T25 | pytest | gate | `tests/test_oauth_mcp_token.py` | B25 |
 | T26 | pytest | gate | `tests/test_oauth_mcp_token.py` | B26 |
-| T34 | pytest | gate | `tests/test_oauth_mcp_refresh.py` | B27; vlákna a `Event`, bez spánku |
+| T34 | pytest | gate | `tests/test_oauth_mcp_refresh.py` | B27; dvě překrývající se volání funkce, kterou volá sync route; endpoint není coroutine |
 | T35 | pytest | gate | `tests/test_oauth_mcp_refresh.py` | B28, navazuje na T34 v tom samém testu |
 | T36 | pytest | gate | `tests/test_oauth_mcp_refresh.py` | B29 |
 | T37 | pytest | gate | `tests/test_oauth_mcp_token.py` | B30, B44 |
@@ -399,9 +406,14 @@ Pytest v `vps/second-brain-brain/tests/`. Gate: `python3 -m pytest vps/second-br
 | T49 | pytest | gate | `tests/test_oauth_mcp_scope.py` | B40 |
 | T50 | pytest | gate | `tests/test_oauth_mcp_token.py` | B41 |
 | T51 | pytest | gate | `tests/test_oauth_mcp_revoke.py` | B42, a že router nemá `/oauth/mcp/revoke` |
+| T52 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B45; jiné URI = nulový socket na Google; POST se stejným URI z query na Google jde |
+| T53 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B21, `client_name` s `<` a uvozovkou je v těle jen jako text |
+| T54 | pytest | gate | `tests/test_oauth_mcp_authorize.py` | B46 |
+| T55 | pytest | gate | `tests/test_oauth_mcp_token.py` | B47 |
+| T56 | pytest | gate | `tests/test_oauth_mcp_token.py` | B48, dvě překrývající se volání té samé funkce jako route |
 | T60 | ruční | člověk, ne Tester | claude.ai web | B20 v prohlížeči: Lukáš dokončí Sign in a vidí nástroje; druhý účet organizace token nedostane. Až potom se connector smí přidat do organizace (R7). Desktop, mobil a Cowork jedou stejným redirectem, samostatný pytest nemají. Claude Code se nezkouší. |
 
-T34 a T35 jsou jeden test se dvěma asserty. Když čekající vlákno family zruší, spadne první assert. Když pozdější replay family nechá živou, spadne druhý. Jiný čítač v produkci k tomu testu není.
+T34 a T35 jsou jeden test se dvěma asserty a volají funkci route, ne zámek bokem. Když čekající volání family zruší, spadne první assert. Když pozdější replay family nechá živou, spadne druhý. Jiný čítač v produkci k tomu testu není.
 
 ## Pořadí implementace
 
@@ -411,9 +423,9 @@ F2 — metadata a MCP `401` s hlavičkou. Service token a cookie se nemění. Ne
 
 F3 — DCR a CIMD. Potřebuje F1 jen pro uložení DCR klienta. CIMD se do SQLite neukládá.
 
-F4 — souhlas, Google callback, kód. Potřebuje F1 a F3.
+F4 — GET uloží transakci, POST pokračování zastaví jiné `redirect_uri` a při shodě nebo chybějícím parametru nastaví cookie, callback bez cookie kód nevydá. Potřebuje F1 a F3. T52 a T54 patří sem.
 
-F5 — token endpoint a zámek refresh. Potřebuje F1 a F4. T34 a T35 patří sem, dřív než se gate napojí na MCP.
+F5 — sync token endpoint, PKCE a podmíněné `used_at` v `BEGIN IMMEDIATE`, zámek refresh s get-or-create a vlastním spojením. Potřebuje F1 a F4. T34, T35, T55 a T56 patří sem, dřív než se gate napojí na MCP.
 
 F6 — MCP přijme OAuth access, REST ho odmítne bez hlavičky. Potřebuje F5.
 
@@ -425,7 +437,7 @@ F9 — celý pytest gate. Nasazení volume a pepperu je až s image Brainu. Hub 
 
 ## Rizika a zpětná kompatibilita
 
-1. Zámek je v paměti jednoho procesu. `--workers` větší než 1 nebo druhá replika by z čekajícího udělala replay a family by spadla. Dockerfile ani replicas se v tomhle směru nesmí změnit.
+1. Zámek je v paměti jednoho procesu a route tokenu musí zůstat sync `def`. `async def` na jednom loopu by čekajícího smazal a family by spadla. `--workers` větší než 1 nebo druhá replika by z čekajícího udělala replay. Dockerfile ani replicas se v tomhle směru nesmí změnit.
 2. Když proces umře až po commitu rotace a před odesláním odpovědi, klient nový refresh nedostane. Jeho opakování starého refreshe je replay a family zruší. Platné tokeny, které už klient má, restart s připojeným volume neruší.
 3. Cookie callback dál vypisuje allowlist v textu 403. Tahle práce to nemění. MCP zamítnutí ten text nekopíruje.
 4. Bez ručně přidaného Google redirectu a bez pepperu OAuth token nevydá. Service token, cookie a REST jedou.
@@ -433,8 +445,19 @@ F9 — celý pytest gate. Nasazení volume a pepperu je až s image Brainu. Hub 
 6. Hostovaný CIMD dnes neobsahuje `https://claude.com/api/mcp/auth_callback`. Ten redirect projde u DCR klienta, který ho má zaregistrovaný. CIMD klient ho projde jen když ho dokument uvádí.
 7. `mailbox_apply` a `external_apply` přestanou předstírat service principal. Lidský MCP volající uvidí 501 místo 403. Apply pořád nic nezapíše. Service volající uvidí dál 403.
 8. Existující klienti MCP se service tokenem a cookie se nemění. Nový Bearer, který není service token, už není jen anonymní 401: když má tvar access tokenu, jde do SQLite. Service token se porovnává dřív, takže shoda SQLite neotevře.
-9. Opuštěný plán z 11. 11. se needituje. Jeho množiny `request_id` se nepřebírají.
+9. Opuštěný plán z 11. 11. se needituje. Jeho množiny `request_id` se nepřebírají. Počítadlo čekajících se nepřidává.
+10. Cookie `sb_mcp_oauth_tx` je jiná než `sb_oauth_state` a `sb_brain_session`. Dokončení MCP loginu dnešní cookie session nepřepíše a cookie přihlášení neodhlásí.
 
 ## Otevřené otázky pro uživatele
 
 Žádná. Q1 a A-G1 až A-G10 jsou zavřené. Výchozí předpoklady A7, A8 a A10 jsou v plánu. Jiná cesta volume mimo vault by změnila jen mount (řádek 7 tabulky v osnově). Jiný pepper env název by změnil jen jméno proměnné, ne zákaz spadnout na service token.
+
+## Delta tohoto kola
+
+Kolo r=3. Q1 hosted a focus beze změny. C2–C6 se neotvíraly.
+
+Sekce: DCR/authorize (odstavec GET a POST pokračování), Kontrakt B20 a B45, Testy T52, Pořadí F4.
+
+| ID | Stav |
+|---|---|
+| C1 | vyřešeno — jiné `redirect_uri` po decode zastaví Google a kód; chybějící nebo stejné URI jde na Google; formulář má `action` bez query (B45, T52) |
