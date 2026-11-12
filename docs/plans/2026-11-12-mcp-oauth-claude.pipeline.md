@@ -1,14 +1,14 @@
 # Pipeline: MCP OAuth Claude (nový běh)
 
-Stav: AWAITING_USER (z: grill)
+Stav: CRITIC
 Plán: docs/plans/2026-11-12-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID cb53849f-256b-4e2e-b34e-e3a06942fd96, otevření plánu #1, generace k=1/3, kolo r=1/3
-Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, čeká odpověď na Q1
+Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, Q1 zodpovězeno
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
-Goal: paused-awaiting-user
+Goal: aktivní (znovu po odpovědi na grill)
 Větev: `feat/mcp-oauth-claude` (beze změny kódu; předchozí běh na ní jen plány)
 
 Předchůdce [docs/plans/2026-11-11-mcp-oauth-claude.pipeline.md](2026-11-11-mcp-oauth-claude.pipeline.md) je ABANDONED. Tenhle běh ho nepřebírá v kole k=3. Necommitnutá revize C15 v `docs/plans/2026-11-11-mcp-oauth-claude.md` je kontext, ne závazek.
@@ -39,7 +39,8 @@ Nový chat 12. 11. 2026 (doslovně): „Vrať se ke konverzaci 7ff51b50-ac6e-4b4
 - Org connector se do Claude organizace přidá až po testu, že cizí účet z organizace token nedostane.
 - Focus (11. 11., odpověď na C1, doslovně): „Omezení neplatí - focus můžou na pokyn člověka řešit i Grok / Cursor / Claude.“ `BRAIN_SERVICE_TOKEN` dál smí `apply_focus`. Claude OAuth principal ho smí taky. `allow_focus_write(ServicePrincipal)` se nezakazuje.
 - Tester: bez UI produktu. Zamítací HTML není dashboard ani nový shell. V DONE auditu `TESTER: přeskočeno (profil SECOND_BRAIN, bez UI)`.
-- Předchozí běh (11.–12. 11.) se zacyklil na serializaci souběžného refresh (C15) a skončil ABANDONED, když Task `rbu-architect` vrátil chybu. Mechanismus počítadel ani množin `request_id` není rozhodnutí. Nový plán ho smí navrhnout znovu, jednodušeji, pokud pořád splní: jeden ze souběžných refreshů vydá tokeny, čekající vlákno family nezruší, pozdější replay starého refreshe family zruší.
+- Předchozí běh (11.–12. 11.) se zacyklil na serializaci souběžného refresh (C15) a skončil ABANDONED, když Task `rbu-architect` vrátil chybu. Mechanismus počítadel ani množin `request_id` není rozhodnutí. Nový plán ho smí navrhnout znovu, jednodušeji, pokud pořád splní: jeden ze souběžných refreshů téhož tokenu vydá tokeny, čekající vlákno family nezruší, pozdější replay starého refreshe family zruší.
+- Q1 (12. 11., volba hosted): jen web, Desktop, mobil a Cowork. Loopback se nepřijímá. Claude Code se tímhle OAuth nepřihlásí a dál může jet service tokenem.
 
 ### Mimo rozsah
 
@@ -68,10 +69,12 @@ SECOND_BRAIN
 | 1 | 2026-11-12 12:40 | PLAN | — | — | — | Nový běh. CLARIFY bez nové otázky (rozhodnutí jsou v předchozí konverzaci). Start osnovy. |
 | 2 | 2026-11-12 12:55 | PLAN | cb53849f-256b-4e2e-b34e-e3a06942fd96 | osnova | — | R1–R15. Přechod na Šťourala, jedno kolo. |
 | 3 | 2026-11-12 13:10 | GRILL | cca0b716-7574-46ce-88b5-15b6ce1a0693 | POTŘEBUJE ODPOVĚDI | 1 BLOKUJÍCÍ | Q1 Claude Code a loopback. Neblokující předpoklady A-G1–A-G10 jdou do plánu bez čekání. |
+| 4 | 2026-11-12 13:25 | PLAN | — | Q1 hosted | — | Jen hostované plochy. Loopback ne. Claude Code zůstává na service tokenu. Architekt píše celý plán. Druhý grill se nespouští. |
+| 5 | 2026-11-12 13:45 | PLAN | cb53849f-256b-4e2e-b34e-e3a06942fd96 | plán v1 | — | R16, A-G1–A-G10, jeden zámek na hash. Přechod na kritika, kolo 1. |
 
 ## Grill
 
-Q1 BLOKUJÍCÍ: Claude Code posílá loopback `http://localhost:<port>/callback` a `http://127.0.0.1:<port>/callback`. Osnova v A2 počítá jen se dvěma HTTPS callbacky. Doporučení Šťourala: jen hostované plochy (web, Desktop, mobil, Cowork); Claude Code zůstane na service tokenu.
+Q1 zodpovězeno (hosted). Původně BLOKUJÍCÍ: Claude Code posílá loopback `http://localhost:<port>/callback` a `http://127.0.0.1:<port>/callback`. Osnova v A2 počítá jen se dvěma HTTPS callbacky. Doporučení Šťourala: jen hostované plochy (web, Desktop, mobil, Cowork); Claude Code zůstane na service tokenu.
 
 Neblokující předpoklady (architekt je zapíše jako A#, bez dalšího grilu):
 
