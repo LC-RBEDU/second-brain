@@ -1,14 +1,14 @@
 # Pipeline: MCP OAuth Claude (nový běh)
 
-Stav: GRILL
+Stav: AWAITING_USER (z: grill)
 Plán: docs/plans/2026-11-12-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
 Architekt: agent ID cb53849f-256b-4e2e-b34e-e3a06942fd96, otevření plánu #1, generace k=1/3, kolo r=1/3
-Šťoural: běží · právě jedno kolo nad osnovou
+Šťoural: agent ID cca0b716-7574-46ce-88b5-15b6ce1a0693 · jedno kolo hotové, čeká odpověď na Q1
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER PASS na: —
 Plán schválen uživatelem: nevyžadováno
-Goal: aktivní
+Goal: paused-awaiting-user
 Větev: `feat/mcp-oauth-claude` (beze změny kódu; předchozí běh na ní jen plány)
 
 Předchůdce [docs/plans/2026-11-11-mcp-oauth-claude.pipeline.md](2026-11-11-mcp-oauth-claude.pipeline.md) je ABANDONED. Tenhle běh ho nepřebírá v kole k=3. Necommitnutá revize C15 v `docs/plans/2026-11-11-mcp-oauth-claude.md` je kontext, ne závazek.
@@ -67,6 +67,24 @@ SECOND_BRAIN
 |---|-----|------|------------|---------|---------------------|--------------------|
 | 1 | 2026-11-12 12:40 | PLAN | — | — | — | Nový běh. CLARIFY bez nové otázky (rozhodnutí jsou v předchozí konverzaci). Start osnovy. |
 | 2 | 2026-11-12 12:55 | PLAN | cb53849f-256b-4e2e-b34e-e3a06942fd96 | osnova | — | R1–R15. Přechod na Šťourala, jedno kolo. |
+| 3 | 2026-11-12 13:10 | GRILL | cca0b716-7574-46ce-88b5-15b6ce1a0693 | POTŘEBUJE ODPOVĚDI | 1 BLOKUJÍCÍ | Q1 Claude Code a loopback. Neblokující předpoklady A-G1–A-G10 jdou do plánu bez čekání. |
+
+## Grill
+
+Q1 BLOKUJÍCÍ: Claude Code posílá loopback `http://localhost:<port>/callback` a `http://127.0.0.1:<port>/callback`. Osnova v A2 počítá jen se dvěma HTTPS callbacky. Doporučení Šťourala: jen hostované plochy (web, Desktop, mobil, Cowork); Claude Code zůstane na service tokenu.
+
+Neblokující předpoklady (architekt je zapíše jako A#, bez dalšího grilu):
+
+- A-G1: vynechaný scope na authorize u allowlistu = `brain:read` i `brain:write`. Na refreshi vynechání = scope grantu; read se na write nerozšíří. `offline_access` se neinzeruje; když přijde, zahodí se a není `invalid_scope`. Refresh token u `authorization_code` vždy.
+- A-G2: `get_context` s `brain:read` jen warm čtení. Rebuild chce `brain:write`. Service token a cookie session rebuildují jako dnes.
+- A-G3: Access z nového OAuth platí jen na MCP. REST `/v1/*` dál bere cookie nebo service token. `WWW-Authenticate` jen na MCP 401 bez platné cookie, service tokenu ani OAuth access tokenu. Platný service token na SQLite nesahá.
+- A-G4: Odvolání jednoho grantu je příkaz v kontejneru, bez HTTP route. Odebrání e-mailu je změna allowlistu v kódu. Každé MCP volání s OAuth tokenem allowlist znovu ověří.
+- A-G5: transakce 10 minut, kód 60 sekund, access 1 hodina, refresh 30 dní, absolutní strop grantu 90 dní. Restart s připojeným volume session neruší.
+- A-G6: každý úspěšný login je vlastní family. Rotace v jedné family neodhlásí druhou.
+- A-G7: před Google je stránka se jménem klienta, scope a hostname redirectu. Zamítnutí allowlistu allowlist nevypisuje a vrátí `access_denied` se `state`. Není to dashboard.
+- A-G8: Enterprise Managed Auth a `jwt-bearer` se nedělají.
+- A-G9: mapa nástrojů 13× read / 20× write dle opuštěného plánu. Suchý běh scope nesnižuje. Nástroj mimo mapu se nespustí.
+- A-G10: poražený souběžný refresh vrací `invalid_grant` a family nechá živou.
 
 ## Otevřené nálezy
 
