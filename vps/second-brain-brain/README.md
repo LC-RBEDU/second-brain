@@ -3,6 +3,10 @@
 HTTPS služba (Coolify): remote MCP + OAuth + tenké REST. Sdílí `/data/vault` s hubem — oddělený clone zakázán.
 
 - `BRAIN_PUBLIC_URL` = veřejné HTTPS (MCP + OAuth callback `{URL}/oauth/callback` + REST). Ne dashboard UI.
+- Claude MCP OAuth používá stejný Google client. Do konzole přidej redirect `https://brain.cyprovi.cz/oauth/mcp/callback`. Cookie callback `{URL}/oauth/callback` zůstává.
+- `BRAIN_OAUTH_TOKEN_PEPPER` = HMAC pepper pro hashe kódů a tokenů. Bez něj MCP OAuth vrací 503 a service token dál funguje. Pepper musí být v Coolify dřív, než se nasadí volume.
+- `BRAIN_OAUTH_DB` = SQLite pro Claude tokeny, default `/data/oauth/brain-oauth.sqlite`. Host mount `/data/second-brain-oauth`. Nesmí ležet ve vaultu.
+- Org konektor v Claude se přidá až po ručním přihlášení na claude.ai (Lukáš vidí tools, cizí účet v organizaci token nedostane). Desktop, mobil a Cowork jedou stejným redirectem. Claude Code se tímhle OAuth nepřihlašuje.
 - `BRAIN_SERVICE_TOKEN` = Bearer pro hub cron / service klienty (`GET /v1/triage/candidates`, …).
 - `SLACK_USER_TOKEN` = `xoxp-` — povinné pro L1 live Slack (`slack_live` / triage). Bez něj Brain vrací `error_reason: slack_token_missing` a `live_slack: []`.
 - Volitelně `SLACK_LUKAS_USER_ID` — přesnější search query (`to:<@U…>`); bez něj fallback `is:im` / `from:me`.

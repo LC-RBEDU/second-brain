@@ -1,8 +1,9 @@
 """MCP tool surface — same vault tools as REST; errors → isError text (A57)."""
 from __future__ import annotations
 
+import functools
 import json
-from typing import Any
+from typing import Any, Callable
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, TextContent
@@ -52,6 +53,36 @@ def _error_result(exc: BrainVaultError | BrainClientError) -> CallToolResult:
     )
 
 
+def run_tool(name: str, fn: Callable[[], Any]) -> Any:
+    """Scope, then the tool, then one stdout audit line. The only scope site."""
+    from app.oauth_mcp_audit import audit_line
+    from app.oauth_mcp_scope import OAuthPrincipal, oauth_denied
+    from app.request_principal import get_brain_principal
+
+    principal = get_brain_principal()
+    denied = isinstance(principal, OAuthPrincipal) and oauth_denied(name, principal)
+    label = "ok"
+    try:
+        if denied:
+            label = "insufficient_scope"
+            return _error_result(
+                BrainClientError(
+                    message="insufficient_scope",
+                    status_code=403,
+                    error_reason="insufficient_scope",
+                )
+            )
+        result = fn()
+        if isinstance(result, CallToolResult) and result.is_error:
+            label = "error"
+        return result
+    except Exception:
+        label = "error"
+        raise
+    finally:
+        audit_line(name, label)
+
+
 def _call(fn, **kwargs: Any) -> str:
     try:
         result = fn(**kwargs)
@@ -75,15 +106,35 @@ def build_mcp() -> MCPServer:
         ),
     )
 
-    @mcp.tool(description="Warm or rebuild agent-context snapshot (TTL 15 min).")
-    def get_context() -> str:
-        return _call(get_context_tool.get_context)
+    def tool(description: str):
+        def deco(fn):
+            @functools.wraps(fn)
+            def wrapped(*args, **kwargs):
+                return run_tool(fn.__name__, lambda: fn(*args, **kwargs))
 
-    @mcp.tool(description="Read allowlisted vault file.")
+            return mcp.tool(description=description)(wrapped)
+
+        return deco
+
+    @tool(description="Warm or rebuild agent-context snapshot (TTL 15 min).")
+    def get_context() -> str:
+        from app.oauth_mcp_scope import context_may_rebuild
+        from app.request_principal import get_brain_principal
+
+        allow = context_may_rebuild(get_brain_principal())
+        try:
+            result = get_context_tool.get_context(allow_rebuild=allow)
+        except BrainClientError as exc:
+            if exc.error_reason == "context_rebuild_requires_write":
+                return _error_result(exc)
+            raise RuntimeError(_err_text(exc)) from exc
+        return json.dumps(result, ensure_ascii=False, default=str)
+
+    @tool(description="Read allowlisted vault file.")
     def read_file(path: str) -> str:
         return _call(read_file_tool.read_file, rel_path=path)
 
-    @mcp.tool(description="List allowlisted vault directory.")
+    @tool(description="List allowlisted vault directory.")
     def list_dir(path: str, pattern: str | None = None, recursive: bool = False) -> str:
         return _call(
             list_dir_tool.list_dir,
@@ -92,7 +143,7 @@ def build_mcp() -> MCPServer:
             recursive=recursive,
         )
 
-    @mcp.tool(
+    @tool(
         description=(
             "Patch task frontmatter (CAS expect_oid). Focus is refused: use "
             "propose_focus then apply_focus. parent and type in the patch follow "
@@ -136,7 +187,7 @@ def build_mcp() -> MCPServer:
             return _call(_reraise)
         return json.dumps(result, ensure_ascii=False, default=str)
 
-    @mcp.tool(
+    @tool(
         description=(
             "Append one bullet to an existing task file. target=log writes into "
             "## Poznámky / log (target note is an alias; matching is case-insensitive; "
@@ -164,7 +215,7 @@ def build_mcp() -> MCPServer:
             dry_run=dry_run,
         )
 
-    @mcp.tool(
+    @tool(
         description=(
             "Does not write focus. Returns focus_requires_proposal. "
             "Call propose_focus, then apply_focus after an explicit yes. "
@@ -183,7 +234,7 @@ def build_mcp() -> MCPServer:
             expect_oid=expect_oid,
         )
 
-    @mcp.tool(
+    @tool(
         description=(
             "Store a focus proposal. Nothing is written until apply_focus. "
             "focus_week empty clears focus. Cap 10 tasks/stories and 5 epics."
@@ -201,11 +252,11 @@ def build_mcp() -> MCPServer:
             expect_oid=expect_oid,
         )
 
-    @mcp.tool(description="Write a previously proposed focus. Second call is not found.")
+    @tool(description="Write a previously proposed focus. Second call is not found.")
     def apply_focus(proposal_id: str) -> str:
         return _call(focus_proposal_tool.apply_focus, proposal_id=proposal_id)
 
-    @mcp.tool(
+    @tool(
         description=(
             "Read-only snapshot of vault tasks (frontmatter, no body) for a dashboard. "
             "Does not rebuild agent-context. Active Done and Cancelled are omitted. "
@@ -228,7 +279,7 @@ def build_mcp() -> MCPServer:
         except (BrainVaultError, BrainClientError) as exc:
             raise RuntimeError(_err_text(exc)) from exc
 
-    @mcp.tool(description="Find task files by title, body, id, project, type, parent, status, deadline, or focus.")
+    @tool(description="Find task files by title, body, id, project, type, parent, status, deadline, or focus.")
     def find_tasks(
         query: str | None = None,
         task_id: str | None = None,
@@ -250,7 +301,7 @@ def build_mcp() -> MCPServer:
             limit=limit,
         )
 
-    @mcp.tool(description="Read one task by file id or by an old checkbox id inside the 90-day alias window.")
+    @tool(description="Read one task by file id or by an old checkbox id inside the 90-day alias window.")
     def get_task(task_id: str) -> str:
         try:
             result = get_task_tool.get_task(task_id=task_id)
@@ -258,15 +309,15 @@ def build_mcp() -> MCPServer:
             return _error_result(exc)
         return json.dumps(result, ensure_ascii=False, default=str)
 
-    @mcp.tool(description="Children of an epic or story: id, title, status, deadline, project. project is the folder slug of the file.")
+    @tool(description="Children of an epic or story: id, title, status, deadline, project. project is the folder slug of the file.")
     def list_children(task_id: str) -> str:
         return _call(task_tree_tool.list_children, task_id=task_id)
 
-    @mcp.tool(description="Tree under an epic or story, with open-descendant counts. project on each node is the folder slug of the file.")
+    @tool(description="Tree under an epic or story, with open-descendant counts. project on each node is the folder slug of the file.")
     def get_tree(task_id: str) -> str:
         return _call(task_tree_tool.get_tree, task_id=task_id)
 
-    @mcp.tool(
+    @tool(
         description=(
             "Edit one body line (replace, delete_line, insert_after). "
             "Does not change frontmatter. Writes only when confirm is true and expected_hash matches. "
@@ -301,7 +352,7 @@ def build_mcp() -> MCPServer:
             reason=reason,
         )
 
-    @mcp.tool(description="Check or uncheck a micro-step on a task file. A story returns the child task ids.")
+    @tool(description="Check or uncheck a micro-step on a task file. A story returns the child task ids.")
     def toggle_step(
         path: str,
         step_id: str,
@@ -320,7 +371,7 @@ def build_mcp() -> MCPServer:
             dry_run=dry_run,
         )
 
-    @mcp.tool(
+    @tool(
         description=(
             "Close one task file as done or cancelled. Does not close the parent story. "
             "The result includes suggest_close_parent."
@@ -344,11 +395,11 @@ def build_mcp() -> MCPServer:
             dry_run=dry_run,
         )
 
-    @mcp.tool(description="Preview next task ID (non-reserving).")
+    @tool(description="Preview next task ID (non-reserving).")
     def allocate_task_id(slug: str, level: str | None = None) -> str:
         return _call(allocate_tool.allocate_task_id, slug=slug, level=level)
 
-    @mcp.tool(description="Create a task file. A story needs an epic parent. A task may have no parent, or a story parent in any project. An unknown project slug is refused. dry_run returns ids and writes nothing. items_json creates several in one call and does not see siblings.")
+    @tool(description="Create a task file. A story needs an epic parent. A task may have no parent, or a story parent in any project. An unknown project slug is refused. dry_run returns ids and writes nothing. items_json creates several in one call and does not see siblings.")
     def create_task(
         slug: str,
         title: str = "",
@@ -381,7 +432,7 @@ def build_mcp() -> MCPServer:
             items=items,
         )
 
-    @mcp.tool(
+    @tool(
         description=(
             "Patch several tasks in one transaction. parent and type in a patch follow "
             "the same parent rules as create. A deadline_order error writes nothing. "
@@ -416,7 +467,7 @@ def build_mcp() -> MCPServer:
             return _call(_reraise)
         return json.dumps(result, ensure_ascii=False, default=str)
 
-    @mcp.tool(description="Schedule reminder (attempt_count=0) into Reminders-Pending.")
+    @tool(description="Schedule reminder (attempt_count=0) into Reminders-Pending.")
     def schedule_reminder(
         message: str, deliver_at: str, task_ref: str | None = None
     ) -> str:
@@ -427,15 +478,15 @@ def build_mcp() -> MCPServer:
             task_ref=task_ref,
         )
 
-    @mcp.tool(description="List pending/failed reminders.")
+    @tool(description="List pending/failed reminders.")
     def list_reminders() -> str:
         return _call(reminders_tool.list_reminders)
 
-    @mcp.tool(description="Cancel a pending reminder by id substring.")
+    @tool(description="Cancel a pending reminder by id substring.")
     def cancel_reminder(reminder_id: str) -> str:
         return _call(reminders_tool.cancel_reminder, reminder_id=reminder_id)
 
-    @mcp.tool(
+    @tool(
         description=(
             "Save a meeting note and archive its inbox transcript in one commit, "
             "or archive with skip_reason. dry_run writes nothing."
@@ -474,16 +525,16 @@ def build_mcp() -> MCPServer:
             )
         return json.dumps(result, ensure_ascii=False, default=str)
 
-    @mcp.tool(description="Ingest Sembly payload → 01-INBOX/sembly MD (no LLM).")
+    @tool(description="Ingest Sembly payload → 01-INBOX/sembly MD (no LLM).")
     def ingest_sembly(payload_json: str) -> str:
         payload = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
         return _call(ingest_tool.ingest_sembly, payload=payload)
 
-    @mcp.tool(description="Capture a daily INBOX note.")
+    @tool(description="Capture a daily INBOX note.")
     def capture_daily(text: str, title: str | None = None) -> str:
         return _call(capture_daily_tool.capture_daily, text=text, title=title)
 
-    @mcp.tool(description="Triage L1 candidates (default live Slack + Gmail L1).")
+    @tool(description="Triage L1 candidates (default live Slack + Gmail L1).")
     def get_triage_candidates(
         include_live_slack: bool = True, include_gmail: bool = True
     ) -> str:
@@ -493,46 +544,45 @@ def build_mcp() -> MCPServer:
             include_gmail=include_gmail,
         )
 
-    @mcp.tool(description="Live Slack search (default L1; does not dump).")
+    @tool(description="Live Slack search (default L1; does not dump).")
     def slack_live() -> str:
         return _call(slack_live_tool.slack_live_search)
 
-    @mcp.tool(description="Propose mailbox actions (audit batch; 0 mutate).")
+    @tool(description="Propose mailbox actions (audit batch; 0 mutate).")
     def mailbox_propose(items_json: str) -> str:
         items = json.loads(items_json) if isinstance(items_json, str) else items_json
         return _call(mailbox_tool.mailbox_propose, items=items)
 
-    @mcp.tool(description="Brain mailbox apply — F3 always 403/501; use client apply.")
+    @tool(description="Brain mailbox apply — F3 always 403/501; use client apply.")
     def mailbox_apply(batch_id: str, ids_json: str = "[]") -> str:
         ids = json.loads(ids_json) if isinstance(ids_json, str) else ids_json
-        # MCP has no principal — treat as service path via error
-        from app.auth_service import ServicePrincipal
+        from app.request_principal import get_brain_principal
 
         return _call(
             mailbox_tool.mailbox_apply,
             batch_id=batch_id,
             ids=ids,
-            principal=ServicePrincipal(label="mcp"),
+            principal=get_brain_principal(),
         )
 
-    @mcp.tool(description="Propose external Slack actions (audit batch; 0 mutate).")
+    @tool(description="Propose external Slack actions (audit batch; 0 mutate).")
     def external_propose(items_json: str) -> str:
         items = json.loads(items_json) if isinstance(items_json, str) else items_json
         return _call(external_tool.external_propose, items=items)
 
-    @mcp.tool(description="Brain external apply — F3 always 403/501; use client apply.")
+    @tool(description="Brain external apply — F3 always 403/501; use client apply.")
     def external_apply(batch_id: str, ids_json: str = "[]") -> str:
         ids = json.loads(ids_json) if isinstance(ids_json, str) else ids_json
-        from app.auth_service import ServicePrincipal
+        from app.request_principal import get_brain_principal
 
         return _call(
             external_tool.external_apply,
             batch_id=batch_id,
             ids=ids,
-            principal=ServicePrincipal(label="mcp"),
+            principal=get_brain_principal(),
         )
 
-    @mcp.tool(description="Prepare meeting brief SSOT (+ optional Grok deliver).")
+    @tool(description="Prepare meeting brief SSOT (+ optional Grok deliver).")
     def prepare_meeting(
         event_id: str,
         title: str = "",
@@ -551,7 +601,7 @@ def build_mcp() -> MCPServer:
             dry_run=dry_run,
         )
 
-    @mcp.tool(description="Read meeting prep SSOT from vault.")
+    @tool(description="Read meeting prep SSOT from vault.")
     def get_meeting_prep(event_id: str, day: str | None = None) -> str:
         return _call(prepare_tool.get_meeting_prep, event_id=event_id, day=day)
 

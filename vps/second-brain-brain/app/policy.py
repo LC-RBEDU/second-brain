@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.auth_service import ServicePrincipal
+from app.oauth_mcp_scope import OAuthPrincipal
 
 
 @dataclass(frozen=True)
@@ -12,9 +13,15 @@ class PolicyDecision:
     reason: str = ""
 
 
-def allow_focus_write(principal: ServicePrincipal | str | None) -> PolicyDecision:
+def allow_focus_write(
+    principal: ServicePrincipal | OAuthPrincipal | str | None,
+) -> PolicyDecision:
     """Allow focus mutate for oauth / service / local dev (A1)."""
     if principal is None:
+        return PolicyDecision(False, "focus_write_auth_required")
+    if isinstance(principal, OAuthPrincipal):
+        if "brain:write" in principal.scopes:
+            return PolicyDecision(True)
         return PolicyDecision(False, "focus_write_auth_required")
     if isinstance(principal, ServicePrincipal):
         return PolicyDecision(True)

@@ -51,7 +51,7 @@ def external_apply(
     batch_id: str,
     ids: list[str] | None = None,
     *,
-    principal: ServicePrincipal | str,
+    principal: ServicePrincipal | str | object,
 ) -> dict[str, Any]:
     gate_brain_apply(principal)
     batch = get_batch(batch_id)

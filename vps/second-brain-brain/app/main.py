@@ -17,6 +17,8 @@ from app.auth_deps import AuthPrincipal
 from app.errors import BrainClientError, BrainVaultError
 from app.mcp_app import build_mcp
 from app.mcp_auth import McpAuthMiddleware
+from app.oauth_mcp_metadata import router as oauth_mcp_metadata_router
+from app.oauth_mcp_routes import router as oauth_mcp_router
 from app.oauth_routes import router as oauth_router
 from app.tools import allocate_task_id as allocate_tool
 from app.tools import capture_daily as capture_daily_tool
@@ -140,6 +142,8 @@ app = FastAPI(title="Second Brain Brain", version="0.2.0", lifespan=lifespan)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 app.add_middleware(_HttpsRedirectFixMiddleware)
 app.include_router(oauth_router)
+app.include_router(oauth_mcp_metadata_router)
+app.include_router(oauth_mcp_router)
 app.mount("/mcp", _mcp_asgi)
 
 

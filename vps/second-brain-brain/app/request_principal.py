@@ -4,8 +4,9 @@ from __future__ import annotations
 from contextvars import ContextVar, Token
 
 from app.auth_service import ServicePrincipal
+from app.oauth_mcp_scope import OAuthPrincipal
 
-BrainPrincipal = ServicePrincipal | str | None
+BrainPrincipal = ServicePrincipal | OAuthPrincipal | str | None
 
 _brain_principal: ContextVar[BrainPrincipal] = ContextVar("brain_principal", default=None)
 

@@ -106,6 +106,11 @@ $PSQL -c "SELECT id FROM local_persistent_volumes WHERE resource_id=${APP_ID} AN
   $PSQL -c "INSERT INTO local_persistent_volumes (uuid, name, mount_path, host_path, resource_type, resource_id, created_at, updated_at)
     VALUES ('${VOL_UUID}', 'second-brain-vault-wc', '/data/vault', '/data/second-brain-vault', 'App\Models\Application', ${APP_ID}, NOW(), NOW());"
 
+OAUTH_VOL_UUID=$(gen_uuid)
+$PSQL -c "SELECT id FROM local_persistent_volumes WHERE resource_id=${APP_ID} AND mount_path='/data/oauth' LIMIT 1;" | grep -q . || \
+  $PSQL -c "INSERT INTO local_persistent_volumes (uuid, name, mount_path, host_path, resource_type, resource_id, created_at, updated_at)
+    VALUES ('${OAUTH_VOL_UUID}', 'second-brain-oauth', '/data/oauth', '/data/second-brain-oauth', 'App\Models\Application', ${APP_ID}, NOW(), NOW());"
+
 for pair in "sb-vault-deploy|/root/.ssh/sb-vault-deploy" "known_hosts|/root/.ssh/known_hosts"; do
   fname="${pair%%|*}"
   mpath="${pair##*|}"

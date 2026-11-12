@@ -22,7 +22,7 @@ from agent_context_build import (  # noqa: E402
 from drive_io import DriveNotFoundError  # noqa: E402
 
 from app.context_freshness import needs_rebuild  # noqa: E402
-from app.errors import BrainVaultError, vault_error  # noqa: E402
+from app.errors import BrainClientError, BrainVaultError, vault_error  # noqa: E402
 from app.tools.sembly_pending import attach_sembly_pending  # noqa: E402
 from app.vault_deps import brain_vault  # noqa: E402
 
@@ -37,7 +37,7 @@ def _read_json(vault: Any, rel: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
+def get_context(*, env: dict[str, str] | None = None, allow_rebuild: bool = True) -> dict[str, Any]:
     """Return full agent-context snapshot; rebuild when §3 says so.
 
     Tip ahead + needs_rebuild → 503 vault_tip_ahead (no stale TOP).
@@ -56,6 +56,12 @@ def get_context(*, env: dict[str, str] | None = None) -> dict[str, Any]:
 
     # needs_rebuild — mutate/rebuild gates (tip/PUSH) apply.
     # Dual session (read probe → rebuild) is intentional for tip-ahead warm (R30).
+    if not allow_rebuild:
+        raise BrainClientError(
+            message="context rebuild requires brain:write",
+            status_code=403,
+            error_reason="context_rebuild_requires_write",
+        )
     try:
         with brain_vault(mode="rebuild", env=env) as vault:
             snapshot = build_and_write_context_bundle(vault, side_failure="raise")

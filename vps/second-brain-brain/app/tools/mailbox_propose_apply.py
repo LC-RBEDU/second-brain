@@ -48,7 +48,7 @@ def mailbox_apply(
     batch_id: str,
     ids: list[str] | None = None,
     *,
-    principal: ServicePrincipal | str,
+    principal: ServicePrincipal | str | object,
 ) -> dict[str, Any]:
     gate_brain_apply(principal)
     # unreachable if gate raises — keep for type checkers

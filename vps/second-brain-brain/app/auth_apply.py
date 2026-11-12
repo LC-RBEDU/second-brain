@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from app.auth_service import ServicePrincipal
 from app.errors import BrainClientError
+from app.oauth_mcp_scope import OAuthPrincipal
 
 
-def gate_brain_apply(principal: ServicePrincipal | str) -> None:
+def gate_brain_apply(principal: ServicePrincipal | OAuthPrincipal | str) -> None:
     """Raise before any Brain-side mutate apply.
 
     - ServicePrincipal → 403 human_oauth_required
@@ -18,7 +19,9 @@ def gate_brain_apply(principal: ServicePrincipal | str) -> None:
             status_code=403,
             error_reason="human_oauth_required",
         )
-    if isinstance(principal, str) and principal.startswith("oauth:"):
+    if isinstance(principal, OAuthPrincipal) or (
+        isinstance(principal, str) and principal.startswith("oauth:")
+    ):
         raise BrainClientError(
             message="OAuth Brain apply is post-F3 debt. Use client apply after propose.",
             status_code=501,
