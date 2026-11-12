@@ -3,7 +3,7 @@
 Stav: CRITIC
 Plán: docs/plans/2026-11-11-mcp-oauth-claude.md
 Schvalování plánu uživatelem: ne
-Architekt: agent ID 8bb6010c-3439-4f43-863b-df0c0424ceac, otevření plánu #2, generace k=2/3, kolo r=1/3
+Architekt: agent ID 8bb6010c-3439-4f43-863b-df0c0424ceac, otevření plánu #2, generace k=2/3, kolo r=2/3
 Šťoural: přeskočeno (plán už je celý, grill mezi koly kritiky neběží)
 Počítadla: návraty do PLAN z REVIEW/QA/TESTER 0/3 · kola REVIEW 0/5 · kola QA 0/5 · kola TESTER 0/5 · ENV opravy 0/2
 Base (origin/main při vzniku větve): c930c5a5157abd5720bb146bbd86b305741b5e77 · Kódový SHA: — · Review SCHVÁLENO na: — · QA PASS na: — · TESTER: přeskočeno (profil SECOND_BRAIN) až v DONE auditu
@@ -72,6 +72,8 @@ SECOND_BRAIN
 | 11 | 2026-11-12 01:07 | AWAITING_USER | — | stop | — | Uživatel: nepokračovat, dokud v jiné konverzaci nedoběhne aktualizace rbu-pipeline. Převzetí k=2 se nespustilo. |
 | 12 | 2026-11-12 11:18 | PLAN | — | pokračuj | — | Nový skill. Šťoural přeskočen. Start převzetí k=2 r=1, bez grilu. |
 | 13 | 2026-11-12 11:25 | PLAN | 8bb6010c-3439-4f43-863b-df0c0424ceac | revize | — | C11–C14 zapsané do souboru. Přechod na kritika, kolo 2+ (delta). |
+| 14 | 2026-11-12 11:40 | CRITIC | 56057659-5af2-4a4c-a5cd-7a27967e3539 | K PŘEPRACOVÁNÍ | 0 BLOCKER, 1 MAJOR, 1 MINOR | C12–C14 vyřešené. C11 test nevolá update_task u prázdného scope a offline_access. C15 MINOR pardon po výjimce. Zpět architektovi, r=2. |
+| 15 | 2026-11-12 11:55 | PLAN | 8bb6010c-3439-4f43-863b-df0c0424ceac | revize r=2 | — | C11 a C15 zapsané. Přechod na kritika, kolo 2+ (delta). |
 
 ## Otevřené nálezy
 
@@ -87,7 +89,8 @@ SECOND_BRAIN
 | C8 | MINOR | PLAN | vyřešen v #8 (kritik značil NEW-4, potvrdil) | 1 |
 | C9 | MAJOR | PLAN | vyřešen v #10 (kritik potvrdil) | 1 |
 | C10 | MINOR | PLAN | vyřešen v #10 (kritik potvrdil) | 1 |
-| C11 | MAJOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
-| C12 | MAJOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
-| C13 | MINOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
-| C14 | MINOR | PLAN | čeká na kritika (revize k=2 tvrdí vyřešeno) | 1 |
+| C11 | MAJOR | PLAN | otevřený (test nehlídá uložený scope) | 2 |
+| C12 | MAJOR | PLAN | vyřešen v #14 (kritik potvrdil) | 1 |
+| C13 | MINOR | PLAN | vyřešen v #14 (kritik potvrdil) | 1 |
+| C14 | MINOR | PLAN | vyřešen v #14 (kritik potvrdil) | 1 |
+| C15 | MINOR | PLAN | otevřený (kritik značil NEW-1) | 1 |
