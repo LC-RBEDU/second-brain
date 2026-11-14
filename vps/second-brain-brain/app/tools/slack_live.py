@@ -9,6 +9,12 @@ import urllib.request
 from typing import Any
 
 
+class _HTTPSOnlyHandler(urllib.request.BaseHandler):
+    def default_open(self, req: urllib.request.Request) -> None:
+        if req.type != "https":
+            raise urllib.error.URLError("Only HTTPS URLs are allowed")
+
+
 def _search(token: str, query: str, *, timeout_s: float = 15.0) -> list[dict[str, Any]]:
     qs = urllib.parse.urlencode({"query": query, "count": 20})
     req = urllib.request.Request(
@@ -16,7 +22,8 @@ def _search(token: str, query: str, *, timeout_s: float = 15.0) -> list[dict[str
         headers={"Authorization": f"Bearer {token}"},
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+    opener = urllib.request.build_opener(_HTTPSOnlyHandler())
+    with opener.open(req, timeout=timeout_s) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     if not data.get("ok"):
         raise RuntimeError(data.get("error") or "slack_search_failed")
