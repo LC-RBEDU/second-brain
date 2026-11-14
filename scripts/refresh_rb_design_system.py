@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -115,6 +116,15 @@ def firecrawl_api_key() -> str | None:
     return None
 
 
+class _HTTPSOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(newurl).scheme.lower() != "https":
+            raise urllib.error.HTTPError(
+                newurl, code, "Redirect to non-HTTPS URL blocked", headers, fp
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def firecrawl_scrape(url: str, api_key: str) -> dict[str, Any]:
     payload = json.dumps(
         {
@@ -136,7 +146,8 @@ def firecrawl_scrape(url: str, api_key: str) -> dict[str, Any]:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    opener = urllib.request.build_opener(_HTTPSOnlyRedirectHandler())
+    with opener.open(req, timeout=120) as resp:
         body = json.loads(resp.read().decode("utf-8"))
     if not body.get("success"):
         raise RuntimeError(f"Firecrawl scrape failed: {body}")
